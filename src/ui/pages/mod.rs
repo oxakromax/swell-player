@@ -7,6 +7,7 @@ mod collection;
 mod explore;
 mod history;
 mod home;
+mod home_sections;
 mod mix;
 mod more;
 mod playlist;
