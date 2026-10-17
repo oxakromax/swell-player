@@ -689,9 +689,10 @@ impl TrackRow {
         } else {
             self.remove_css_class("playing");
         }
+        // Playing: the speaker; paused (or not this row): play, which is
+        // what a click does.
         let icon = match (playing, paused) {
             (true, false) => "audio-volume-high-symbolic",
-            (true, true) => "media-playback-pause-symbolic",
             _ => "media-playback-start-symbolic",
         };
         match shared.variant {

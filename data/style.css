@@ -101,3 +101,9 @@ listview.navigation-sidebar > header { margin: 0; padding: 0; min-height: 0; bor
 
 /* Now-playing panel in the bottom sheet: clear the drag handle */
 .now-playing.in-sheet headerbar { padding-top: 20px; }
+
+/* Hearts stay flat when checked: an accent glyph, no filled circle
+ * (§4.6); hover and focus keep the usual flat-button feedback. */
+button.heart.flat:checked            { background-color: transparent; }
+button.heart.flat:checked:hover      { background-color: color-mix(in srgb, currentColor 7%, transparent); }
+button.heart.flat:checked:active     { background-color: color-mix(in srgb, currentColor 16%, transparent); }

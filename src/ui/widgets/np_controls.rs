@@ -240,6 +240,16 @@ impl Transport {
                 }));
                 true
             });
+        // Never trust a state missed while hidden (e.g. a session restored
+        // before the bar was shown): resync when shown.
+        transport.widget.connect_map({
+            let weak = Rc::downgrade(&transport);
+            move |_| {
+                if let Some(transport) = weak.upgrade() {
+                    transport.sync();
+                }
+            }
+        });
         transport.sync();
         transport
     }
@@ -256,6 +266,8 @@ impl Transport {
     }
 
     fn sync(&self) {
+        // Playable whenever there is a current track, even before its
+        // stream is resolved (a restored session).
         let has_track = self.playback.current().is_some();
         self.syncing.set(true);
         self.play.set_state(self.playback.state(), has_track);
