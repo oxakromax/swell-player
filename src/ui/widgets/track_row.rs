@@ -27,6 +27,7 @@ use gtk::{gdk, glib};
 
 use super::heart_button::HeartButton;
 use crate::covers::{Image, Ticket};
+use crate::i18n::{tr, trn};
 use crate::library;
 use crate::model::{TrackInfo, format_duration};
 use crate::ui::context::Ctx;
@@ -104,26 +105,24 @@ pub struct TrackEntry {
 impl TrackEntry {
     pub fn new(info: TrackInfo) -> Self {
         let seconds = info.duration;
-        let mut accessible = info.title.clone();
+        let mut parts = vec![info.title.clone()];
         if !info.artists.is_empty() {
-            accessible.push_str(", by ");
-            accessible.push_str(&info.artist_names());
+            parts.push(tr("by {artists}").replace("{artists}", &info.artist_names()));
         }
         if !info.album.is_empty() {
-            accessible.push_str(", from ");
-            accessible.push_str(&info.album);
+            parts.push(tr("from {album}").replace("{album}", &info.album));
         }
-        accessible.push_str(", ");
-        accessible.push_str(&spoken_duration(seconds));
+        parts.push(spoken_duration(seconds));
         if info.hires {
-            accessible.push_str(", Hi-Res");
+            parts.push(tr("Hi-Res").to_owned());
         }
         if info.explicit {
-            accessible.push_str(", Explicit");
+            parts.push(tr("Explicit").to_owned());
         }
         if !info.available {
-            accessible.push_str(", not available");
+            parts.push(tr("not available").to_owned());
         }
+        let accessible = parts.join(", ");
         Self {
             duration: format_duration(seconds.into()),
             accessible,
@@ -136,16 +135,18 @@ impl TrackEntry {
 /// "3 minutes 5 seconds".
 pub fn spoken_duration(seconds: u32) -> String {
     let (h, m, s) = (seconds / 3600, seconds / 60 % 60, seconds % 60);
-    let unit = |n: u32, one: &str, many: &str| format!("{n} {}", if n == 1 { one } else { many });
+    let unit = |n: u32, one: &'static str, many: &'static str| {
+        trn(one, many, n.into()).replace("{n}", &n.to_string())
+    };
     let mut parts = Vec::new();
     if h > 0 {
-        parts.push(unit(h, "hour", "hours"));
+        parts.push(unit(h, "{n} hour", "{n} hours"));
     }
     if m > 0 {
-        parts.push(unit(m, "minute", "minutes"));
+        parts.push(unit(m, "{n} minute", "{n} minutes"));
     }
     if s > 0 || parts.is_empty() {
-        parts.push(unit(s, "second", "seconds"));
+        parts.push(unit(s, "{n} second", "{n} seconds"));
     }
     parts.join(" ")
 }
@@ -288,7 +289,7 @@ impl TrackRow {
         imp.handle.set_width_request(24);
         imp.handle.set_cursor_from_name(Some("grab"));
         imp.handle
-            .set_tooltip_text(Some("Drag to Reorder (Alt+↑/↓)"));
+            .set_tooltip_text(Some(tr("Drag to Reorder (Alt+↑/↓)")));
         imp.handle.set_visible(false);
         self.append(&imp.handle);
 
@@ -392,11 +393,11 @@ impl TrackRow {
         imp.end_button.add_css_class("flat");
         if variant == Variant::Queue {
             imp.end_button.set_icon_name("window-close-symbolic");
-            super::label_button(&imp.end_button, "Remove from Queue");
+            super::label_button(&imp.end_button, tr("Remove from Queue"));
         } else {
             imp.end_button.set_icon_name("view-more-symbolic");
             imp.end_button.add_css_class("row-more");
-            super::label_button(&imp.end_button, "More Options");
+            super::label_button(&imp.end_button, tr("More Options"));
         }
         let weak = self.downgrade();
         imp.end_button.connect_clicked(move |button| {
@@ -616,7 +617,7 @@ impl TrackRow {
             self.set_tooltip_text(None);
         } else {
             self.add_css_class("dimmed");
-            self.set_tooltip_text(Some("Not available in your region"));
+            self.set_tooltip_text(Some(tr("Not available in your region")));
         }
         self.apply_layout();
         self.update_playing();
@@ -766,7 +767,9 @@ impl TrackRow {
             (imp.item.borrow().upgrade(), imp.entry.borrow().as_ref())
         {
             if playing {
-                item.set_accessible_label(&format!("{}, playing", entry.accessible));
+                item.set_accessible_label(
+                    &tr("{track}, playing").replace("{track}", &entry.accessible),
+                );
             } else {
                 item.set_accessible_label(&entry.accessible);
             }
@@ -780,6 +783,10 @@ mod tests {
 
     #[test]
     fn spoken() {
+        if crate::i18n::ui_language().is_some() {
+            // Checks the English texts.
+            return;
+        }
         assert_eq!(spoken_duration(369), "6 minutes 9 seconds");
         assert_eq!(spoken_duration(60), "1 minute");
         assert_eq!(spoken_duration(0), "0 seconds");

@@ -20,6 +20,7 @@ use super::super::menus::{ItemMenu, Subject};
 use super::super::nav::Route;
 use super::np_common::{Cover, Subscription, escape, icons, subscribe};
 use crate::covers::CoverLoader;
+use crate::i18n::tr;
 use crate::model::{TrackInfo, format_duration};
 use crate::playback::{Event, Playback};
 
@@ -93,10 +94,10 @@ impl QueueView {
             .css_classes(["caption", "dimmed", "np-link"])
             .build();
         let clear = gtk::Button::builder()
-            .label("Clear")
+            .label(tr("Clear"))
             .valign(gtk::Align::Center)
             .css_classes(["flat"])
-            .tooltip_text("Clear Queue")
+            .tooltip_text(tr("Clear Queue"))
             .build();
         let header = gtk::Box::builder()
             .spacing(12)
@@ -120,7 +121,7 @@ impl QueueView {
             .single_click_activate(true)
             .css_classes(["navigation-sidebar", "queue"])
             .build();
-        list.update_property(&[gtk::accessible::Property::Label("Queue")]);
+        list.update_property(&[gtk::accessible::Property::Label(tr("Queue"))]);
         let scrolled = gtk::ScrolledWindow::builder()
             .hscrollbar_policy(gtk::PolicyType::Never)
             .child(&list)
@@ -140,8 +141,8 @@ impl QueueView {
         stack.add_named(
             &adw::StatusPage::builder()
                 .icon_name(icons::queue())
-                .title("Queue Is Empty")
-                .description("Use “Add to Queue” on any track, album or playlist.")
+                .title(tr("Queue Is Empty"))
+                .description(tr("Use “Add to Queue” on any track, album or playlist."))
                 .css_classes(["compact"])
                 .build(),
             Some("empty"),
@@ -303,11 +304,13 @@ impl QueueView {
                     .as_ref()
                     .and_then(Route::from_target)
                     .is_some();
-                self.source.set_markup(&if linked {
-                    format!("Playing from <a href=\"source\">{title}</a>")
+                let source_markup = if linked {
+                    format!("<a href=\"source\">{title}</a>")
                 } else {
-                    format!("Playing from {title}")
-                });
+                    title
+                };
+                self.source
+                    .set_markup(&tr("Playing from {source}").replace("{source}", &source_markup));
                 self.source.set_tooltip_text(Some(&source.title));
             }
             None => self.source.set_label(""),
@@ -325,7 +328,7 @@ impl QueueView {
             return;
         };
         let playback = Rc::downgrade(&self.playback);
-        ctx.toast_with_undo("Queue cleared", move || {
+        ctx.toast_with_undo(tr("Queue cleared"), move || {
             if let Some(playback) = playback.upgrade() {
                 playback.restore_queue(saved.clone());
             }
@@ -507,16 +510,16 @@ impl QueueView {
         let handle = gtk::Image::builder()
             .icon_name(icons::drag_handle())
             .css_classes(["dimmed"])
-            .tooltip_text("Drag to Reorder")
+            .tooltip_text(tr("Drag to Reorder"))
             .accessible_role(gtk::AccessibleRole::Presentation)
             .build();
         let remove = gtk::Button::builder()
             .icon_name("window-close-symbolic")
             .valign(gtk::Align::Center)
             .css_classes(["flat", "circular", "row-more"])
-            .tooltip_text("Remove from Queue")
+            .tooltip_text(tr("Remove from Queue"))
             .build();
-        remove.update_property(&[gtk::accessible::Property::Label("Remove from Queue")]);
+        remove.update_property(&[gtk::accessible::Property::Label(tr("Remove from Queue"))]);
         let widget = gtk::Box::builder()
             .spacing(12)
             .height_request(ROW_HEIGHT)
@@ -691,11 +694,12 @@ impl QueueView {
                 row.widget.remove_css_class("playing");
             }
             item.set_activatable(!now);
-            item.set_accessible_label(&format!(
-                "{}, {artists}, {duration}{}",
-                track.title,
-                if now { ", playing" } else { "" }
-            ));
+            let text = format!("{}, {artists}, {duration}", track.title);
+            item.set_accessible_label(&if now {
+                tr("{track}, playing").replace("{track}", &text)
+            } else {
+                text
+            });
         });
     }
 
@@ -727,11 +731,11 @@ impl QueueView {
                 };
                 let section = with_entry(&object, |entry| entry.section);
                 label.set_label(&match section {
-                    Some(Section::Now) => "Now Playing".to_owned(),
-                    Some(Section::Next) => "Next in Queue".to_owned(),
+                    Some(Section::Now) => tr("Now Playing").to_owned(),
+                    Some(Section::Next) => tr("Next in Queue").to_owned(),
                     _ => match view.source_title.borrow().as_str() {
-                        "" => "Next".to_owned(),
-                        title => format!("Next From: {title}"),
+                        "" => tr("Next").to_owned(),
+                        title => tr("Next From: {source}").replace("{source}", title),
                     },
                 });
             };

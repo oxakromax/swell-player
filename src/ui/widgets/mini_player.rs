@@ -14,6 +14,7 @@ use gtk::{gdk, glib};
 use super::super::context::{Ctx, PanelTab};
 use super::np_common::{Cover, Subscription, Ticker, subscribe};
 use super::np_controls::{PlayButton, TICK};
+use crate::i18n::tr;
 use crate::playback::{Event, PlayState};
 
 const COVER_SIZE: i32 = 42;
@@ -66,9 +67,9 @@ impl MiniPlayer {
             .width_request(BUTTON_SIZE)
             .height_request(BUTTON_SIZE)
             .css_classes(["circular", "flat"])
-            .tooltip_text("Next Track")
+            .tooltip_text(tr("Next Track"))
             .build();
-        next.update_property(&[gtk::accessible::Property::Label("Next Track")]);
+        next.update_property(&[gtk::accessible::Property::Label(tr("Next Track"))]);
 
         let area = gtk::Box::builder()
             .spacing(12)
@@ -180,10 +181,11 @@ impl MiniPlayer {
         let artists = track.artist_names();
         self.artists.set_label(&artists);
         self.area
-            .update_property(&[gtk::accessible::Property::Label(&format!(
-                "Now Playing: {} by {artists}. Open player",
-                track.title
-            ))]);
+            .update_property(&[gtk::accessible::Property::Label(
+                &tr("Now Playing: {title} by {artists}. Open player")
+                    .replace("{title}", &track.title)
+                    .replace("{artists}", &artists),
+            )]);
         self.progress.set_fraction(0.0);
     }
 

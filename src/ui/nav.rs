@@ -21,6 +21,7 @@ use adw::prelude::*;
 
 use super::context::Ctx;
 use super::pages;
+use crate::i18n::tr;
 use crate::tidal::pages::{More, Target};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -170,10 +171,10 @@ impl Navigator {
         let sections = adw::ViewStack::builder().vexpand(true).build();
         let views = SECTIONS.map(|_| adw::NavigationView::new());
         for ((name, view), (title, icon)) in SECTIONS.iter().zip(&views).zip([
-            ("Home", "user-home-symbolic"),
-            ("Explore", "swell-explore-symbolic"),
-            ("Search", "system-search-symbolic"),
-            ("Collection", "swell-library-symbolic"),
+            (tr("Home"), "user-home-symbolic"),
+            (tr("Explore"), "swell-explore-symbolic"),
+            (tr("Search"), "system-search-symbolic"),
+            (tr("Collection"), "swell-library-symbolic"),
         ]) {
             sections.add_titled_with_icon(view, Some(name), title, icon);
         }
@@ -402,7 +403,9 @@ impl Navigator {
     fn build_index(&self) -> adw::NavigationPage {
         let page = match self.index_page.borrow().as_ref() {
             Some(builder) => builder(),
-            None => adw::NavigationPage::builder().title("Collection").build(),
+            None => adw::NavigationPage::builder()
+                .title(tr("Collection"))
+                .build(),
         };
         page.set_tag(Some(COLLECTION_INDEX));
         page

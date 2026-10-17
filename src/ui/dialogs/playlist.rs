@@ -12,6 +12,7 @@ use adw::prelude::*;
 use gtk::{gio, glib};
 
 use crate::covers::{Image, Ticket};
+use crate::i18n::{tr, trn};
 use crate::runtime;
 use crate::tidal::Base;
 use crate::tidal::models::Playlist;
@@ -57,15 +58,22 @@ pub fn add_to_playlist(ctx: &Rc<Ctx>, playlist: &Playlist, track_ids: Vec<u64>) 
         match runtime::spawn(async move { api.add_to_playlist(&request, &track_ids).await }).await {
             Ok(()) => {
                 let message = if count == 1 {
-                    format!("Added to “{title}”")
+                    tr("Added to “{title}”").replace("{title}", &title)
                 } else {
-                    format!("Added {count} tracks to “{title}”")
+                    trn(
+                        "Added {n} track to “{title}”",
+                        "Added {n} tracks to “{title}”",
+                        count as u64,
+                    )
+                    .replace("{n}", &count.to_string())
+                    .replace("{title}", &title)
                 };
-                toast_with_action(&ctx, &message, "Open", open_button(&ctx, uuid.clone()));
+                toast_with_action(&ctx, &message, tr("Open"), open_button(&ctx, uuid.clone()));
                 changed(&ctx, &uuid);
             }
             Err(err) => ctx.report(
-                &format!("Couldn't add to “{}”", glib::markup_escape_text(&title)),
+                &tr("Couldn't add to “{title}”")
+                    .replace("{title}", &glib::markup_escape_text(&title)),
                 &err,
             ),
         }
@@ -79,7 +87,7 @@ pub fn choose_playlist(ctx: &Rc<Ctx>, track_ids: Vec<u64>) {
         store.append(&glib::BoxedAnyObject::new(playlist));
     }
     let search = gtk::SearchEntry::builder()
-        .placeholder_text("Search Playlists")
+        .placeholder_text(tr("Search Playlists"))
         .hexpand(true)
         .build();
     let filter = gtk::CustomFilter::new({
@@ -157,10 +165,10 @@ pub fn choose_playlist(ctx: &Rc<Ctx>, track_ids: Vec<u64>) {
                     title.set_label(&playlist.title);
                 }
                 if let Some(count) = text.last_child().and_downcast::<gtk::Label>() {
-                    count.set_label(&crate::ui::format::count(
+                    count.set_label(&crate::ui::format::counted(
                         playlist.number_of_tracks as usize,
-                        "track",
-                        "tracks",
+                        "{n} track",
+                        "{n} tracks",
                     ));
                 }
             }
@@ -199,7 +207,7 @@ pub fn choose_playlist(ctx: &Rc<Ctx>, track_ids: Vec<u64>) {
         .single_click_activate(true)
         .css_classes(["navigation-sidebar"])
         .build();
-    view.update_property(&[gtk::accessible::Property::Label("Your Playlists")]);
+    view.update_property(&[gtk::accessible::Property::Label(tr("Your Playlists"))]);
     let scrolled = gtk::ScrolledWindow::builder()
         .hscrollbar_policy(gtk::PolicyType::Never)
         .vexpand(true)
@@ -210,7 +218,7 @@ pub fn choose_playlist(ctx: &Rc<Ctx>, track_ids: Vec<u64>) {
         .child(
             &adw::ButtonContent::builder()
                 .icon_name("list-add-symbolic")
-                .label("New Playlist…")
+                .label(tr("New Playlist…"))
                 .halign(gtk::Align::Start)
                 .build(),
         )
@@ -233,7 +241,7 @@ pub fn choose_playlist(ctx: &Rc<Ctx>, track_ids: Vec<u64>) {
     toolbar.add_top_bar(&search_bar);
     toolbar.set_content(Some(&content));
     let dialog = adw::Dialog::builder()
-        .title("Add to Playlist")
+        .title(tr("Add to Playlist"))
         .content_width(400)
         .content_height(520)
         .child(&toolbar)
@@ -283,11 +291,11 @@ struct Form {
 }
 
 fn form(heading: &str, confirm_label: &str, playlist: Option<&Playlist>) -> Form {
-    let title = adw::EntryRow::builder().title("Title").build();
-    let description = adw::EntryRow::builder().title("Description").build();
+    let title = adw::EntryRow::builder().title(tr("Title")).build();
+    let description = adw::EntryRow::builder().title(tr("Description")).build();
     let public = adw::SwitchRow::builder()
-        .title("Public")
-        .subtitle("Anyone can find it and see what's in it")
+        .title(tr("Public"))
+        .subtitle(tr("Anyone can find it and see what's in it"))
         .build();
     if let Some(playlist) = playlist {
         title.set_text(&playlist.title);
@@ -301,7 +309,7 @@ fn form(heading: &str, confirm_label: &str, playlist: Option<&Playlist>) -> Form
     let page = adw::PreferencesPage::new();
     page.add(&group);
 
-    let cancel = gtk::Button::with_label("Cancel");
+    let cancel = gtk::Button::with_label(tr("Cancel"));
     let confirm = gtk::Button::builder()
         .label(confirm_label)
         .css_classes(["suggested-action"])
@@ -351,7 +359,7 @@ fn form(heading: &str, confirm_label: &str, playlist: Option<&Playlist>) -> Form
 
 /// "New Playlist": creates it, then adds `track_ids` (may be empty).
 pub fn new_playlist(ctx: &Rc<Ctx>, track_ids: Vec<u64>) {
-    let form = form("New Playlist", "Create", None);
+    let form = form(tr("New Playlist"), tr("Create"), None);
     let Form {
         dialog,
         title,
@@ -392,8 +400,8 @@ pub fn new_playlist(ctx: &Rc<Ctx>, track_ids: Vec<u64>) {
                         dialog.close();
                         toast_with_action(
                             &ctx,
-                            &format!("Created “{name}”"),
-                            "Open",
+                            &tr("Created “{title}”").replace("{title}", &name),
+                            tr("Open"),
                             open_button(&ctx, uuid.clone()),
                         );
                         changed(&ctx, &uuid);
@@ -402,7 +410,7 @@ pub fn new_playlist(ctx: &Rc<Ctx>, track_ids: Vec<u64>) {
                         if let Some(confirm) = confirm.upgrade() {
                             confirm.set_sensitive(true);
                         }
-                        ctx.report("Couldn't create the playlist", &err);
+                        ctx.report(tr("Couldn't create the playlist"), &err);
                     }
                 }
             });
@@ -419,7 +427,7 @@ pub fn edit_playlist(ctx: &Rc<Ctx>, playlist: &Playlist) {
         description,
         public,
         confirm,
-    } = form("Edit Details", "Save", Some(playlist));
+    } = form(tr("Edit Details"), tr("Save"), Some(playlist));
     let original = playlist.clone();
     confirm.connect_clicked({
         let ctx = Rc::downgrade(ctx);
@@ -456,14 +464,14 @@ pub fn edit_playlist(ctx: &Rc<Ctx>, playlist: &Playlist) {
                 match result {
                     Ok(()) => {
                         dialog.close();
-                        ctx.toast("Playlist updated");
+                        ctx.toast(tr("Playlist updated"));
                         changed(&ctx, &uuid);
                     }
                     Err(err) => {
                         if let Some(confirm) = confirm.upgrade() {
                             confirm.set_sensitive(true);
                         }
-                        ctx.report("Couldn't update the playlist", &err);
+                        ctx.report(tr("Couldn't update the playlist"), &err);
                     }
                 }
             });
@@ -482,13 +490,13 @@ pub fn set_public(ctx: &Rc<Ctx>, playlist: &Playlist, public: bool) {
         match runtime::spawn(async move { api.set_playlist_public(&request, public).await }).await {
             Ok(()) => {
                 ctx.toast(if public {
-                    "The playlist is now public"
+                    tr("The playlist is now public")
                 } else {
-                    "The playlist is now private"
+                    tr("The playlist is now private")
                 });
                 changed(&ctx, &uuid);
             }
-            Err(err) => ctx.report("Couldn't change the playlist's visibility", &err),
+            Err(err) => ctx.report(tr("Couldn't change the playlist's visibility"), &err),
         }
     });
 }
@@ -497,12 +505,14 @@ pub fn set_public(ctx: &Rc<Ctx>, playlist: &Playlist, public: bool) {
 /// calls `on_deleted`.
 pub fn delete_playlist(ctx: &Rc<Ctx>, playlist: &Playlist, on_deleted: impl Fn() + 'static) {
     let alert = adw::AlertDialog::builder()
-        .heading(format!("Delete “{}”?", playlist.title))
-        .body("The playlist will be deleted from your TIDAL account. This can't be undone.")
+        .heading(tr("Delete “{title}”?").replace("{title}", &playlist.title))
+        .body(tr(
+            "The playlist will be deleted from your TIDAL account. This can't be undone.",
+        ))
         .default_response("cancel")
         .close_response("cancel")
         .build();
-    alert.add_responses(&[("cancel", "Cancel"), ("delete", "Delete")]);
+    alert.add_responses(&[("cancel", tr("Cancel")), ("delete", tr("Delete"))]);
     alert.set_response_appearance("delete", adw::ResponseAppearance::Destructive);
     let ctx_weak = Rc::downgrade(ctx);
     let uuid = playlist.uuid.clone();
@@ -520,11 +530,14 @@ pub fn delete_playlist(ctx: &Rc<Ctx>, playlist: &Playlist, on_deleted: impl Fn()
         glib::spawn_future_local(async move {
             match runtime::spawn(async move { api.delete_playlist(&request).await }).await {
                 Ok(()) => {
-                    ctx.toast(&format!("Deleted “{}”", glib::markup_escape_text(&title)));
+                    ctx.toast(
+                        &tr("Deleted “{title}”")
+                            .replace("{title}", &glib::markup_escape_text(&title)),
+                    );
                     changed(&ctx, &uuid);
                     on_deleted();
                 }
-                Err(err) => ctx.report("Couldn't delete the playlist", &err),
+                Err(err) => ctx.report(tr("Couldn't delete the playlist"), &err),
             }
         });
     });

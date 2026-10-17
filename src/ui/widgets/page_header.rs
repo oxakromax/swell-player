@@ -35,6 +35,7 @@ use super::heart_button::HeartButton;
 use super::media_card::Cover;
 use super::quality_badge::{self, QualityBadge};
 use crate::covers::Image;
+use crate::i18n::tr;
 use crate::tidal::models::{Album, Artist, ArtistRef, Mix, Playlist};
 use crate::ui::context::Ctx;
 use crate::ui::dialogs;
@@ -149,7 +150,7 @@ impl ActionFit {
         let compact = self.compact.get();
         let label = !(compact || self.tight.get());
         self.shuffle_content
-            .set_label(if label { "Shuffle" } else { "" });
+            .set_label(if label { tr("Shuffle") } else { "" });
         if let Some(copy) = self.copy_link.borrow().as_ref() {
             copy.set_visible(!(compact || self.tighter.get()));
         }
@@ -305,21 +306,21 @@ impl PageHeader {
             .child(
                 &adw::ButtonContent::builder()
                     .icon_name("media-playback-start-symbolic")
-                    .label("Play")
+                    .label(tr("Play"))
                     .build(),
             )
             .css_classes(["pill", "suggested-action"])
             .build();
         let shuffle_content = adw::ButtonContent::builder()
             .icon_name("media-playlist-shuffle-symbolic")
-            .label("Shuffle")
+            .label(tr("Shuffle"))
             .build();
         let shuffle = gtk::Button::builder()
             .child(&shuffle_content)
-            .tooltip_text("Shuffle")
+            .tooltip_text(tr("Shuffle"))
             .css_classes(["pill"])
             .build();
-        shuffle.update_property(&[gtk::accessible::Property::Label("Shuffle")]);
+        shuffle.update_property(&[gtk::accessible::Property::Label(tr("Shuffle"))]);
         actions.append(&play);
         actions.append(&shuffle);
         let extras = gtk::Box::builder().spacing(12).build();
@@ -420,7 +421,7 @@ impl PageHeader {
             .build();
         label.set_tooltip_text(Some(text));
         let more = gtk::Button::builder()
-            .label("Read More")
+            .label(tr("Read More"))
             .halign(gtk::Align::Start)
             .visible(false)
             .css_classes(["flat"])
@@ -482,11 +483,11 @@ impl PageHeader {
             .valign(gtk::Align::Center)
             .css_classes(["circular", "flat"])
             .build();
-        super::label_button(&button, "Copy Link");
+        super::label_button(&button, tr("Copy Link"));
         let ctx = Rc::downgrade(ctx);
         button.connect_clicked(move |_| {
             if let Some(ctx) = ctx.upgrade() {
-                ctx.copy(&url, "Link");
+                ctx.copy(&url, tr("Link copied"));
             }
         });
         self.extras.append(&button);
@@ -499,7 +500,7 @@ impl PageHeader {
             .valign(gtk::Align::Center)
             .css_classes(["circular", "flat"])
             .build();
-        super::label_button(&button, "More Options");
+        super::label_button(&button, tr("More Options"));
         let menu = Rc::downgrade(&self.menu);
         button.connect_clicked(move |button| {
             if let Some(menu) = menu.upgrade() {
@@ -520,9 +521,9 @@ impl PageHeader {
             true,
         );
         let kind = match album.kind.as_deref() {
-            Some("EP") => "EP",
-            Some("SINGLE") => "Single",
-            _ => "Album",
+            Some("EP") => tr("EP"),
+            Some("SINGLE") => tr("Single"),
+            _ => tr("Album"),
         };
         let title = match album.version.as_deref().filter(|v| !v.is_empty()) {
             Some(version) if !album.title.contains(version) => {
@@ -552,13 +553,13 @@ impl PageHeader {
     pub fn playlist(ctx: &Rc<Ctx>, playlist: &Playlist) -> Self {
         let image = playlist.square_image.clone().map(Image::Playlist);
         let cover = Cover::new(ctx, image, 240, "view-list-symbolic", true);
-        let mut header = Self::build(ctx, Art::Cover(cover), "Playlist", &playlist.title);
+        let mut header = Self::build(ctx, Art::Cover(cover), tr("Playlist"), &playlist.title);
         let own = ctx.library.is_own_playlist(playlist);
         let mut meta = Vec::new();
         if let Some(owner) = playlist.creator.name.as_deref().filter(|n| !n.is_empty()) {
-            meta.push(format!("by {owner}"));
+            meta.push(tr("by {name}").replace("{name}", owner));
         } else if !own && playlist.creator.id == Some(0) {
-            meta.push("by TIDAL".into());
+            meta.push(tr("by TIDAL").into());
         }
         meta.push(format::tracks_summary(
             playlist.number_of_tracks as usize,
@@ -567,9 +568,9 @@ impl PageHeader {
         if own {
             meta.push(
                 if playlist.public_playlist {
-                    "Public"
+                    tr("Public")
                 } else {
-                    "Private"
+                    tr("Private")
                 }
                 .into(),
             );
@@ -577,7 +578,7 @@ impl PageHeader {
         header.add_dimmed(&format::join(meta));
         let description = playlist.description.trim();
         if !description.is_empty() {
-            header.add_read_more(ctx, description, "Description", &playlist.title);
+            header.add_read_more(ctx, description, tr("Description"), &playlist.title);
         }
         header.finish();
         let subject = Subject::Playlist(Rc::new(playlist.clone()));
@@ -587,7 +588,7 @@ impl PageHeader {
                 .valign(gtk::Align::Center)
                 .css_classes(["circular", "flat"])
                 .build();
-            super::label_button(&edit, "Edit Details");
+            super::label_button(&edit, tr("Edit Details"));
             let weak = Rc::downgrade(ctx);
             let playlist = playlist.clone();
             edit.connect_clicked(move |_| {
@@ -613,7 +614,7 @@ impl PageHeader {
                 .map(Image::Cover)
         });
         let avatar = super::media_card::avatar(ctx, image, &artist.name, 200);
-        let header = Self::build(ctx, Art::Avatar(avatar), "Artist", &artist.name);
+        let header = Self::build(ctx, Art::Avatar(avatar), tr("Artist"), &artist.name);
         header.finish();
         let subject = Subject::Artist(Rc::new(artist.clone()));
         let follow = HeartButton::follow(ctx);
@@ -627,7 +628,7 @@ impl PageHeader {
             .valign(gtk::Align::Center)
             .css_classes(["circular", "flat"])
             .build();
-        super::label_button(&radio, "Artist Radio");
+        super::label_button(&radio, tr("Artist Radio"));
         let weak = Rc::downgrade(ctx);
         let id = artist.id;
         radio.connect_clicked(move |_| {

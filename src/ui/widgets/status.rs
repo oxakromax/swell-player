@@ -8,6 +8,8 @@ use std::time::Duration;
 use gtk::glib;
 use gtk::prelude::*;
 
+use crate::i18n::tr;
+
 /// The skeleton appears only if loading takes longer than this, so fast
 /// (cached) answers never flash it.
 const SKELETON_DELAY: Duration = Duration::from_millis(150);
@@ -158,7 +160,7 @@ pub fn error_page(err: &anyhow::Error, retry: impl Fn() + 'static) -> adw::Statu
 /// to go back to).
 pub fn not_found_status() -> adw::StatusPage {
     let button = gtk::Button::builder()
-        .label("Go Back")
+        .label(tr("Go Back"))
         .halign(gtk::Align::Center)
         .css_classes(["pill"])
         .build();
@@ -173,7 +175,7 @@ pub fn not_found_status() -> adw::StatusPage {
     });
     adw::StatusPage::builder()
         .icon_name("swell-unavailable-symbolic")
-        .title("Not Available")
+        .title(tr("Not Available"))
         .description(describe(Failure::NotFound))
         .child(&button)
         .build()
@@ -186,7 +188,7 @@ fn retry_status(
 ) -> adw::StatusPage {
     let retry = Rc::new(retry);
     let button = gtk::Button::builder()
-        .label("Retry")
+        .label(tr("Retry"))
         .halign(gtk::Align::Center)
         .css_classes(["pill", "suggested-action"])
         .build();
@@ -196,8 +198,8 @@ fn retry_status(
     });
     // Bundled icons: a theme cannot swap them for full-colour ones.
     let (icon, title) = match failure {
-        Failure::Offline => ("swell-offline-symbolic", "You're Offline"),
-        _ => ("swell-error-symbolic", "Couldn't Load This Page"),
+        Failure::Offline => ("swell-offline-symbolic", tr("You're Offline")),
+        _ => ("swell-error-symbolic", tr("Couldn't Load This Page")),
     };
     let status = adw::StatusPage::builder()
         .icon_name(icon)
@@ -220,9 +222,9 @@ fn retry_status(
 
 fn describe(failure: Failure) -> &'static str {
     match failure {
-        Failure::NotFound => "TIDAL doesn't have this, or it isn't available in your country.",
-        Failure::Offline => "Check your internet connection and try again.",
-        Failure::Other => "Something went wrong. Try again in a moment.",
+        Failure::NotFound => tr("TIDAL doesn't have this, or it isn't available in your country."),
+        Failure::Offline => tr("Check your internet connection and try again."),
+        Failure::Other => tr("Something went wrong. Try again in a moment."),
     }
 }
 

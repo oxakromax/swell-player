@@ -41,6 +41,8 @@
 //! `SWELL_DEBUG_ENGINE_FAIL=<seconds>` (a dropped connection that many
 //! seconds into playback) simulate network failures.
 
+use crate::i18n::{tr, trn};
+
 pub mod engine;
 mod failure;
 pub mod format;
@@ -132,7 +134,6 @@ const MAX_FAILED_TRACKS: u32 = 3;
 const MAX_NETWORK_STRIKES: u32 = 4;
 /// A prefetch that failed for lack of network is tried again after this.
 const PREFETCH_RETRY: Duration = Duration::from_secs(15);
-const CONNECTION_LOST: &str = "Connection lost — retrying";
 const SAVE_DELAY: Duration = Duration::from_secs(2);
 const POSITION_SAVE_INTERVAL: Duration = Duration::from_secs(10);
 
@@ -1356,11 +1357,14 @@ impl Playback {
         let skipped = self.queue.borrow_mut().skip_unavailable();
         if skipped > 0 {
             self.emit(Event::Queue);
-            self.emit(Event::Error(if skipped == 1 {
-                "Skipped a track that is not available".to_owned()
-            } else {
-                format!("Skipped {skipped} tracks that are not available")
-            }));
+            self.emit(Event::Error(
+                trn(
+                    "Skipped a track that is not available",
+                    "Skipped {n} tracks that are not available",
+                    skipped as u64,
+                )
+                .replace("{n}", &skipped.to_string()),
+            ));
         }
         let Some(track) = self.current() else {
             self.finish();
@@ -1383,7 +1387,7 @@ impl Playback {
         }
         let Some(engine) = &self.engine else {
             return self.emit(Event::Error(
-                "Playback needs GStreamer's playbin3".to_owned(),
+                tr("Playback needs GStreamer's playbin3").to_owned(),
             ));
         };
         let generation = self.generation.get() + 1;
@@ -1459,7 +1463,7 @@ impl Playback {
                 log::warn!("could not play track {}: {detail}", track.id);
                 self.stop();
                 self.emit(Event::Error(
-                    "The TIDAL session has expired: sign in again to play".to_owned(),
+                    tr("The TIDAL session has expired: sign in again to play").to_owned(),
                 ));
             }
         }
@@ -1484,7 +1488,7 @@ impl Playback {
             PlayState::Paused
         });
         if !self.net_reported.replace(true) {
-            self.emit(Event::Error(CONNECTION_LOST.to_owned()));
+            self.emit(Event::Error(tr("Connection lost — retrying").to_owned()));
         }
         let generation = self.generation.get();
         let weak = Rc::downgrade(self);
@@ -1551,15 +1555,15 @@ impl Playback {
         if failed >= MAX_FAILED_TRACKS {
             self.failed_tracks.set(0);
             self.stop();
-            return self.emit(Event::Error(format!(
-                "Could not play “{}”. Playback stopped after {MAX_FAILED_TRACKS} tracks failed",
-                track.title
-            )));
+            return self.emit(Event::Error(
+                tr("Could not play “{title}”. Playback stopped after {n} tracks failed")
+                    .replace("{title}", &track.title)
+                    .replace("{n}", &MAX_FAILED_TRACKS.to_string()),
+            ));
         }
-        self.emit(Event::Error(format!(
-            "Could not play “{}”, skipped",
-            track.title
-        )));
+        self.emit(Event::Error(
+            tr("Could not play “{title}”, skipped").replace("{title}", &track.title),
+        ));
         if self.queue.borrow_mut().advance(true) {
             self.emit(Event::Queue);
             self.load_current(true, None, true);
@@ -1742,7 +1746,9 @@ impl Playback {
         self.loaded.set(false);
         let Some(track) = self.current() else {
             self.set_state(PlayState::Stopped);
-            return self.emit(Event::Error(format!("Playback failed: {message}")));
+            return self.emit(Event::Error(
+                tr("Playback failed: {error}").replace("{error}", message),
+            ));
         };
         if handed_over {
             // The next track's stream failed (the end of this one was

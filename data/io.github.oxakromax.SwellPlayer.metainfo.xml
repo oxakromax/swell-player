@@ -5,6 +5,7 @@
   <project_license>GPL-3.0-or-later</project_license>
   <name>Swell</name>
   <summary>Listen to TIDAL in a native app</summary>
+  <summary xml:lang="es">Escucha TIDAL en una app nativa</summary>
   <description>
     <p>
       Swell is a lightweight, native TIDAL client for Linux built with GTK 4
@@ -12,7 +13,14 @@
       playlists and mixes one click away, and follows your desktop's light or
       dark style and accent colour.
     </p>
+    <p xml:lang="es">
+      Swell es un cliente de TIDAL ligero y nativo para Linux, hecho con GTK 4
+      y libadwaita. Reproduce hasta Hi-Res Lossless, deja tu colección,
+      playlists y mixes a un clic, y sigue el estilo claro u oscuro y el color
+      de acento de tu escritorio.
+    </p>
     <p>Swell is not affiliated with TIDAL. An active TIDAL subscription is needed.</p>
+    <p xml:lang="es">Swell no está afiliado a TIDAL. Necesitas una suscripción activa a TIDAL.</p>
   </description>
   <launchable type="desktop-id">io.github.oxakromax.SwellPlayer.desktop</launchable>
   <developer id="io.github.oxakromax">

@@ -19,6 +19,7 @@ use super::context::{Ctx, PanelTab};
 use super::dialogs;
 use super::nav::Route;
 use crate::api::Api;
+use crate::i18n::{tr, trn};
 use crate::library;
 use crate::model::TrackInfo;
 use crate::playback::Source;
@@ -197,9 +198,9 @@ pub fn play(ctx: &Rc<Ctx>, subject: &Subject, mode: PlayMode) {
             return;
         };
         match result {
-            Ok(tracks) if tracks.is_empty() => ctx.toast("There's nothing to play here"),
+            Ok(tracks) if tracks.is_empty() => ctx.toast(tr("There's nothing to play here")),
             Ok(tracks) => apply(&ctx, tracks, source, mode),
-            Err(err) => ctx.report("Couldn't load the tracks", &err),
+            Err(err) => ctx.report(tr("Couldn't load the tracks"), &err),
         }
     });
 }
@@ -227,10 +228,10 @@ pub fn play_tracks(
         && let Some(track) = tracks.get(start)
         && !track.available
     {
-        ctx.toast(&format!(
-            "“{}” isn't available in your region",
-            glib::markup_escape_text(&track.title)
-        ));
+        ctx.toast(
+            &tr("“{title}” isn't available in your region")
+                .replace("{title}", &glib::markup_escape_text(&track.title)),
+        );
         return;
     }
     let start_id = tracks[start.min(tracks.len().saturating_sub(1))..]
@@ -239,7 +240,7 @@ pub fn play_tracks(
         .map(|t| t.id);
     let playable: Vec<TrackInfo> = tracks.into_iter().filter(|t| t.available).collect();
     if playable.is_empty() {
-        ctx.toast("None of these tracks are available in your region");
+        ctx.toast(tr("None of these tracks are available in your region"));
         return;
     }
     let index = start_id
@@ -252,7 +253,7 @@ pub fn play_tracks(
 pub fn shuffle_tracks(ctx: &Rc<Ctx>, tracks: Vec<TrackInfo>, source: Source) {
     let playable: Vec<TrackInfo> = tracks.into_iter().filter(|t| t.available).collect();
     if playable.is_empty() {
-        ctx.toast("None of these tracks are available in your region");
+        ctx.toast(tr("None of these tracks are available in your region"));
         return;
     }
     ctx.playback.set_shuffle(true);
@@ -265,12 +266,17 @@ pub fn enqueue(ctx: &Rc<Ctx>, tracks: Vec<TrackInfo>, next: bool) {
     let playable: Vec<TrackInfo> = tracks.into_iter().filter(|t| t.available).collect();
     let message = match playable.as_slice() {
         [] => {
-            ctx.toast("None of these tracks are available in your region");
+            ctx.toast(tr("None of these tracks are available in your region"));
             return;
         }
-        [one] if next => format!("“{}” will play next", one.title),
-        [one] => format!("Added “{}” to the queue", one.title),
-        many => format!("Added {} tracks to the queue", many.len()),
+        [one] if next => tr("“{title}” will play next").replace("{title}", &one.title),
+        [one] => tr("Added “{title}” to the queue").replace("{title}", &one.title),
+        many => trn(
+            "Added {n} track to the queue",
+            "Added {n} tracks to the queue",
+            many.len() as u64,
+        )
+        .replace("{n}", &many.len().to_string()),
     };
     if next {
         ctx.playback.play_next(playable);
@@ -278,7 +284,7 @@ pub fn enqueue(ctx: &Rc<Ctx>, tracks: Vec<TrackInfo>, next: bool) {
         ctx.playback.add_to_queue(playable);
     }
     let weak = Rc::downgrade(ctx);
-    toast_with_action(ctx, &message, "Show", move || {
+    toast_with_action(ctx, &message, tr("Show"), move || {
         if let Some(ctx) = weak.upgrade() {
             ctx.show_panel(Some(PanelTab::Queue));
         }
@@ -311,7 +317,7 @@ pub fn play_track_id(ctx: &Rc<Ctx>, id: u64) {
                 let source = Subject::track(track.clone()).source();
                 play_tracks(&ctx, vec![track], 0, source, true);
             }
-            Err(err) => ctx.report("Couldn't play this track", &err),
+            Err(err) => ctx.report(tr("Couldn't play this track"), &err),
         }
     });
 }
@@ -427,32 +433,34 @@ impl ItemMenu {
         };
         let favorite = ctx.library.is_favorite(&subject.favorite_item());
         let favorite_label = if favorite {
-            "Remove from Favourites"
+            tr("Remove from Favourites")
         } else {
-            "Add to Favourites"
+            tr("Add to Favourites")
         };
         match subject {
             Subject::Track { track, index } => {
                 menu.append_section(
                     None,
                     &section(&[
-                        ("Play Next", "item.play-next"),
-                        ("Add to Queue", "item.add-to-queue"),
+                        (tr("Play Next"), "item.play-next"),
+                        (tr("Add to Queue"), "item.add-to-queue"),
                     ]),
                 );
                 let library = section(&[]);
-                library.append_submenu(Some("Add to Playlist"), &playlists_menu(ctx));
+                library.append_submenu(Some(tr("Add to Playlist")), &playlists_menu(ctx));
                 library.append(Some(favorite_label), Some("item.toggle-favorite"));
                 menu.append_section(None, &library);
                 let go = gio::Menu::new();
                 if track.album_id != 0 {
-                    go.append(Some("Go to Album"), Some("item.go-album"));
+                    go.append(Some(tr("Go to Album")), Some("item.go-album"));
                 }
                 match track.artists.as_slice() {
                     [] => {}
-                    [artist] => {
-                        go.append_item(&target_item("Go to Artist", "item.go-artist", artist.id))
-                    }
+                    [artist] => go.append_item(&target_item(
+                        tr("Go to Artist"),
+                        "item.go-artist",
+                        artist.id,
+                    )),
                     artists => {
                         let submenu = gio::Menu::new();
                         for artist in artists {
@@ -462,26 +470,29 @@ impl ItemMenu {
                                 artist.id,
                             ));
                         }
-                        go.append_submenu(Some("Go to Artist"), &submenu);
+                        go.append_submenu(Some(tr("Go to Artist")), &submenu);
                     }
                 }
-                go.append(Some("Track Radio"), Some("item.track-radio"));
+                go.append(Some(tr("Track Radio")), Some("item.track-radio"));
                 menu.append_section(None, &go);
                 menu.append_section(
                     None,
-                    &section(&[("Credits", "item.credits"), ("Copy Link", "item.copy-link")]),
+                    &section(&[
+                        (tr("Credits"), "item.credits"),
+                        (tr("Copy Link"), "item.copy-link"),
+                    ]),
                 );
                 if let Some(index) = index {
                     let edit = gio::Menu::new();
                     if self.remove.borrow().is_some() {
-                        edit.append(Some("Remove from This Playlist"), Some("item.remove"));
+                        edit.append(Some(tr("Remove from This Playlist")), Some("item.remove"));
                     }
                     if let Some((_, len)) = self.move_to.borrow().as_ref() {
                         if *index > 0 {
-                            edit.append(Some("Move Up"), Some("item.move-up"));
+                            edit.append(Some(tr("Move Up")), Some("item.move-up"));
                         }
                         if index + 1 < len() {
-                            edit.append(Some("Move Down"), Some("item.move-down"));
+                            edit.append(Some(tr("Move Down")), Some("item.move-down"));
                         }
                     }
                     if edit.n_items() > 0 {
@@ -491,7 +502,7 @@ impl ItemMenu {
                 if let Some(artist) = track.main_artist() {
                     let block = gio::Menu::new();
                     block.append_item(&target_item(
-                        &format!("Block {}", artist.name),
+                        &tr("Block {name}").replace("{name}", &artist.name),
                         "item.block-artist",
                         artist.id,
                     ));
@@ -501,24 +512,32 @@ impl ItemMenu {
             Subject::Album(album) => {
                 menu.append_section(None, &play_section());
                 let library = section(&[(favorite_label, "item.toggle-favorite")]);
-                library.append_submenu(Some("Add to Playlist"), &playlists_menu(ctx));
+                library.append_submenu(Some(tr("Add to Playlist")), &playlists_menu(ctx));
                 menu.append_section(None, &library);
                 if let Some(artist) = album.artists.first() {
                     let go = gio::Menu::new();
-                    go.append_item(&target_item("Go to Artist", "item.go-artist", artist.id));
-                    go.append_item(&target_item("Artist Radio", "item.artist-radio", artist.id));
+                    go.append_item(&target_item(
+                        tr("Go to Artist"),
+                        "item.go-artist",
+                        artist.id,
+                    ));
+                    go.append_item(&target_item(
+                        tr("Artist Radio"),
+                        "item.artist-radio",
+                        artist.id,
+                    ));
                     menu.append_section(None, &go);
                 }
-                menu.append_section(None, &section(&[("Copy Link", "item.copy-link")]));
+                menu.append_section(None, &section(&[(tr("Copy Link"), "item.copy-link")]));
             }
             Subject::Playlist(playlist) if ctx.library.is_own_playlist(playlist) => {
                 menu.append_section(None, &play_section());
-                let edit = section(&[("Edit Details…", "item.edit-playlist")]);
+                let edit = section(&[(tr("Edit Details…"), "item.edit-playlist")]);
                 let public = gio::MenuItem::new(
                     Some(if playlist.public_playlist {
-                        "Make Private"
+                        tr("Make Private")
                     } else {
-                        "Make Public"
+                        tr("Make Public")
                     }),
                     None,
                 );
@@ -528,34 +547,46 @@ impl ItemMenu {
                 );
                 edit.append_item(&public);
                 menu.append_section(None, &edit);
-                menu.append_section(None, &section(&[("Copy Link", "item.copy-link")]));
+                menu.append_section(None, &section(&[(tr("Copy Link"), "item.copy-link")]));
                 menu.append_section(
                     None,
-                    &section(&[("Delete Playlist…", "item.delete-playlist")]),
+                    &section(&[(tr("Delete Playlist…"), "item.delete-playlist")]),
                 );
             }
             Subject::Playlist(_) | Subject::Mix(_) => {
                 menu.append_section(None, &play_section());
                 menu.append_section(None, &section(&[(favorite_label, "item.toggle-favorite")]));
-                menu.append_section(None, &section(&[("Copy Link", "item.copy-link")]));
+                menu.append_section(None, &section(&[(tr("Copy Link"), "item.copy-link")]));
             }
             Subject::Artist(artist) => {
                 let play = section(&[
-                    ("Play Top Tracks", "item.play"),
-                    ("Shuffle", "item.shuffle"),
+                    (tr("Play Top Tracks"), "item.play"),
+                    (tr("Shuffle"), "item.shuffle"),
                 ]);
-                play.append_item(&target_item("Artist Radio", "item.artist-radio", artist.id));
+                play.append_item(&target_item(
+                    tr("Artist Radio"),
+                    "item.artist-radio",
+                    artist.id,
+                ));
                 menu.append_section(None, &play);
                 menu.append_section(
                     None,
                     &section(&[(
-                        if favorite { "Unfollow" } else { "Follow" },
+                        if favorite {
+                            tr("Unfollow")
+                        } else {
+                            tr("Follow")
+                        },
                         "item.toggle-favorite",
                     )]),
                 );
-                menu.append_section(None, &section(&[("Copy Link", "item.copy-link")]));
+                menu.append_section(None, &section(&[(tr("Copy Link"), "item.copy-link")]));
                 let block = gio::Menu::new();
-                block.append_item(&target_item("Block Artist", "item.block-artist", artist.id));
+                block.append_item(&target_item(
+                    tr("Block Artist"),
+                    "item.block-artist",
+                    artist.id,
+                ));
                 menu.append_section(None, &block);
             }
         }
@@ -599,7 +630,7 @@ impl ItemMenu {
             let weak = Rc::downgrade(ctx);
             ctx.library.set_favorite(item, favorite, move |result| {
                 if let (Err(err), Some(ctx)) = (result, weak.upgrade()) {
-                    ctx.report("Couldn't update favourites", &err);
+                    ctx.report(tr("Couldn't update favourites"), &err);
                 }
             });
         });
@@ -667,7 +698,7 @@ impl ItemMenu {
             }
         });
         add("copy-link", None, |_, ctx, subject, _| {
-            ctx.copy(&subject.share_url(), "Link");
+            ctx.copy(&subject.share_url(), tr("Link copied"));
         });
         add("remove", None, |this, _, subject, _| {
             let hook = this.remove.borrow().clone();
@@ -756,10 +787,10 @@ impl ItemMenu {
 fn play_section() -> gio::Menu {
     let section = gio::Menu::new();
     for (label, action) in [
-        ("Play", "item.play"),
-        ("Shuffle", "item.shuffle"),
-        ("Play Next", "item.play-next"),
-        ("Add to Queue", "item.add-to-queue"),
+        (tr("Play"), "item.play"),
+        (tr("Shuffle"), "item.shuffle"),
+        (tr("Play Next"), "item.play-next"),
+        (tr("Add to Queue"), "item.add-to-queue"),
     ] {
         section.append(Some(label), Some(action));
     }
@@ -776,7 +807,7 @@ fn target_item(label: &str, action: &str, id: u64) -> gio::MenuItem {
 fn playlists_menu(ctx: &Ctx) -> gio::Menu {
     let menu = gio::Menu::new();
     let new = gio::Menu::new();
-    new.append(Some("New Playlist…"), Some("item.new-playlist"));
+    new.append(Some(tr("New Playlist…")), Some("item.new-playlist"));
     menu.append_section(None, &new);
     let own = ctx.library.own_playlists();
     let recent = gio::Menu::new();
@@ -793,7 +824,7 @@ fn playlists_menu(ctx: &Ctx) -> gio::Menu {
     }
     if own.len() > 8 {
         let more = gio::Menu::new();
-        more.append(Some("More…"), Some("item.choose-playlist"));
+        more.append(Some(tr("More…")), Some("item.choose-playlist"));
         menu.append_section(None, &more);
     }
     menu
@@ -816,7 +847,7 @@ fn with_track_ids(ctx: &Rc<Ctx>, subject: &Subject, f: impl FnOnce(&Rc<Ctx>, Vec
         };
         match result {
             Ok(tracks) => f(&ctx, tracks.into_iter().map(|t| t.id).collect()),
-            Err(err) => ctx.report("Couldn't load the tracks", &err),
+            Err(err) => ctx.report(tr("Couldn't load the tracks"), &err),
         }
     });
 }
@@ -835,7 +866,7 @@ fn block_artist(ctx: &Rc<Ctx>, id: u64, name: String, blocked: bool) {
                 let weak = Rc::downgrade(&ctx);
                 let name_again = name.clone();
                 ctx.toast_with_undo(
-                    &format!("Blocked {}", glib::markup_escape_text(&name)),
+                    &tr("Blocked {name}").replace("{name}", &glib::markup_escape_text(&name)),
                     move || {
                         if let Some(ctx) = weak.upgrade() {
                             block_artist(&ctx, id, name_again.clone(), false);
@@ -843,8 +874,9 @@ fn block_artist(ctx: &Rc<Ctx>, id: u64, name: String, blocked: bool) {
                     },
                 );
             }
-            Ok(()) => ctx.toast(&format!("Unblocked {}", glib::markup_escape_text(&name))),
-            Err(err) => ctx.report("Couldn't update blocked artists", &err),
+            Ok(()) => ctx
+                .toast(&tr("Unblocked {name}").replace("{name}", &glib::markup_escape_text(&name))),
+            Err(err) => ctx.report(tr("Couldn't update blocked artists"), &err),
         }
     });
 }

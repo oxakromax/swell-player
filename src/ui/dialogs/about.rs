@@ -4,15 +4,18 @@ use adw::prelude::*;
 use gtk::glib;
 
 use crate::config;
+use crate::i18n::tr;
 
 pub fn present(window: &adw::ApplicationWindow) {
     let dialog = adw::AboutDialog::builder()
         .application_icon(config::APP_ID)
         .application_name(config::APP_NAME)
         .version(env!("CARGO_PKG_VERSION"))
-        .developer_name("Swell contributors")
+        .developer_name(tr("Swell contributors"))
         .license_type(gtk::License::Gpl30)
-        .comments("A native TIDAL client for Linux.\n\nNot affiliated with TIDAL.")
+        .comments(tr(
+            "A native TIDAL client for Linux.\n\nNot affiliated with TIDAL.",
+        ))
         .debug_info(debug_info())
         .debug_info_filename("swell-debug-info.txt")
         .build();

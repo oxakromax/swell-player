@@ -12,6 +12,7 @@ use gtk::prelude::*;
 use gtk::{gdk, glib};
 
 use crate::covers::{CoverLoader, Image, Ticket};
+use crate::i18n::tr;
 use crate::tidal::pages::{Item, Target};
 use crate::ui::context::Ctx;
 use crate::ui::format;
@@ -383,7 +384,9 @@ fn describe(item: &Item) -> (String, String, String) {
             (
                 track.title.clone(),
                 artists.clone(),
-                format!("Track: {}, by {artists}", track.title),
+                tr("Track: {title}, by {artists}")
+                    .replace("{title}", &track.title)
+                    .replace("{artists}", &artists),
             )
         }
         Item::Album(album) => {
@@ -400,32 +403,40 @@ fn describe(item: &Item) -> (String, String, String) {
             (
                 album.title.clone(),
                 subtitle,
-                format!("Album: {}, by {artist}", album.title),
+                tr("Album: {title}, by {artist}")
+                    .replace("{title}", &album.title)
+                    .replace("{artist}", &artist),
             )
         }
         Item::Artist(artist) => (
             artist.name.clone(),
-            "Artist".into(),
-            format!("Artist: {}", artist.name),
+            tr("Artist").into(),
+            tr("Artist: {name}").replace("{name}", &artist.name),
         ),
         Item::Playlist(playlist) => {
             let subtitle = match playlist.creator.name.as_deref().filter(|n| !n.is_empty()) {
-                Some(owner) => format!("by {owner}"),
-                None if playlist.number_of_tracks > 0 => {
-                    format::count(playlist.number_of_tracks as usize, "track", "tracks")
-                }
-                None => "Playlist".into(),
+                Some(owner) => tr("by {name}").replace("{name}", owner),
+                None if playlist.number_of_tracks > 0 => format::counted(
+                    playlist.number_of_tracks as usize,
+                    "{n} track",
+                    "{n} tracks",
+                ),
+                None => tr("Playlist").into(),
             };
             (
                 playlist.title.clone(),
                 subtitle.clone(),
-                format!("Playlist: {}, {subtitle}", playlist.title),
+                tr("Playlist: {title}, {details}")
+                    .replace("{title}", &playlist.title)
+                    .replace("{details}", &subtitle),
             )
         }
         Item::Mix(mix) => (
             mix.title.clone(),
             mix.subtitle.clone(),
-            format!("Mix: {}, {}", mix.title, mix.subtitle),
+            tr("Mix: {title}, {details}")
+                .replace("{title}", &mix.title)
+                .replace("{details}", &mix.subtitle),
         ),
         Item::Link(link) => (
             link.title.clone(),
@@ -579,7 +590,7 @@ impl MediaCard {
                     .valign(gtk::Align::Start)
                     .css_classes(["circular", "suggested-action", "media-card-play"])
                     .build();
-                super::label_button(&play, &format!("Play {title}"));
+                super::label_button(&play, &tr("Play {title}").replace("{title}", &title));
                 let weak_ctx = Rc::downgrade(ctx);
                 let to_play = subject.clone();
                 play.connect_clicked(move |_| {
