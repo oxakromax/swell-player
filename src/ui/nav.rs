@@ -199,7 +199,7 @@ impl Navigator {
             }
         });
         for view in &navigator.views {
-            view.connect_popped(|_, _| trim_soon());
+            view.connect_popped(|_, _| crate::mem::trim_soon());
             view.connect_visible_page_notify({
                 let navigator = Rc::downgrade(&navigator);
                 move |_| {
@@ -283,7 +283,7 @@ impl Navigator {
             if let Route::Search(Some(_)) = route {
                 // A new query replaces the search page.
                 self.view(section).replace(&[build(&ctx, &route)]);
-                trim_soon();
+                crate::mem::trim_soon();
                 self.sections.set_visible_child_name(section);
                 return;
             }
@@ -336,7 +336,7 @@ impl Navigator {
         } else {
             view.replace(&[build(&ctx, &route)]);
         }
-        trim_soon();
+        crate::mem::trim_soon();
         self.sections.set_visible_child_name("collection");
     }
 
@@ -433,8 +433,6 @@ impl Navigator {
 }
 
 /// Gives memory freed by dropped pages back to the system, on idle.
-// TODO(integration): crate::mem::trim_soon()
-fn trim_soon() {}
 
 /// Builds the page of `route`, tagged.
 fn build(ctx: &Rc<Ctx>, route: &Route) -> adw::NavigationPage {

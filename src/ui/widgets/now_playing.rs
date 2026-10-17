@@ -539,8 +539,7 @@ impl NowPlayingPanel {
             return;
         }
         self.up_next_stale.set(false);
-        // TODO(integration): Playback::next_upcoming().
-        let next = ctx.playback.upcoming().into_iter().next();
+        let next = ctx.playback.next_upcoming();
         self.up_next.set_visible(next.is_some());
         let Some(next) = next else { return };
         self.up_next_cover.set(&ctx.covers, next.cover.as_deref());
