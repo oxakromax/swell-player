@@ -183,6 +183,10 @@ fn item_of(kind: &str, value: &Value) -> Option<Item> {
 fn link_of(value: &Value) -> Option<Item> {
     let title = str_of(value, "title")?;
     let target = if let Some(path) = str_of(value, "apiPath") {
+        // Swell does not play videos.
+        if path.contains("video") {
+            return None;
+        }
         Target::Page(path)
     } else {
         Target::from_url(&str_of(value, "url")?)?
@@ -263,13 +267,22 @@ fn parse_module(module: &Value) -> Option<Section> {
                 .or_else(|| module.get("items"))?
                 .as_array()?;
             let items: Vec<Item> = values.iter().filter_map(link_of).collect();
+            // The rest of a long cloud (moods) is a data list of links.
+            let paged = module.get("pagedList");
+            let total = paged
+                .and_then(|p| p.get("totalNumberOfItems"))
+                .and_then(Value::as_u64)
+                .map_or(items.len(), |t| (t as usize).max(items.len()));
+            let more = (total > items.len())
+                .then(|| paged.and_then(|p| str_of(p, "dataApiPath")).map(More::Data))
+                .flatten();
             Some(Section {
                 title,
                 subtitle,
                 kind: SectionKind::Links,
-                total: items.len(),
+                total: if more.is_some() { total } else { items.len() },
                 items,
-                more: None,
+                more,
             })
         }
         "FEATURED_PROMOTIONS" | "MULTIPLE_TOP_PROMOTIONS" => {
@@ -417,6 +430,9 @@ pub fn parse_paged_list(value: &Value) -> Section {
             {
                 return item_of(kind, item);
             }
+            if v.get("apiPath").is_some() {
+                return link_of(v);
+            }
             let kind = if v.get("uuid").is_some() {
                 "PLAYLIST"
             } else if v.get("name").is_some() {
@@ -433,11 +449,7 @@ pub fn parse_paged_list(value: &Value) -> Section {
             item_of(kind, v)
         })
         .collect();
-    let kind = if !items.is_empty() && items.iter().all(|i| matches!(i, Item::Track(_))) {
-        SectionKind::Tracks
-    } else {
-        SectionKind::Cards
-    };
+    let kind = list_kind(&items);
     Section {
         title: String::new(),
         subtitle: None,
@@ -448,6 +460,22 @@ pub fn parse_paged_list(value: &Value) -> Section {
             .map_or(items.len(), |t| t as usize),
         items,
         more: None,
+    }
+}
+
+/// How a list of `items` that does not say its type is shown.
+fn list_kind(items: &[Item]) -> SectionKind {
+    if items.is_empty() {
+        SectionKind::Cards
+    } else if items.iter().all(|i| matches!(i, Item::Track(_))) {
+        SectionKind::Tracks
+    } else if items
+        .iter()
+        .all(|i| matches!(i, Item::Link(link) if matches!(link.target, Target::Page(_))))
+    {
+        SectionKind::Links
+    } else {
+        SectionKind::Cards
     }
 }
 
@@ -491,14 +519,17 @@ pub fn parse_feed(value: &Value) -> Feed {
                 Some("TRACK_LIST") => SectionKind::Tracks,
                 _ => SectionKind::Cards,
             };
+            let more = str_of(module, "viewAll").map(More::ViewAll);
             Some(Section {
                 title: str_of(module, "title").unwrap_or_default(),
                 subtitle: str_of(module, "subtitle")
                     .or_else(|| module.get("description").and_then(|d| str_of(d, "text"))),
                 kind,
-                total: items.len(),
+                // The feed does not say how many there are; a module with a
+                // "view all" page has at least one more than it shows.
+                total: items.len() + usize::from(more.is_some()),
                 items,
-                more: str_of(module, "viewAll").map(More::ViewAll),
+                more,
             })
         })
         .collect();
@@ -515,11 +546,7 @@ pub fn parse_view_all(value: &Value) -> Section {
         .and_then(Value::as_array)
         .map(|v| feed_items(v))
         .unwrap_or_default();
-    let kind = if !items.is_empty() && items.iter().all(|i| matches!(i, Item::Track(_))) {
-        SectionKind::Tracks
-    } else {
-        SectionKind::Cards
-    };
+    let kind = list_kind(&items);
     Section {
         title: str_of(value, "title").unwrap_or_default(),
         subtitle: str_of(value, "subtitle"),
@@ -536,7 +563,10 @@ mod tests {
 
     #[test]
     fn urls() {
-        assert_eq!(Target::from_url("tidal://album/12"), Some(Target::Album(12)));
+        assert_eq!(
+            Target::from_url("tidal://album/12"),
+            Some(Target::Album(12))
+        );
         assert_eq!(
             Target::from_url("https://tidal.com/browse/track/5?u"),
             Some(Target::Track(5))
@@ -575,5 +605,60 @@ mod tests {
         let section = parse_module(&module).unwrap();
         assert_eq!(section.total, 9);
         assert_eq!(section.more, Some(More::Data("pages/data/x".into())));
+    }
+
+    #[test]
+    fn link_cloud_with_more() {
+        let module: Value = serde_json::json!({
+            "type": "PAGE_LINKS_CLOUD", "title": "Moods",
+            "pagedList": {"items": [
+                {"title": "Relax", "apiPath": "pages/mood_relax", "imageId": "relax"},
+                {"title": "Videos", "apiPath": "pages/videos"},
+                {"title": "", "apiPath": "pages/untitled"}
+            ], "totalNumberOfItems": 19, "dataApiPath": "pages/data/moods"}
+        });
+        let section = parse_module(&module).unwrap();
+        assert_eq!(section.kind, SectionKind::Links);
+        assert_eq!(section.items.len(), 1);
+        let Item::Link(link) = &section.items[0] else {
+            panic!("not a link");
+        };
+        assert_eq!(link.target, Target::Page("pages/mood_relax".into()));
+        assert_eq!(link.image, None);
+        assert_eq!(section.more, Some(More::Data("pages/data/moods".into())));
+
+        let list = parse_paged_list(&serde_json::json!({
+            "items": [{"title": "Relax", "apiPath": "pages/mood_relax"}],
+            "totalNumberOfItems": 1
+        }));
+        assert_eq!(list.kind, SectionKind::Links);
+        assert_eq!(list.items.len(), 1);
+    }
+
+    #[test]
+    fn feed_modules() {
+        let feed = parse_feed(&serde_json::json!({
+            "page": {"cursor": "next"},
+            "items": [
+                {"type": "TRACK_LIST", "title": "New", "viewAll": "home/pages/NEW/view-all",
+                 "items": [{"type": "TRACK", "data": {"id": 1, "title": "A"}}]},
+                {"type": "SHORTCUT_LIST", "title": "Shortcuts",
+                 "items": [{"type": "DEEP_LINK", "data": {
+                     "title": "My Tracks", "url": "tidal://my-collection/tracks"}}]},
+                {"type": "VIDEO_LIST", "title": "Videos",
+                 "items": [{"type": "VIDEO", "data": {"id": 2}}]}
+            ]
+        }));
+        assert_eq!(feed.cursor.as_deref(), Some("next"));
+        assert_eq!(feed.sections.len(), 2);
+        let tracks = &feed.sections[0];
+        assert_eq!(tracks.kind, SectionKind::Tracks);
+        // More than it shows, so "View All" appears.
+        assert!(tracks.total > tracks.items.len());
+        assert_eq!(
+            tracks.more,
+            Some(More::ViewAll("home/pages/NEW/view-all".into()))
+        );
+        assert_eq!(feed.sections[1].kind, SectionKind::Shortcuts);
     }
 }
