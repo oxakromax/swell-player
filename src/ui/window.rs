@@ -16,7 +16,7 @@ use crate::cache::{Cache, CachedCollection};
 use crate::covers::CoverLoader;
 use crate::model::TrackInfo;
 use crate::player::{Event, Player, State};
-use crate::{bench, config, runtime, session};
+use crate::{config, runtime, session};
 
 pub fn build(app: &adw::Application) {
     // Launching Swell again only raises the running window.
@@ -257,12 +257,10 @@ impl Ui {
             .await
             .unwrap_or((None, None));
         let head = cached.as_ref().map(CachedHead::of);
-        let loaded = Rc::new(Cell::new(false));
         if let Some(cached) = cached {
             list.append(cached.tracks);
             self.title.set_subtitle(&format!("{} tracks", list.len()));
             crate::timing::mark_after_next_frame(&list.widget, "cached favourites on screen");
-            self.start_bench_autoscroll(&api, &list, &loaded);
         }
 
         let (updates_tx, mut updates) = tokio::sync::mpsc::unbounded_channel();
@@ -281,14 +279,10 @@ impl Ui {
                             &list.widget,
                             "first favourites on screen",
                         );
-                        self.start_bench_autoscroll(&api, &list, &loaded);
                     }
                 }
                 Ok(FavoritesUpdate::Replace(tracks)) => list.replace(tracks),
-                Ok(FavoritesUpdate::Finished) => {
-                    finished = true;
-                    loaded.set(true);
-                }
+                Ok(FavoritesUpdate::Finished) => finished = true,
                 Err(err) if api::is_auth_error(&err) => {
                     log::warn!("the session is no longer valid: {err:#}");
                     self.sign_out(
@@ -310,37 +304,6 @@ impl Ui {
             return;
         }
         crate::timing::mark("favourites up to date");
-
-        if bench::play_enabled() && !bench::autoscroll_enabled() {
-            self.play_bench_track(&api, &list);
-        }
-    }
-
-    fn start_bench_autoscroll(
-        self: &Rc<Self>,
-        api: &Arc<Api>,
-        list: &Rc<TrackList>,
-        loaded: &Rc<Cell<bool>>,
-    ) {
-        if !bench::autoscroll_enabled() {
-            return;
-        }
-        let ui = Rc::downgrade(self);
-        let api = api.clone();
-        let target = list.clone();
-        bench::autoscroll(&list.widget, loaded.clone(), move || {
-            if bench::play_enabled()
-                && let Some(ui) = ui.upgrade()
-            {
-                ui.play_bench_track(&api, &target);
-            }
-        });
-    }
-
-    fn play_bench_track(self: &Rc<Self>, api: &Arc<Api>, list: &TrackList) {
-        if let Some(track) = list.first_where(bench::wants_track) {
-            self.play(api.clone(), track);
-        }
     }
 }
 

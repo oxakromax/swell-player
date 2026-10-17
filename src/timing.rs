@@ -1,7 +1,6 @@
 //! Startup milestones, logged at `info` level (`RUST_LOG=swell_player=info`)
 //! as milliseconds since the process started (not since `main`, so dynamic
-//! linking and library constructors count too). Used for the benchmarks in
-//! the README.
+//! linking and library constructors count too).
 
 use std::sync::OnceLock;
 use std::time::{Duration, Instant};

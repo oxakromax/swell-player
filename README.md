@@ -134,8 +134,8 @@ applied) on the same flow: start with a saved session, show the 1,295
 favourite tracks, scroll through all of them to the end at one page per
 100 ms, then play the same 24-bit Hi-Res track for 20 s. "Cold" starts without
 the apps' caches (library and covers), "warm" with them. Medians of three runs
-each (range in brackets), measured with the harness in [`bench/`](bench/),
-which also lists what differs between the two flows.
+each (range in brackets). These figures are from the proof of concept; they
+will be measured again once the full client is done.
 
 | | List on screen | RssAnon at list | RssAnon peak | RSS peak |
 |---|---|---|---|---|
@@ -155,7 +155,7 @@ which also lists what differs between the two flows.
   less in relative terms: 0.4 GB instead of 0.7–0.8 GB.
 - **Playback:** Swell starts audio about 0.4 s after a track is chosen
   (stream lookup, DASH manifest, GStreamer preroll). High Tide's figure is not
-  comparable (see `bench/README.md`).
+  comparable (its marker fires before the pipeline plays).
 
 Machine: Arch Linux, KDE Plasma 6 (Wayland), GTK 4.24, libadwaita 1.10,
 GStreamer 1.28, Rust 1.99, release build.
