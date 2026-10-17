@@ -36,17 +36,15 @@ where
 }
 
 /// A v1 page of results.
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase", bound = "T: DeserializeOwned")]
+#[derive(Debug)]
 pub struct Page<T> {
-    #[serde(default, deserialize_with = "lenient_vec")]
     pub items: Vec<T>,
-    #[serde(default)]
     pub offset: usize,
-    #[serde(default)]
     pub limit: usize,
-    #[serde(default, rename = "totalNumberOfItems")]
     pub total: usize,
+    /// Items TIDAL sent, parsed or not: the next page starts at
+    /// `offset + sent`, whatever lenient parsing dropped.
+    pub sent: usize,
 }
 
 impl<T> Default for Page<T> {
@@ -56,7 +54,60 @@ impl<T> Default for Page<T> {
             offset: 0,
             limit: 0,
             total: 0,
+            sent: 0,
         }
+    }
+}
+
+impl<'de, T: DeserializeOwned> Deserialize<'de> for Page<T> {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct Raw {
+            #[serde(default, deserialize_with = "nullable")]
+            items: Vec<Value>,
+            #[serde(default)]
+            offset: usize,
+            #[serde(default)]
+            limit: usize,
+            #[serde(default, rename = "totalNumberOfItems")]
+            total: usize,
+        }
+        let raw = Raw::deserialize(deserializer)?;
+        let sent = raw.items.len();
+        let items = lenient_vec(Value::Array(raw.items)).map_err(serde::de::Error::custom)?;
+        Ok(Self {
+            items,
+            offset: raw.offset,
+            limit: raw.limit,
+            total: raw.total,
+            sent,
+        })
+    }
+}
+
+/// Where the next page of an offset-paged list starts, and whether one
+/// follows. Advances by what TIDAL sent, not by what parsed.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Cursor {
+    pub offset: usize,
+    pub total: usize,
+    /// A short or empty page came: nothing follows, whatever the total says.
+    pub ended: bool,
+}
+
+impl Cursor {
+    /// After a page that asked for `limit` items, held `sent` (parsed or
+    /// not) and said the list has `total`.
+    pub fn advance(&mut self, sent: usize, limit: usize, total: usize) {
+        self.offset += sent;
+        self.total = total;
+        self.ended = sent == 0 || sent < limit;
+    }
+
+    /// Whether another page is worth asking for.
+    pub fn has_more(&self) -> bool {
+        !self.ended && self.offset < self.total
     }
 }
 
@@ -201,6 +252,7 @@ pub struct Playlist {
     #[serde(deserialize_with = "nullable")]
     pub creator: Creator,
     pub number_of_tracks: u32,
+    pub number_of_videos: u32,
     pub duration: u32,
     pub image: Option<String>,
     pub square_image: Option<String>,
@@ -480,8 +532,48 @@ mod tests {
         )
         .unwrap();
         assert_eq!(page.items.len(), 2);
+        assert_eq!(page.sent, 3);
         assert_eq!(page.total, 3);
         assert!(page.items[0].stream_ready);
+        let page: Page<Track> = serde_json::from_str(r#"{"items":null}"#).unwrap();
+        assert_eq!((page.items.len(), page.sent), (0, 0));
+    }
+
+    #[test]
+    fn video_only_playlist() {
+        let playlist: Playlist =
+            serde_json::from_str(r#"{"uuid":"x","numberOfTracks":0,"numberOfVideos":12}"#).unwrap();
+        assert_eq!((playlist.number_of_tracks, playlist.number_of_videos), (0, 12));
+    }
+
+    #[test]
+    fn cursor_advances_by_what_was_sent() {
+        let mut cursor = Cursor::default();
+        // 50 asked, 50 sent (2 did not parse), 120 in all.
+        cursor.advance(50, 50, 120);
+        assert_eq!(cursor.offset, 50);
+        assert!(cursor.has_more());
+        cursor.advance(50, 50, 120);
+        assert_eq!(cursor.offset, 100);
+        assert!(cursor.has_more());
+        // The last, short page.
+        cursor.advance(20, 50, 120);
+        assert_eq!(cursor.offset, 120);
+        assert!(!cursor.has_more());
+        // TIDAL counts more than it sends: a short page ends the list.
+        let mut cursor = Cursor::default();
+        cursor.advance(30, 50, 500);
+        assert!(cursor.ended && !cursor.has_more());
+        // An empty page ends it too.
+        let mut cursor = Cursor::default();
+        cursor.advance(50, 50, 500);
+        cursor.advance(0, 50, 500);
+        assert_eq!(cursor.offset, 50);
+        assert!(!cursor.has_more());
+        // A full page that reaches the total.
+        let mut cursor = Cursor::default();
+        cursor.advance(50, 50, 50);
+        assert!(!cursor.ended && !cursor.has_more());
     }
 
     #[test]

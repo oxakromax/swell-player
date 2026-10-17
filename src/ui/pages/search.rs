@@ -33,6 +33,7 @@ use super::search_views::{self, AllView, CardGrid, PagingStatus};
 use crate::i18n::tr;
 use crate::runtime;
 use crate::tidal;
+use crate::tidal::models::Cursor;
 use crate::tidal::pages::Target;
 
 /// The header spinner appears only for answers slower than this.
@@ -46,9 +47,8 @@ const RESULT_PAGES: [&str; 4] = ["all", "tracks", "cards", "empty"];
 
 #[derive(Default)]
 struct Paging {
-    /// Items loaded so far (the offset of the next page).
-    offset: usize,
-    total: usize,
+    /// Where the next page starts.
+    cursor: Cursor,
     loading: bool,
     failed: bool,
 }
@@ -603,9 +603,10 @@ impl SearchPage {
     }
 
     fn reset_paging(&self, filter: Filter, results: &Results) {
+        let mut cursor = Cursor::default();
+        cursor.advance(results.sent(filter), filter.limit(), results.total(filter));
         self.paging.replace(Paging {
-            offset: results.len(filter),
-            total: results.total(filter),
+            cursor,
             loading: false,
             failed: false,
         });
@@ -625,10 +626,10 @@ impl SearchPage {
         }
         let offset = {
             let paging = self.paging.borrow();
-            if paging.loading || paging.failed || paging.offset >= paging.total {
+            if paging.loading || paging.failed || !paging.cursor.has_more() {
                 return;
             }
-            paging.offset
+            paging.cursor.offset
         };
         let Some(ctx) = self.ctx.upgrade() else {
             return;
@@ -650,15 +651,11 @@ impl SearchPage {
             state.paging.borrow_mut().loading = false;
             match answer {
                 Ok(results) => {
-                    let count = results.len(filter);
-                    {
-                        let mut paging = state.paging.borrow_mut();
-                        if count == 0 {
-                            // TIDAL counted more than it gives.
-                            paging.total = paging.offset;
-                        }
-                        paging.offset += count;
-                    }
+                    state.paging.borrow_mut().cursor.advance(
+                        results.sent(filter),
+                        filter.limit(),
+                        results.total(filter),
+                    );
                     if filter == Filter::Tracks {
                         state.tracks.append(results.tracks);
                     } else {

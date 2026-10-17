@@ -98,7 +98,8 @@ impl Filter {
         }
     }
 
-    fn limit(self) -> usize {
+    /// Items asked for per request.
+    pub fn limit(self) -> usize {
         if self == Self::All { ALL_LIMIT } else { PAGE }
     }
 }
@@ -115,12 +116,21 @@ pub struct Results {
     pub total_albums: usize,
     pub total_artists: usize,
     pub total_playlists: usize,
+    /// Items of each type TIDAL sent (parsed or not): tracks, albums,
+    /// artists, playlists.
+    sent: [usize; 4],
 }
 
 impl Results {
     fn from_search(results: SearchResults) -> Self {
         Self {
             top_hit: results.top_hit.and_then(top_hit),
+            sent: [
+                results.tracks.sent,
+                results.albums.sent,
+                results.artists.sent,
+                results.playlists.sent,
+            ],
             total_tracks: results.tracks.total,
             total_albums: results.albums.total,
             total_artists: results.artists.total,
@@ -188,11 +198,15 @@ impl Results {
         }
     }
 
-    /// How many items of `filter`'s type this answer holds.
-    pub fn len(&self, filter: Filter) -> usize {
+    /// How many items of `filter`'s type TIDAL sent, including any that
+    /// did not parse: what the next page's offset advances by.
+    pub fn sent(&self, filter: Filter) -> usize {
         match filter {
-            Filter::Tracks => self.tracks.len(),
-            other => self.cards(other).len(),
+            Filter::All => 0,
+            Filter::Tracks => self.sent[0],
+            Filter::Albums => self.sent[1],
+            Filter::Artists => self.sent[2],
+            Filter::Playlists => self.sent[3],
         }
     }
 }

@@ -286,7 +286,8 @@ fn top_hit(ctx: &Rc<Ctx>, item: &Item, played: Rc<dyn Fn()>) -> gtk::Widget {
 }
 
 /// The key facts of a top hit: "2020 · 12 tracks · 42 min" for an album,
-/// "3:45 · Album" for a track, "40 tracks · 2 h 5 min" for a playlist.
+/// "3:45 · Album" for a track, "40 tracks · 2 h 5 min" for a playlist,
+/// nothing for an artist.
 fn facts(item: &Item) -> String {
     let year = |date: &Option<String>| {
         date.as_deref()
@@ -303,29 +304,26 @@ fn facts(item: &Item) -> String {
             crate::model::format_duration(track.duration.into()),
             track.album.title.clone(),
         ]),
+        Item::Playlist(playlist)
+            if playlist.number_of_tracks == 0 && playlist.number_of_videos > 0 =>
+        {
+            format::join([
+                format::counted(
+                    playlist.number_of_videos as usize,
+                    "{n} video",
+                    "{n} videos",
+                ),
+                format::tracks_summary(0, playlist.duration.into()),
+            ])
+        }
         Item::Playlist(playlist) => {
             format::tracks_summary(playlist.number_of_tracks as usize, playlist.duration.into())
         }
-        Item::Artist(artist) => format::join(
-            artist
-                .artist_types
-                .iter()
-                .filter(|kind| !kind.eq_ignore_ascii_case("artist"))
-                .map(|kind| capitalise(kind)),
-        ),
+        // The line above says "Artist"; TIDAL's other roles ("CONTRIBUTOR")
+        // are untranslated jargon.
+        Item::Artist(_) | Item::Link(_) => String::new(),
         Item::Mix(mix) => mix.subtitle.clone(),
-        Item::Link(_) => String::new(),
     }
-}
-
-/// "CONTRIBUTOR" → "Contributor".
-fn capitalise(word: &str) -> String {
-    let lower = word.to_lowercase();
-    let mut chars = lower.chars();
-    chars
-        .next()
-        .map(|first| first.to_uppercase().chain(chars).collect())
-        .unwrap_or_default()
 }
 
 /// Name and "Artist" / "Album · Artist"-style line of a top hit.

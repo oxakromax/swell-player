@@ -3,7 +3,9 @@
 //! - `SWELL_ROUTE=<route>` opens a page once signed in: `home`, `explore`,
 //!   `search:<query>`, `tracks`, `albums`, `artists`, `playlists`, `mixes`,
 //!   `album:<id>`, `artist:<id>`, `playlist:<uuid>`, `mix:<id>`,
-//!   `radio:<track id>`, `page:<api path>`, `history`.
+//!   `radio:<track id>`, `page:<api path>`, `history`, and "View all"
+//!   pages: `more-data:<dataApiPath>`, `more-view:<v2 view-all path>`,
+//!   `more-page:<v1 page path>` (titled "View All").
 //! - `SWELL_SCREENSHOT=<file.png>` renders the window to a PNG after
 //!   `SWELL_SCREENSHOT_DELAY_MS` (default 5000) and quits. Several
 //!   comma-separated `SWELL_SCREENSHOT_SIZES=WxH,...` take one shot per
@@ -25,6 +27,8 @@ use gtk::{gdk, glib};
 
 use super::context::PanelTab;
 use super::nav::{CollectionView, Route};
+use crate::i18n::tr;
+use crate::tidal::pages::More;
 
 pub fn route() -> Option<Route> {
     let value = std::env::var("SWELL_ROUTE").ok()?;
@@ -48,6 +52,17 @@ pub fn route() -> Option<Route> {
             title: String::new(),
         },
         "history" => Route::History,
+        "more-data" | "more-view" | "more-page" if !arg.is_empty() => {
+            let path = arg.to_owned();
+            Route::More {
+                title: tr("View All").to_owned(),
+                more: match kind {
+                    "more-data" => More::Data(path),
+                    "more-view" => More::ViewAll(path),
+                    _ => More::Page(path),
+                },
+            }
+        }
         _ => return None,
     })
 }
