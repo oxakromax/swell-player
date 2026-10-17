@@ -5,8 +5,9 @@
 //! A virtualised `ListView` over a flattened model with one store per
 //! section; updates are applied as minimal splices so the scroll position
 //! and focus survive. Click or Enter jumps to a track; ✕ or Delete removes
-//! it; drag (or Alt+↑/↓) reorders; "Clear" empties what is upcoming, with
-//! Undo.
+//! it; drag (or Alt+↑/↓) reorders; right click, long press, Menu or
+//! Shift+F10 open the track menu (with Move Up/Down); "Clear" empties what
+//! is upcoming, and Undo puts it back as it was.
 
 use std::cell::RefCell;
 use std::rc::{Rc, Weak};
@@ -15,6 +16,7 @@ use adw::prelude::*;
 use gtk::{gdk, gio, glib};
 
 use super::super::context::Ctx;
+use super::super::menus::{ItemMenu, Subject};
 use super::super::nav::Route;
 use super::np_common::{Cover, Subscription, escape, icons, subscribe};
 use crate::covers::CoverLoader;
@@ -70,6 +72,7 @@ pub struct QueueView {
     source: gtk::Label,
     clear: gtk::Button,
     list: gtk::ListView,
+    menu: Rc<ItemMenu>,
     stores: [gio::ListStore; 3],
     source_title: RefCell<String>,
     rows: RefCell<Vec<Rc<Row>>>,
@@ -142,6 +145,19 @@ impl QueueView {
             Some("empty"),
         );
 
+        let menu = ItemMenu::new(ctx, &list);
+        {
+            let playback = Rc::downgrade(playback);
+            let len_playback = playback.clone();
+            menu.set_move_handler(
+                move |from, to| {
+                    if let Some(playback) = playback.upgrade() {
+                        playback.move_item(from, to);
+                    }
+                },
+                move || len_playback.upgrade().map_or(0, |p| p.upcoming().len()),
+            );
+        }
         let view = Rc::new_cyclic(|weak: &Weak<Self>| Self {
             widget: stack.clone().upcast(),
             this: weak.clone(),
@@ -153,6 +169,7 @@ impl QueueView {
             source,
             clear,
             list,
+            menu,
             stores,
             source_title: RefCell::default(),
             rows: RefCell::default(),
@@ -281,22 +298,45 @@ impl QueueView {
     }
 
     fn clear_upcoming(&self) {
-        let saved = self.playback.upcoming();
-        if saved.is_empty() {
+        if self.playback.upcoming().is_empty() {
             return;
         }
+        let saved = self.playback.snapshot_queue();
         self.playback.clear_upcoming();
         let Some(ctx) = self.ctx.upgrade() else {
             return;
         };
-        // Undo re-queues everything by hand: the context itself cannot be
-        // restored through the playback API.
         let playback = Rc::downgrade(&self.playback);
         ctx.toast_with_undo("Queue cleared", move || {
             if let Some(playback) = playback.upgrade() {
-                playback.add_to_queue(saved.clone());
+                playback.restore_queue(saved.clone());
             }
         });
+    }
+
+    /// The track menu for the item at `position`, pointing at `row` (at
+    /// `point` in the row's coordinates, or the whole row).
+    fn popup_menu(&self, position: u32, row: &gtk::Widget, point: Option<(f64, f64)>) {
+        let Some(object) = self.list.model().and_then(|model| model.item(position)) else {
+            return;
+        };
+        let Some(track) = with_entry(&object, |entry| entry.track.clone()) else {
+            return;
+        };
+        let subject = Subject::Track {
+            track,
+            index: self.upcoming_index(position),
+        };
+        let point = point.and_then(|(x, y)| {
+            row.compute_point(&self.list, &gtk::graphene::Point::new(x as f32, y as f32))
+        });
+        match point {
+            Some(point) => {
+                self.menu
+                    .popup_at_point(subject, f64::from(point.x()), f64::from(point.y()))
+            }
+            None => self.menu.popup_at(subject, row),
+        }
     }
 
     fn row_of(&self, widget: &gtk::Widget) -> Option<Rc<Row>> {
@@ -321,6 +361,14 @@ impl QueueView {
         let Some(position) = self.focused_position() else {
             return false;
         };
+        let menu_key = key == gdk::Key::Menu
+            || (key == gdk::Key::F10 && modifiers == gdk::ModifierType::SHIFT_MASK);
+        if menu_key {
+            if let Some(row) = self.list.focus_child() {
+                self.popup_menu(position, &row, None);
+            }
+            return true;
+        }
         let Some(index) = self.upcoming_index(position) else {
             return false;
         };
@@ -492,6 +540,43 @@ impl QueueView {
                 }
             }
         });
+
+        // The track menu: right click, long press (touch).
+        let position_of = {
+            let weak_row = weak_row.clone();
+            move || {
+                let item = weak_row.upgrade()?.item.upgrade()?;
+                let position = item.position();
+                (position != gtk::INVALID_LIST_POSITION).then_some(position)
+            }
+        };
+        let right_click = gtk::GestureClick::builder().button(3).build();
+        right_click.connect_pressed({
+            let (weak_view, weak_row, position_of) =
+                (weak_view.clone(), weak_row.clone(), position_of.clone());
+            move |gesture, _, x, y| {
+                if let (Some(view), Some(row), Some(position)) =
+                    (weak_view.upgrade(), weak_row.upgrade(), position_of())
+                {
+                    gesture.set_state(gtk::EventSequenceState::Claimed);
+                    view.popup_menu(position, row.widget.upcast_ref(), Some((x, y)));
+                }
+            }
+        });
+        row.widget.add_controller(right_click);
+        let long_press = gtk::GestureLongPress::builder().touch_only(true).build();
+        long_press.connect_pressed({
+            let (weak_view, weak_row) = (weak_view.clone(), weak_row.clone());
+            move |gesture, x, y| {
+                if let (Some(view), Some(row), Some(position)) =
+                    (weak_view.upgrade(), weak_row.upgrade(), position_of())
+                {
+                    gesture.set_state(gtk::EventSequenceState::Claimed);
+                    view.popup_menu(position, row.widget.upcast_ref(), Some((x, y)));
+                }
+            }
+        });
+        row.widget.add_controller(long_press);
 
         // Drag to reorder: the payload is the upcoming index.
         let drag = gtk::DragSource::new();
