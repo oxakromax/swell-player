@@ -167,6 +167,17 @@ pub fn write_position(position: &SavedPosition) -> Result<()> {
     )?)
 }
 
+/// Forgets the saved session (on sign-out: the next user must not see it).
+pub fn clear() {
+    for path in [queue_path(), position_path()] {
+        if let Err(err) = std::fs::remove_file(&path)
+            && err.kind() != std::io::ErrorKind::NotFound
+        {
+            log::warn!("could not remove {}: {err}", path.display());
+        }
+    }
+}
+
 /// Reads the saved session, if any.
 pub async fn read() -> Result<Option<Saved>> {
     let queue = match tokio::fs::read(queue_path()).await {

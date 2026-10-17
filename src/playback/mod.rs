@@ -727,6 +727,12 @@ impl Playback {
     /// Writes the queue and position to disk now. It is also saved by
     /// itself as things change, and at shutdown once attached.
     #[allow(dead_code)] // Public API for the shell and the UI.
+    /// Stops playback and forgets the saved queue (sign-out).
+    pub fn forget_session(&self) {
+        self.stop();
+        session::clear();
+    }
+
     pub fn save_session(&self) {
         if !self.settings.get().restore_session {
             return;

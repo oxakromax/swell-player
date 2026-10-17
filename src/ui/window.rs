@@ -305,6 +305,7 @@ impl Ui {
         let Some(ctx) = self.ctx() else {
             return;
         };
+        ctx.playback.forget_session();
         self.end_session();
         let api = ctx.api.clone();
         let ui = self.clone();
@@ -340,6 +341,9 @@ impl Ui {
 
     fn show_shell(self: &Rc<Self>, api: Arc<Api>) {
         let playback = Playback::new(api.clone(), self.settings.clone());
+        if let Some(app) = self.window.application().and_downcast::<adw::Application>() {
+            playback.attach(&app);
+        }
         let library = Library::new(api.clone());
         let toasts = adw::ToastOverlay::new();
         let ctx = Ctx::new(
@@ -392,6 +396,8 @@ impl Ui {
         if let Some(login) = self.stack.child_by_name("login") {
             self.stack.remove(&login);
         }
+        // After the player bar subscribed: it shows the restored track.
+        ctx.playback.restore_session();
         let pending: Vec<Target> = self.pending.take();
         for target in pending {
             self.open_target(target);
