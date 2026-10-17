@@ -27,7 +27,7 @@ use super::super::widgets::skeleton;
 use super::super::widgets::status::PageStack;
 use super::super::widgets::track_list::{TrackList, Variant, compact_bin};
 use super::collection_grid;
-use crate::api::{self, CachedHead, FavoritesUpdate};
+use crate::api::{CachedHead, FavoritesUpdate};
 use crate::library::{Change, Item};
 use crate::model::{TrackInfo, format_total};
 use crate::playback::Source;
@@ -812,7 +812,7 @@ impl TracksPage {
         let Some(ctx) = self.ctx.upgrade() else {
             return;
         };
-        if api::is_auth_error(err) || self.drawn.get() {
+        if crate::tidal::is_auth_error(err) || self.drawn.get() {
             ctx.report("Couldn't update your favourite tracks", err);
             return;
         }

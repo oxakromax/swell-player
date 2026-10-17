@@ -69,14 +69,18 @@ impl CarouselSection {
         }
 
         let adjustment = scrolled.hadjustment();
+        // Swipe/scroll replaces the arrows in narrow windows.
+        let narrow = Rc::new(std::cell::Cell::new(false));
         let update = {
             let back = back.downgrade();
             let forward = forward.downgrade();
+            let narrow = narrow.clone();
             move |adjustment: &gtk::Adjustment| {
                 let (Some(back), Some(forward)) = (back.upgrade(), forward.upgrade()) else {
                     return;
                 };
-                let scrollable = adjustment.upper() > adjustment.page_size() + 1.0;
+                let scrollable =
+                    !narrow.get() && adjustment.upper() > adjustment.page_size() + 1.0;
                 back.set_visible(scrollable);
                 forward.set_visible(scrollable);
                 back.set_sensitive(adjustment.value() > 1.0);
@@ -86,7 +90,16 @@ impl CarouselSection {
             }
         };
         adjustment.connect_value_changed(update.clone());
-        adjustment.connect_changed(update);
+        adjustment.connect_changed(update.clone());
+        super::follow_narrow(&widget, {
+            let adjustment = adjustment.downgrade();
+            move |is_narrow| {
+                narrow.set(is_narrow);
+                if let Some(adjustment) = adjustment.upgrade() {
+                    update(&adjustment);
+                }
+            }
+        });
 
         let animation: Rc<RefCell<Option<adw::TimedAnimation>>> = Rc::default();
         for (button, direction) in [(&back, -1.0), (&forward, 1.0)] {

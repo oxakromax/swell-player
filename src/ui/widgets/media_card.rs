@@ -12,13 +12,15 @@ use gtk::prelude::*;
 use gtk::{gdk, glib};
 
 use crate::covers::{Image, Ticket};
-use crate::tidal::pages::Item;
+use crate::tidal::pages::{Item, Target};
 use crate::ui::context::Ctx;
 use crate::ui::menus::{self, ItemMenu, PlayMode, Subject};
 
 /// Logical size of a card's cover (144 in narrow windows is left to CSS
 /// scaling; covers are downloaded for 160).
 pub const CARD_SIZE: i32 = 160;
+/// Cover size in narrow windows (docs/design.md §1.5).
+const NARROW_CARD_SIZE: i32 = 144;
 /// Padding of `.media-card-button` (the play button is placed from it).
 const CARD_PADDING: i32 = 6;
 const PLAY_SIZE: i32 = 40;
@@ -49,7 +51,15 @@ pub fn item_image(item: &Item) -> Option<Image> {
 fn placeholder_icon(item: &Item) -> &'static str {
     match item {
         Item::Playlist(_) | Item::Mix(_) => "view-list-symbolic",
-        Item::Link(_) => "folder-music-symbolic",
+        Item::Link(link) => match &link.target {
+            Target::Collection(view) => match view.as_str() {
+                "albums" => "media-optical-symbolic",
+                "artists" => "avatar-default-symbolic",
+                "playlists" | "mixes" => "view-list-symbolic",
+                _ => "swell-heart-filled-symbolic",
+            },
+            _ => "folder-music-symbolic",
+        },
         _ => "audio-x-generic-symbolic",
     }
 }
@@ -313,9 +323,34 @@ impl MediaCard {
             .spacing(6)
             .build();
         let art: gtk::Widget = if round {
-            avatar(ctx, item_image(item), &title, size).upcast()
+            let avatar = avatar(ctx, item_image(item), &title, size);
+            let weak = avatar.downgrade();
+            super::follow_narrow(&avatar, move |narrow| {
+                if let Some(avatar) = weak.upgrade() {
+                    avatar.set_size(if narrow { NARROW_CARD_SIZE } else { CARD_SIZE });
+                }
+            });
+            avatar.upcast()
         } else {
-            cover(ctx, item_image(item), size, placeholder_icon(item), true)
+            let cover = Rc::new(Cover::new(
+                ctx,
+                item_image(item),
+                size,
+                placeholder_icon(item),
+                true,
+            ));
+            let widget = cover.widget().clone();
+            let weak = Rc::downgrade(&cover);
+            super::follow_narrow(&widget, move |narrow| {
+                if let Some(cover) = weak.upgrade() {
+                    cover.set_size(if narrow { NARROW_CARD_SIZE } else { CARD_SIZE });
+                }
+            });
+            // The cover handle lives as long as its widget.
+            widget.connect_destroy(move |_| {
+                let _ = &cover;
+            });
+            widget
         };
         content.append(&art);
         let xalign = if round { 0.5 } else { 0.0 };

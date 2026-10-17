@@ -509,8 +509,6 @@ pub enum FavoritesUpdate {
     Finished,
 }
 
-pub use tidal::is_auth_error;
-
 /// What a cached list looked like, to check it against the first page.
 pub struct CachedHead {
     ids: Vec<u64>,

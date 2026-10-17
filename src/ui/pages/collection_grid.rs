@@ -471,7 +471,7 @@ impl GridPage {
         let Some(ctx) = self.ctx.upgrade() else {
             return;
         };
-        if api::is_auth_error(err) || self.drawn.get() {
+        if crate::tidal::is_auth_error(err) || self.drawn.get() {
             ctx.report("Couldn't update your collection", err);
             return;
         }
