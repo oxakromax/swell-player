@@ -15,16 +15,21 @@
 //!
 //! Own playlists can be edited in place: remove (menu, Delete; with Undo),
 //! reorder (drag handle, Alt+↑/↓, menu) and add by dropping tracks on the
-//! list. Edits are optimistic and sent to TIDAL one at a time, in order; a
-//! failed edit is rolled back (or, if others were queued behind it, the
-//! playlist is reloaded). Edit Details, Make Public/Private and Delete live
+//! list. Edits are optimistic and sent to TIDAL one at a time, in order, by
+//! an [`Editor`] that outlives the page (leaving it does not lose them).
+//! Each must apply to the version of the playlist its positions were
+//! computed on (see [`data::EditQueue`]): editing waits until that version
+//! is known, and a reload drops (and rolls back) the edits not sent yet. A
+//! failed edit is rolled back with the ones queued behind it. Edit
+//! Details, Make Public/Private and Delete live
 //! in the header (dialogs in `dialogs::playlist`); the page follows the
 //! library's change notifications to refresh itself or leave once its
 //! playlist is deleted.
 
 use std::cell::{Cell, RefCell};
-use std::collections::VecDeque;
+use std::collections::HashMap;
 use std::rc::{Rc, Weak};
+use std::sync::Arc;
 use std::time::Duration;
 
 use adw::prelude::*;
@@ -40,7 +45,8 @@ use super::super::widgets::skeleton;
 use super::super::widgets::status::{self, PageStack};
 use super::super::widgets::track_list::{TrackList, Variant, compact_bin};
 use super::super::widgets::track_row::{TrackDrag, TrackRow};
-use super::playlist_data::{self as data, Slots, Update};
+use super::playlist_data::{self as data, EditQueue, Next, Queued, Request, Slots, Update};
+use crate::api::Api;
 use crate::i18n::{tr, trn};
 use crate::library::Change;
 use crate::model::TrackInfo;
@@ -60,6 +66,9 @@ enum Edit {
         index: usize,
         item: usize,
         track: TrackInfo,
+        /// Set once the removal is rolled back or dropped (so its Undo
+        /// must not put the track back a second time).
+        voided: Rc<Cell<bool>>,
     },
     /// Undo of a removal: append, then move into place.
     Restore {
@@ -75,6 +84,335 @@ enum Edit {
         item_to: usize,
     },
     Add(Vec<u64>),
+}
+
+impl Queued for Edit {
+    fn request(&self) -> Request {
+        match self {
+            Edit::Remove { item, .. } => Request::Remove { item: *item },
+            Edit::Restore {
+                item,
+                appended_at,
+                track,
+                ..
+            } => Request::Restore {
+                track: track.id,
+                appended_at: *appended_at,
+                to: *item,
+            },
+            Edit::Move {
+                item_from, item_to, ..
+            } => Request::Move {
+                from: *item_from,
+                to: *item_to,
+            },
+            Edit::Add(ids) => Request::Add(ids.clone()),
+        }
+    }
+}
+
+impl Edit {
+    /// What to say when TIDAL refuses it.
+    fn failure(&self) -> &'static str {
+        match self {
+            Edit::Remove { .. } => tr("Couldn't remove the track"),
+            Edit::Restore { .. } => tr("Couldn't put the track back"),
+            Edit::Move { .. } => tr("Couldn't move the track"),
+            Edit::Add(_) => tr("Couldn't add to the playlist"),
+        }
+    }
+
+    /// It will never reach TIDAL.
+    fn void(&self) {
+        if let Edit::Remove { voided, .. } = self {
+            voided.set(true);
+        }
+    }
+}
+
+thread_local! {
+    /// The editor with edits not through yet, by playlist: another page
+    /// of the playlist (say, opened again right after closing one) loads
+    /// once they are, so it shows what they leave.
+    static SENDING: RefCell<HashMap<String, Rc<Editor>>> = RefCell::default();
+}
+
+/// Sends the edits of one own playlist to TIDAL, one at a time, in order.
+///
+/// Shared by the playlist's page and the tasks sending its edits, which
+/// keep it alive (as does [`SENDING`]): edits the page showed as done are
+/// still sent after the page is closed (without touching it), until
+/// sign-out.
+struct Editor {
+    ctx: Weak<Ctx>,
+    api: Arc<Api>,
+    uuid: String,
+    queue: RefCell<EditQueue<Edit>>,
+    page: RefCell<Weak<PlaylistPage>>,
+    /// An edit, or the refresh after a run of them, is on its way.
+    busy: Cell<bool>,
+    /// Edits made since the details were last refreshed.
+    edited: Cell<bool>,
+    /// The page must reload once the edits are through.
+    resync: Cell<bool>,
+    /// The user was told that an edit was lost, in this run of edits.
+    told: Cell<bool>,
+    /// Other pages of the playlist waiting for these edits to finish.
+    waiters: RefCell<Vec<Weak<PlaylistPage>>>,
+}
+
+impl Editor {
+    fn new(ctx: &Rc<Ctx>, uuid: &str) -> Rc<Self> {
+        Rc::new(Self {
+            ctx: Rc::downgrade(ctx),
+            api: ctx.api.clone(),
+            uuid: uuid.to_owned(),
+            queue: RefCell::default(),
+            page: RefCell::default(),
+            busy: Cell::new(false),
+            edited: Cell::new(false),
+            resync: Cell::new(false),
+            told: Cell::new(false),
+            waiters: RefCell::default(),
+        })
+    }
+
+    /// Another editor of playlist `uuid` with edits not through yet.
+    fn sending(ctx: &Ctx, uuid: &str, except: &Rc<Self>) -> Option<Rc<Self>> {
+        SENDING
+            .with_borrow(|sending| sending.get(uuid).cloned())
+            .filter(|editor| !Rc::ptr_eq(editor, except) && Arc::ptr_eq(&editor.api, &ctx.api))
+    }
+
+    fn page(&self) -> Option<Rc<PlaylistPage>> {
+        self.page.borrow().upgrade()
+    }
+
+    fn can_edit(&self) -> bool {
+        self.queue.borrow().can_edit()
+    }
+
+    /// Edits are waiting or on their way.
+    fn is_busy(&self) -> bool {
+        self.busy.get() || !self.queue.borrow().is_idle()
+    }
+
+    /// Queues an edit already shown; `false` (nothing queued) while the
+    /// list's version is not known.
+    fn push(self: &Rc<Self>, edit: Edit) -> bool {
+        let pushed = self.queue.borrow_mut().push(edit).is_ok();
+        if pushed {
+            SENDING.with_borrow_mut(|sending| {
+                sending.insert(self.uuid.clone(), self.clone());
+            });
+            self.pump();
+        }
+        pushed
+    }
+
+    /// The page is reloading its list: the edits not sent yet were made on
+    /// the old one, so they are dropped and rolled back.
+    fn invalidate(self: &Rc<Self>) {
+        let dropped = self.queue.borrow_mut().invalidate();
+        self.lost(dropped);
+    }
+
+    /// `edits` (newest first) will not reach TIDAL: rolls them back on the
+    /// page and says so, once.
+    fn lost(&self, edits: Vec<Edit>) {
+        if edits.is_empty() {
+            return;
+        }
+        log::info!("playlist {}: {} edits not applied", self.uuid, edits.len());
+        self.roll_back(edits);
+        self.tell_lost();
+    }
+
+    /// Takes `edits` (newest first) off the page, which shows them.
+    fn roll_back(&self, edits: Vec<Edit>) {
+        let page = self.page();
+        for edit in edits {
+            edit.void();
+            if let Some(page) = &page {
+                page.revert(edit);
+            }
+        }
+    }
+
+    fn tell_lost(&self) {
+        if !self.told.replace(true)
+            && let Some(ctx) = self.ctx.upgrade()
+        {
+            ctx.toast(tr("The playlist changed; your last edit was not applied"));
+        }
+    }
+
+    /// The page is closed: edits it showed as done are still sent, the
+    /// page is not touched any more.
+    fn detach(self: &Rc<Self>) {
+        self.page.replace(Weak::new());
+        // Edits that waited for the page to load can go now.
+        self.pump();
+    }
+
+    /// Gives up at sign-out: nothing more is sent.
+    fn stop(&self) {
+        for edit in self.queue.borrow_mut().invalidate() {
+            edit.void();
+        }
+        self.release();
+    }
+
+    /// The edits are through: other pages waiting for them load.
+    fn release(&self) {
+        SENDING.with_borrow_mut(|sending| {
+            if sending
+                .get(&self.uuid)
+                .is_some_and(|editor| std::ptr::eq(Rc::as_ptr(editor), self))
+            {
+                sending.remove(&self.uuid);
+            }
+        });
+        if self.api.is_signed_out() {
+            return;
+        }
+        for waiter in self.waiters.take() {
+            if let Some(page) = waiter.upgrade() {
+                page.waiting.set(false);
+                page.load();
+            }
+        }
+    }
+
+    /// Sends the next edit, unless one is on its way or the page is
+    /// loading (edits made meanwhile wait: their positions are into the
+    /// version being loaded, which later pages are checked against).
+    fn pump(self: &Rc<Self>) {
+        if self.busy.get() {
+            return;
+        }
+        if self.api.is_signed_out() {
+            self.stop();
+            return;
+        }
+        if self.page().is_some_and(|page| page.loading.get()) {
+            return;
+        }
+        let next = self.queue.borrow_mut().next();
+        match next {
+            Next::Busy => {}
+            Next::Idle => self.run_done(),
+            Next::Lost(edits) => {
+                self.lost(edits);
+                self.resync.set(true);
+                self.run_done();
+            }
+            Next::Send { edit, etag, base } => {
+                self.busy.set(true);
+                let api = self.api.clone();
+                let uuid = self.uuid.clone();
+                let request = edit.request();
+                let this = self.clone();
+                glib::spawn_future_local(async move {
+                    let result = runtime::spawn(async move {
+                        data::send(&api, &uuid, &request, &etag, base.as_ref()).await
+                    })
+                    .await;
+                    this.busy.set(false);
+                    this.finished(edit, result);
+                });
+            }
+        }
+    }
+
+    /// `result` is the version after the edit.
+    fn finished(self: &Rc<Self>, edit: Edit, result: anyhow::Result<Option<String>>) {
+        if self.api.is_signed_out() {
+            self.stop();
+            return;
+        }
+        let page = self.page();
+        match result {
+            Ok(etag) => {
+                self.edited.set(true);
+                let before = self.queue.borrow().known_len();
+                let current = self.queue.borrow_mut().applied(etag);
+                if !current || !self.can_edit() {
+                    // The list shown may lack it, or what comes next
+                    // cannot be sent: start over from TIDAL.
+                    self.resync.set(true);
+                }
+                if let (Some(page), true) = (&page, current) {
+                    page.applied(&edit, before);
+                }
+            }
+            Err(err) => {
+                // Rolled back newest first: the edits that assumed it,
+                // then it. Not if the list was replaced meanwhile (it
+                // shows TIDAL's version).
+                let edits = match self.queue.borrow_mut().failed() {
+                    Some(mut edits) => {
+                        edits.push(edit.clone());
+                        edits
+                    }
+                    None => Vec::new(),
+                };
+                edit.void();
+                self.roll_back(edits);
+                if data::is_changed(&err) {
+                    // Nothing was edited: what is on screen is not what
+                    // TIDAL has.
+                    log::info!("playlist {} changed elsewhere", self.uuid);
+                    self.resync.set(true);
+                    self.edited.set(true);
+                    self.tell_lost();
+                } else if let Some(ctx) = self.ctx.upgrade() {
+                    ctx.report(edit.failure(), &err);
+                }
+            }
+        }
+        self.pump();
+    }
+
+    /// After a run of edits: forgets the cached copy, refreshes the
+    /// page's details (counts, duration) and the library (sidebar), or
+    /// reloads the page if it got out of step.
+    fn run_done(self: &Rc<Self>) {
+        self.told.set(false);
+        let resync = self.resync.replace(false);
+        if !self.edited.replace(false) && !resync {
+            self.release();
+            return;
+        }
+        self.busy.set(true);
+        let api = self.api.clone();
+        let uuid = self.uuid.clone();
+        let this = self.clone();
+        glib::spawn_future_local(async move {
+            let result = runtime::spawn(async move {
+                data::forget(&api, &uuid).await;
+                data::details(&api, &uuid).await
+            })
+            .await;
+            this.busy.set(false);
+            if this.api.is_signed_out() {
+                this.stop();
+                return;
+            }
+            if let Some(page) = this.page() {
+                if resync {
+                    page.load();
+                } else if let Ok(playlist) = result {
+                    page.show_details(playlist);
+                }
+            }
+            if let Some(ctx) = this.ctx.upgrade() {
+                ctx.library.refresh_playlists();
+            }
+            // Edits made meanwhile, or done.
+            this.pump();
+        });
+    }
 }
 
 /// Reloads in a row because the playlist kept changing while loading,
@@ -116,20 +454,16 @@ struct PlaylistPage {
     compact: Cell<bool>,
     /// Play (from a row) or shuffle requested while loading.
     pending_play: Cell<Option<(Option<usize>, bool)>>,
-    edits: RefCell<VecDeque<Edit>>,
-    editing: Cell<bool>,
-    /// Edits succeeded since the last refresh of the details.
-    edited: Cell<bool>,
-    resync: Cell<bool>,
-    /// The ETag of the playlist version the list shows (with the edits
-    /// sent so far); edits send it so they apply to the items on screen.
-    etag: RefCell<Option<String>>,
+    /// Sends the edits; knows the version of the playlist shown.
+    editor: Rc<Editor>,
+    /// Loading waits for the edits made on an earlier page of this
+    /// playlist to reach TIDAL.
+    waiting: Cell<bool>,
     /// Reloads because the playlist changed while loading, in a row.
     reloads: Cell<u32>,
-    /// An edit found the playlist changed elsewhere: say so once reloaded.
-    changed_elsewhere: Cell<bool>,
+    /// The items arriving are tracks just added (which the editor knows).
+    added_tail: Cell<bool>,
     task: RefCell<Option<glib::JoinHandle<()>>>,
-    edit_task: RefCell<Option<glib::JoinHandle<()>>>,
     listener: Cell<u64>,
 }
 
@@ -157,6 +491,7 @@ pub fn page(ctx: &Rc<Ctx>, uuid: String) -> adw::NavigationPage {
         .child(&toolbar)
         .build();
 
+    let editor = Editor::new(ctx, &uuid);
     let state = Rc::new(PlaylistPage {
         ctx: Rc::downgrade(ctx),
         uuid,
@@ -178,17 +513,14 @@ pub fn page(ctx: &Rc<Ctx>, uuid: String) -> adw::NavigationPage {
         in_library: Cell::new(false),
         compact: Cell::new(false),
         pending_play: Cell::new(None),
-        edits: RefCell::default(),
-        editing: Cell::new(false),
-        edited: Cell::new(false),
-        resync: Cell::new(false),
-        etag: RefCell::default(),
+        editor,
+        waiting: Cell::new(false),
         reloads: Cell::new(0),
-        changed_elsewhere: Cell::new(false),
+        added_tail: Cell::new(false),
         task: RefCell::default(),
-        edit_task: RefCell::default(),
         listener: Cell::new(0),
     });
+    state.editor.page.replace(Rc::downgrade(&state));
 
     let weak = Rc::downgrade(&state);
     let bin = compact_bin(stack.widget(), move |compact| {
@@ -254,12 +586,11 @@ pub fn page(ctx: &Rc<Ctx>, uuid: String) -> adw::NavigationPage {
 
 impl PlaylistPage {
     fn destroy(&self) {
-        for task in [self.task.take(), self.edit_task.take()]
-            .into_iter()
-            .flatten()
-        {
+        if let Some(task) = self.task.take() {
             task.abort();
         }
+        // Not the edits: they are still sent.
+        self.editor.detach();
         if let Some(ctx) = self.ctx.upgrade() {
             ctx.library.disconnect(self.listener.get());
         }
@@ -318,6 +649,16 @@ impl PlaylistPage {
         if !self.stack.is_showing_content() {
             self.stack.show_loading();
         }
+        // Edits made on another page of the playlist (say, one closed a
+        // moment ago) are still on their way: load what they leave.
+        if let Some(earlier) = Editor::sending(&ctx, &self.uuid, &self.editor) {
+            if !self.waiting.replace(true) {
+                earlier.waiters.borrow_mut().push(Rc::downgrade(self));
+            }
+            return;
+        }
+        // Edits not sent yet were made on the list about to be replaced.
+        self.editor.invalidate();
         let own = self.editable.get()
             || ctx
                 .library
@@ -329,23 +670,31 @@ impl PlaylistPage {
         } else {
             OTHERS_FRESH_FOR
         };
-        // Known again once the loader has checked the version.
-        self.etag.replace(None);
+        self.added_tail.set(false);
         let updates = data::load(&ctx.api, self.uuid.clone(), fresh_for);
         self.follow(updates);
     }
 
-    /// Fetches the items after the loaded ones (after a paging error, or
-    /// to pick up tracks just added).
-    fn load_rest(self: &Rc<Self>) {
+    /// Fetches the items after the loaded ones (after a paging error), or
+    /// the tracks just added from item `added_at` on.
+    fn load_rest(self: &Rc<Self>, added_at: Option<usize>) {
         let Some(ctx) = self.ctx.upgrade() else {
             return;
         };
         if let Some(task) = self.task.take() {
             task.abort();
         }
-        let offset = self.slots.borrow().len();
-        let etag = self.etag.borrow().clone();
+        // Right after an edit TIDAL may still name an older version (see
+        // `data::send`): the tracks added are taken as they come. The
+        // editor knows them already.
+        let (offset, etag) = match added_at {
+            Some(at) => (at, None),
+            None => (
+                self.slots.borrow().len(),
+                self.editor.queue.borrow().version().map(str::to_owned),
+            ),
+        };
+        self.added_tail.set(added_at.is_some());
         let updates = data::load_from(&ctx.api, self.uuid.clone(), offset, etag);
         self.follow(updates);
     }
@@ -375,6 +724,14 @@ impl PlaylistPage {
                 reset,
             } => {
                 if reset {
+                    // Its version is reported next (also guards against
+                    // edits made since the reload started).
+                    self.editor.invalidate();
+                }
+                if reset || !self.added_tail.get() {
+                    self.editor.queue.borrow_mut().extend(&chunk);
+                }
+                if reset {
                     self.slots.borrow_mut().clear();
                     self.list.set_tracks(chunk.tracks);
                 } else {
@@ -388,7 +745,7 @@ impl PlaylistPage {
                 self.update_footer();
             }
             Update::Version(etag) => {
-                self.etag.replace(etag);
+                self.editor.queue.borrow_mut().set_version(etag);
             }
             Update::Changed => {
                 self.loading.set(false);
@@ -396,9 +753,9 @@ impl PlaylistPage {
                     self.reloads.set(self.reloads.get() + 1);
                     self.load();
                 } else {
-                    // Keeps changing: show what there is, edits will find
-                    // out and reload.
-                    self.etag.replace(None);
+                    // Keeps changing: show what there is (a mix of
+                    // versions, so not editable until reloaded).
+                    self.editor.invalidate();
                     self.update_footer();
                     self.play_pending();
                     self.loaded();
@@ -415,11 +772,6 @@ impl PlaylistPage {
                 self.reloads.set(0);
                 self.update_footer();
                 self.play_pending();
-                if self.changed_elsewhere.take()
-                    && let Some(ctx) = self.ctx.upgrade()
-                {
-                    ctx.toast(tr("The playlist changed elsewhere; refreshed"));
-                }
                 self.loaded();
             }
             Update::Failed(err) => {
@@ -538,7 +890,7 @@ impl PlaylistPage {
         let weak = Rc::downgrade(self);
         retry.connect_clicked(move |_| {
             if let Some(state) = weak.upgrade() {
-                state.load_rest();
+                state.load_rest(None);
             }
         });
         footer.append(&retry);
@@ -592,7 +944,7 @@ impl PlaylistPage {
         match listed {
             Some(listed) => {
                 self.in_library.set(true);
-                let busy = self.editing.get() || !self.edits.borrow().is_empty();
+                let busy = self.editor.is_busy() || self.waiting.get();
                 let changed = listed.last_updated != mine.last_updated
                     || listed.number_of_tracks != mine.number_of_tracks
                     || listed.title != mine.title
@@ -734,19 +1086,31 @@ impl PlaylistPage {
             if !state.accepts(&drag) {
                 return false;
             }
-            state.enqueue(Edit::Add(drag.track_ids));
-            true
+            state.editor.push(Edit::Add(drag.track_ids))
         });
         view.add_controller(target);
     }
 
     /// Whether a drop adds tracks: not a reorder drag from this very list
-    /// (those land on rows; a miss must not duplicate the track).
+    /// (those land on rows; a miss must not duplicate the track), and not
+    /// before the list's version is known.
     fn accepts(&self, drag: &TrackDrag) -> bool {
-        if drag.track_ids.is_empty() {
+        if drag.track_ids.is_empty() || !self.editor.can_edit() {
             return false;
         }
         drag.origin.is_none_or(|(list, _)| list != self.list.id())
+    }
+
+    /// An edit cannot be made yet: the version of the list shown is not
+    /// known (it is loading, or offline). Says so, and finds out.
+    fn refuse(self: &Rc<Self>) {
+        if let Some(ctx) = self.ctx.upgrade() {
+            let message = tr("The playlist isn't up to date yet; try again in a moment");
+            ctx.toast(message);
+        }
+        if !self.loading.get() && !self.waiting.get() && !self.editor.is_busy() {
+            self.load();
+        }
     }
 
     /// Removes the track at list index `index`, which must be track `id`.
@@ -754,6 +1118,10 @@ impl PlaylistPage {
         let Some(ctx) = self.ctx.upgrade() else {
             return;
         };
+        if !self.editor.can_edit() {
+            self.refuse();
+            return;
+        }
         if self.list.track(index).map(|t| t.id) != Some(id) {
             // The list and what was acted on disagree: never remove
             // another track.
@@ -761,9 +1129,8 @@ impl PlaylistPage {
                 "playlist {}: track {id} is not at {index}; reloading",
                 self.uuid
             );
-            if self.editing.get() {
-                self.edited.set(true);
-                self.resync.set(true);
+            if self.editor.is_busy() {
+                self.editor.resync.set(true);
             } else {
                 self.load();
             }
@@ -778,10 +1145,12 @@ impl PlaylistPage {
         };
         self.total.set(self.total.get().saturating_sub(1));
         self.update_footer();
-        self.enqueue(Edit::Remove {
+        let voided = Rc::new(Cell::new(false));
+        self.editor.push(Edit::Remove {
             index,
             item,
             track: track.clone(),
+            voided: voided.clone(),
         });
         let title = self
             .playlist
@@ -793,7 +1162,9 @@ impl PlaylistPage {
         ctx.toast_with_undo(
             &tr("Removed from “{title}”").replace("{title}", &glib::markup_escape_text(&title)),
             move || {
-                if let Some(state) = weak.upgrade() {
+                // Not if the removal was rolled back (the track is there).
+                if let (Some(state), false) = (weak.upgrade(), voided.get()) {
+                    voided.set(true);
                     state.restore(index, track.clone());
                 }
             },
@@ -802,6 +1173,10 @@ impl PlaylistPage {
 
     /// Undo of [`Self::remove`]: back at the same place.
     fn restore(self: &Rc<Self>, index: usize, track: TrackInfo) {
+        if !self.editor.can_edit() {
+            self.refuse();
+            return;
+        }
         let index = index.min(self.list.len());
         let item = self.slots.borrow_mut().insert(index);
         self.list.insert(index, track.clone());
@@ -810,7 +1185,7 @@ impl PlaylistPage {
             header.set_playable(true);
         }
         self.update_footer();
-        self.enqueue(Edit::Restore {
+        self.editor.push(Edit::Restore {
             index,
             item,
             appended_at: self.total.get() - 1,
@@ -820,11 +1195,16 @@ impl PlaylistPage {
 
     /// The list moved a row from `from` to `to`.
     fn moved(self: &Rc<Self>, from: usize, to: usize) {
+        if !self.editor.can_edit() {
+            self.list.move_track(to, from);
+            self.refuse();
+            return;
+        }
         let Some((item_from, item_to)) = self.slots.borrow_mut().move_track(from, to) else {
             self.list.move_track(to, from);
             return;
         };
-        self.enqueue(Edit::Move {
+        self.editor.push(Edit::Move {
             from,
             to,
             item_from,
@@ -832,144 +1212,47 @@ impl PlaylistPage {
         });
     }
 
-    fn enqueue(self: &Rc<Self>, edit: Edit) {
-        self.edits.borrow_mut().push_back(edit);
-        if !self.editing.get() {
-            self.next_edit();
-        }
-    }
-
     /// Loading has stopped: edits made meanwhile can be sent (they waited,
     /// as their indices are into the version being loaded).
     fn loaded(self: &Rc<Self>) {
-        if !self.editing.get() && !self.edits.borrow().is_empty() {
-            self.next_edit();
-        }
+        self.editor.pump();
     }
 
-    fn next_edit(self: &Rc<Self>) {
-        let Some(ctx) = self.ctx.upgrade() else {
+    /// TIDAL made `edit` on the list shown, which had `before` items (if
+    /// known).
+    fn applied(self: &Rc<Self>, edit: &Edit, before: Option<usize>) {
+        let (Edit::Add(ids), Some(ctx)) = (edit, self.ctx.upgrade()) else {
             return;
         };
-        if self.loading.get() {
-            self.editing.set(false);
-            return;
-        }
-        let Some(edit) = self.edits.borrow_mut().pop_front() else {
-            self.editing.set(false);
-            self.edits_done();
-            return;
-        };
-        self.editing.set(true);
-        let api = ctx.api.clone();
-        let uuid = self.uuid.clone();
-        let etag = self.etag.borrow().clone();
-        let last_updated = self
+        let title = self
             .playlist
             .borrow()
             .as_ref()
-            .and_then(|p| p.last_updated.clone());
-        let request = edit.clone();
-        let weak = Rc::downgrade(self);
-        let task = glib::spawn_future_local(async move {
-            let result = runtime::spawn(async move {
-                let etag = match etag {
-                    Some(etag) => etag,
-                    // Shown from the cache without asking TIDAL.
-                    None => data::etag_if_unchanged(&api, &uuid, last_updated.as_deref()).await?,
-                };
-                match request {
-                    Edit::Remove { item, .. } => data::remove(&api, &uuid, item, &etag).await,
-                    Edit::Restore {
-                        item,
-                        appended_at,
-                        track,
-                        ..
-                    } => data::restore(&api, &uuid, &etag, track.id, appended_at, item).await,
-                    Edit::Move {
-                        item_from, item_to, ..
-                    } => data::move_item(&api, &uuid, item_from, item_to, &etag).await,
-                    Edit::Add(ids) => data::add(&api, &uuid, &ids, &etag).await,
-                }
-            })
-            .await;
-            if let Some(state) = weak.upgrade() {
-                state.edit_finished(edit, result);
-            }
-        });
-        self.edit_task.replace(Some(task));
+            .map(|p| p.title.clone())
+            .unwrap_or_default();
+        ctx.toast(&glib::markup_escape_text(&if ids.len() == 1 {
+            tr("Added to “{title}”").replace("{title}", &title)
+        } else {
+            trn(
+                "Added {n} track to “{title}”",
+                "Added {n} tracks to “{title}”",
+                ids.len() as u64,
+            )
+            .replace("{n}", &ids.len().to_string())
+            .replace("{title}", &title)
+        }));
+        // New tracks go at the end: fetch them (edits not sent yet may
+        // have changed how many items are shown).
+        self.load_rest(Some(before.unwrap_or_else(|| self.slots.borrow().len())));
     }
 
-    /// `result` is the playlist's next ETag.
-    fn edit_finished(self: &Rc<Self>, edit: Edit, result: anyhow::Result<Option<String>>) {
-        let Some(ctx) = self.ctx.upgrade() else {
-            return;
-        };
-        match result {
-            Ok(etag) => {
-                self.etag.replace(etag);
-                self.edited.set(true);
-                if let Edit::Add(ids) = &edit {
-                    let title = self
-                        .playlist
-                        .borrow()
-                        .as_ref()
-                        .map(|p| p.title.clone())
-                        .unwrap_or_default();
-                    ctx.toast(&glib::markup_escape_text(&if ids.len() == 1 {
-                        tr("Added to “{title}”").replace("{title}", &title)
-                    } else {
-                        trn(
-                            "Added {n} track to “{title}”",
-                            "Added {n} tracks to “{title}”",
-                            ids.len() as u64,
-                        )
-                        .replace("{n}", &ids.len().to_string())
-                        .replace("{title}", &title)
-                    }));
-                    // New tracks go at the end: fetch them (or everything,
-                    // if the list is still loading).
-                    if self.loading.get() {
-                        self.resync.set(true);
-                    } else {
-                        self.load_rest();
-                    }
-                }
-            }
-            Err(err) if data::is_changed(&err) => {
-                // Nothing was edited: what is on screen is not what TIDAL
-                // has. Start over from TIDAL and say why.
-                log::info!("playlist {} changed elsewhere", self.uuid);
-                self.edits.borrow_mut().clear();
-                self.edited.set(true);
-                self.resync.set(true);
-                self.changed_elsewhere.set(true);
-            }
-            Err(err) => {
-                let message = match edit {
-                    Edit::Remove { .. } => tr("Couldn't remove the track"),
-                    Edit::Restore { .. } => tr("Couldn't put the track back"),
-                    Edit::Move { .. } => tr("Couldn't move the track"),
-                    Edit::Add(_) => tr("Couldn't add to the playlist"),
-                };
-                ctx.report(message, &err);
-                if self.edits.borrow().is_empty() {
-                    self.revert(edit);
-                } else {
-                    // Later edits assumed this one: start over from TIDAL.
-                    self.edits.borrow_mut().clear();
-                    self.edited.set(true);
-                    self.resync.set(true);
-                }
-            }
-        }
-        self.next_edit();
-    }
-
-    /// Rolls back an edit that TIDAL refused.
+    /// Rolls back an edit that will not reach TIDAL (edits are rolled
+    /// back newest first).
     fn revert(self: &Rc<Self>, edit: Edit) {
         match edit {
-            Edit::Remove { index, item, track } => {
+            Edit::Remove {
+                index, item, track, ..
+            } => {
                 self.slots.borrow_mut().insert_at(item);
                 self.list.insert(index.min(self.list.len()), track);
                 self.total.set(self.total.get() + 1);
@@ -989,41 +1272,6 @@ impl PlaylistPage {
             header.set_playable(!self.list.is_empty());
         }
         self.update_footer();
-    }
-
-    /// After a run of edits: forget the cached copy, refresh the details
-    /// (counts, duration) and the library (sidebar), or reload everything
-    /// if the playlist got out of step.
-    fn edits_done(self: &Rc<Self>) {
-        let Some(ctx) = self.ctx.upgrade() else {
-            return;
-        };
-        if !self.edited.replace(false) {
-            return;
-        }
-        let resync = self.resync.replace(false);
-        let api = ctx.api.clone();
-        let uuid = self.uuid.clone();
-        let weak = Rc::downgrade(self);
-        let task = glib::spawn_future_local(async move {
-            let result = runtime::spawn(async move {
-                data::forget(&api, &uuid).await;
-                data::details(&api, &uuid).await
-            })
-            .await;
-            let Some(state) = weak.upgrade() else {
-                return;
-            };
-            if resync {
-                state.load();
-            } else if let Ok(playlist) = result {
-                state.show_details(playlist);
-            }
-            if let Some(ctx) = state.ctx.upgrade() {
-                ctx.library.refresh_playlists();
-            }
-        });
-        self.edit_task.replace(Some(task));
     }
 }
 
