@@ -11,5 +11,8 @@
     <file preprocess="xml-stripblanks">icons/scalable/actions/swell-radio-symbolic.svg</file>
     <file preprocess="xml-stripblanks">icons/scalable/actions/swell-mix-symbolic.svg</file>
     <file preprocess="xml-stripblanks">icons/scalable/actions/swell-timer-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/list-drag-handle-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/view-list-ordered-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/audio-x-generic-symbolic.svg</file>
   </gresource>
 </gresources>
