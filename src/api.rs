@@ -12,6 +12,7 @@ use tokio::sync::mpsc::UnboundedSender;
 use crate::cache::{Cache, CachedCollection};
 use crate::config;
 use crate::model::TrackInfo;
+use crate::player::Stream;
 use crate::session::{self, LoginFlow, StoredSession};
 
 /// One HTTP client for the whole app: API calls and image downloads share
@@ -181,12 +182,22 @@ impl Api {
             let _ = updates.send(Ok(FavoritesUpdate::Replace(all.clone())));
         }
 
-        if let (Some(cache), Some(user_id)) = (cache, self.client.get_user_id()) {
-            if let Err(err) = cache.store_favorite_tracks(user_id, total, all).await {
-                log::warn!("could not cache favourites: {err:#}");
-            }
+        if let (Some(cache), Some(user_id)) = (cache, self.client.get_user_id())
+            && let Err(err) = cache.store_favorite_tracks(user_id, total, all).await
+        {
+            log::warn!("could not cache favourites: {err:#}");
         }
         Ok(())
+    }
+
+    /// Asks TIDAL how to stream `track_id` at the best quality this session
+    /// allows. Hi-Res comes back as MPEG-DASH, the rest as a direct URL.
+    pub async fn stream(&self, track_id: u64) -> Result<Stream> {
+        let info = self
+            .client
+            .track_dash_playback_info(track_id, self.flow.max_quality())
+            .await?;
+        Stream::from_playback_info(info).await
     }
 
     async fn favorite_tracks_page(&self, offset: usize) -> Result<tidalrs::List<FavoriteTrack>> {

@@ -90,6 +90,39 @@ expired access token, the client refreshes it and stores the new one.
   covers PKCE and device-code login, automatic token refresh with a callback,
   paginated favourites and the raw playback manifest.
 
+## Playback
+
+Double-click a track (or press Enter) to play it. Swell asks TIDAL for the
+best quality the session allows and hands the result to GStreamer's
+`playbin3`:
+
+- **Hi-Res Lossless** arrives as an MPEG-DASH manifest (FLAC in fragmented
+  MP4). Swell writes it to one file per track under
+  `$XDG_RUNTIME_DIR/swell-player/` (private and in memory; the segment URLs
+  in it are signed) and plays it as a `file://` URI. `dashdemux2` then
+  streams the segments; nothing is downloaded whole.
+- **Lossless and below** arrive as a direct URL, played as is.
+
+The bottom bar has play/pause and a progress bar you can drag to seek.
+
+### Bit depth and sample rate
+
+Swell keeps the stream's format all the way to PipeWire (a 24-bit track
+reaches it as `S24_32`). PipeWire then decides what the sound card gets: by
+default it runs the whole graph at one rate (often 48 kHz) and resamples
+anything else. To let it switch to the track's own rate when nothing else is
+playing, allow the common rates, e.g. in
+`~/.config/pipewire/pipewire.conf.d/10-rates.conf`:
+
+```
+context.properties = {
+    default.clock.allowed-rates = [ 44100 48000 88200 96000 176400 192000 ]
+}
+```
+
+and restart PipeWire (`systemctl --user restart pipewire`). Check what
+actually reaches the device with `pw-top`.
+
 ## License
 
 Swell is free software: you can redistribute it and/or modify it under the

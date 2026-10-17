@@ -1,16 +1,21 @@
 //! The main window: a stack that switches between loading, sign-in and the
 //! library once a session exists.
 
+use std::cell::{Cell, OnceCell};
 use std::rc::Rc;
 use std::sync::Arc;
+use std::time::Instant;
 
 use adw::prelude::*;
 use gtk::{gio, glib};
 
 use super::library::TrackList;
+use super::player_bar::PlayerBar;
 use crate::api::{self, Api, CachedHead, FavoritesUpdate};
 use crate::cache::{Cache, CachedCollection};
 use crate::covers::CoverLoader;
+use crate::model::TrackInfo;
+use crate::player::{Event, Player, State};
 use crate::{config, runtime, session};
 
 pub fn build(app: &adw::Application) {
@@ -52,6 +57,11 @@ pub fn build(app: &adw::Application) {
 
     let http = api::http_client();
     api::preconnect(&http);
+    let playback = Playback::new();
+    if let Some(playback) = &playback {
+        playback.bar.widget.set_visible(false);
+        toolbar.add_bottom_bar(&playback.bar.widget);
+    }
     let ui = Rc::new(Ui {
         window,
         stack,
@@ -59,6 +69,8 @@ pub fn build(app: &adw::Application) {
         menu_button,
         covers: CoverLoader::new(http.clone()),
         http,
+        playback,
+        play_request: Cell::new(0),
     });
     glib::spawn_future_local(async move {
         let stored = runtime::spawn(session::load()).await;
@@ -78,6 +90,61 @@ struct Ui {
     menu_button: gtk::MenuButton,
     covers: Rc<CoverLoader>,
     http: reqwest::Client,
+    /// `None` if GStreamer's playbin3 is not installed.
+    playback: Option<Playback>,
+    /// Bumped on every track activation, so a slow stream lookup that was
+    /// overtaken by a newer one is ignored.
+    play_request: Cell<u64>,
+}
+
+struct Playback {
+    player: Rc<Player>,
+    bar: Rc<PlayerBar>,
+    requested_at: Rc<Cell<Option<Instant>>>,
+}
+
+impl Playback {
+    fn new() -> Option<Self> {
+        let bar_slot: Rc<OnceCell<Rc<PlayerBar>>> = Rc::default();
+        let requested_at: Rc<Cell<Option<Instant>>> = Rc::default();
+        let player = Player::new({
+            let bar_slot = bar_slot.clone();
+            let requested_at = requested_at.clone();
+            move |event| {
+                let Some(bar) = bar_slot.get() else { return };
+                match event {
+                    Event::State(state) => {
+                        if *state == State::Playing
+                            && let Some(at) = requested_at.take()
+                        {
+                            log::info!(
+                                "playback started {} ms after the track was chosen",
+                                at.elapsed().as_millis()
+                            );
+                            crate::timing::mark("playing");
+                        }
+                        bar.set_state(*state);
+                    }
+                    Event::Finished => bar.set_state(State::Stopped),
+                    Event::Error(message) => bar.show_error(message),
+                }
+            }
+        });
+        let player = match player {
+            Ok(player) => Rc::new(player),
+            Err(err) => {
+                log::error!("playback unavailable: {err:#}");
+                return None;
+            }
+        };
+        let bar = PlayerBar::new(player.clone());
+        let _ = bar_slot.set(bar.clone());
+        Some(Self {
+            player,
+            bar,
+            requested_at,
+        })
+    }
 }
 
 impl Ui {
@@ -92,6 +159,10 @@ impl Ui {
     fn show_login(self: &Rc<Self>, error: Option<String>) {
         self.title.set_subtitle("");
         self.menu_button.set_visible(false);
+        if let Some(playback) = &self.playback {
+            playback.player.stop();
+            playback.bar.widget.set_visible(false);
+        }
         self.window.remove_action("sign-out");
         if let Some(library) = self.stack.child_by_name("library") {
             self.stack.remove(&library);
@@ -129,6 +200,15 @@ impl Ui {
 
         let list = Rc::new(TrackList::new(self.covers.clone()));
         self.set_page("library", &list.widget);
+        list.connect_track_activated({
+            let ui = Rc::downgrade(self);
+            let api = api.clone();
+            move |track| {
+                if let Some(ui) = ui.upgrade() {
+                    ui.play(api.clone(), track);
+                }
+            }
+        });
 
         let ui = self.clone();
         glib::spawn_future_local(async move {
@@ -142,7 +222,7 @@ impl Ui {
             }
 
             let (updates_tx, mut updates) = tokio::sync::mpsc::unbounded_channel();
-            runtime::runtime().spawn(api.sync_favorite_tracks(cache, head, updates_tx));
+            runtime::runtime().spawn(api.clone().sync_favorite_tracks(cache, head, updates_tx));
 
             let mut first = true;
             while let Some(update) = updates.recv().await {
@@ -168,6 +248,52 @@ impl Ui {
                 ui.title.set_subtitle(&format!("{} tracks", list.len()));
             }
             crate::timing::mark("favourites up to date");
+
+            if std::env::var_os("SWELL_BENCH_PLAY").is_some()
+                && let Some(track) = list.first_where(|track| track.hires)
+            {
+                ui.play(api, track);
+            }
+        });
+    }
+}
+
+impl Ui {
+    fn play(self: &Rc<Self>, api: Arc<Api>, track: TrackInfo) {
+        let Some(playback) = &self.playback else {
+            self.title
+                .set_subtitle("Playback needs GStreamer's playbin3");
+            return;
+        };
+        let request = self.play_request.get() + 1;
+        self.play_request.set(request);
+        playback.requested_at.set(Some(Instant::now()));
+        playback.player.stop();
+        playback.bar.widget.set_visible(true);
+        playback.bar.show_loading(&track);
+        playback.bar.set_state(State::Buffering);
+
+        let ui = self.clone();
+        glib::spawn_future_local(async move {
+            let track_id = track.id;
+            let stream = runtime::spawn(async move { api.stream(track_id).await }).await;
+            let Some(playback) = &ui.playback else { return };
+            if ui.play_request.get() != request {
+                return;
+            }
+            match stream {
+                Ok(stream) => {
+                    log::info!("playing track {track_id} as {}", stream.format);
+                    playback.bar.show_format(&track, &stream.format);
+                    playback.player.play(&stream.uri);
+                }
+                Err(err) => {
+                    log::warn!("could not get a stream for track {track_id}: {err:#}");
+                    playback
+                        .bar
+                        .show_error(&format!("Cannot play this track: {err}"));
+                }
+            }
         });
     }
 }

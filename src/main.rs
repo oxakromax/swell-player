@@ -6,6 +6,7 @@ mod cache;
 mod config;
 mod covers;
 mod model;
+mod player;
 mod runtime;
 mod session;
 mod timing;

@@ -13,6 +13,7 @@ pub struct TrackList {
     /// The scrolled window, with the list view as its direct child so only
     /// the rows on screen (plus GTK's small overscan) exist as widgets.
     pub widget: gtk::ScrolledWindow,
+    view: gtk::ListView,
     store: gio::ListStore,
 }
 
@@ -69,7 +70,11 @@ impl TrackList {
         adjustment.connect_value_changed(update_focus.clone());
         adjustment.connect_changed(update_focus);
 
-        Self { widget, store }
+        Self {
+            widget,
+            view,
+            store,
+        }
     }
 
     pub fn append(&self, tracks: Vec<TrackInfo>) {
@@ -80,6 +85,23 @@ impl TrackList {
     pub fn replace(&self, tracks: Vec<TrackInfo>) {
         let objects: Vec<_> = tracks.into_iter().map(glib::BoxedAnyObject::new).collect();
         self.store.splice(0, self.store.n_items(), &objects);
+    }
+
+    /// Double click or Enter on a row.
+    pub fn connect_track_activated(&self, on_activate: impl Fn(TrackInfo) + 'static) {
+        let store = self.store.clone();
+        self.view.connect_activate(move |_, position| {
+            if let Some(object) = store.item(position).and_downcast::<glib::BoxedAnyObject>() {
+                on_activate(object.borrow::<TrackInfo>().clone());
+            }
+        });
+    }
+
+    pub fn first_where(&self, predicate: impl Fn(&TrackInfo) -> bool) -> Option<TrackInfo> {
+        (0..self.store.n_items())
+            .filter_map(|position| self.store.item(position).and_downcast::<glib::BoxedAnyObject>())
+            .map(|object| object.borrow::<TrackInfo>().clone())
+            .find(|track| predicate(track))
     }
 
     pub fn len(&self) -> u32 {

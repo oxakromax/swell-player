@@ -6,7 +6,7 @@
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
-use tidalrs::Authz;
+use tidalrs::{AudioQuality, Authz};
 use tokio::sync::OnceCell;
 
 use crate::config::{self, OAuthClient};
@@ -27,6 +27,13 @@ impl LoginFlow {
         match self {
             Self::Pkce => &config::PKCE_CLIENT,
             Self::DeviceCode => &config::DEVICE_CLIENT,
+        }
+    }
+
+    pub fn max_quality(self) -> AudioQuality {
+        match self {
+            Self::Pkce => AudioQuality::HiResLossless,
+            Self::DeviceCode => AudioQuality::Lossless,
         }
     }
 }

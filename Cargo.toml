@@ -10,6 +10,7 @@ categories = ["multimedia::audio"]
 [dependencies]
 adw = { version = "0.9.2", package = "libadwaita", features = ["v1_7"] }
 anyhow = "1.0.104"
+base64 = "0.23.1"
 env_logger = { version = "0.11.11", default-features = false, features = ["auto-color"] }
 futures-util = { version = "0.3.34", default-features = false, features = ["std"] }
 gst = { version = "0.25.4", package = "gstreamer" }
