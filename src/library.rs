@@ -16,7 +16,10 @@ use gtk::glib;
 use crate::api::Api;
 use crate::runtime;
 use crate::tidal::models::{Mix, Playlist};
-use crate::tidal::{Favorite, MAX_PAGE};
+use crate::tidal::Favorite;
+
+/// `playlistsAndFavoritePlaylists` serves at most 50 per page.
+const PLAYLIST_PAGE: usize = 50;
 
 /// Anything that can be a favourite.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -209,16 +212,16 @@ impl Library {
 }
 
 async fn all_playlists(api: &Api) -> Result<Vec<Playlist>> {
-    let first = api.user_playlists(0, MAX_PAGE).await?;
+    let first = api.user_playlists(0, PLAYLIST_PAGE).await?;
     let mut all = first.items;
-    let mut offset = MAX_PAGE;
+    let mut offset = PLAYLIST_PAGE;
     while offset < first.total {
-        let page = api.user_playlists(offset, MAX_PAGE).await?;
+        let page = api.user_playlists(offset, PLAYLIST_PAGE).await?;
         if page.items.is_empty() {
             break;
         }
         all.extend(page.items);
-        offset += MAX_PAGE;
+        offset += PLAYLIST_PAGE;
     }
     Ok(all)
 }
