@@ -64,6 +64,14 @@ expired access token, the client refreshes it and stores the new one.
   flight and appended in order. (TIDAL's total counts tracks that are no
   longer available and leaves them out of the pages, so a page can hold fewer
   than 100.)
+- **Library cache.** Track metadata and the order of your favourites are
+  kept in SQLite (`~/.cache/swell-player/library.sqlite3`), so the list is
+  drawn from disk at startup. Favourites come newest first, so one request
+  checks the cache: if the first page and the total still match, nothing was
+  added or removed. Otherwise the whole list is reloaded in the background and
+  swapped in. A cache older than a day is reloaded regardless, to catch tracks
+  that became unavailable. Playback URLs (signed and short-lived) and tokens
+  (in the keyring) are never cached. Signing out clears your entries.
 - **Virtualised list.** Tracks live in a `gio::ListStore` of compact records
   shown by a `gtk::ListView` that is the direct child of its
   `ScrolledWindow`, so GTK only keeps widgets for the rows around the

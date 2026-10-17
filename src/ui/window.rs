@@ -8,7 +8,8 @@ use adw::prelude::*;
 use gtk::{gio, glib};
 
 use super::library::TrackList;
-use crate::api::{self, Api};
+use crate::api::{self, Api, CachedHead, FavoritesUpdate};
+use crate::cache::{Cache, CachedCollection};
 use crate::covers::CoverLoader;
 use crate::{config, runtime, session};
 
@@ -129,34 +130,64 @@ impl Ui {
         let list = Rc::new(TrackList::new(self.covers.clone()));
         self.set_page("library", &list.widget);
 
-        let (pages_tx, mut pages) = tokio::sync::mpsc::unbounded_channel();
-        runtime::runtime().spawn(api.load_favorite_tracks(pages_tx));
-
         let ui = self.clone();
         glib::spawn_future_local(async move {
+            let user_id = api.client.get_user_id();
+            let (cache, cached) = runtime::spawn(open_cache(user_id)).await;
+            let head = cached.as_ref().map(CachedHead::of);
+            if let Some(cached) = cached {
+                list.append(cached.tracks);
+                ui.title.set_subtitle(&format!("{} tracks", list.len()));
+                crate::timing::mark_after_next_frame(&list.widget, "cached favourites on screen");
+            }
+
+            let (updates_tx, mut updates) = tokio::sync::mpsc::unbounded_channel();
+            runtime::runtime().spawn(api.sync_favorite_tracks(cache, head, updates_tx));
+
             let mut first = true;
-            while let Some(page) = pages.recv().await {
-                if first {
-                    crate::timing::mark("first favourites page received");
-                }
-                match page {
-                    Ok(tracks) => list.append(tracks),
+            while let Some(update) = updates.recv().await {
+                match update {
+                    Ok(FavoritesUpdate::Append(tracks)) => {
+                        list.append(tracks);
+                        if first {
+                            crate::timing::mark_after_next_frame(
+                                &list.widget,
+                                "first favourites on screen",
+                            );
+                        }
+                    }
+                    Ok(FavoritesUpdate::Replace(tracks)) => list.replace(tracks),
+                    Ok(FavoritesUpdate::UpToDate) => {}
                     Err(err) => {
                         log::warn!("loading favourites failed: {err:#}");
                         ui.title.set_subtitle("Could not load all favourites");
                         return;
                     }
                 }
-                if first {
-                    first = false;
-                    crate::timing::mark_after_next_frame(
-                        &list.widget,
-                        "first favourites on screen",
-                    );
-                }
+                first = false;
                 ui.title.set_subtitle(&format!("{} tracks", list.len()));
             }
-            crate::timing::mark("all favourites loaded");
+            crate::timing::mark("favourites up to date");
         });
     }
+}
+
+/// Opens the library cache and reads the user's cached favourites. A broken
+/// cache is not fatal: the list then just loads from TIDAL.
+async fn open_cache(user_id: Option<u64>) -> (Option<Cache>, Option<CachedCollection>) {
+    let cache = match Cache::open().await {
+        Ok(cache) => cache,
+        Err(err) => {
+            log::warn!("library cache unavailable: {err:#}");
+            return (None, None);
+        }
+    };
+    let cached = match user_id {
+        Some(user_id) => cache.favorite_tracks(user_id).await.unwrap_or_else(|err| {
+            log::warn!("could not read cached favourites: {err:#}");
+            None
+        }),
+        None => None,
+    };
+    (Some(cache), cached)
 }

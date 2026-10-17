@@ -77,6 +77,11 @@ impl TrackList {
         self.store.extend_from_slice(&objects);
     }
 
+    pub fn replace(&self, tracks: Vec<TrackInfo>) {
+        let objects: Vec<_> = tracks.into_iter().map(glib::BoxedAnyObject::new).collect();
+        self.store.splice(0, self.store.n_items(), &objects);
+    }
+
     pub fn len(&self) -> u32 {
         self.store.n_items()
     }

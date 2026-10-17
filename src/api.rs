@@ -9,6 +9,7 @@ use futures_util::{StreamExt, stream};
 use tidalrs::{DeviceAuthorizationResponse, FavoriteTrack, TidalClient};
 use tokio::sync::mpsc::UnboundedSender;
 
+use crate::cache::{Cache, CachedCollection};
 use crate::config;
 use crate::model::TrackInfo;
 use crate::session::{self, LoginFlow, StoredSession};
@@ -114,42 +115,78 @@ impl Api {
         self.store().await
     }
 
+    /// Removes the tokens from the keyring and the user's cached library.
     pub async fn sign_out(&self) -> Result<()> {
+        if let Some(user_id) = self.client.get_user_id() {
+            Cache::open().await?.forget_user(user_id).await?;
+        }
         session::clear().await
     }
 
-    /// Fetches every favourite track, newest first, and sends them to `pages`
-    /// one page at a time and in order, so the list can show the first page
-    /// while the rest is still loading.
+    /// Brings the favourite tracks up to date and reports to `updates`.
     ///
-    /// The first request reveals the total; the remaining pages are then
-    /// fetched with at most [`FAVORITES_CONCURRENCY`] requests in flight.
-    pub async fn load_favorite_tracks(
+    /// With nothing cached, the list fills page by page ([`FavoritesUpdate::Append`]).
+    /// With a cached list, one request usually settles it: favourites come
+    /// newest first, so if the first page and the total still match, nothing
+    /// was added or removed ([`FavoritesUpdate::UpToDate`]). Otherwise the
+    /// whole list is fetched and sent at once ([`FavoritesUpdate::Replace`]).
+    /// Either way a fresh download is written back to `cache`.
+    pub async fn sync_favorite_tracks(
         self: Arc<Self>,
-        pages: UnboundedSender<Result<Vec<TrackInfo>>>,
+        cache: Option<Cache>,
+        cached: Option<CachedHead>,
+        updates: UnboundedSender<Result<FavoritesUpdate>>,
     ) {
-        let first = match self.favorite_tracks_page(0).await {
-            Ok(first) => first,
-            Err(err) => {
-                let _ = pages.send(Err(err));
-                return;
-            }
-        };
-        let total = first.total;
-        if pages.send(Ok(into_infos(first.items))).is_err() {
-            return;
+        if let Err(err) = self.sync_favorites(cache, cached, &updates).await {
+            let _ = updates.send(Err(err));
         }
+    }
+
+    async fn sync_favorites(
+        &self,
+        cache: Option<Cache>,
+        cached: Option<CachedHead>,
+        updates: &UnboundedSender<Result<FavoritesUpdate>>,
+    ) -> Result<()> {
+        let first = self.favorite_tracks_page(0).await?;
+        let total = first.total;
+        let first = into_infos(first.items);
+        if cached
+            .as_ref()
+            .is_some_and(|cached| cached.matches(total, &first))
+        {
+            let _ = updates.send(Ok(FavoritesUpdate::UpToDate));
+            return Ok(());
+        }
+
+        // Without a cached list on screen, show each page as it arrives.
+        let progressive = cached.is_none();
+        let mut all = Vec::with_capacity(total);
+        if progressive {
+            let _ = updates.send(Ok(FavoritesUpdate::Append(first.clone())));
+        }
+        all.extend(first);
 
         let mut rest = stream::iter((FAVORITES_PAGE..total).step_by(FAVORITES_PAGE))
             .map(|offset| self.favorite_tracks_page(offset))
             .buffered(FAVORITES_CONCURRENCY);
         while let Some(page) = rest.next().await {
-            let page = page.map(|page| into_infos(page.items));
-            let failed = page.is_err();
-            if pages.send(page).is_err() || failed {
-                return;
+            let page = into_infos(page?.items);
+            if progressive {
+                let _ = updates.send(Ok(FavoritesUpdate::Append(page.clone())));
+            }
+            all.extend(page);
+        }
+        if !progressive {
+            let _ = updates.send(Ok(FavoritesUpdate::Replace(all.clone())));
+        }
+
+        if let (Some(cache), Some(user_id)) = (cache, self.client.get_user_id()) {
+            if let Err(err) = cache.store_favorite_tracks(user_id, total, all).await {
+                log::warn!("could not cache favourites: {err:#}");
             }
         }
+        Ok(())
     }
 
     async fn favorite_tracks_page(&self, offset: usize) -> Result<tidalrs::List<FavoriteTrack>> {
@@ -171,6 +208,50 @@ impl Api {
 /// TIDAL answers 50 favourites by default and accepts up to 100 per request.
 const FAVORITES_PAGE: usize = 100;
 const FAVORITES_CONCURRENCY: usize = 4;
+/// A cached list older than this is reloaded even if its head still matches,
+/// to pick up tracks that became unavailable or changed metadata.
+const FAVORITES_MAX_AGE: Duration = Duration::from_secs(24 * 60 * 60);
+
+pub enum FavoritesUpdate {
+    /// More tracks for the end of the list.
+    Append(Vec<TrackInfo>),
+    /// The cached list was stale: this is the whole current list.
+    Replace(Vec<TrackInfo>),
+    /// The cached list is current.
+    UpToDate,
+}
+
+/// What a cached list looked like, to check it against the first page.
+pub struct CachedHead {
+    ids: Vec<u64>,
+    total: usize,
+    age: Duration,
+}
+
+impl CachedHead {
+    pub fn of(cached: &CachedCollection) -> Self {
+        Self {
+            ids: cached
+                .tracks
+                .iter()
+                .take(FAVORITES_PAGE)
+                .map(|track| track.id)
+                .collect(),
+            total: cached.total,
+            age: cached.age,
+        }
+    }
+
+    fn matches(&self, total: usize, first_page: &[TrackInfo]) -> bool {
+        self.age < FAVORITES_MAX_AGE
+            && self.total == total
+            && first_page.len() <= self.ids.len()
+            && first_page
+                .iter()
+                .zip(&self.ids)
+                .all(|(track, id)| track.id == *id)
+    }
+}
 
 fn into_infos(items: Vec<FavoriteTrack>) -> Vec<TrackInfo> {
     items

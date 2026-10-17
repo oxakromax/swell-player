@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 mod api;
+mod cache;
 mod config;
 mod covers;
 mod model;
