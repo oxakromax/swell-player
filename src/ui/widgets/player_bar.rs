@@ -95,7 +95,7 @@ impl PlayerBar {
         // End: format, sleep timer, lyrics, queue, volume, more.
         let format = FormatBadge::new(ctx);
         format.set_expected(true);
-        let sleep = SleepIndicator::new(playback);
+        let sleep = SleepIndicator::icon_only(playback);
         let panel_toggle = |icon: &str, tooltip: &str| {
             let button = gtk::ToggleButton::builder()
                 .icon_name(icon)

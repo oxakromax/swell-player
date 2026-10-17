@@ -943,11 +943,23 @@ pub(super) struct SleepIndicator {
     pub widget: gtk::MenuButton,
     playback: Rc<Playback>,
     label: gtk::Label,
+    /// Whether the minutes are written next to the icon (the player bar
+    /// keeps them in the tooltip: it has no room to spare).
+    show_minutes: bool,
     _events: Subscription,
 }
 
 impl SleepIndicator {
     pub fn new(playback: &Rc<Playback>) -> Rc<Self> {
+        Self::build(playback, true)
+    }
+
+    /// Icon only; the minutes left are in the tooltip.
+    pub fn icon_only(playback: &Rc<Playback>) -> Rc<Self> {
+        Self::build(playback, false)
+    }
+
+    fn build(playback: &Rc<Playback>, show_minutes: bool) -> Rc<Self> {
         let label = gtk::Label::builder().css_classes(["numeric"]).build();
         let content = gtk::Box::builder().spacing(6).build();
         content.append(&gtk::Image::from_icon_name(icons::timer()));
@@ -963,6 +975,7 @@ impl SleepIndicator {
             widget,
             playback: playback.clone(),
             label,
+            show_minutes,
             _events: subscribe(playback, weak, |indicator, event| {
                 if matches!(event, Event::SleepTimer | Event::Track(_)) {
                     indicator.refresh();
@@ -999,7 +1012,7 @@ impl SleepIndicator {
             }
         };
         self.label.set_label(&text);
-        self.label.set_visible(!text.is_empty());
+        self.label.set_visible(self.show_minutes && !text.is_empty());
         self.widget.set_tooltip_text(Some(&tooltip));
         self.widget
             .update_property(&[gtk::accessible::Property::Label(&tooltip)]);
