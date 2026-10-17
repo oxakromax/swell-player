@@ -139,7 +139,30 @@ or volume below 100 %).
 
 ## Measurements
 
-MEASUREMENTS_PLACEHOLDER
+Swell against [High Tide](https://github.com/Nokse22/high-tide) 1.6
+(Python + PyGObject) on the same machine, both in a headless KWin session
+(`kwin_wayland --virtual`, 1280×860) with a saved session. Medians of three
+runs; memory read from `/proc` (RssAnon is the app's own heap; RSS also
+counts shared libraries and about 250 MB of GPU driver mappings that any
+GTK 4 app has here). Idle figures are averaged over 10 s with nothing
+playing.
+
+| | Swell | High Tide |
+|---|---|---|
+| Home on screen: RssAnon / RSS | **61 MB / 360 MB** | 131 MB / 504 MB |
+| 1,295 favourite tracks on screen, from the cache | **0.42 s** after launch (in sync with TIDAL at 0.50 s) | — ¹ |
+| … without Swell's cache | first 100 at **0.59 s**, all at 1.2–1.9 s | — ¹ |
+| Favourites view: RssAnon / RSS | 85 MB / 371 MB | — ¹ |
+| Idle CPU / main-thread wakeups | ~0 % / 1.1 per s | ~0 % / 0.1 per s |
+| Threads | 15 | 19 |
+| Hi-Res track chosen → audio | **0.67 s** (24-bit/96 kHz, reaches PipeWire as S24_32 at 96 kHz) | — |
+
+¹ High Tide does not cache favourites and has no way to open its favourites
+list directly; with a test harness, the proof of concept of Swell measured
+13.3 s for High Tide to show the same list, against 0.3 s for Swell.
+
+Machine: Arch Linux, KDE Plasma 6 (Wayland), GTK 4.24, libadwaita 1.10,
+GStreamer 1.28, Rust 1.99, release build.
 
 ## Development
 
