@@ -50,6 +50,7 @@ pub struct Library {
     mixes: RefCell<Vec<Mix>>,
     listeners: RefCell<Vec<(u64, Listener)>>,
     next_id: Cell<u64>,
+    loaded: Cell<bool>,
 }
 
 impl Library {
@@ -61,6 +62,7 @@ impl Library {
             mixes: RefCell::default(),
             listeners: RefCell::default(),
             next_id: Cell::new(1),
+            loaded: Cell::new(false),
         })
     }
 
@@ -93,10 +95,10 @@ impl Library {
         let (ids, mixes, playlists) = runtime::spawn(async move {
             let (ids, mixes, playlists) = tokio::join!(
                 api.favorite_ids(),
-                api.favorite_mixes(None),
+                all_mixes(&api),
                 all_playlists(&api)
             );
-            Ok((ids?, mixes.map(|p| p.items).unwrap_or_default(), playlists?))
+            Ok((ids?, mixes.unwrap_or_default(), playlists?))
         })
         .await?;
         let mut favorites = HashSet::new();
@@ -108,9 +110,21 @@ impl Library {
         self.favorites.replace(favorites);
         self.mixes.replace(mixes);
         self.playlists.replace(playlists);
+        self.loaded.set(true);
         self.emit(Change::Loaded);
         self.emit(Change::Playlists);
         Ok(())
+    }
+
+    /// Whether [`Library::load`] has finished once (favourites and
+    /// playlists are known).
+    pub fn is_loaded(&self) -> bool {
+        self.loaded.get()
+    }
+
+    /// Number of favourites of a kind (for counters).
+    pub fn favorite_count(&self, kind: fn(&Item) -> bool) -> usize {
+        self.favorites.borrow().iter().filter(|item| kind(item)).count()
     }
 
     pub fn is_favorite(&self, item: &Item) -> bool {
@@ -209,6 +223,24 @@ impl Library {
             }
         });
     }
+}
+
+/// Every favourite mix (v2 pages by cursor, 50 at a time).
+async fn all_mixes(api: &Api) -> Result<Vec<Mix>> {
+    let mut page = api.favorite_mixes(None).await?;
+    let mut all = std::mem::take(&mut page.items);
+    // A generous bound in case the cursor never ends.
+    for _ in 0..40 {
+        let Some(cursor) = page.cursor.take() else {
+            break;
+        };
+        page = api.favorite_mixes(Some(&cursor)).await?;
+        if page.items.is_empty() {
+            break;
+        }
+        all.append(&mut page.items);
+    }
+    Ok(all)
 }
 
 async fn all_playlists(api: &Api) -> Result<Vec<Playlist>> {
