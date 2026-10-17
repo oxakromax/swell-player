@@ -22,6 +22,7 @@ use super::super::dialogs;
 use super::super::menus::ItemMenu;
 use super::super::nav::CollectionView;
 use super::super::widgets::media_card::MediaCard;
+use super::super::widgets::section;
 use super::super::widgets::{icon_name, label_button};
 use super::collection::{
     SortOption, Template, count_label, empty_page, fold, follow_library, skeleton_cards,
@@ -165,13 +166,13 @@ pub(super) fn page(ctx: &Rc<Ctx>, view: CollectionView) -> adw::NavigationPage {
         .factory(&factory)
         .min_columns(1)
         .max_columns(24)
-        .margin_start(12)
-        .margin_end(12)
         .margin_top(6)
         .margin_bottom(24)
         .css_classes(["media-grid"])
         .build();
     grid.update_property(&[gtk::accessible::Property::Label(title)]);
+    // Covers on the page's content edge (cells and cards have padding).
+    section::align_to_edge(&grid, section::GRID_INSET);
     let menu = ItemMenu::new(ctx, &grid);
     bind_cards(ctx, &factory, &menu);
     let scrolled = gtk::ScrolledWindow::builder()
@@ -253,7 +254,7 @@ fn bind_cards(ctx: &Rc<Ctx>, factory: &gtk::SignalListItemFactory, menu: &Rc<Ite
         let widget = MediaCard::new(&ctx, &card.item, menu.as_ref())
             .widget()
             .clone();
-        widget.set_halign(gtk::Align::Center);
+        widget.set_halign(gtk::Align::Start);
         item.set_child(Some(&widget));
         item.set_activatable(false);
         item.set_focusable(false);

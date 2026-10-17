@@ -4,12 +4,12 @@
 //!
 //! [`Scaffold`] is the page around the sections: a header bar whose title
 //! appears once the page heading scrolls away, the loading / content /
-//! error stack, and a clamped column of sections whose side margins follow
-//! the page width. [`section_widget`] turns a [`Section`] into its widget:
-//! the kit's renderer, plus landscape tiles for promotions and "View All"
-//! on category chips.
+//! error stack, and a clamped column of sections, each lining its content
+//! up with the page's content edge (`.page-content`; card rows scroll from
+//! side to side). [`section_widget`] turns a [`Section`] into its widget:
+//! the kit's renderer, plus a banner or large tiles for promotions and
+//! "View All" on category chips.
 
-use std::cell::RefCell;
 use std::rc::Rc;
 
 use adw::prelude::*;
@@ -23,14 +23,16 @@ use super::super::widgets::section::{self, activate_item, view_all_route};
 use super::super::widgets::skeleton;
 use super::super::widgets::status::PageStack;
 use super::super::widgets::track_list::compact_bin;
-use crate::covers::{Image, Ticket};
+
 use crate::tidal::pages::{Item, Section, SectionKind};
 
 /// Widest the column of sections gets.
 const MAX_WIDTH: i32 = 1600;
 /// Size of a promotion tile's image (TIDAL serves them at 550×400).
-const FEATURED_WIDTH: i32 = 330;
-const FEATURED_HEIGHT: i32 = 240;
+const FEATURED_WIDTH: i32 = 440;
+const FEATURED_HEIGHT: i32 = 320;
+/// Width of a promotion tile in narrow windows.
+const NARROW_FEATURED_WIDTH: i32 = 300;
 
 /// The frame of a page made of sections. It is kept by the page's state,
 /// which the page owns, so it only refers to the page weakly.
@@ -73,7 +75,7 @@ impl Scaffold {
             .wrap(true)
             .lines(2)
             .ellipsize(gtk::pango::EllipsizeMode::End)
-            .css_classes(["title-1"])
+            .css_classes(["title-1", "page-content"])
             .accessible_role(gtk::AccessibleRole::Heading)
             .build();
         let sections = gtk::Box::builder()
@@ -119,15 +121,14 @@ impl Scaffold {
         toolbar.add_top_bar(&header_bar);
 
         let bin = compact_bin(stack.widget(), {
-            let column = column.downgrade();
             let heading = heading.downgrade();
             move |is_compact| {
-                if let (Some(column), Some(heading)) = (column.upgrade(), heading.upgrade()) {
-                    set_compact(&column, &heading, is_compact);
+                if let Some(heading) = heading.upgrade() {
+                    set_compact(&heading, is_compact);
                 }
             }
         });
-        set_compact(&column, &heading, false);
+        set_compact(&heading, false);
         toolbar.set_content(Some(&bin));
 
         // The header bar shows the title once the heading scrolls away.
@@ -216,10 +217,7 @@ impl Scaffold {
     }
 }
 
-fn set_compact(column: &gtk::Box, heading: &gtk::Label, compact: bool) {
-    let margin = if compact { 12 } else { 24 };
-    column.set_margin_start(margin);
-    column.set_margin_end(margin);
+fn set_compact(heading: &gtk::Label, compact: bool) {
     if compact {
         heading.remove_css_class("title-1");
         heading.add_css_class("title-2");
@@ -287,6 +285,7 @@ fn links_section(ctx: &Rc<Ctx>, section: &Section) -> gtk::Widget {
         .spacing(12)
         .build();
     let header = title_row(&section.title, section.subtitle.as_deref());
+    header.add_css_class("page-content");
     header.append(&view_all_button(ctx, route));
     widget.append(&header);
     let untitled = Section {
@@ -313,14 +312,22 @@ fn view_all_button(ctx: &Rc<Ctx>, route: super::super::nav::Route) -> gtk::Butto
     button
 }
 
-/// Promotions: a row of landscape tiles (image, title, subtitle).
+/// Promotions: a lone one is a banner across the page (its image beside
+/// its title, or above it in narrow windows); several are a row of large
+/// landscape tiles that scrolls sideways.
 fn featured_section(ctx: &Rc<Ctx>, section: &Section) -> gtk::Widget {
     let widget = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
         .spacing(12)
         .build();
     if !section.title.is_empty() {
-        widget.append(&title_row(&section.title, section.subtitle.as_deref()));
+        let title = title_row(&section.title, section.subtitle.as_deref());
+        title.add_css_class("page-content");
+        widget.append(&title);
+    }
+    if let [item] = section.items.as_slice() {
+        widget.append(&featured_banner(ctx, item));
+        return widget.upcast();
     }
     let row = gtk::Box::builder().spacing(12).build();
     for item in section
@@ -330,65 +337,59 @@ fn featured_section(ctx: &Rc<Ctx>, section: &Section) -> gtk::Widget {
     {
         row.append(&featured_tile(ctx, item));
     }
+    section::align_to_edge(&row, section::CARD_INSET);
     let scrolled = gtk::ScrolledWindow::builder()
         .hscrollbar_policy(gtk::PolicyType::External)
         .vscrollbar_policy(gtk::PolicyType::Never)
         .child(&row)
+        .css_classes([media_card::CAROUSEL_SCROLLER])
         .build();
     widget.append(&scrolled);
     widget.upcast()
 }
 
-fn featured_tile(ctx: &Rc<Ctx>, item: &Item) -> gtk::Widget {
-    let (title, subtitle) = match item {
+/// Title and subtitle of a promotion.
+fn featured_text(item: &Item) -> (String, String) {
+    match item {
         Item::Link(link) => (
             link.title.clone(),
             link.subtitle.clone().unwrap_or_default(),
         ),
         other => (other_title(other), String::new()),
-    };
+    }
+}
+
+/// The promotion's landscape image (TIDAL serves them at 550×400).
+fn featured_picture(ctx: &Rc<Ctx>, item: &Item, width: i32) -> gtk::Picture {
     let picture = gtk::Picture::builder()
         .content_fit(gtk::ContentFit::Cover)
-        .width_request(FEATURED_WIDTH)
-        .height_request(FEATURED_HEIGHT)
         .overflow(gtk::Overflow::Hidden)
         .css_classes(["cover", "large", "cover-placeholder"])
         .accessible_role(gtk::AccessibleRole::Presentation)
         .build();
     if let Some(image) = media_card::item_image(item) {
-        load_when_mapped(ctx, &picture, image, FEATURED_WIDTH);
+        let weak = picture.downgrade();
+        media_card::load_when_shown(ctx, &picture, image, width, move |texture| {
+            if let Some(picture) = weak.upgrade() {
+                picture.set_paintable(Some(texture));
+            }
+        });
     }
-    let content = gtk::Box::builder()
-        .orientation(gtk::Orientation::Vertical)
-        .spacing(6)
-        .width_request(FEATURED_WIDTH)
-        .build();
-    content.append(&picture);
-    content.append(
-        &gtk::Label::builder()
-            .label(&title)
-            .xalign(0.0)
-            .ellipsize(gtk::pango::EllipsizeMode::End)
-            .max_width_chars(1)
-            .tooltip_text(&title)
-            .css_classes(["heading"])
-            .build(),
-    );
-    if !subtitle.is_empty() {
-        content.append(
-            &gtk::Label::builder()
-                .label(&subtitle)
-                .xalign(0.0)
-                .ellipsize(gtk::pango::EllipsizeMode::End)
-                .max_width_chars(1)
-                .css_classes(["caption", "dimmed"])
-                .build(),
-        );
-    }
+    picture
+}
+
+/// A flat button that opens `item`, described for screen readers.
+fn featured_button(
+    ctx: &Rc<Ctx>,
+    item: &Item,
+    content: &gtk::Box,
+    classes: &[&str],
+) -> gtk::Button {
+    let (title, subtitle) = featured_text(item);
     let button = gtk::Button::builder()
-        .child(&content)
+        .child(content)
         .valign(gtk::Align::Start)
-        .css_classes(["flat", "media-card-button"])
+        .css_classes(classes)
         .build();
     let accessible = if subtitle.is_empty() {
         title
@@ -403,7 +404,102 @@ fn featured_tile(ctx: &Rc<Ctx>, item: &Item) -> gtk::Widget {
             activate_item(&ctx, &open);
         }
     });
+    button
+}
+
+/// One tile of a row of promotions; smaller in narrow windows.
+fn featured_tile(ctx: &Rc<Ctx>, item: &Item) -> gtk::Widget {
+    let (title, subtitle) = featured_text(item);
+    let picture = featured_picture(ctx, item, FEATURED_WIDTH);
+    let content = gtk::Box::builder()
+        .orientation(gtk::Orientation::Vertical)
+        .spacing(6)
+        .build();
+    content.append(&picture);
+    content.append(&text_label(&title, &["heading"], 1));
+    if !subtitle.is_empty() {
+        content.append(&text_label(&subtitle, &["caption", "dimmed"], 1));
+    }
+    let size = |narrow: bool| {
+        if narrow {
+            (NARROW_FEATURED_WIDTH, NARROW_FEATURED_WIDTH * 8 / 11)
+        } else {
+            (FEATURED_WIDTH, FEATURED_HEIGHT)
+        }
+    };
+    let apply = {
+        let picture = picture.downgrade();
+        let content = content.downgrade();
+        move |narrow: bool| {
+            let (width, height) = size(narrow);
+            if let (Some(picture), Some(content)) = (picture.upgrade(), content.upgrade()) {
+                picture.set_size_request(width, height);
+                content.set_width_request(width);
+            }
+        }
+    };
+    apply(false);
+    super::super::widgets::follow_narrow(&content, apply);
+    featured_button(ctx, item, &content, &["flat", "media-card-button"]).upcast()
+}
+
+/// A lone promotion: image and text side by side across the page.
+fn featured_banner(ctx: &Rc<Ctx>, item: &Item) -> gtk::Widget {
+    let (title, subtitle) = featured_text(item);
+    let picture = featured_picture(ctx, item, FEATURED_WIDTH);
+    let text = gtk::Box::builder()
+        .orientation(gtk::Orientation::Vertical)
+        .spacing(6)
+        .valign(gtk::Align::Center)
+        .hexpand(true)
+        .build();
+    text.append(&text_label(&title, &["title-2"], 2));
+    if !subtitle.is_empty() {
+        text.append(&text_label(&subtitle, &["dimmed"], 3));
+    }
+    let content = gtk::Box::builder().spacing(24).build();
+    content.append(&picture);
+    content.append(&text);
+    let apply = {
+        let picture = picture.downgrade();
+        let content = content.downgrade();
+        move |narrow: bool| {
+            let (Some(picture), Some(content)) = (picture.upgrade(), content.upgrade()) else {
+                return;
+            };
+            if narrow {
+                // Above the text, as wide as the page.
+                content.set_orientation(gtk::Orientation::Vertical);
+                content.set_spacing(12);
+                picture.set_size_request(-1, NARROW_FEATURED_WIDTH * 8 / 11);
+                picture.set_hexpand(true);
+            } else {
+                content.set_orientation(gtk::Orientation::Horizontal);
+                content.set_spacing(24);
+                picture.set_size_request(FEATURED_WIDTH, FEATURED_HEIGHT);
+                picture.set_hexpand(false);
+            }
+        }
+    };
+    apply(false);
+    super::super::widgets::follow_narrow(&content, apply);
+    let button = featured_button(ctx, item, &content, &["flat", "media-card-button"]);
+    section::align_to_edge(&button, section::CARD_INSET);
     button.upcast()
+}
+
+/// A left-aligned label of at most `lines` lines, ellipsized.
+fn text_label(text: &str, classes: &[&str], lines: i32) -> gtk::Label {
+    gtk::Label::builder()
+        .label(text)
+        .xalign(0.0)
+        .wrap(lines > 1)
+        .lines(lines)
+        .ellipsize(gtk::pango::EllipsizeMode::End)
+        .max_width_chars(1)
+        .tooltip_text(text)
+        .css_classes(classes)
+        .build()
 }
 
 fn other_title(item: &Item) -> String {
@@ -417,43 +513,13 @@ fn other_title(item: &Item) -> String {
     }
 }
 
-/// Loads `image` into `picture` once it is first mapped; dropping the
-/// picture cancels the download.
-fn load_when_mapped(ctx: &Rc<Ctx>, picture: &gtk::Picture, image: Image, width: i32) {
-    let ticket: Rc<RefCell<Option<Ticket>>> = Rc::default();
-    let covers = Rc::downgrade(&ctx.covers);
-    let handler: Rc<RefCell<Option<glib::SignalHandlerId>>> = Rc::default();
-    let id = picture.connect_map({
-        let ticket = ticket.clone();
-        let handler = handler.clone();
-        move |picture| {
-            if let Some(id) = handler.borrow_mut().take() {
-                picture.disconnect(id);
-            }
-            let Some(covers) = covers.upgrade() else {
-                return;
-            };
-            let weak = picture.downgrade();
-            let pixels = super::super::widgets::device_pixels(picture, width);
-            ticket.replace(covers.load(&image, pixels, 0, move |texture| {
-                if let Some(picture) = weak.upgrade() {
-                    picture.set_paintable(Some(texture));
-                }
-            }));
-        }
-    });
-    handler.replace(Some(id));
-    picture.connect_destroy(move |_| drop(ticket.take()));
-}
-
 /// Ghost tiles, chips and carousels with the shape of the page.
 fn skeleton_for(shape: Shape) -> gtk::Widget {
     let page = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
         .spacing(36)
         .margin_top(12)
-        .margin_start(24)
-        .margin_end(24)
+        .css_classes(["page-content"])
         .build();
     page.update_property(&[gtk::accessible::Property::Label("Loading")]);
     page.update_state(&[gtk::accessible::State::Busy(true)]);

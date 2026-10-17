@@ -23,6 +23,9 @@ use super::context::Ctx;
 use super::nav::Route;
 
 pub fn build(ctx: &Rc<Ctx>, route: &Route) -> adw::NavigationPage {
+    // Recently Played says when tracks played: start noting it as soon as
+    // the first page (Home) is built.
+    history::record_plays(ctx);
     match route {
         Route::Home => home::page(ctx),
         Route::Explore => explore::page(ctx, None),

@@ -1,12 +1,18 @@
 //! Recently played (docs/design.md §3.12).
 //!
 //! One virtualised list: what played in this session (from the queue's
-//! history, newest first, refreshed as tracks change) as rows, then, as the
-//! list's footer, what TIDAL remembers across devices (the home feed's
-//! "Recently played" module, `home/pages/CONTINUE_LISTEN_TO/view-all`) as
-//! cards. The cards come from the response cache first.
+//! history, newest first, refreshed as tracks change) as rows grouped by
+//! day ("Today", "Yesterday", "This Week", "Earlier") with when each one
+//! played ("5 min ago"), then, as the list's footer, what TIDAL remembers
+//! across devices (the home feed's "Recently played" module,
+//! `home/pages/CONTINUE_LISTEN_TO/view-all`) as cards. The cards come from
+//! the response cache first.
+//!
+//! The queue does not keep times: [`record_plays`] notes when each track
+//! starts playing, from the first page built on. Tracks without a time
+//! (restored from the last run) are "Earlier".
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::rc::{Rc, Weak};
 use std::time::Duration;
 
@@ -18,17 +24,141 @@ use super::super::menus::ItemMenu;
 use super::super::sidebar;
 use super::super::widgets::carousel::title_row;
 use super::super::widgets::media_card::MediaCard;
+use super::super::widgets::section;
 use super::super::widgets::skeleton;
 use super::super::widgets::status::{describe_error, empty_status};
-use super::super::widgets::track_list::{TrackList, Variant, compact_bin};
+use super::super::widgets::track_list::{Rows, TrackList, Variant, compact_bin};
 use crate::model::TrackInfo;
-use crate::playback::{Event, Source};
+use crate::playback::{Event, PlayState, Source};
 use crate::tidal::pages::{self, Section};
 use crate::tidal::{self, Base};
 
 /// The `viewAll` of the home feed's CONTINUE_LISTEN_TO module.
 const PATH: &str = "home/pages/CONTINUE_LISTEN_TO/view-all?platform=WEB";
 const FRESH_FOR: Duration = Duration::from_secs(2 * 60);
+
+thread_local! {
+    /// Track ids and when they started playing (Unix seconds), oldest
+    /// first, for the session of [`RECORDING`].
+    static PLAYED: RefCell<Vec<(u64, i64)>> = RefCell::default();
+    /// The session (`Ctx`) being recorded.
+    static RECORDING: RefCell<Weak<Ctx>> = RefCell::default();
+}
+
+/// Notes when tracks start playing in `ctx`'s session (once per session;
+/// a new session starts a new record).
+pub(super) fn record_plays(ctx: &Rc<Ctx>) {
+    let current = RECORDING.with(|r| r.borrow().upgrade());
+    if current.is_some_and(|current| Rc::ptr_eq(&current, ctx)) {
+        return;
+    }
+    RECORDING.with(|r| r.replace(Rc::downgrade(ctx)));
+    PLAYED.with(|p| p.borrow_mut().clear());
+    // A track counts as played once it actually plays (not when a paused
+    // session is restored).
+    let now = || glib::DateTime::now_utc().map_or(0, |now| now.to_unix());
+    let current = ctx.playback.current().map(|t| t.id);
+    let pending = Cell::new(None::<u64>);
+    match (current, ctx.playback.state()) {
+        (Some(id), PlayState::Playing) => PLAYED.with(|p| p.borrow_mut().push((id, now()))),
+        (id, _) => pending.set(id),
+    }
+    ctx.playback.subscribe(move |event| match event {
+        Event::Track(track) => pending.set(track.as_ref().map(|t| t.id)),
+        Event::State(PlayState::Playing) => {
+            if let Some(id) = pending.take() {
+                PLAYED.with(|p| p.borrow_mut().push((id, now())));
+            }
+        }
+        _ => {}
+    });
+}
+
+/// When each of `tracks` (newest first) started playing, as far as known:
+/// matched newest first against the record.
+fn play_times(tracks: &[TrackInfo]) -> Vec<Option<i64>> {
+    PLAYED.with(|played| {
+        let played = played.borrow();
+        let mut rest = played.iter().rev();
+        tracks
+            .iter()
+            .map(|track| {
+                let found = rest.clone().position(|(id, _)| *id == track.id)?;
+                rest.nth(found).map(|(_, time)| *time)
+            })
+            .collect()
+    })
+}
+
+/// The day groups of Recently Played.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Day {
+    Today,
+    Yesterday,
+    ThisWeek,
+    Earlier,
+}
+
+impl Day {
+    fn title(self) -> &'static str {
+        match self {
+            Self::Today => "Today",
+            Self::Yesterday => "Yesterday",
+            Self::ThisWeek => "This Week",
+            Self::Earlier => "Earlier",
+        }
+    }
+}
+
+/// The group of something played at `time` (Unix seconds) seen at `now`
+/// (local time), and how long ago it was: "Just now", "5 min ago",
+/// "3 h ago", then the time of day ("14:05") or the weekday and time
+/// ("Mon 14:05"), or the date ("Oct 3").
+fn when(now: &glib::DateTime, time: Option<i64>) -> (Day, Option<String>) {
+    let Some(played) = time.and_then(|time| glib::DateTime::from_unix_local(time).ok()) else {
+        return (Day::Earlier, None);
+    };
+    let days = days_between(&played, now);
+    let seconds = now.to_unix() - played.to_unix();
+    let day = match days {
+        0 => Day::Today,
+        1 => Day::Yesterday,
+        2..=6 => Day::ThisWeek,
+        _ => Day::Earlier,
+    };
+    let note = if seconds < 60 {
+        "Just now".to_owned()
+    } else if seconds < 3600 {
+        format!("{} min ago", seconds / 60)
+    } else if days == 0 {
+        format!("{} h ago", seconds / 3600)
+    } else {
+        let format = match day {
+            Day::Yesterday => "%H:%M",
+            Day::ThisWeek => "%a %H:%M",
+            _ => "%b %-e",
+        };
+        played.format(format).map(String::from).unwrap_or_default()
+    };
+    (day, Some(note))
+}
+
+/// Calendar days from `earlier` to `later` (local dates).
+fn days_between(earlier: &glib::DateTime, later: &glib::DateTime) -> i64 {
+    let date = |time: &glib::DateTime| {
+        glib::DateTime::new(
+            &time.timezone(),
+            time.year(),
+            time.month(),
+            time.day_of_month(),
+            12,
+            0,
+            0.0,
+        )
+        .map_or(0, |noon| noon.to_unix())
+    };
+    ((date(later) - date(earlier)) as f64 / 86_400.0).round() as i64
+}
 
 struct HistoryPage {
     ctx: Weak<Ctx>,
@@ -55,9 +185,8 @@ pub fn page(ctx: &Rc<Ctx>) -> adw::NavigationPage {
         .spacing(6)
         .margin_top(18)
         .margin_bottom(6)
-        .margin_start(12)
-        .margin_end(12)
         .build();
+    section::align_to_edge(&header, 0);
     header.append(&title_row("This Session", None));
     let session_hint = gtk::Label::builder()
         .label("Tracks you play in Swell appear here.")
@@ -79,19 +208,20 @@ pub fn page(ctx: &Rc<Ctx>) -> adw::NavigationPage {
     for _ in 0..6 {
         ghosts.append(&skeleton::card(160));
     }
+    // Ghosts and hints start where card covers do.
+    ghosts.set_margin_start(section::CARD_INSET);
     remote.add_named(&ghosts, Some("loading"));
+    // Cards line up with the content edge (they have padding of their own).
+    section::align_to_edge(&remote, section::CARD_INSET);
     let footer = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
         .spacing(12)
         .margin_top(30)
         .margin_bottom(36)
-        .margin_start(12)
-        .margin_end(12)
         .build();
-    footer.append(&title_row(
-        "On TIDAL",
-        Some("What you played lately, on any device"),
-    ));
+    let footer_title = title_row("On TIDAL", Some("What you played lately, on any device"));
+    footer_title.add_css_class("page-content");
+    footer.append(&footer_title);
     footer.append(&remote);
     list.set_footer(Some(&footer));
 
@@ -129,28 +259,34 @@ pub fn page(ctx: &Rc<Ctx>) -> adw::NavigationPage {
         task: RefCell::default(),
     });
     let weak = Rc::downgrade(&state);
-    let edges = [header.downgrade(), footer.downgrade()];
     let bin = compact_bin(&state.stack, move |compact| {
         if let Some(state) = weak.upgrade() {
             state.list.set_compact(compact);
-        }
-        // Narrow: the row's own padding is margin enough, and two columns
-        // of cards fit.
-        for edge in edges.iter().filter_map(|e| e.upgrade()) {
-            edge.set_margin_start(if compact { 0 } else { 12 });
-            edge.set_margin_end(if compact { 0 } else { 12 });
         }
     });
     toolbar.set_content(Some(&bin));
 
     let weak = Rc::downgrade(&state);
     let subscription = ctx.playback.subscribe(move |event| {
-        if let (Event::Track(_), Some(state)) = (event, weak.upgrade()) {
+        if let (Event::Track(_) | Event::State(PlayState::Playing), Some(state)) =
+            (event, weak.upgrade())
+        {
             state.show_session();
         }
     });
 
     state.show_session();
+    // "5 min ago" moves on: refresh while the page lives.
+    let weak = Rc::downgrade(&state);
+    glib::timeout_add_seconds_local(60, move || match weak.upgrade() {
+        Some(state) => {
+            if state.list.widget().is_mapped() {
+                state.show_session();
+            }
+            glib::ControlFlow::Continue
+        }
+        None => glib::ControlFlow::Break,
+    });
     state.load_remote();
     let weak_ctx = Rc::downgrade(ctx);
     let owned = RefCell::new(Some(state));
@@ -177,7 +313,29 @@ impl HistoryPage {
         tracks.extend(ctx.playback.current());
         tracks.reverse();
         self.session_hint.set_visible(tracks.is_empty());
-        self.list.set_tracks(tracks);
+        let times = play_times(&tracks);
+        let now = glib::DateTime::now_local().ok();
+        let mut sections: Vec<(String, Rows)> = Vec::new();
+        let mut last = None;
+        for (track, time) in tracks.into_iter().zip(times) {
+            let (day, note) = now
+                .as_ref()
+                .map_or((Day::Earlier, None), |now| when(now, time));
+            // A track without a time stays with the ones played around it.
+            let day = if note.is_none() {
+                last.unwrap_or(day)
+            } else {
+                day
+            };
+            if last != Some(day) {
+                last = Some(day);
+                sections.push((day.title().to_owned(), Vec::new()));
+            }
+            if let Some((_, rows)) = sections.last_mut() {
+                rows.push((track, note));
+            }
+        }
+        self.list.set_sections(sections);
         self.update_empty();
     }
 
@@ -274,11 +432,47 @@ impl HistoryPage {
     }
 }
 
+/// A line of text where the cards would be (which start 6 px in).
 fn hint(text: &str) -> gtk::Label {
     gtk::Label::builder()
         .label(text)
         .xalign(0.0)
         .wrap(true)
+        .margin_start(section::CARD_INSET)
         .css_classes(["dimmed"])
         .build()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn plays_group_by_day() {
+        let local = |d: i32, h: i32, m: i32| {
+            glib::DateTime::new(&glib::TimeZone::local(), 2026, 10, d, h, m, 0.0).unwrap()
+        };
+        let now = local(17, 15, 0);
+        let at = |d, h, m| Some(local(d, h, m).to_unix());
+        assert_eq!(when(&now, None), (Day::Earlier, None));
+        assert_eq!(
+            when(&now, Some(now.to_unix() - 30)).1.as_deref(),
+            Some("Just now")
+        );
+        assert_eq!(
+            when(&now, at(17, 14, 55)),
+            (Day::Today, Some("5 min ago".into()))
+        );
+        assert_eq!(
+            when(&now, at(17, 11, 30)),
+            (Day::Today, Some("3 h ago".into()))
+        );
+        assert_eq!(
+            when(&now, at(16, 20, 5)),
+            (Day::Yesterday, Some("20:05".into()))
+        );
+        assert_eq!(when(&now, at(16, 14, 30)).0, Day::Yesterday);
+        assert_eq!(when(&now, at(13, 9, 0)).0, Day::ThisWeek);
+        assert_eq!(when(&now, at(3, 9, 0)).0, Day::Earlier);
+    }
 }

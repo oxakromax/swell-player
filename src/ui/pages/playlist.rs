@@ -35,6 +35,7 @@ use super::super::menus;
 use super::super::nav::{CollectionView, Route};
 use super::super::sidebar;
 use super::super::widgets::page_header::PageHeader;
+use super::super::widgets::section;
 use super::super::widgets::skeleton;
 use super::super::widgets::status::{self, PageStack};
 use super::super::widgets::track_list::{TrackList, Variant, compact_bin};
@@ -471,6 +472,7 @@ impl PlaylistPage {
                 state.play(None, true);
             }
         });
+        section::align_to_edge(header.widget(), 0);
         self.list.set_header(Some(header.widget()));
         self.title.set_title(&playlist.title);
         if let Some(page) = self.page.upgrade() {

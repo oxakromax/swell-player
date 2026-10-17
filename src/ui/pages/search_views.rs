@@ -9,17 +9,18 @@ use adw::prelude::*;
 use gtk::{gio, glib};
 
 use super::super::context::Ctx;
+use super::super::format;
 use super::super::menus::{self, ItemMenu, PlayMode, Subject};
 use super::super::widgets::carousel::{CarouselSection, MAX_CARDS, title_row};
 use super::super::widgets::media_card::{self, MediaCard, attach_menu};
-use super::super::widgets::section::{SHORT_LIST, activate_item};
+use super::super::widgets::section::{self, SHORT_LIST, activate_item};
 use super::super::widgets::track_list::{TrackList, Variant};
 use super::search_data::{Filter, Results};
 use crate::playback::Source;
 use crate::tidal::pages::Item;
 
 /// Logical size of the top hit's artwork (§1.5).
-const TOP_HIT_SIZE: i32 = 120;
+const TOP_HIT_SIZE: i32 = 96;
 /// Width of the top hit beside the tracks.
 const TOP_HIT_WIDTH: i32 = 360;
 
@@ -57,7 +58,10 @@ impl AllView {
             .margin_top(12)
             .margin_bottom(36)
             .build();
-        let top_row = gtk::Box::builder().spacing(24).build();
+        let top_row = gtk::Box::builder()
+            .spacing(24)
+            .css_classes(["page-content"])
+            .build();
         // Both titles get the height of the one with "View All".
         let titles = gtk::SizeGroup::new(gtk::SizeGroupMode::Vertical);
 
@@ -175,14 +179,12 @@ pub fn play_on_activate(
     });
 }
 
-/// The top hit: a large button (120 px artwork, name, type) and a play
-/// button over its corner, as siblings.
+/// The top hit, compact (docs/design.md §3.4): artwork, name, what it is,
+/// its key facts, and Play, in a card as tall as its content. The card
+/// opens the item; Play is a sibling button, not nested in it.
 fn top_hit(ctx: &Rc<Ctx>, item: &Item, played: Rc<dyn Fn()>) -> gtk::Widget {
     let (name, kind) = describe(item);
-    let content = gtk::Box::builder()
-        .spacing(18)
-        .valign(gtk::Align::Center)
-        .build();
+    let facts = facts(item);
     let art: gtk::Widget = if let Item::Artist(_) = item {
         media_card::avatar(ctx, media_card::item_image(item), &name, TOP_HIT_SIZE).upcast()
     } else {
@@ -200,72 +202,70 @@ fn top_hit(ctx: &Rc<Ctx>, item: &Item, played: Rc<dyn Fn()>) -> gtk::Widget {
         )
     };
     art.set_valign(gtk::Align::Center);
-    content.append(&art);
     let text = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
-        .spacing(6)
+        .spacing(4)
         .valign(gtk::Align::Center)
         .hexpand(true)
-        // Leaves room for the play button in the corner.
-        .margin_end(48)
         .build();
-    text.append(
-        &gtk::Label::builder()
-            .label(&name)
+    let line = |label: &str, classes: &[&str], lines: i32| {
+        gtk::Label::builder()
+            .label(label)
             .xalign(0.0)
-            .wrap(true)
-            .lines(2)
+            .wrap(lines > 1)
+            .lines(lines)
             .ellipsize(gtk::pango::EllipsizeMode::End)
             .max_width_chars(1)
             .hexpand(true)
-            .tooltip_text(&name)
-            .css_classes(["title-2"])
-            .build(),
-    );
-    text.append(
-        &gtk::Label::builder()
-            .label(&kind)
-            .xalign(0.0)
-            .ellipsize(gtk::pango::EllipsizeMode::End)
-            .max_width_chars(1)
-            .hexpand(true)
-            .css_classes(["dimmed"])
-            .build(),
-    );
+            .tooltip_text(label)
+            .css_classes(classes)
+            .build()
+    };
+    text.append(&line(&name, &["title-2"], 2));
+    text.append(&line(&kind, &["dimmed"], 1));
+    if !facts.is_empty() {
+        text.append(&line(&facts, &["caption", "dimmed", "numeric"], 1));
+    }
+    let content = gtk::Box::builder().spacing(18).build();
+    content.append(&art);
     content.append(&text);
 
-    let button = gtk::Button::builder()
+    let open = gtk::Button::builder()
         .child(&content)
-        .vexpand(true)
-        .css_classes(["card"])
+        .hexpand(true)
+        .css_classes(["flat", "top-hit"])
         .build();
-    content.set_margin_top(18);
-    content.set_margin_bottom(18);
-    content.set_margin_start(18);
-    content.set_margin_end(18);
-    button.update_property(&[gtk::accessible::Property::Label(&format!(
-        "Top hit: {name}, {kind}"
+    let summary = [name.as_str(), kind.as_str(), facts.as_str()]
+        .into_iter()
+        .filter(|part| !part.is_empty())
+        .collect::<Vec<_>>()
+        .join(", ");
+    open.update_property(&[gtk::accessible::Property::Label(&format!(
+        "Top hit: {summary}"
     ))]);
     let weak = Rc::downgrade(ctx);
-    let open = item.clone();
+    let target = item.clone();
     let opened = played.clone();
-    button.connect_clicked(move |_| {
+    open.connect_clicked(move |_| {
         if let Some(ctx) = weak.upgrade() {
             opened();
-            activate_item(&ctx, &open);
+            activate_item(&ctx, &target);
         }
     });
 
-    let widget = gtk::Overlay::builder().child(&button).build();
+    let card = gtk::Box::builder()
+        .spacing(6)
+        .valign(gtk::Align::Start)
+        .css_classes(["card"])
+        .build();
+    card.append(&open);
     if let Some(subject) = Subject::from_item(item) {
         let play = gtk::Button::builder()
             .icon_name("media-playback-start-symbolic")
             .width_request(48)
             .height_request(48)
-            .halign(gtk::Align::End)
-            .valign(gtk::Align::End)
-            .margin_end(12)
-            .margin_bottom(12)
+            .valign(gtk::Align::Center)
+            .margin_end(18)
             .css_classes(["circular", "suggested-action"])
             .build();
         super::super::widgets::label_button(&play, &format!("Play {name}"));
@@ -277,11 +277,54 @@ fn top_hit(ctx: &Rc<Ctx>, item: &Item, played: Rc<dyn Fn()>) -> gtk::Widget {
                 menus::play(&ctx, &to_play, PlayMode::Play);
             }
         });
-        widget.add_overlay(&play);
-        let menu = ItemMenu::new(ctx, &widget);
-        attach_menu(&button, &menu, subject);
+        card.append(&play);
+        let menu = ItemMenu::new(ctx, &card);
+        attach_menu(&open, &menu, subject);
     }
-    widget.upcast()
+    card.upcast()
+}
+
+/// The key facts of a top hit: "2020 · 12 tracks · 42 min" for an album,
+/// "3:45 · Album" for a track, "40 tracks · 2 h 5 min" for a playlist.
+fn facts(item: &Item) -> String {
+    let year = |date: &Option<String>| {
+        date.as_deref()
+            .and_then(|d| d.get(..4))
+            .unwrap_or_default()
+            .to_owned()
+    };
+    match item {
+        Item::Album(album) => format::join([
+            year(&album.release_date),
+            format::tracks_summary(album.number_of_tracks as usize, album.duration.into()),
+        ]),
+        Item::Track(track) => format::join([
+            crate::model::format_duration(track.duration.into()),
+            track.album.title.clone(),
+        ]),
+        Item::Playlist(playlist) => {
+            format::tracks_summary(playlist.number_of_tracks as usize, playlist.duration.into())
+        }
+        Item::Artist(artist) => format::join(
+            artist
+                .artist_types
+                .iter()
+                .filter(|kind| !kind.eq_ignore_ascii_case("artist"))
+                .map(|kind| capitalise(kind)),
+        ),
+        Item::Mix(mix) => mix.subtitle.clone(),
+        Item::Link(_) => String::new(),
+    }
+}
+
+/// "CONTRIBUTOR" → "Contributor".
+fn capitalise(word: &str) -> String {
+    let lower = word.to_lowercase();
+    let mut chars = lower.chars();
+    chars
+        .next()
+        .map(|first| first.to_uppercase().chain(chars).collect())
+        .unwrap_or_default()
 }
 
 /// Name and "Artist" / "Album · Artist"-style line of a top hit.
@@ -333,6 +376,8 @@ impl CardGrid {
             .margin_top(6)
             .margin_bottom(24)
             .build();
+        // Covers on the page's content edge (cells and cards have padding).
+        section::align_to_edge(&view, section::GRID_INSET);
         let menu = ItemMenu::new(ctx, &view);
         let weak_ctx: Weak<Ctx> = Rc::downgrade(ctx);
         let weak_menu = Rc::downgrade(&menu);
@@ -349,7 +394,7 @@ impl CardGrid {
             let item = boxed.borrow::<Item>();
             let menu = weak_menu.upgrade();
             let card = MediaCard::new(&ctx, &item, menu.as_ref());
-            card.widget().set_halign(gtk::Align::Center);
+            card.widget().set_halign(gtk::Align::Start);
             list_item.set_child(Some(card.widget()));
             list_item.set_activatable(false);
         });
@@ -415,12 +460,6 @@ impl CardGrid {
 
     pub fn paging(&self) -> &PagingStatus {
         &self.paging
-    }
-
-    pub fn set_compact(&self, compact: bool) {
-        let margin = if compact { 6 } else { 18 };
-        self.view.set_margin_start(margin);
-        self.view.set_margin_end(margin);
     }
 }
 

@@ -213,6 +213,8 @@ impl ArtistPage {
                 state.play(true);
             }
         });
+        // On the content edge, like the sections (which line up themselves).
+        section::align_to_edge(header.widget(), 0);
         self.content.append(header.widget());
 
         let mut top_tracks_shown = false;
@@ -223,7 +225,6 @@ impl ArtistPage {
             } else {
                 section_widget(&ctx, section)
             };
-            widget.add_css_class("page-content");
             self.content.append(&widget);
         }
         if !top_tracks_shown && page.sections.is_empty() {
@@ -259,6 +260,7 @@ impl ArtistPage {
         let widget = gtk::Box::builder()
             .orientation(gtk::Orientation::Vertical)
             .spacing(12)
+            .css_classes(["page-content"])
             .build();
         let header = title_row(&section.title, None);
         if let Some(route) =
@@ -305,9 +307,6 @@ impl ArtistPage {
 
     fn set_compact(&self, compact: bool) {
         self.compact.set(compact);
-        let margin = if compact { 12 } else { 24 };
-        self.content.set_margin_start(margin);
-        self.content.set_margin_end(margin);
         if let Some(header) = self.header.borrow().as_ref() {
             header.set_compact(compact);
         }

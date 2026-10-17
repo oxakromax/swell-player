@@ -1,8 +1,8 @@
 //! A virtualised list of tracks (docs/design.md §4.1, §4.11, §4.12, §6).
 //!
 //! A `gtk::ListView` whose model holds the tracks plus, optionally, a page
-//! header as the first item, "Disc N" separators and a footer as the last
-//! item: album and playlist pages scroll as one surface and stay
+//! header as the first item, headings ("Disc 2", "Today") and a footer as
+//! the last item: album and playlist pages scroll as one surface and stay
 //! virtualised however long the list is.
 //!
 //! - Activation (double click, Enter; single click when compact) plays the
@@ -38,10 +38,14 @@ use crate::ui::menus::{self, ItemMenu, Subject};
 enum Entry {
     Header,
     Footer,
-    /// "Disc N" separator.
-    Disc(u32),
+    /// A title over the tracks after it ("Disc 2", "Today").
+    Heading(String),
     Track(Rc<TrackEntry>),
 }
+
+/// Tracks of a section, each with an optional note (see
+/// [`TrackList::set_sections`]).
+pub type Rows = Vec<(TrackInfo, Option<String>)>;
 
 type IndexHook = Rc<dyn Fn(usize)>;
 type RemoveHook = Rc<dyn Fn(usize, u64)>;
@@ -122,6 +126,11 @@ impl TrackList {
 
         let widget: gtk::Widget = if scrolled {
             view.add_css_class("navigation-sidebar");
+            // `track-list` rows span the list (no side margin or padding,
+            // data/style.css) and what they hold lines itself up with the
+            // page's content edge (`.page-content`): track rows, the
+            // header, disc titles and the footer.
+            view.add_css_class("track-list");
             let clamp = adw::ClampScrollable::builder()
                 .maximum_size(1200)
                 .tightening_threshold(1200)
@@ -142,6 +151,7 @@ impl TrackList {
         let current = ctx.playback.current().map(|t| t.id);
         let shared = RowShared::new(ctx, variant);
         shared.playing.set(current);
+        shared.full_page.set(scrolled);
         shared.paused.set(!matches!(
             ctx.playback.state(),
             PlayState::Playing | PlayState::Loading
@@ -327,42 +337,41 @@ impl TrackList {
     /// that is removed and added back in one change): filtering or sorting
     /// a long list does not build every row again.
     pub fn set_tracks(&self, tracks: Vec<TrackInfo>) {
-        let inner = &self.inner;
-        let start = u32::from(inner.header.borrow().is_some());
-        let end = inner.store.n_items() - u32::from(inner.footer.borrow().is_some());
-        let group = inner.group_discs.get() && {
+        let group = self.inner.group_discs.get() && {
             let first = tracks.first().map(|t| t.volume_number);
             tracks.iter().any(|t| Some(t.volume_number) != first)
         };
-        let mut shown: HashMap<u64, VecDeque<glib::BoxedAnyObject>> = HashMap::new();
-        for position in start..end {
-            if let Some(object) = entry_at(&inner.store, position) {
-                let id = match &*object.borrow::<Entry>() {
-                    Entry::Track(entry) => entry.info.id,
-                    _ => continue,
-                };
-                shown.entry(id).or_default().push_back(object);
-            }
-        }
-        let mut objects = Vec::with_capacity(tracks.len() + 4);
-        let mut volume = None;
+        let mut sections: Vec<(Option<String>, Rows)> = Vec::new();
         for track in tracks {
-            if group && volume != Some(track.volume_number) {
-                volume = Some(track.volume_number);
-                objects.push(glib::BoxedAnyObject::new(Entry::Disc(track.volume_number)));
+            let volume = track.volume_number;
+            match sections.last_mut() {
+                Some((_, rows))
+                    if !group || rows.last().map(|r| r.0.volume_number) == Some(volume) =>
+                {
+                    rows.push((track, None));
+                }
+                _ => sections.push((group.then(|| format!("Disc {volume}")), vec![(track, None)])),
             }
-            let same = shown.get_mut(&track.id).and_then(|objects| {
-                let at = objects.iter().position(|object| {
-                    matches!(&*object.borrow::<Entry>(), Entry::Track(entry) if entry.info == track)
-                })?;
-                objects.remove(at)
-            });
-            objects.push(same.unwrap_or_else(|| {
-                glib::BoxedAnyObject::new(Entry::Track(Rc::new(TrackEntry::new(track))))
-            }));
         }
-        inner.store.splice(start, end - start, &objects);
-        inner.index_discs();
+        self.inner.fill(sections);
+    }
+
+    /// Replaces all the tracks with titled groups of them ("Today", ...);
+    /// each track may come with a note shown instead of its duration (when
+    /// it was played).
+    pub fn set_sections(&self, sections: Vec<(String, Rows)>) {
+        let notes = sections
+            .iter()
+            .any(|(_, rows)| rows.iter().any(|(_, note)| note.is_some()));
+        if self.inner.shared.notes.replace(notes) != notes {
+            self.inner.relayout_rows();
+        }
+        self.inner.fill(
+            sections
+                .into_iter()
+                .map(|(title, rows)| (Some(title), rows))
+                .collect(),
+        );
     }
 
     /// Same as [`TrackList::set_tracks`].
@@ -379,7 +388,10 @@ impl TrackList {
         let mut objects = Vec::with_capacity(tracks.len());
         for track in tracks {
             if group && volume != Some(track.volume_number) {
-                objects.push(glib::BoxedAnyObject::new(Entry::Disc(track.volume_number)));
+                objects.push(glib::BoxedAnyObject::new(Entry::Heading(format!(
+                    "Disc {}",
+                    track.volume_number
+                ))));
             }
             volume = Some(track.volume_number);
             objects.push(glib::BoxedAnyObject::new(Entry::Track(Rc::new(
@@ -569,10 +581,54 @@ impl Inner {
         let discs = (0..self.store.n_items())
             .filter(|&i| {
                 entry_at(&self.store, i)
-                    .is_some_and(|e| matches!(&*e.borrow::<Entry>(), Entry::Disc(_)))
+                    .is_some_and(|e| matches!(&*e.borrow::<Entry>(), Entry::Heading(_)))
             })
             .collect();
         self.discs.replace(discs);
+    }
+
+    /// Replaces the tracks with `sections` (an optional heading and its
+    /// tracks with their notes). Tracks already in the list keep their
+    /// model items (see [`TrackList::set_tracks`]).
+    fn fill(&self, sections: Vec<(Option<String>, Rows)>) {
+        let start = u32::from(self.header.borrow().is_some());
+        let end = self.store.n_items() - u32::from(self.footer.borrow().is_some());
+        let mut shown: HashMap<u64, VecDeque<glib::BoxedAnyObject>> = HashMap::new();
+        for position in start..end {
+            if let Some(object) = entry_at(&self.store, position) {
+                let id = match &*object.borrow::<Entry>() {
+                    Entry::Track(entry) => entry.info.id,
+                    _ => continue,
+                };
+                shown.entry(id).or_default().push_back(object);
+            }
+        }
+        let mut objects = Vec::with_capacity(sections.iter().map(|s| s.1.len() + 1).sum());
+        for (heading, rows) in sections {
+            if let Some(heading) = heading {
+                objects.push(glib::BoxedAnyObject::new(Entry::Heading(heading)));
+            }
+            for (track, note) in rows {
+                let same = shown.get_mut(&track.id).and_then(|objects| {
+                    let at = objects.iter().position(|object| {
+                        matches!(&*object.borrow::<Entry>(),
+                            Entry::Track(entry) if entry.info == track && entry.note == note)
+                    })?;
+                    objects.remove(at)
+                });
+                objects.push(same.unwrap_or_else(|| {
+                    let mut entry = TrackEntry::new(track);
+                    if let Some(note) = &note {
+                        entry.accessible.push_str(", played ");
+                        entry.accessible.push_str(note);
+                    }
+                    entry.note = note;
+                    glib::BoxedAnyObject::new(Entry::Track(Rc::new(entry)))
+                }));
+            }
+        }
+        self.store.splice(start, end - start, &objects);
+        self.index_discs();
     }
 
     fn header_offset(&self) -> u32 {
@@ -669,26 +725,26 @@ impl Inner {
                 item.set_focusable(true);
                 item.set_accessible_label("");
             }
-            Entry::Disc(volume) => {
+            Entry::Heading(heading) => {
                 let label = match item.child().and_downcast::<gtk::Label>() {
                     Some(label) => label,
                     None => {
                         let label = gtk::Label::builder()
                             .xalign(0.0)
                             .height_request(36)
-                            .margin_start(12)
                             .margin_top(12)
                             .css_classes(["heading", "dimmed"])
                             .build();
+                        super::section::align_to_edge(&label, 0);
                         item.set_child(Some(&label));
                         label
                     }
                 };
-                label.set_label(&format!("Disc {volume}"));
+                label.set_label(heading);
                 item.set_activatable(false);
                 item.set_selectable(false);
                 item.set_focusable(false);
-                item.set_accessible_label(&format!("Disc {volume}"));
+                item.set_accessible_label(heading);
             }
             Entry::Track(track) => {
                 let row = match item.child().and_downcast::<TrackRow>() {
@@ -859,7 +915,10 @@ impl Inner {
         if !self.shared.reorderable.get() {
             return glib::Propagation::Proceed;
         }
-        let Some(to) = row.index().and_then(|from| from.checked_add_signed(move_by)) else {
+        let Some(to) = row
+            .index()
+            .and_then(|from| from.checked_add_signed(move_by))
+        else {
             return glib::Propagation::Stop;
         };
         let Some(from) = row.index() else {

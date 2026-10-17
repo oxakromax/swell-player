@@ -58,7 +58,11 @@ impl CarouselSection {
             .css_classes(["flat"])
             .build();
 
+        // The title lines up with the page's content edge, and so do the
+        // covers; the row itself scrolls from side to side of the page.
         let header = title_row(title, subtitle);
+        header.add_css_class("page-content");
+        super::section::align_to_edge(&cards, super::section::CARD_INSET);
         header.append(&back);
         header.append(&forward);
         header.append(&view_all);
@@ -81,8 +85,7 @@ impl CarouselSection {
                 let (Some(back), Some(forward)) = (back.upgrade(), forward.upgrade()) else {
                     return;
                 };
-                let scrollable =
-                    !narrow.get() && adjustment.upper() > adjustment.page_size() + 1.0;
+                let scrollable = !narrow.get() && adjustment.upper() > adjustment.page_size() + 1.0;
                 back.set_visible(scrollable);
                 forward.set_visible(scrollable);
                 back.set_sensitive(adjustment.value() > 1.0);

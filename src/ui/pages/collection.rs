@@ -131,8 +131,7 @@ impl Template {
             .spacing(6)
             .margin_top(6)
             .margin_bottom(6)
-            .margin_start(12)
-            .margin_end(12)
+            .css_classes(["page-content"])
             .visible(false)
             .build();
         bar.append(&row);
@@ -1040,7 +1039,6 @@ impl TracksPage {
         });
     }
 }
-
 
 #[cfg(test)]
 mod tests {

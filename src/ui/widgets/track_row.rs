@@ -97,6 +97,8 @@ pub struct TrackEntry {
     pub duration: String,
     /// "Title, by Artist, from Album, 3 minutes 5 seconds, Hi-Res, Explicit".
     pub accessible: String,
+    /// Shown instead of the duration ("5 min ago" in Recently Played).
+    pub note: Option<String>,
 }
 
 impl TrackEntry {
@@ -126,6 +128,7 @@ impl TrackEntry {
             duration: format_duration(seconds.into()),
             accessible,
             info,
+            note: None,
         }
     }
 }
@@ -159,6 +162,11 @@ pub struct RowShared {
     pub list_id: u64,
     pub compact: Cell<bool>,
     pub reorderable: Cell<bool>,
+    /// The list fills a page: rows span it, and each row's content starts
+    /// at the page's content edge (instead of 12 px in).
+    pub full_page: Cell<bool>,
+    /// Rows show notes (wider than durations) instead of durations.
+    pub notes: Cell<bool>,
     /// Numbered rows show their artists only when they differ from these.
     pub album_artists: RefCell<String>,
     /// The track playing now and whether it is paused.
@@ -186,6 +194,8 @@ impl RowShared {
             list_id: NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
             compact: Cell::new(false),
             reorderable: Cell::new(false),
+            full_page: Cell::new(false),
+            notes: Cell::new(false),
             album_artists: RefCell::default(),
             playing: Cell::new(None),
             paused: Cell::new(false),
@@ -265,8 +275,12 @@ impl TrackRow {
         self.set_spacing(12);
         self.set_margin_top(6);
         self.set_margin_bottom(6);
-        self.set_margin_start(12);
-        self.set_margin_end(12);
+        if shared.full_page.get() {
+            super::section::align_to_edge(self, 0);
+        } else {
+            self.set_margin_start(12);
+            self.set_margin_end(12);
+        }
         self.set_height_request(variant.inner_height());
 
         imp.handle.set_icon_name(Some("list-drag-handle-symbolic"));
@@ -589,7 +603,8 @@ impl TrackRow {
             hires.set_visible(track.hires);
         }
         imp.album.set_label(&track.album);
-        imp.duration.set_label(&entry.duration);
+        imp.duration
+            .set_label(entry.note.as_deref().unwrap_or(&entry.duration));
         if shared.variant == Variant::Numbered {
             imp.number.set_label(&track.track_number.max(1).to_string());
         }
@@ -674,6 +689,8 @@ impl TrackRow {
         imp.album
             .set_visible(!compact && shared.variant == Variant::Cover);
         imp.duration.set_visible(!compact);
+        imp.duration
+            .set_width_chars(if shared.notes.get() { 10 } else { 5 });
         if let Some(heart) = imp.heart.get() {
             heart.widget().set_visible(!compact);
         }

@@ -26,6 +26,36 @@ use crate::ui::nav::Route;
 /// Rows shown by a track section before "View All".
 pub const SHORT_LIST: usize = 5;
 
+/// Where content starts, from the side of the page (docs/design.md §1.5):
+/// the margins of `.page-content`, 12 px in narrow windows.
+pub const EDGE: i32 = 24;
+pub const NARROW_EDGE: i32 = 12;
+/// How far inside a card its cover starts (`.media-card-button` padding).
+pub const CARD_INSET: i32 = 6;
+/// How far inside a grid cell a card's cover starts (the cell's padding,
+/// `gridview.media-grid > child`, plus the card's).
+pub const GRID_INSET: i32 = 12;
+
+/// Puts `widget`, whose content starts `inset` px inside it (a card's
+/// padding, a grid cell's), so that content lines up with `.page-content`:
+/// side margins of the content edge minus `inset`, following the window
+/// width like that class does.
+pub fn align_to_edge(widget: &impl IsA<gtk::Widget>, inset: i32) {
+    let widget = widget.upcast_ref::<gtk::Widget>();
+    let set = move |widget: &gtk::Widget, narrow: bool| {
+        let margin = (if narrow { NARROW_EDGE } else { EDGE } - inset).max(0);
+        widget.set_margin_start(margin);
+        widget.set_margin_end(margin);
+    };
+    set(widget, false);
+    let weak = widget.downgrade();
+    super::follow_narrow(widget, move |narrow| {
+        if let Some(widget) = weak.upgrade() {
+            set(&widget, narrow);
+        }
+    });
+}
+
 /// The widget for `section` (an empty box if it has no items).
 pub fn section_widget(ctx: &Rc<Ctx>, section: &Section) -> gtk::Widget {
     if section.items.is_empty() {
@@ -85,6 +115,7 @@ pub fn tracks_section(ctx: &Rc<Ctx>, section: &Section, limit: usize) -> gtk::Wi
     let widget = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
         .spacing(12)
+        .css_classes(["page-content"])
         .build();
     let header = title_row(&section.title, section.subtitle.as_deref());
     if let Some(route) = route.filter(|_| section.total > shown.min(tracks.len())) {
@@ -130,6 +161,7 @@ fn links_section(ctx: &Rc<Ctx>, section: &Section) -> gtk::Widget {
     let widget = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
         .spacing(12)
+        .css_classes(["page-content"])
         .build();
     if !section.title.is_empty() {
         widget.append(&title_row(&section.title, section.subtitle.as_deref()));
@@ -165,7 +197,9 @@ fn shortcuts_section(ctx: &Rc<Ctx>, section: &Section) -> gtk::Widget {
         .spacing(12)
         .build();
     if !section.title.is_empty() {
-        widget.append(&title_row(&section.title, section.subtitle.as_deref()));
+        let title = title_row(&section.title, section.subtitle.as_deref());
+        title.add_css_class("page-content");
+        widget.append(&title);
     }
     let grid = gtk::FlowBox::builder()
         .min_children_per_line(1)
@@ -221,6 +255,8 @@ fn shortcuts_section(ctx: &Rc<Ctx>, section: &Section) -> gtk::Widget {
         }
         grid.append(&tile);
     }
+    // Tiles start 3 px inside their cells (`flowboxchild` padding).
+    align_to_edge(&grid, 3);
     widget.append(&grid);
     widget.upcast()
 }

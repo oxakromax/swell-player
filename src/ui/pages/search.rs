@@ -137,6 +137,7 @@ pub fn page(ctx: &Rc<Ctx>, query: Option<String>) -> adw::NavigationPage {
         .vscrollbar_policy(gtk::PolicyType::Never)
         .propagate_natural_height(true)
         .child(&filters)
+        .css_classes(["page-content"])
         .build();
     let filter_bar = adw::Clamp::builder()
         .maximum_size(1200)
@@ -583,7 +584,6 @@ impl SearchPage {
                 }
                 self.all_clamp.set_child(Some(&view.widget));
                 self.all.replace(Some(view));
-                self.set_margins();
                 self.all_scrolled.vadjustment().set_value(0.0);
                 self.stack.set_visible_child_name("all");
             }
@@ -800,13 +800,7 @@ impl SearchPage {
             }
         });
         let view = search_views::recent_view(recent, pick, forget, clear);
-        if self.compact.get() {
-            view.set_margin_start(12);
-            view.set_margin_end(12);
-        } else {
-            view.set_margin_start(24);
-            view.set_margin_end(24);
-        }
+        view.add_css_class("page-content");
         if let Some(old) = self.stack.child_by_name("recent") {
             self.stack.remove(&old);
         }
@@ -868,25 +862,8 @@ impl SearchPage {
     fn set_compact(&self, compact: bool) {
         self.compact.set(compact);
         self.tracks.set_compact(compact);
-        self.grid.set_compact(compact);
         if let Some(list) = self.all.borrow().as_ref().and_then(|a| a.tracks.as_ref()) {
             list.set_compact(compact);
-        }
-        if let Some(recent) = self.stack.child_by_name("recent") {
-            let margin = if compact { 12 } else { 24 };
-            recent.set_margin_start(margin);
-            recent.set_margin_end(margin);
-        }
-        self.set_margins();
-    }
-
-    fn set_margins(&self) {
-        let margin = if self.compact.get() { 12 } else { 24 };
-        self.filter_scrolled.set_margin_start(margin);
-        self.filter_scrolled.set_margin_end(margin);
-        if let Some(all) = self.all.borrow().as_ref() {
-            all.widget.set_margin_start(margin);
-            all.widget.set_margin_end(margin);
         }
     }
 

@@ -23,6 +23,7 @@ use gtk::{gio, glib};
 use super::super::context::Ctx;
 use super::super::menus::ItemMenu;
 use super::super::widgets::media_card::MediaCard;
+use super::super::widgets::section;
 use super::super::widgets::status::{PageStack, describe_error, empty_status};
 use super::super::widgets::track_list::{TrackList, Variant, compact_bin};
 use super::home_sections::{self, loading_more, paging_error};
@@ -122,9 +123,6 @@ struct MorePage {
     loading_more: Cell<bool>,
     more_failed: Cell<bool>,
     compact: Cell<bool>,
-    /// The grid (its margins follow the page width).
-    grid: glib::WeakRef<gtk::GridView>,
-    column: glib::WeakRef<gtk::Box>,
     task: RefCell<Option<glib::JoinHandle<()>>>,
     more_task: RefCell<Option<glib::JoinHandle<()>>>,
 }
@@ -173,8 +171,6 @@ pub fn page(ctx: &Rc<Ctx>, title: String, more: More) -> adw::NavigationPage {
         loading_more: Cell::new(false),
         more_failed: Cell::new(false),
         compact: Cell::new(false),
-        grid: glib::WeakRef::new(),
-        column: glib::WeakRef::new(),
         task: RefCell::default(),
         more_task: RefCell::default(),
     });
@@ -445,7 +441,7 @@ impl MorePage {
             };
             let menu = menu.upgrade();
             let card = MediaCard::new(&ctx, &entry.borrow::<Item>(), menu.as_ref());
-            card.widget().set_halign(gtk::Align::Center);
+            card.widget().set_halign(gtk::Align::Start);
             cell.set_child(Some(card.widget()));
         });
         factory.connect_unbind(|_, object| {
@@ -480,7 +476,7 @@ impl MorePage {
             old.remove_overlay(&self.grid_footer);
         }
         overlay.add_overlay(&self.grid_footer);
-        self.grid.set(Some(&grid));
+        section::align_to_edge(&grid, section::GRID_INSET);
         self.set_compact(self.compact.get());
         self.stack.set_content(&overlay);
         self.body.replace(Body::Grid(store));
@@ -519,7 +515,6 @@ impl MorePage {
             .vexpand(true)
             .child(&clamp)
             .build();
-        self.column.set(Some(&column));
         self.set_compact(self.compact.get());
         self.pager.replace(None);
         self.stack.set_content(&scrolled);
@@ -650,17 +645,6 @@ impl MorePage {
         self.compact.set(compact);
         if let Body::Tracks(list) = &*self.body.borrow() {
             list.set_compact(compact);
-        }
-        // Grid cells have 6 px of padding of their own.
-        if let Some(grid) = self.grid.upgrade() {
-            let margin = if compact { 6 } else { 18 };
-            grid.set_margin_start(margin);
-            grid.set_margin_end(margin);
-        }
-        if let Some(column) = self.column.upgrade() {
-            let margin = if compact { 12 } else { 24 };
-            column.set_margin_start(margin);
-            column.set_margin_end(margin);
         }
     }
 }

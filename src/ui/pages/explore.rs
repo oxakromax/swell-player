@@ -14,9 +14,13 @@ use adw::prelude::*;
 use gtk::glib;
 
 use super::super::context::Ctx;
+use super::super::menus::ItemMenu;
+use super::super::widgets::carousel::title_row;
+use super::super::widgets::media_card::MediaCard;
+use super::super::widgets::section;
 use super::super::widgets::status::empty_status;
 use super::home_sections::{self, Scaffold, Shape};
-use crate::tidal::pages::{self, Page};
+use crate::tidal::pages::{self, Page, Section, SectionKind};
 use crate::tidal::{self, Base};
 
 const FRESH_FOR: Duration = Duration::from_secs(60 * 60);
@@ -123,6 +127,20 @@ impl EditorialPage {
             self.view.set_title(&page.title);
         }
         self.view.clear();
+        // A page that is one row of cards (many mood pages) shows them all
+        // as a grid instead of a lone carousel over an empty page.
+        let filled: Vec<&Section> = page
+            .sections
+            .iter()
+            .filter(|s| !s.items.is_empty())
+            .collect();
+        if let [only] = filled.as_slice()
+            && only.kind == SectionKind::Cards
+        {
+            self.view.sections.append(&lone_grid(&ctx, only));
+            self.view.stack.show_content();
+            return;
+        }
         let mut shown = false;
         for section in &page.sections {
             if let Some(widget) = home_sections::section_widget(&ctx, section) {
@@ -139,4 +157,45 @@ impl EditorialPage {
         }
         self.view.stack.show_content();
     }
+}
+
+/// All the cards of a page's only section, wrapped, with "View All" when
+/// TIDAL has more than it sent.
+fn lone_grid(ctx: &Rc<Ctx>, section: &Section) -> gtk::Widget {
+    let widget = gtk::Box::builder()
+        .orientation(gtk::Orientation::Vertical)
+        .spacing(12)
+        .build();
+    let header = title_row(&section.title, section.subtitle.as_deref());
+    header.add_css_class("page-content");
+    if let Some(route) =
+        section::view_all_route(section).filter(|_| section.total > section.items.len())
+    {
+        let button = gtk::Button::builder()
+            .label("View All")
+            .valign(gtk::Align::Center)
+            .css_classes(["flat"])
+            .build();
+        let ctx = Rc::downgrade(ctx);
+        button.connect_clicked(move |_| {
+            if let Some(ctx) = ctx.upgrade() {
+                ctx.navigate(route.clone());
+            }
+        });
+        header.append(&button);
+    }
+    if !section.title.is_empty() || header.last_child() != header.first_child() {
+        widget.append(&header);
+    }
+    let cards = adw::WrapBox::builder()
+        .child_spacing(12)
+        .line_spacing(18)
+        .build();
+    section::align_to_edge(&cards, section::CARD_INSET);
+    let menu = ItemMenu::new(ctx, &cards);
+    for item in &section.items {
+        cards.append(MediaCard::new(ctx, item, Some(&menu)).widget());
+    }
+    widget.append(&cards);
+    widget.upcast()
 }

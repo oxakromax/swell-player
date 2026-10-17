@@ -20,6 +20,7 @@ use gtk::glib;
 use super::super::context::Ctx;
 use super::super::menus;
 use super::super::widgets::page_header::PageHeader;
+use super::super::widgets::section;
 use super::super::widgets::skeleton;
 use super::super::widgets::status::PageStack;
 use super::super::widgets::track_list::{TrackList, Variant, compact_bin};
@@ -324,6 +325,7 @@ impl MixPage {
         header.set_playable(!tracks.is_empty());
 
         self.list.set_source(source(&mix));
+        section::align_to_edge(header.widget(), 0);
         self.list.set_header(Some(header.widget()));
         let loaded = tracks.len();
         let empty = tracks.is_empty();

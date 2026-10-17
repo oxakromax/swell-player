@@ -20,7 +20,7 @@ use super::super::dialogs;
 use super::super::menus;
 use super::super::nav::Route;
 use super::super::widgets::page_header::PageHeader;
-use super::super::widgets::section::section_widget;
+use super::super::widgets::section::{self, section_widget};
 use super::super::widgets::skeleton;
 use super::super::widgets::status::PageStack;
 use super::super::widgets::track_list::{TrackList, Variant, compact_bin};
@@ -232,6 +232,7 @@ impl AlbumPage {
             title: album.title.clone(),
             target: Some(Target::Album(album.id)),
         });
+        section::align_to_edge(header.widget(), 0);
         self.list.set_header(Some(header.widget()));
         let loaded = tracks.len();
         self.list.set_tracks(tracks);
@@ -343,8 +344,6 @@ impl AlbumPage {
             .spacing(36)
             .margin_top(24)
             .margin_bottom(36)
-            .margin_start(12)
-            .margin_end(12)
             .build();
 
         let about = gtk::Box::builder()
@@ -372,10 +371,13 @@ impl AlbumPage {
             }
         });
         about.append(&credits);
+        about.add_css_class("page-content");
         footer.append(&about);
 
         if let Some(review) = review.filter(|r| !r.trim().is_empty()) {
-            footer.append(&review_card(ctx, &album.title, review));
+            let card = review_card(ctx, &album.title, review);
+            card.add_css_class("page-content");
+            footer.append(&card);
         }
 
         // The only track section is the album's own list.

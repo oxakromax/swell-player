@@ -451,24 +451,27 @@ impl MediaCard {
             .orientation(gtk::Orientation::Vertical)
             .spacing(6)
             .build();
-        let art: gtk::Widget = if round {
+        // The art, and how to resize it (narrow windows show 144 px cards).
+        let (art, resize): (gtk::Widget, Box<dyn Fn(i32)>) = if round {
             let avatar = avatar(ctx, item_image(item), &title, size);
             let weak = avatar.downgrade();
-            super::follow_narrow(&avatar, move |narrow| {
+            let resize = move |size| {
                 if let Some(avatar) = weak.upgrade() {
-                    avatar.set_size(if narrow { NARROW_CARD_SIZE } else { CARD_SIZE });
+                    avatar.set_size(size);
                 }
-            });
-            avatar.upcast()
+            };
+            (avatar.upcast(), Box::new(resize))
         } else {
             let cover = Cover::new(ctx, item_image(item), size, placeholder_icon(item), true);
+            // At the card's start, where its title starts.
+            cover.widget().set_halign(gtk::Align::Start);
             let weak = cover.downgrade();
-            super::follow_narrow(cover.widget(), move |narrow| {
+            let resize = move |size| {
                 if let Some(cover) = weak.upgrade() {
-                    cover.set_size(if narrow { NARROW_CARD_SIZE } else { CARD_SIZE });
+                    cover.set_size(size);
                 }
-            });
-            cover.widget().clone()
+            };
+            (cover.widget().clone(), Box::new(resize))
         };
         content.append(&art);
         let xalign = if round { 0.5 } else { 0.0 };
@@ -505,7 +508,6 @@ impl MediaCard {
             .valign(gtk::Align::Start)
             .css_classes(["media-card"])
             .build();
-        widget.set_width_request(size + 2 * CARD_PADDING);
 
         let weak_ctx = Rc::downgrade(ctx);
         let open = item.clone();
@@ -515,6 +517,7 @@ impl MediaCard {
             }
         });
 
+        let mut play_button = None;
         if let Some(subject) = Subject::from_item(item) {
             if !matches!(subject, Subject::Track { .. }) {
                 let play = gtk::Button::builder()
@@ -523,8 +526,6 @@ impl MediaCard {
                     .height_request(PLAY_SIZE)
                     .halign(gtk::Align::Start)
                     .valign(gtk::Align::Start)
-                    .margin_start(CARD_PADDING + size - PLAY_SIZE - 6)
-                    .margin_top(CARD_PADDING + size - PLAY_SIZE - 6)
                     .css_classes(["circular", "suggested-action", "media-card-play"])
                     .build();
                 super::label_button(&play, &format!("Play {title}"));
@@ -536,12 +537,33 @@ impl MediaCard {
                     }
                 });
                 widget.add_overlay(&play);
+                play_button = Some(play);
             }
             add_drag_source(&button, &subject, &art);
             if let Some(menu) = menu {
                 attach_menu(&button, menu, subject);
             }
         }
+        // Card, art and the play button over the art's corner follow the
+        // window width.
+        let layout = {
+            let card = widget.downgrade();
+            let play = play_button.map(|play| play.downgrade());
+            move |narrow: bool| {
+                let size = if narrow { NARROW_CARD_SIZE } else { CARD_SIZE };
+                resize(size);
+                if let Some(card) = card.upgrade() {
+                    card.set_width_request(size + 2 * CARD_PADDING);
+                }
+                if let Some(play) = play.as_ref().and_then(|play| play.upgrade()) {
+                    let at = CARD_PADDING + size - PLAY_SIZE - 6;
+                    play.set_margin_start(at);
+                    play.set_margin_top(at);
+                }
+            }
+        };
+        layout(false);
+        super::follow_narrow(&widget, layout);
         Self { widget }
     }
 

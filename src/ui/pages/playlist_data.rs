@@ -172,10 +172,16 @@ pub async fn track_at(api: &Api, uuid: &str, index: usize) -> Result<Option<u64>
 
 /// The ETag of the playlist if it is still at version `last_updated` (for
 /// items shown from the cache without asking TIDAL); [`Changed`] if not.
-pub async fn etag_if_unchanged(api: &Api, uuid: &str, last_updated: Option<&str>) -> Result<String> {
+pub async fn etag_if_unchanged(
+    api: &Api,
+    uuid: &str,
+    last_updated: Option<&str>,
+) -> Result<String> {
     let (playlist, etag) = api.playlist(uuid).await?;
     match etag {
-        Some(etag) if last_updated.is_some() && playlist.last_updated.as_deref() == last_updated => {
+        Some(etag)
+            if last_updated.is_some() && playlist.last_updated.as_deref() == last_updated =>
+        {
             Ok(etag)
         }
         _ => Err(Changed.into()),
@@ -384,7 +390,18 @@ async fn run(
     let (value, raw, etag) = fetch_raw(api, uuid, 0).await?;
     store(api, items_key(uuid, &fresh, 0), raw).await;
     let (chunk, total) = parse_items(&value);
-    fetch_rest(api, uuid, Some(&fresh), etag, 0, chunk, total, !items_shown, tx).await
+    fetch_rest(
+        api,
+        uuid,
+        Some(&fresh),
+        etag,
+        0,
+        chunk,
+        total,
+        !items_shown,
+        tx,
+    )
+    .await
 }
 
 /// Sends `first` (the page at `offset`, of version `etag`) and fetches the
