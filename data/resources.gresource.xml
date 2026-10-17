@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Compiled by build.rs with glib-compile-resources; registered at startup. -->
+<gresources>
+  <gresource prefix="/io/github/oxakromax/SwellPlayer">
+    <file preprocess="xml-stripblanks">icons/scalable/apps/io.github.oxakromax.SwellPlayer.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/swell-heart-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/swell-heart-filled-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/swell-explore-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/swell-library-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/swell-lyrics-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/swell-radio-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/swell-mix-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/swell-timer-symbolic.svg</file>
+  </gresource>
+</gresources>
