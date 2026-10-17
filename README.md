@@ -1,17 +1,59 @@
 # Swell
 
-A lightweight, native TIDAL client for Linux, written in Rust with
+A fast, lightweight, native TIDAL client for Linux, written in Rust with
 [gtk4-rs](https://gtk-rs.org), [libadwaita](https://gnome.pages.gitlab.gnome.org/libadwaita/)
-and [GStreamer](https://gstreamer.freedesktop.org/).
-
-> **Status: proof of concept.** Swell exists to find out how light and fast a
-> native client can be compared with the Python/PyGObject client
-> [High Tide](https://github.com/Nokse22/high-tide). It signs in, lists your
-> favourite tracks and plays them, including Hi-Res Lossless. Nothing more yet.
+and [GStreamer](https://gstreamer.freedesktop.org/). Bit-perfect Hi-Res
+playback, a library that opens instantly from a local cache, and a
+responsive interface that works from phone-sized windows to wide desktops.
 
 Swell is not affiliated with, endorsed by or supported by TIDAL. It talks to
-TIDAL's unofficial v1 API, which can change without notice. You need a paid
-TIDAL subscription.
+TIDAL's unofficial v1/v2 APIs, which can change without notice. You need a
+paid TIDAL subscription.
+
+## Features
+
+**Browse**
+- Home: your personalised TIDAL feed (shortcuts, mixes, recommendations,
+  recently played), loading more as you scroll.
+- Explore: editorial pages, genres, moods and decades.
+- Search as you type, with filters (tracks, albums, artists, playlists), a
+  top hit, recent searches and paging; pasting a TIDAL link opens it.
+- Album pages (discs, credits, review, more by the artist), artist pages
+  (top tracks, albums, EPs and singles, appearances, similar artists, bio,
+  radio), playlist pages, mixes and track/artist radio, "View all" pages.
+- `tidal://` and `https://tidal.com/...` links open in Swell.
+
+**Your collection**
+- Favourite tracks (thousands, virtualised) with instant filter and sort,
+  favourite albums, artists, playlists and mixes, recently played.
+- Hearts everywhere (tracks, albums, artists, playlists, mixes), from one
+  request for the whole library.
+- Create, rename, describe, publish/unpublish and delete playlists; add
+  tracks (menu or drag and drop onto a sidebar playlist), remove and reorder
+  them, with undo.
+
+**Playback**
+- Hi-Res Lossless (FLAC up to 24-bit/192 kHz), bit-perfect: with
+  normalisation off and volume at 100 %, samples reach PipeWire untouched
+  and the device runs at the track's own rate (see below).
+- Gapless playback, ReplayGain normalisation (track or album) as an option,
+  choice of output device.
+- A real queue: play next, add to queue (tracks, albums, playlists), jump,
+  remove, reorder, clear with undo; shuffle and repeat (all/one); history.
+- Survives network drops (waits and resumes at the same position) and
+  expired stream URLs.
+- Synced lyrics that follow the song and seek on click.
+- Restores your queue and position at startup; sleep timer; desktop
+  notifications; keeps the system awake while playing.
+- MPRIS: media keys, desktop widgets and `playerctl` work.
+
+**Interface**
+- libadwaita design that follows the system's light/dark style and accent
+  colour; three layouts (wide with docked now-playing panel, regular,
+  narrow with bottom sheet and mini player).
+- Full keyboard control (Space, Ctrl+←/→, Ctrl+F, Ctrl+L, F6…; Ctrl+? lists
+  them all) and accessible names on every control.
+- English and Spanish; TIDAL content is requested in the same language.
 
 ## Building
 
@@ -21,101 +63,42 @@ Dependencies (Arch Linux package names):
 sudo pacman -S --needed rust gtk4 libadwaita gstreamer gst-plugins-base gst-plugins-good
 ```
 
-Then:
+`gst-plugins-good` provides the DASH demuxer (`dashdemux2`) used for Hi-Res streams.
+`glib-compile-resources` (part of GLib) is needed at build time.
 
 ```bash
 cargo run --release
 ```
 
+The binary runs from anywhere (icons and translations are embedded). To get
+a launcher entry and the `tidal://` handler, install
+`data/io.github.oxakromax.SwellPlayer.desktop` and the icon in
+`data/icons/` the usual way.
+
 ## Signing in and audio quality
 
-TIDAL does not let third-party apps register their own OAuth clients, so Swell,
-like every open-source TIDAL client, signs in as one of TIDAL's own apps. The
-login flow you pick decides which app, and that caps the audio quality:
+TIDAL does not let third-party apps register their own OAuth clients, so
+Swell, like every open-source TIDAL client, signs in as one of TIDAL's own
+apps. The login flow you pick decides which, and that caps the quality:
 
 | Login | How it works | Best quality |
 |---|---|---|
-| **Browser (PKCE)** | Swell opens TIDAL's login page in your browser. After you sign in, TIDAL lands on a page that says "Oops"; copy that page's address back into Swell. | **Hi-Res Lossless**: FLAC up to 24-bit/192 kHz, delivered as MPEG-DASH |
-| **Device code** | Swell shows a short code; you approve it at `link.tidal.com` from any device. | **Lossless**: FLAC 16-bit/44.1 kHz (CD quality) |
+| **Browser (PKCE)** | Swell opens TIDAL's login page in your browser. After you sign in, TIDAL lands on a page that says "Oops"; copy that page's address back into Swell. | **Hi-Res Lossless**: FLAC up to 24-bit/192 kHz, as MPEG-DASH |
+| **Device code** | Swell shows a short code; you approve it at `link.tidal.com` from any device. | **Lossless**: FLAC 16-bit/44.1 kHz |
 
-Use the browser login if you want Hi-Res. The device code is handy when you
-cannot copy a URL, for example on a remote session.
+Tokens live in your desktop keyring (Secret Service: KWallet, GNOME Keyring,
+KeePassXC…, or the secret portal in Flatpak) via
+[oo7](https://crates.io/crates/oo7), never on disk in plain text. They are
+refreshed shortly before they expire. Only a refresh token TIDAL rejects
+(`invalid_grant`) signs you out; network trouble never does. Signing out
+deletes the tokens, the cache, the saved queue and search history.
 
-The access and refresh tokens are stored in your desktop keyring through the
-Secret Service API (KWallet, GNOME Keyring, KeePassXC…, or the secret portal
-inside Flatpak) using [oo7](https://crates.io/crates/oo7). They are never
-written to disk in plain text. Signing out deletes them. Access tokens last
-four hours; when TIDAL rejects an expired one, the client refreshes it and
-stores the new one. If the refresh itself is refused (the session was revoked),
-Swell goes back to the sign-in page.
-
-## Design
-
-- **No network on the main thread.** GTK owns the main thread; all HTTP and
-  keyring I/O runs on a small Tokio runtime (two worker threads) and is awaited
-  from the GLib main loop.
-- **Few, warm connections.** One `reqwest` client serves the API and the
-  images. Both TIDAL hosts speak HTTP/2, so concurrent requests share one
-  connection per host, and Swell opens both connections at startup while it
-  reads the keyring. Names are resolved with
-  [hickory](https://crates.io/crates/hickory-resolver) rather than glibc: on
-  networks where one of glibc's parallel A/AAAA answers gets lost, every
-  lookup stalls for 5 s, which used to delay the first list by that much.
-- **Favourites arrive page by page.** The first page of 100 tracks is shown as
-  soon as it arrives; the rest is fetched with at most four requests in
-  flight and appended in order. (TIDAL's total counts tracks that are no
-  longer available and leaves them out of the pages, so a page can hold fewer
-  than 100.)
-- **Library cache.** Track metadata and the order of your favourites are
-  kept in SQLite (`~/.cache/swell-player/library.sqlite3`), so the list is
-  drawn from disk at startup. Favourites come newest first, so one request
-  checks the cache: if the first page and the total still match, nothing was
-  added or removed. Otherwise the whole list is reloaded in the background and
-  swapped in. A cache older than a day is reloaded regardless, to catch tracks
-  that became unavailable. Playback URLs (signed and short-lived) and tokens
-  (in the keyring) are never cached. Signing out clears your entries.
-- **Virtualised list.** Tracks live in a `gio::ListStore` of compact records
-  shown by a `gtk::ListView` that is the direct child of its
-  `ScrolledWindow`, so GTK only keeps widgets for the rows around the
-  viewport (about 200), not one per track.
-- **Covers.** 80×80 JPEGs, at most four downloads at a time, cached on disk
-  under `~/.cache/swell-player/covers/` and kept decoded in a 400-entry LRU
-  (under 10 MB). The pending request nearest the middle of the viewport goes
-  first, newest first among equals; plain LIFO is not enough because the list
-  binds ~200 rows up front and the last of them is far off screen. Rows of
-  the same album share one request, requests from rows that scroll away
-  before a download starts are dropped, and an image is cached only once it
-  decodes.
-- **API client:** [tidalrs](https://crates.io/crates/tidalrs) (MIT), built
-  without its playback features. It was chosen over
-  [tidlers](https://crates.io/crates/tidlers) (whose 0.5.0 favourites call
-  sends `ofset` instead of `offset`, so it cannot paginate) and
-  [rstidal](https://crates.io/crates/rstidal) (unmaintained since 2020). It
-  covers PKCE and device-code login, automatic token refresh with a callback,
-  paginated favourites and the raw playback manifest.
-
-## Playback
-
-Double-click a track (or press Enter) to play it. Swell asks TIDAL for the
-best quality the session allows and hands the result to GStreamer's
-`playbin3`:
-
-- **Hi-Res Lossless** arrives as an MPEG-DASH manifest (FLAC in fragmented
-  MP4). Swell writes it to one file per track under
-  `$XDG_RUNTIME_DIR/swell-player/` (private and in memory; the segment URLs
-  in it are signed) and plays it as a `file://` URI. `dashdemux2` then
-  streams the segments; nothing is downloaded whole.
-- **Lossless and below** arrive as a direct URL, played as is.
-
-The bottom bar has play/pause and a progress bar you can drag to seek.
-
-### Bit depth and sample rate
+## Bit depth and sample rate
 
 Swell keeps the stream's format all the way to PipeWire (a 24-bit track
-reaches it as `S24_32`). PipeWire then decides what the sound card gets: by
-default it runs the whole graph at one rate (often 48 kHz) and resamples
-anything else. To let it switch to the track's own rate when nothing else is
-playing, allow the common rates, e.g. in
+reaches it as 24-bit). PipeWire decides what the sound card gets: by default
+it runs at one rate (often 48 kHz) and resamples anything else. To let it
+switch to each track's rate, allow the common rates, e.g. in
 `~/.config/pipewire/pipewire.conf.d/10-rates.conf`:
 
 ```
@@ -124,41 +107,51 @@ context.properties = {
 }
 ```
 
-and restart PipeWire (`systemctl --user restart pipewire`). Check what
-actually reaches the device with `pw-top`.
+and restart PipeWire (`systemctl --user restart pipewire`). `pw-top` shows
+what reaches the device. The format badge in the player bar opens a popover
+that says whether the output is bit-perfect and, if not, why (normalisation
+or volume below 100 %).
+
+## Design
+
+- **Own TIDAL client** (`src/tidal/`): v1 and v2 endpoints over one HTTP/2
+  connection per host, lenient models (a malformed item drops only itself),
+  token refresh shared by concurrent requests, retries only for idempotent
+  requests, playlist edits guarded by ETags.
+- **No network or disk on the main thread.** GTK owns it; HTTP, SQLite,
+  keyring and image decoding run on a small Tokio runtime.
+- **Stale-while-revalidate cache.** Pages and your library are drawn from
+  SQLite (`~/.cache/swell-player/library.sqlite3`) at once and refreshed in
+  the background; favourites are validated with one request, and tracks
+  liked elsewhere are prepended without downloading the list again. Old
+  answers and least-used artwork are pruned automatically.
+- **Virtualised lists and lazy artwork.** Long lists are `gtk::ListView` /
+  `GridView`; covers load only near the visible area, at the size shown, at
+  most four at a time, nearest the middle of the viewport first, with a
+  64 MB budget of decoded textures.
+- **DNS without stalls.** Names are resolved with
+  [hickory](https://crates.io/crates/hickory-resolver): on some networks
+  glibc's parallel A/AAAA lookups stall for 5 s.
+- **Playback** (`src/playback/`): GStreamer `playbin3`; Hi-Res DASH
+  manifests are written to a private per-process directory under
+  `$XDG_RUNTIME_DIR` and streamed by `dashdemux2`; the next track's stream is
+  prepared ahead and handed over on `about-to-finish` for gapless playback.
 
 ## Measurements
 
-Swell against High Tide (Python + PyGObject, with a set of performance fixes
-applied) on the same flow: start with a saved session, show the 1,295
-favourite tracks, scroll through all of them to the end at one page per
-100 ms, then play the same 24-bit Hi-Res track for 20 s. "Cold" starts without
-the apps' caches (library and covers), "warm" with them. Medians of three runs
-each (range in brackets). These figures are from the proof of concept; they
-will be measured again once the full client is done.
+MEASUREMENTS_PLACEHOLDER
 
-| | List on screen | RssAnon at list | RssAnon peak | RSS peak |
-|---|---|---|---|---|
-| **Swell, warm** | **0.32 s** [0.3–0.3] | **55 MB** | **87 MB** [86–87] | 410 MB |
-| **Swell, cold** | **0.62 s** [0.6–1.0] | **48 MB** | **89 MB** [84–89] | 402 MB |
-| High Tide, warm | 13.3 s [13.3–14.2] | 149 MB | 196 MB [196–196] | 772 MB |
-| High Tide, cold | 13.4 s [13.2–13.6] | 113 MB | 194 MB [194–196] | 689 MB |
+## Development
 
-- **Time to the list:** about 40 times faster. High Tide logs in, downloads
-  all favourites and is then navigated to them (by the harness, with no click
-  delay, so its figure is a lower bound). Swell draws them from its cache and
-  checks them with one request (validated after ~0.8 s); without a cache, the
-  first page is on screen after one request.
-- **Memory:** RssAnon, the app's own heap, is less than half of High Tide's
-  at every point. RSS adds the GPU driver's mappings, around 250 MB for any
-  GTK 4 app on this machine (NVIDIA RTX 4090 + AMD iGPU), so it shrinks by
-  less in relative terms: 0.4 GB instead of 0.7–0.8 GB.
-- **Playback:** Swell starts audio about 0.4 s after a track is chosen
-  (stream lookup, DASH manifest, GStreamer preroll). High Tide's figure is not
-  comparable (its marker fires before the pipeline plays).
+`docs/` holds the feature scope (`features.md`), the interface specification
+(`design.md`) and notes for contributors (`contributing-agents.md`), including
+environment variables that open a page, play a track or render the window to
+a PNG without a display (`src/ui/debug.rs`).
 
-Machine: Arch Linux, KDE Plasma 6 (Wayland), GTK 4.24, libadwaita 1.10,
-GStreamer 1.28, Rust 1.99, release build.
+```bash
+cargo test --release
+cargo clippy --release
+```
 
 ## License
 
