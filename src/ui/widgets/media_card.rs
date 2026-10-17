@@ -77,8 +77,9 @@ struct ShownLoader {
     set: Box<dyn Fn(&gdk::Texture)>,
     loaded: Cell<bool>,
     ticket: RefCell<Option<Ticket>>,
-    /// The carousel's scroll position, watched until the card comes near.
-    watch: RefCell<Option<(gtk::Adjustment, [glib::SignalHandlerId; 2])>>,
+    /// Scroll positions (of the carousel, of the page) watched until the
+    /// widget comes near the visible part.
+    watch: RefCell<Vec<(gtk::Adjustment, [glib::SignalHandlerId; 2])>>,
 }
 
 impl ShownLoader {
@@ -86,36 +87,44 @@ impl ShownLoader {
         if self.loaded.get() {
             return;
         }
-        let scroller = widget
-            .ancestor(gtk::ScrolledWindow::static_type())
-            .and_downcast::<gtk::ScrolledWindow>()
-            .filter(|scrolled| scrolled.has_css_class(CAROUSEL_SCROLLER));
-        let Some(scroller) = scroller else {
+        let (carousel, page) = scrollers(widget);
+        if carousel.is_none() && page.is_none() {
             return self.request(widget);
-        };
-        let adjustment = scroller.hadjustment();
+        }
         let check = {
             let this = Rc::downgrade(self);
             let widget = widget.downgrade();
-            let scroller = scroller.downgrade();
+            let carousel = carousel.as_ref().map(|s| s.downgrade());
+            let page = page.as_ref().map(|s| s.downgrade());
             move |_: &gtk::Adjustment| {
-                if let (Some(this), Some(widget), Some(scroller)) =
-                    (this.upgrade(), widget.upgrade(), scroller.upgrade())
-                    && near(&widget, &scroller)
-                {
+                let (Some(this), Some(widget)) = (this.upgrade(), widget.upgrade()) else {
+                    return;
+                };
+                let carousel = carousel.as_ref().and_then(|s| s.upgrade());
+                let page = page.as_ref().and_then(|s| s.upgrade());
+                if near(&widget, carousel.as_ref(), page.as_ref()) {
                     this.unwatch();
                     this.request(&widget);
                 }
             }
         };
-        let ids = [
-            adjustment.connect_value_changed(check.clone()),
-            adjustment.connect_changed(check.clone()),
-        ];
         self.unwatch();
-        self.watch.replace(Some((adjustment.clone(), ids)));
+        let adjustments = carousel
+            .iter()
+            .map(|s| s.hadjustment())
+            .chain(page.iter().map(|s| s.vadjustment()));
+        for adjustment in adjustments {
+            let ids = [
+                adjustment.connect_value_changed(check.clone()),
+                adjustment.connect_changed(check.clone()),
+            ];
+            self.watch.borrow_mut().push((adjustment, ids));
+        }
         // Already laid out (shown again): decide now.
-        check(&adjustment);
+        let first = self.watch.borrow().first().map(|(a, _)| a.clone());
+        if let Some(adjustment) = first {
+            check(&adjustment);
+        }
     }
 
     fn request(self: &Rc<Self>, widget: &gtk::Widget) {
@@ -146,7 +155,7 @@ impl ShownLoader {
     }
 
     fn unwatch(&self) {
-        if let Some((adjustment, ids)) = self.watch.take() {
+        for (adjustment, ids) in self.watch.take() {
             for id in ids {
                 adjustment.disconnect(id);
             }
@@ -154,22 +163,53 @@ impl ShownLoader {
     }
 }
 
-/// Whether `widget` is within a page of the visible part of `scroller`.
-fn near(widget: &gtk::Widget, scroller: &gtk::ScrolledWindow) -> bool {
-    let page = f64::from(scroller.width());
-    if page <= 0.0 || widget.width() <= 0 {
-        return false;
+/// The carousel (horizontal) and page (vertical) scrolled windows around
+/// `widget`, if any.
+fn scrollers(widget: &gtk::Widget) -> (Option<gtk::ScrolledWindow>, Option<gtk::ScrolledWindow>) {
+    let mut carousel = None;
+    let mut at = widget.ancestor(gtk::ScrolledWindow::static_type());
+    while let Some(scrolled) = at.and_downcast::<gtk::ScrolledWindow>() {
+        if scrolled.has_css_class(CAROUSEL_SCROLLER) {
+            carousel.get_or_insert(scrolled.clone());
+        } else if scrolled.vscrollbar_policy() != gtk::PolicyType::Never {
+            return (carousel, Some(scrolled));
+        }
+        at = scrolled
+            .parent()
+            .and_then(|parent| parent.ancestor(gtk::ScrolledWindow::static_type()));
     }
-    let Some(point) = widget.compute_point(scroller, &gtk::graphene::Point::new(0.0, 0.0)) else {
-        return false;
-    };
-    let x = f64::from(point.x());
-    x + f64::from(widget.width()) >= -page && x <= 2.0 * page
+    (carousel, None)
 }
 
-/// Loads `image` into `set` while `widget` is mapped (inside a carousel:
-/// once its card is near the visible part). Unmapping cancels a download
-/// in progress; once loaded, the image stays.
+/// Whether `widget` is visible, or about to be (within half a screen), in
+/// `carousel` (across) and `page` (down).
+fn near(
+    widget: &gtk::Widget,
+    carousel: Option<&gtk::ScrolledWindow>,
+    page: Option<&gtk::ScrolledWindow>,
+) -> bool {
+    if widget.width() <= 0 {
+        return false;
+    }
+    let within = |scrolled: &gtk::ScrolledWindow, across: bool| {
+        let Some(point) = widget.compute_point(scrolled, &gtk::graphene::Point::new(0.0, 0.0))
+        else {
+            return false;
+        };
+        let (at, size, room) = if across {
+            (point.x(), widget.width(), scrolled.width())
+        } else {
+            (point.y(), widget.height(), scrolled.height())
+        };
+        let (at, size, room) = (f64::from(at), f64::from(size), f64::from(room));
+        room > 0.0 && at + size >= -room / 2.0 && at <= room * 1.5
+    };
+    carousel.is_none_or(|s| within(s, true)) && page.is_none_or(|s| within(s, false))
+}
+
+/// Loads `image` into `set` while `widget` is mapped and on screen or
+/// about to be (scrolled pages and carousels build more than they show).
+/// Unmapping cancels a download in progress; once loaded, the image stays.
 pub fn load_when_shown(
     ctx: &Rc<Ctx>,
     widget: &impl IsA<gtk::Widget>,
