@@ -312,7 +312,7 @@ impl Ui {
         crate::timing::mark("favourites up to date");
 
         if bench::play_enabled() && !bench::autoscroll_enabled() {
-            self.play_first_hires(&api, &list);
+            self.play_bench_track(&api, &list);
         }
     }
 
@@ -332,13 +332,13 @@ impl Ui {
             if bench::play_enabled()
                 && let Some(ui) = ui.upgrade()
             {
-                ui.play_first_hires(&api, &target);
+                ui.play_bench_track(&api, &target);
             }
         });
     }
 
-    fn play_first_hires(self: &Rc<Self>, api: &Arc<Api>, list: &TrackList) {
-        if let Some(track) = list.first_where(|track| track.hires) {
+    fn play_bench_track(self: &Rc<Self>, api: &Arc<Api>, list: &TrackList) {
+        if let Some(track) = list.first_where(bench::wants_track) {
             self.play(api.clone(), track);
         }
     }

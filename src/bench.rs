@@ -7,7 +7,8 @@
 //!   `SWELL_BENCH_SCROLL_PAGE_FRACTION` (1.0) of a page. At the bottom, with
 //!   every favourite loaded, logs `timing: scrolled to end`.
 //! - `SWELL_BENCH_PLAY=1`: then play the first Hi-Res favourite (right after
-//!   loading when not autoscrolling).
+//!   loading when not autoscrolling). `SWELL_BENCH_PLAY=<track id>` plays
+//!   that favourite instead.
 
 use std::cell::Cell;
 use std::rc::Rc;
@@ -16,12 +17,25 @@ use std::time::Duration;
 use gtk::glib;
 use gtk::prelude::*;
 
+use crate::model::TrackInfo;
+
 pub fn autoscroll_enabled() -> bool {
     std::env::var_os("SWELL_BENCH_AUTOSCROLL").is_some()
 }
 
 pub fn play_enabled() -> bool {
     std::env::var_os("SWELL_BENCH_PLAY").is_some()
+}
+
+/// The favourite `SWELL_BENCH_PLAY` asks for.
+pub fn wants_track(track: &TrackInfo) -> bool {
+    match std::env::var("SWELL_BENCH_PLAY")
+        .ok()
+        .and_then(|v| v.parse::<u64>().ok())
+    {
+        Some(id) if id > 1 => track.id == id,
+        _ => track.hires,
+    }
 }
 
 fn env_number(name: &str, default: f64) -> f64 {
