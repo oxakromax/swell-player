@@ -1,22 +1,24 @@
 //! The main window: a stack that switches between loading, sign-in and the
-//! library once a session exists.
+//! signed-in shell.
+//!
+//! PROVISIONAL shell: content navigation and the player bar only. The full
+//! shell of docs/design.md §2 replaces `build_shell`.
 
-use std::cell::{Cell, OnceCell, RefCell};
+use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::Arc;
-use std::time::Instant;
 
 use adw::prelude::*;
 use gtk::{gio, glib};
 
-use super::library::TrackList;
-use super::player_bar::PlayerBar;
-use crate::api::{self, Api, CachedHead, FavoritesUpdate};
-use crate::cache::{Cache, CachedCollection};
+use super::context::Ctx;
+use super::nav::{Navigator, Route};
+use super::widgets::player_bar::PlayerBar;
+use crate::api::{self, Api};
 use crate::covers::CoverLoader;
-use crate::model::TrackInfo;
-use crate::player::{Event, Player, State};
-use crate::{config, runtime, session};
+use crate::library::Library;
+use crate::playback::Playback;
+use crate::{config, runtime, session, settings};
 
 pub fn build(app: &adw::Application) {
     // Launching Swell again only raises the running window.
@@ -25,11 +27,16 @@ pub fn build(app: &adw::Application) {
         return;
     }
 
+    let settings = settings::Store::load();
+    let current = settings.get();
     let window = adw::ApplicationWindow::builder()
         .application(app)
         .title(config::APP_NAME)
-        .default_width(960)
-        .default_height(720)
+        .default_width(current.window_width)
+        .default_height(current.window_height)
+        .maximized(current.window_maximized)
+        .width_request(360)
+        .height_request(294)
         .build();
 
     let stack = gtk::Stack::builder()
@@ -42,53 +49,51 @@ pub fn build(app: &adw::Application) {
         .valign(gtk::Align::Center)
         .build();
     stack.add_named(&spinner, Some("loading"));
-
-    let title = adw::WindowTitle::new(config::APP_NAME, "");
-    let menu = gio::Menu::new();
-    menu.append(Some("Sign Out"), Some("win.sign-out"));
-    let menu_button = gtk::MenuButton::builder()
-        .icon_name("open-menu-symbolic")
-        .tooltip_text("Main Menu")
-        .menu_model(&menu)
-        .visible(false)
-        .build();
-    let header = adw::HeaderBar::builder().title_widget(&title).build();
-    header.pack_end(&menu_button);
-
-    let toolbar = adw::ToolbarView::new();
-    toolbar.add_top_bar(&header);
-    toolbar.set_content(Some(&stack));
-    window.set_content(Some(&toolbar));
+    window.set_content(Some(&stack));
     window.present();
 
     let http = api::http_client();
     api::preconnect(&http);
-    let playback = Playback::new();
-    if let Some(playback) = &playback {
-        playback.bar.widget.set_visible(false);
-        toolbar.add_bottom_bar(&playback.bar.widget);
-    }
     let ui = Rc::new(Ui {
         window,
         stack,
-        title,
-        menu_button,
         covers: CoverLoader::new(http.clone()),
         http,
-        playback,
-        play_request: Cell::new(0),
-        library_task: RefCell::default(),
+        settings,
+        session: RefCell::default(),
+    });
+    ui.window.connect_close_request({
+        let ui = Rc::downgrade(&ui);
+        move |window| {
+            if let Some(ui) = ui.upgrade() {
+                let (width, height) = window.default_size();
+                let maximized = window.is_maximized();
+                ui.settings.update(|s| {
+                    if !maximized {
+                        s.window_width = width;
+                        s.window_height = height;
+                    }
+                    s.window_maximized = maximized;
+                });
+                ui.settings.save_now();
+            }
+            glib::Propagation::Proceed
+        }
     });
     // Everything else holds the UI weakly; the window keeps it alive.
     ui.window.connect_destroy({
         let ui = RefCell::new(Some(ui.clone()));
-        move |_| drop(ui.take())
+        move |_| {
+            if let Some(ui) = ui.take() {
+                ui.end_session();
+            }
+        }
     });
     glib::spawn_future_local(async move {
         let stored = runtime::spawn(session::load()).await;
         crate::timing::mark("session read from the keyring");
         match stored {
-            Ok(Some(stored)) => ui.show_library(Api::restore(stored, ui.http.clone())),
+            Ok(Some(stored)) => ui.show_shell(Api::restore(stored, ui.http.clone())),
             Ok(None) => ui.show_login(None),
             Err(err) => ui.show_login(Some(format!("Could not open the keyring: {err:#}"))),
         }
@@ -98,68 +103,11 @@ pub fn build(app: &adw::Application) {
 struct Ui {
     window: adw::ApplicationWindow,
     stack: gtk::Stack,
-    title: adw::WindowTitle,
-    menu_button: gtk::MenuButton,
     covers: Rc<CoverLoader>,
     http: reqwest::Client,
-    /// `None` if GStreamer's playbin3 is not installed.
-    playback: Option<Playback>,
-    /// Bumped on every track activation, so a slow stream lookup that was
-    /// overtaken by a newer one is ignored.
-    play_request: Cell<u64>,
-    /// Loads and syncs the library; aborting it also aborts the sync on the
-    /// I/O runtime.
-    library_task: RefCell<Option<glib::JoinHandle<()>>>,
-}
-
-struct Playback {
-    player: Rc<Player>,
-    bar: Rc<PlayerBar>,
-    requested_at: Rc<Cell<Option<Instant>>>,
-}
-
-impl Playback {
-    fn new() -> Option<Self> {
-        let bar_slot: Rc<OnceCell<Rc<PlayerBar>>> = Rc::default();
-        let requested_at: Rc<Cell<Option<Instant>>> = Rc::default();
-        let player = Player::new({
-            let bar_slot = bar_slot.clone();
-            let requested_at = requested_at.clone();
-            move |event| {
-                let Some(bar) = bar_slot.get() else { return };
-                match event {
-                    Event::State(state) => {
-                        if *state == State::Playing
-                            && let Some(at) = requested_at.take()
-                        {
-                            log::info!(
-                                "playback started {} ms after the track was chosen",
-                                at.elapsed().as_millis()
-                            );
-                            crate::timing::mark("playing");
-                        }
-                        bar.set_state(*state);
-                    }
-                    Event::Finished => bar.set_state(State::Stopped),
-                    Event::Error(message) => bar.show_error(message),
-                }
-            }
-        });
-        let player = match player {
-            Ok(player) => Rc::new(player),
-            Err(err) => {
-                log::error!("playback unavailable: {err:#}");
-                return None;
-            }
-        };
-        let bar = PlayerBar::new(player.clone());
-        let _ = bar_slot.set(bar.clone());
-        Some(Self {
-            player,
-            bar,
-            requested_at,
-        })
-    }
+    settings: Rc<settings::Store>,
+    /// The signed-in session's shared state, while signed in.
+    session: RefCell<Option<Rc<Ctx>>>,
 }
 
 impl Ui {
@@ -171,39 +119,37 @@ impl Ui {
         self.stack.set_visible_child_name(name);
     }
 
-    /// Stops everything tied to the signed-in session: library sync, pending
-    /// stream lookups and playback.
-    fn stop_session_work(&self) {
-        if let Some(task) = self.library_task.take() {
-            task.abort();
+    /// Stops everything tied to the signed-in session.
+    fn end_session(&self) {
+        if let Some(ctx) = self.session.take() {
+            ctx.playback.stop();
         }
-        self.play_request.set(self.play_request.get() + 1);
-        if let Some(playback) = &self.playback {
-            playback.player.stop();
-            playback.bar.widget.set_visible(false);
-        }
+        self.window.remove_action("sign-out");
     }
 
     fn show_login(self: &Rc<Self>, error: Option<String>) {
-        self.stop_session_work();
-        self.title.set_subtitle("");
-        self.menu_button.set_visible(false);
-        self.window.remove_action("sign-out");
-        if let Some(library) = self.stack.child_by_name("library") {
-            self.stack.remove(&library);
+        self.end_session();
+        if let Some(main) = self.stack.child_by_name("main") {
+            self.stack.remove(&main);
         }
-
         let ui = self.clone();
         let page = super::login::page(&self.window, self.http.clone(), error, move |api| {
-            ui.show_library(api);
+            ui.show_shell(api);
         });
-        self.set_page("login", &page);
+        let toolbar = adw::ToolbarView::new();
+        toolbar.add_top_bar(&adw::HeaderBar::new());
+        toolbar.set_content(Some(&page));
+        self.set_page("login", &toolbar);
     }
 
-    /// Stops session work, deletes the tokens and cached library, and goes
+    /// Ends the session, deletes the tokens and cached library, and goes
     /// back to the sign-in page with `reason`.
-    fn sign_out(self: &Rc<Self>, api: Arc<Api>, reason: Option<String>) {
-        self.stop_session_work();
+    fn sign_out(self: &Rc<Self>, reason: Option<String>) {
+        let Some(ctx) = self.session.borrow().clone() else {
+            return;
+        };
+        self.end_session();
+        let api = ctx.api.clone();
         let ui = self.clone();
         glib::spawn_future_local(async move {
             let error = match runtime::spawn(async move { api.sign_out().await }).await {
@@ -216,153 +162,102 @@ impl Ui {
         });
     }
 
-    fn show_library(self: &Rc<Self>, api: Arc<Api>) {
+    fn show_shell(self: &Rc<Self>, api: Arc<Api>) {
+        let playback = Playback::new(api.clone(), self.settings.clone());
+        let library = Library::new(api.clone());
+        let toasts = adw::ToastOverlay::new();
+        let ctx = Ctx::new(
+            self.window.clone(),
+            api,
+            self.covers.clone(),
+            playback,
+            library.clone(),
+            self.settings.clone(),
+            toasts.clone(),
+        );
+        ctx.set_sign_out({
+            let ui = Rc::downgrade(self);
+            move |reason| {
+                if let Some(ui) = ui.upgrade() {
+                    ui.sign_out(reason);
+                }
+            }
+        });
         let sign_out = gio::ActionEntry::builder("sign-out")
             .activate({
                 let ui = Rc::downgrade(self);
-                let api = api.clone();
                 move |_: &adw::ApplicationWindow, _, _| {
                     if let Some(ui) = ui.upgrade() {
-                        ui.sign_out(api.clone(), None);
+                        ui.sign_out(None);
                     }
                 }
             })
             .build();
         self.window.add_action_entries([sign_out]);
-        self.menu_button.set_visible(true);
-        self.title.set_title("Favourite Tracks");
-        self.title.set_subtitle("Loading…");
 
-        let list = Rc::new(TrackList::new(self.covers.clone()));
-        self.set_page("library", &list.widget);
-        list.connect_track_activated({
-            let ui = Rc::downgrade(self);
-            let api = api.clone();
-            move |track| {
-                if let Some(ui) = ui.upgrade() {
-                    ui.play(api.clone(), track);
-                }
-            }
-        });
-
-        let task = glib::spawn_future_local(self.clone().load_library(api, list));
-        if let Some(old) = self.library_task.replace(Some(task)) {
-            old.abort();
-        }
-    }
-
-    async fn load_library(self: Rc<Self>, api: Arc<Api>, list: Rc<TrackList>) {
-        let user_id = Some(api.user_id());
-        let (cache, cached) = runtime::spawn(async move { Ok(open_cache(user_id).await) })
-            .await
-            .unwrap_or((None, None));
-        let head = cached.as_ref().map(CachedHead::of);
-        if let Some(cached) = cached {
-            list.append(cached.tracks);
-            self.title.set_subtitle(&format!("{} tracks", list.len()));
-            crate::timing::mark_after_next_frame(&list.widget, "cached favourites on screen");
+        let shell = build_shell(&ctx, &toasts);
+        self.session.replace(Some(ctx.clone()));
+        self.set_page("main", &shell);
+        if let Some(login) = self.stack.child_by_name("login") {
+            self.stack.remove(&login);
         }
 
-        let (updates_tx, mut updates) = tokio::sync::mpsc::unbounded_channel();
-        let sync =
-            runtime::runtime().spawn(api.clone().sync_favorite_tracks(cache, head, updates_tx));
-        let _sync = runtime::AbortOnDrop(sync.abort_handle());
-
-        let mut first = true;
-        let mut finished = false;
-        while let Some(update) = updates.recv().await {
-            match update {
-                Ok(FavoritesUpdate::Append(tracks)) => {
-                    list.append(tracks);
-                    if first {
-                        crate::timing::mark_after_next_frame(
-                            &list.widget,
-                            "first favourites on screen",
-                        );
-                    }
-                }
-                Ok(FavoritesUpdate::Replace(tracks)) => list.replace(tracks),
-                Ok(FavoritesUpdate::Finished) => finished = true,
-                Err(err) if api::is_auth_error(&err) => {
-                    log::warn!("the session is no longer valid: {err:#}");
-                    self.sign_out(
-                        api,
-                        Some("Your TIDAL session has expired. Please sign in again.".into()),
-                    );
-                    return;
-                }
-                Err(err) => {
-                    log::warn!("loading favourites failed: {err:#}");
-                    break;
-                }
-            }
-            first = false;
-            self.title.set_subtitle(&format!("{} tracks", list.len()));
-        }
-        if !finished {
-            self.title.set_subtitle("Could not load all favourites");
-            return;
-        }
-        crate::timing::mark("favourites up to date");
-    }
-}
-
-impl Ui {
-    fn play(self: &Rc<Self>, api: Arc<Api>, track: TrackInfo) {
-        let Some(playback) = &self.playback else {
-            self.title
-                .set_subtitle("Playback needs GStreamer's playbin3");
-            return;
-        };
-        let request = self.play_request.get() + 1;
-        self.play_request.set(request);
-        playback.requested_at.set(Some(Instant::now()));
-        playback.player.stop();
-        playback.bar.widget.set_visible(true);
-        playback.bar.show_loading(&track);
-        playback.bar.set_state(State::Buffering);
-
-        let ui = self.clone();
-        glib::spawn_future_local(async move {
-            let track_id = track.id;
-            let stream = runtime::spawn(async move { api.stream(track_id).await }).await;
-            let Some(playback) = &ui.playback else { return };
-            if ui.play_request.get() != request {
-                return;
-            }
-            match stream {
-                Ok(stream) => {
-                    log::info!("playing track {track_id} as {}", stream.format);
-                    playback.bar.show_format(&track, &stream.format);
-                    playback.player.play(&stream.uri);
-                }
-                Err(err) => {
-                    log::warn!("could not get a stream for track {track_id}: {err:#}");
-                    playback
-                        .bar
-                        .show_error(&format!("Cannot play this track: {err}"));
+        glib::spawn_future_local({
+            let ctx = ctx.clone();
+            async move {
+                if let Err(err) = library.load().await {
+                    ctx.report("Could not load your library", &err);
                 }
             }
         });
     }
 }
 
-/// Opens the library cache and reads the user's cached favourites. A broken
-/// cache is not fatal: the list then just loads from TIDAL.
-async fn open_cache(user_id: Option<u64>) -> (Option<Cache>, Option<CachedCollection>) {
-    let cache = match Cache::open().await {
-        Ok(cache) => cache,
-        Err(err) => {
-            log::warn!("library cache unavailable: {err:#}");
-            return (None, None);
-        }
-    };
-    let cached = match user_id {
-        Some(user_id) => cache.favorite_tracks(user_id).await.unwrap_or_else(|err| {
-            log::warn!("could not read cached favourites: {err:#}");
-            None
-        }),
-        None => None,
-    };
-    (Some(cache), cached)
+fn build_shell(ctx: &Rc<Ctx>, toasts: &adw::ToastOverlay) -> gtk::Widget {
+    let view = adw::NavigationView::new();
+    let navigator = Navigator::new(ctx, view.clone());
+    toasts.set_child(Some(&view));
+
+    let menu = gio::Menu::new();
+    menu.append(Some("Sign Out"), Some("win.sign-out"));
+
+    let sections = gtk::Box::builder().spacing(6).build();
+    for (label, route) in [
+        ("Home", Route::Home),
+        ("Explore", Route::Explore),
+        ("Search", Route::Search(None)),
+        ("Tracks", Route::Collection(super::nav::CollectionView::Tracks)),
+    ] {
+        let button = gtk::Button::builder().label(label).css_classes(["flat"]).build();
+        let ctx = Rc::downgrade(ctx);
+        button.connect_clicked(move |_| {
+            if let Some(ctx) = ctx.upgrade() {
+                ctx.navigate(route.clone());
+            }
+        });
+        sections.append(&button);
+    }
+    let menu_button = gtk::MenuButton::builder()
+        .icon_name("open-menu-symbolic")
+        .tooltip_text("Main Menu")
+        .menu_model(&menu)
+        .build();
+    sections.append(&menu_button);
+
+    let player_bar = PlayerBar::new(ctx.playback.clone());
+    let root = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    root.append(&sections);
+    toasts.set_vexpand(true);
+    root.append(toasts);
+    root.append(&player_bar.widget);
+    // The bar lives as long as its widget.
+    root.connect_destroy(move |_| {
+        let _ = &player_bar;
+    });
+
+    navigator.navigate(Route::Home);
+    // The navigator lives as long as the shell.
+    let keep = RefCell::new(Some(navigator));
+    root.connect_destroy(move |_| drop(keep.take()));
+    root.upcast()
 }

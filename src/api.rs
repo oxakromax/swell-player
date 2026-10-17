@@ -13,7 +13,7 @@ use tokio::sync::mpsc::UnboundedSender;
 use crate::cache::{Cache, CachedCollection};
 use crate::config;
 use crate::model::TrackInfo;
-use crate::player::Stream;
+use crate::playback::Stream;
 use crate::session::{self, LoginFlow, StoredSession};
 use crate::tidal::{self, Authz, Client, DeviceCode, Pkce};
 
@@ -60,6 +60,7 @@ const IMAGE_HOST: &str = "https://resources.tidal.com/";
 
 pub struct Api {
     pub client: Client,
+    cache: tokio::sync::OnceCell<Option<Cache>>,
 }
 
 impl Deref for Api {
@@ -83,7 +84,98 @@ impl Api {
                 }
             });
         });
-        Arc::new(Self { client })
+        Arc::new(Self {
+            client,
+            cache: tokio::sync::OnceCell::new(),
+        })
+    }
+
+    /// The library cache, opened on first use (`None` if it cannot be).
+    pub async fn cache(&self) -> Option<&Cache> {
+        self.cache
+            .get_or_init(|| async {
+                Cache::open()
+                    .await
+                    .inspect_err(|err| log::warn!("library cache unavailable: {err:#}"))
+                    .ok()
+            })
+            .await
+            .as_ref()
+    }
+
+    /// Stale-while-revalidate GET: sends the cached answer (if any) parsed
+    /// with `parse`, then, unless it is younger than `fresh_for`, fetches,
+    /// stores and sends the fresh one — but only if it differs. An error is
+    /// sent only when there was nothing cached to show.
+    pub fn load_cached<T: Send + 'static>(
+        self: &Arc<Self>,
+        base: tidal::Base,
+        path: String,
+        fresh_for: Duration,
+        parse: fn(&serde_json::Value) -> T,
+    ) -> tokio::sync::mpsc::UnboundedReceiver<Result<T>> {
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        let this = self.clone();
+        crate::runtime::runtime().spawn(async move {
+            let key = format!("{}{path}", base.prefix());
+            let user_id = this.user_id();
+            let cached = match this.cache().await {
+                Some(cache) => cache.response(user_id, key.clone()).await.ok().flatten(),
+                None => None,
+            };
+            let mut shown = None;
+            if let Some((data, age)) = cached
+                && let Ok(value) = serde_json::from_slice::<serde_json::Value>(&data)
+            {
+                let _ = tx.send(Ok(parse(&value)));
+                if age < fresh_for {
+                    return;
+                }
+                shown = Some(data);
+            }
+            let call = tidal::Call::get(base, path.clone());
+            let response = match this.send(&call).await {
+                Ok(response) => response,
+                Err(err) => {
+                    if shown.is_none() {
+                        let _ = tx.send(Err(err));
+                    } else {
+                        log::debug!("revalidating {path} failed: {err:#}");
+                    }
+                    return;
+                }
+            };
+            let fresh = response.body.to_vec();
+            if shown.as_deref() != Some(fresh.as_slice()) {
+                match serde_json::from_slice::<serde_json::Value>(&fresh) {
+                    Ok(value) => {
+                        let _ = tx.send(Ok(parse(&value)));
+                    }
+                    Err(err) => {
+                        if shown.is_none() {
+                            let _ = tx.send(Err(err.into()));
+                        }
+                        return;
+                    }
+                }
+            }
+            if !this.is_signed_out()
+                && let Some(cache) = this.cache().await
+                && let Err(err) = cache.store_response(user_id, key, fresh).await
+            {
+                log::debug!("could not cache {path}: {err:#}");
+            }
+        });
+        rx
+    }
+
+    /// Forgets cached answers under `prefix` (e.g. after editing a playlist).
+    pub async fn invalidate(&self, base: tidal::Base, prefix: &str) {
+        if let Some(cache) = self.cache().await {
+            let _ = cache
+                .forget_responses(self.user_id(), format!("{}{prefix}", base.prefix()))
+                .await;
+        }
     }
 
     /// Persists the tokens the client currently holds. Called once a login

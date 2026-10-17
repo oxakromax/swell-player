@@ -118,6 +118,14 @@ pub enum Base {
 }
 
 impl Base {
+    /// Short tag for cache keys.
+    pub fn prefix(self) -> &'static str {
+        match self {
+            Self::V1 => "v1/",
+            Self::V2 => "v2/",
+        }
+    }
+
     fn url(self) -> &'static str {
         match self {
             Self::V1 => API_V1,

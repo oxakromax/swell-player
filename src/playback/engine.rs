@@ -6,12 +6,10 @@
 //!   URI; `dashdemux2` then fetches the segments itself, streaming.
 //! - Everything else as a "BTS" manifest: JSON with a direct URL to the file.
 
-use std::cell::Cell;
 use std::path::PathBuf;
-use std::rc::Rc;
 
 use anyhow::{Context, Result, bail};
-use base64::Engine;
+use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use gst::prelude::*;
 use gtk::glib;
@@ -97,30 +95,22 @@ async fn write_manifest(track_id: u64, manifest: &[u8]) -> Result<PathBuf> {
     Ok(path)
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum State {
-    Stopped,
-    Buffering,
+pub enum EngineEvent {
     Playing,
     Paused,
-}
-
-pub enum Event {
-    State(State),
+    Buffering,
     Finished,
     Error(String),
 }
 
-pub struct Player {
+/// `playbin3`, audio only. Events arrive on the main thread.
+pub struct Engine {
     playbin: gst::Element,
-    /// The state last asked for, or `Stopped` after an error or the end.
-    state: Rc<Cell<State>>,
     _bus_watch: gst::bus::BusWatchGuard,
 }
 
-impl Player {
-    /// `on_event` is called on the main thread.
-    pub fn new(on_event: impl Fn(&Event) + 'static) -> Result<Self> {
+impl Engine {
+    pub fn new(on_event: impl Fn(EngineEvent) + 'static) -> Result<Self> {
         let playbin = gst::ElementFactory::make("playbin3")
             .build()
             .context("GStreamer's playbin3 is missing (install gst-plugins-base)")?;
@@ -129,8 +119,6 @@ impl Player {
 
         let bus = playbin.bus().context("playbin3 has no bus")?;
         let element = playbin.downgrade();
-        let state = Rc::new(Cell::new(State::Stopped));
-        let watch_state = state.clone();
         let watch = bus.add_watch_local(move |_, message| {
             use gst::MessageView;
             let Some(playbin) = element.upgrade() else {
@@ -139,28 +127,26 @@ impl Player {
             match message.view() {
                 MessageView::Eos(_) => {
                     let _ = playbin.set_state(gst::State::Null);
-                    watch_state.set(State::Stopped);
-                    on_event(&Event::Finished);
+                    on_event(EngineEvent::Finished);
                 }
                 MessageView::Error(err) => {
                     let _ = playbin.set_state(gst::State::Null);
-                    watch_state.set(State::Stopped);
-                    on_event(&Event::Error(err.error().to_string()));
                     log::warn!("playback error: {} ({:?})", err.error(), err.debug());
+                    on_event(EngineEvent::Error(err.error().to_string()));
                 }
                 MessageView::StateChanged(change)
                     if message.src() == Some(playbin.upcast_ref()) =>
                 {
                     match change.current() {
-                        gst::State::Playing => on_event(&Event::State(State::Playing)),
+                        gst::State::Playing => on_event(EngineEvent::Playing),
                         gst::State::Paused if change.pending() == gst::State::VoidPending => {
-                            on_event(&Event::State(State::Paused));
+                            on_event(EngineEvent::Paused);
                         }
                         _ => {}
                     }
                 }
                 MessageView::Buffering(buffering) if buffering.percent() < 100 => {
-                    on_event(&Event::State(State::Buffering));
+                    on_event(EngineEvent::Buffering);
                 }
                 _ => {}
             }
@@ -169,59 +155,69 @@ impl Player {
 
         Ok(Self {
             playbin,
-            state,
             _bus_watch: watch,
         })
     }
 
-    pub fn play(&self, uri: &str) {
+    /// Starts `uri` from the beginning, playing or paused.
+    pub fn load(&self, uri: &str, play: bool) {
         let _ = self.playbin.set_state(gst::State::Null);
         self.playbin.set_property("uri", uri);
-        self.set_state(State::Playing);
+        self.set_state(if play {
+            gst::State::Playing
+        } else {
+            gst::State::Paused
+        });
     }
 
-    pub fn toggle(&self) {
-        match self.state.get() {
-            State::Playing | State::Buffering => self.set_state(State::Paused),
-            State::Paused => self.set_state(State::Playing),
-            State::Stopped => {}
-        }
+    pub fn resume(&self) {
+        self.set_state(gst::State::Playing);
+    }
+
+    pub fn pause(&self) {
+        self.set_state(gst::State::Paused);
     }
 
     pub fn stop(&self) {
-        let _ = self.playbin.set_state(gst::State::Null);
-        self.state.set(State::Stopped);
+        self.set_state(gst::State::Null);
     }
 
-    fn set_state(&self, state: State) {
-        let target = match state {
-            State::Playing => gst::State::Playing,
-            State::Paused => gst::State::Paused,
-            State::Stopped | State::Buffering => gst::State::Null,
-        };
-        if let Err(err) = self.playbin.set_state(target) {
-            log::warn!("could not switch playback to {target:?}: {err}");
+    fn set_state(&self, state: gst::State) {
+        if let Err(err) = self.playbin.set_state(state) {
+            log::warn!("could not switch playback to {state:?}: {err}");
         }
-        self.state.set(state);
     }
 
-    pub fn position(&self) -> Option<gst::ClockTime> {
-        self.playbin.query_position()
+    /// Linear 0.0–1.0.
+    pub fn set_volume(&self, volume: f64) {
+        self.playbin.set_property("volume", volume.clamp(0.0, 1.0));
     }
 
-    pub fn duration(&self) -> Option<gst::ClockTime> {
-        self.playbin.query_duration()
+    /// Seconds.
+    pub fn position(&self) -> Option<f64> {
+        self.playbin
+            .query_position::<gst::ClockTime>()
+            .map(|t| t.nseconds() as f64 / 1e9)
     }
 
-    pub fn seek(&self, position: gst::ClockTime) {
+    /// Seconds.
+    pub fn duration(&self) -> Option<f64> {
+        self.playbin
+            .query_duration::<gst::ClockTime>()
+            .map(|t| t.nseconds() as f64 / 1e9)
+    }
+
+    /// Seconds.
+    pub fn seek(&self, position: f64) {
         let flags = gst::SeekFlags::FLUSH | gst::SeekFlags::KEY_UNIT;
-        if let Err(err) = self.playbin.seek_simple(flags, position) {
+        let target = gst::ClockTime::from_nseconds((position * 1e9) as u64);
+        if let Err(err) = self.playbin.seek_simple(flags, target) {
             log::debug!("seek failed: {err}");
         }
     }
 }
 
-impl Drop for Player {
+impl Drop for Engine {
     fn drop(&mut self) {
         let _ = self.playbin.set_state(gst::State::Null);
     }

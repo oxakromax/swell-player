@@ -1,5 +1,6 @@
-mod library;
+pub mod context;
 mod login;
-mod player_bar;
-mod track_row;
+pub mod nav;
+mod pages;
+pub mod widgets;
 pub mod window;

@@ -9,14 +9,14 @@ use gtk::glib;
 use gtk::prelude::*;
 
 use crate::model::{TrackInfo, format_duration};
-use crate::player::{Player, State};
+use crate::playback::{Event, PlayState, Playback};
 
 /// How often the position is refreshed while playing.
 const TICK: Duration = Duration::from_millis(500);
 
 pub struct PlayerBar {
     pub widget: gtk::Box,
-    player: Rc<Player>,
+    player: Rc<Playback>,
     play: gtk::Button,
     title: gtk::Label,
     subtitle: gtk::Label,
@@ -27,7 +27,7 @@ pub struct PlayerBar {
 }
 
 impl PlayerBar {
-    pub fn new(player: Rc<Player>) -> Rc<Self> {
+    pub fn new(player: Rc<Playback>) -> Rc<Self> {
         let play = gtk::Button::builder()
             .icon_name("media-playback-start-symbolic")
             .tooltip_text("Play")
@@ -82,6 +82,24 @@ impl PlayerBar {
             tick: RefCell::default(),
         });
 
+        bar.player.subscribe({
+            let bar = Rc::downgrade(&bar);
+            move |event| {
+                let Some(bar) = bar.upgrade() else { return };
+                match event {
+                    Event::Track(Some(track)) => bar.show_loading(track),
+                    Event::Track(None) => bar.set_state(PlayState::Stopped),
+                    Event::State(state) => bar.set_state(*state),
+                    Event::Format(Some(format)) => {
+                        if let Some(track) = bar.player.current() {
+                            bar.show_format(&track, format);
+                        }
+                    }
+                    Event::Error(message) => bar.show_error(message),
+                    _ => {}
+                }
+            }
+        });
         bar.play.connect_clicked({
             let bar = Rc::downgrade(&bar);
             move |_| {
@@ -95,8 +113,7 @@ impl PlayerBar {
             let bar = Rc::downgrade(&bar);
             move |_, _, seconds| {
                 if let Some(bar) = bar.upgrade() {
-                    bar.player
-                        .seek(gst::ClockTime::from_seconds_f64(seconds.max(0.0)));
+                    bar.player.seek(seconds.max(0.0));
                 }
                 glib::Propagation::Proceed
             }
@@ -106,6 +123,7 @@ impl PlayerBar {
 
     /// A track was chosen and its stream is being looked up.
     pub fn show_loading(&self, track: &TrackInfo) {
+        self.widget.set_visible(true);
         self.title.set_label(&track.title);
         self.subtitle.set_label(&track.artist_names());
         self.progress
@@ -123,11 +141,11 @@ impl PlayerBar {
 
     pub fn show_error(self: &Rc<Self>, message: &str) {
         self.subtitle.set_label(message);
-        self.set_state(State::Stopped);
     }
 
-    pub fn set_state(self: &Rc<Self>, state: State) {
-        let playing = matches!(state, State::Playing | State::Buffering);
+    pub fn set_state(self: &Rc<Self>, state: PlayState) {
+        self.widget.set_visible(true);
+        let playing = matches!(state, PlayState::Playing | PlayState::Loading);
         let (icon, tooltip) = if playing {
             ("media-playback-pause-symbolic", "Pause")
         } else {
@@ -135,10 +153,10 @@ impl PlayerBar {
         };
         self.play.set_icon_name(icon);
         self.play.set_tooltip_text(Some(tooltip));
-        self.play.set_sensitive(state != State::Stopped);
-        self.progress.set_sensitive(state != State::Stopped);
+        self.play.set_sensitive(self.player.current().is_some());
+        self.progress.set_sensitive(state != PlayState::Stopped);
 
-        if state == State::Playing {
+        if state == PlayState::Playing {
             self.update_position();
             if self.tick.borrow().is_none() {
                 let bar = Rc::downgrade(self);
@@ -158,15 +176,12 @@ impl PlayerBar {
 
     fn update_position(&self) {
         if let Some(duration) = self.player.duration() {
-            self.progress
-                .set_range(0.0, duration.seconds_f64().max(1.0));
-            self.duration
-                .set_label(&format_duration(duration.seconds()));
+            self.progress.set_range(0.0, duration.max(1.0));
+            self.duration.set_label(&format_duration(duration as u64));
         }
         if let Some(position) = self.player.position() {
-            self.progress.set_value(position.seconds_f64());
-            self.position
-                .set_label(&format_duration(position.seconds()));
+            self.progress.set_value(position);
+            self.position.set_label(&format_duration(position as u64));
         }
     }
 }
