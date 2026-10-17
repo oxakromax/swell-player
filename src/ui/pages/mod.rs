@@ -11,6 +11,8 @@ mod mix;
 mod more;
 mod playlist;
 mod search;
+mod search_data;
+mod search_views;
 
 use std::rc::Rc;
 
