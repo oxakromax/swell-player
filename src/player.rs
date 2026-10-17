@@ -16,7 +16,7 @@ use base64::engine::general_purpose::STANDARD as BASE64;
 use gst::prelude::*;
 use gtk::glib;
 use serde::Deserialize;
-use tidalrs::TrackDashPlaybackInfo;
+use crate::tidal::models::PlaybackInfo;
 
 /// What TIDAL returned for a track, resolved to something `playbin3` plays.
 pub struct Stream {
@@ -28,7 +28,7 @@ pub struct Stream {
 impl Stream {
     /// Decodes the manifest of `info`. DASH manifests are written to disk,
     /// so this runs on the I/O runtime.
-    pub async fn from_playback_info(info: TrackDashPlaybackInfo) -> Result<Self> {
+    pub async fn from_playback_info(info: PlaybackInfo) -> Result<Self> {
         let manifest = BASE64
             .decode(info.manifest.as_bytes())
             .context("the playback manifest is not base64")?;
@@ -64,13 +64,18 @@ struct BtsManifest {
     urls: Vec<String>,
 }
 
-fn describe_format(info: &TrackDashPlaybackInfo) -> String {
+fn describe_format(info: &PlaybackInfo) -> String {
     match (info.bit_depth, info.sample_rate) {
         (Some(bits), Some(rate)) => {
             let khz = f64::from(rate) / 1000.0;
             format!("{bits}-bit/{khz} kHz FLAC")
         }
-        _ => format!("{:?}", info.audio_quality),
+        _ => match info.audio_quality.as_deref() {
+            Some("LOSSLESS") => "16-bit/44.1 kHz FLAC".to_owned(),
+            Some("HIGH") => "AAC 320 kbit/s".to_owned(),
+            Some("LOW") => "AAC 96 kbit/s".to_owned(),
+            other => other.unwrap_or("Unknown format").to_owned(),
+        },
     }
 }
 

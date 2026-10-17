@@ -1,0 +1,402 @@
+//! Swell's own client for TIDAL's (unofficial) v1 and v2 APIs.
+//!
+//! - One shared `reqwest::Client` (HTTP/2, kept alive) for every call.
+//! - The access token is refreshed shortly before it expires, so requests
+//!   rarely pay for a 401 round trip; a 401 still triggers one refresh
+//!   (shared by every request that hits it) and one retry.
+//! - Idempotent requests are retried on 429/5xx and dropped connections with
+//!   a short backoff; writes are never retried, so they cannot apply twice.
+//! - Models are lenient: missing fields take defaults, and one malformed
+//!   item drops only that item, never the whole page.
+
+pub mod auth;
+mod endpoints;
+pub mod models;
+pub mod pages;
+
+use std::fmt;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, RwLock};
+use std::time::Duration;
+
+use anyhow::{Context, Result};
+use reqwest::{Method, StatusCode};
+use serde::de::DeserializeOwned;
+
+pub use auth::{Authz, DeviceCode, Pkce};
+pub use endpoints::*;
+
+use crate::session::LoginFlow;
+
+const API_V1: &str = "https://api.tidal.com/v1/";
+const API_V2: &str = "https://api.tidal.com/v2/";
+/// Sent as `x-tidal-client-version`; v2 endpoints reject requests without it.
+const CLIENT_VERSION: &str = "2025.7.16";
+/// Refresh this long before the token expires.
+const REFRESH_MARGIN: Duration = Duration::from_secs(120);
+const MAX_RETRIES: u32 = 3;
+
+/// Errors with a meaning for the UI. Everything else is a plain
+/// `anyhow::Error` with a readable message.
+#[derive(Debug)]
+pub enum Error {
+    /// The refresh token was rejected: the user has to sign in again.
+    SessionExpired,
+    /// TIDAL answered with an error.
+    Api {
+        status: u16,
+        sub_status: u32,
+        message: String,
+    },
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::SessionExpired => f.write_str("the TIDAL session has expired"),
+            Self::Api {
+                status,
+                sub_status,
+                message,
+            } => write!(f, "TIDAL error {status}/{sub_status}: {message}"),
+        }
+    }
+}
+
+impl std::error::Error for Error {}
+
+/// Whether `err` means the user has to sign in again.
+pub fn is_auth_error(err: &anyhow::Error) -> bool {
+    match err.downcast_ref::<Error>() {
+        Some(Error::SessionExpired) => true,
+        // 11xxx is TIDAL's "token invalid"; other 401s are e.g. a track not
+        // playable in this region.
+        Some(Error::Api {
+            status: 401,
+            sub_status,
+            ..
+        }) => (11000..12000).contains(sub_status),
+        _ => false,
+    }
+}
+
+/// Whether `err` is TIDAL saying the item does not exist (or not here).
+pub fn is_not_found(err: &anyhow::Error) -> bool {
+    matches!(
+        err.downcast_ref::<Error>(),
+        Some(Error::Api { status: 404, .. })
+    )
+}
+
+#[derive(serde::Deserialize, Default)]
+#[serde(rename_all = "camelCase", default)]
+struct ErrorBody {
+    status: Option<u16>,
+    sub_status: Option<u32>,
+    user_message: Option<String>,
+    description: Option<String>,
+    error: Option<String>,
+}
+
+fn api_error(status: StatusCode, body: &[u8]) -> Error {
+    let parsed: ErrorBody = serde_json::from_slice(body).unwrap_or_default();
+    Error::Api {
+        status: parsed.status.unwrap_or(status.as_u16()),
+        sub_status: parsed.sub_status.unwrap_or(0),
+        message: parsed
+            .user_message
+            .or(parsed.description)
+            .or(parsed.error)
+            .unwrap_or_else(|| status.canonical_reason().unwrap_or("error").to_owned()),
+    }
+}
+
+#[derive(Clone, Copy)]
+pub enum Base {
+    V1,
+    V2,
+}
+
+impl Base {
+    fn url(self) -> &'static str {
+        match self {
+            Self::V1 => API_V1,
+            Self::V2 => API_V2,
+        }
+    }
+}
+
+/// One API call, described so it can be re-sent after a refresh.
+pub struct Call {
+    pub method: Method,
+    pub base: Base,
+    pub path: String,
+    pub query: Vec<(&'static str, String)>,
+    pub form: Option<Vec<(&'static str, String)>>,
+    pub headers: Vec<(&'static str, String)>,
+}
+
+impl Call {
+    pub fn get(base: Base, path: impl Into<String>) -> Self {
+        Self {
+            method: Method::GET,
+            base,
+            path: path.into(),
+            query: Vec::new(),
+            form: None,
+            headers: Vec::new(),
+        }
+    }
+
+    pub fn post(base: Base, path: impl Into<String>) -> Self {
+        Self {
+            method: Method::POST,
+            ..Self::get(base, path)
+        }
+    }
+
+    pub fn delete(base: Base, path: impl Into<String>) -> Self {
+        Self {
+            method: Method::DELETE,
+            ..Self::get(base, path)
+        }
+    }
+
+    pub fn put(base: Base, path: impl Into<String>) -> Self {
+        Self {
+            method: Method::PUT,
+            ..Self::get(base, path)
+        }
+    }
+
+    /// Adds `offset` and `limit`.
+    pub fn page(self, offset: usize, limit: usize) -> Self {
+        self.query("offset", offset).query("limit", limit)
+    }
+
+    pub fn query(mut self, key: &'static str, value: impl ToString) -> Self {
+        self.query.push((key, value.to_string()));
+        self
+    }
+
+    pub fn form(mut self, key: &'static str, value: impl ToString) -> Self {
+        self.form
+            .get_or_insert_with(Vec::new)
+            .push((key, value.to_string()));
+        self
+    }
+
+    pub fn header(mut self, key: &'static str, value: impl ToString) -> Self {
+        self.headers.push((key, value.to_string()));
+        self
+    }
+
+    fn idempotent(&self) -> bool {
+        self.method == Method::GET
+    }
+}
+
+pub struct Response {
+    pub status: StatusCode,
+    pub headers: reqwest::header::HeaderMap,
+    pub body: bytes::Bytes,
+}
+
+impl Response {
+    pub fn json<T: DeserializeOwned>(&self) -> Result<T> {
+        serde_json::from_slice(&self.body).with_context(|| {
+            format!(
+                "unexpected answer from TIDAL: {}",
+                String::from_utf8_lossy(&self.body[..self.body.len().min(200)])
+            )
+        })
+    }
+
+    pub fn etag(&self) -> Option<String> {
+        self.headers
+            .get(reqwest::header::ETAG)
+            .and_then(|v| v.to_str().ok())
+            .map(str::to_owned)
+    }
+}
+
+type RefreshCallback = Box<dyn Fn(&Authz) + Send + Sync>;
+
+pub struct Client {
+    http: reqwest::Client,
+    pub flow: LoginFlow,
+    authz: RwLock<Arc<Authz>>,
+    refreshing: tokio::sync::Mutex<()>,
+    on_refresh: RefreshCallback,
+    /// Set on sign-out: nothing may be written back afterwards.
+    signed_out: AtomicBool,
+    locale: String,
+}
+
+impl Client {
+    pub fn new(
+        http: reqwest::Client,
+        flow: LoginFlow,
+        authz: Authz,
+        on_refresh: impl Fn(&Authz) + Send + Sync + 'static,
+    ) -> Self {
+        Self {
+            http,
+            flow,
+            authz: RwLock::new(Arc::new(authz)),
+            refreshing: tokio::sync::Mutex::new(()),
+            on_refresh: Box::new(on_refresh),
+            signed_out: AtomicBool::new(false),
+            locale: locale(),
+        }
+    }
+
+    pub fn http(&self) -> &reqwest::Client {
+        &self.http
+    }
+
+    pub fn authz(&self) -> Arc<Authz> {
+        self.authz.read().unwrap_or_else(|e| e.into_inner()).clone()
+    }
+
+    pub fn user_id(&self) -> u64 {
+        self.authz().user_id.unwrap_or(0)
+    }
+
+    pub fn country_code(&self) -> String {
+        self.authz()
+            .country_code
+            .clone()
+            .unwrap_or_else(|| "US".to_owned())
+    }
+
+    pub fn mark_signed_out(&self) {
+        self.signed_out.store(true, Ordering::SeqCst);
+    }
+
+    pub fn is_signed_out(&self) -> bool {
+        self.signed_out.load(Ordering::SeqCst)
+    }
+
+    /// Refreshes the token unless another request already did since `stale`
+    /// was read.
+    async fn refresh(&self, stale: &Arc<Authz>) -> Result<()> {
+        let _guard = self.refreshing.lock().await;
+        if !Arc::ptr_eq(&self.authz(), stale) {
+            return Ok(());
+        }
+        let fresh = auth::refresh(&self.http, self.flow.oauth_client(), stale).await?;
+        log::info!("access token refreshed");
+        if !self.is_signed_out() {
+            (self.on_refresh)(&fresh);
+        }
+        *self.authz.write().unwrap_or_else(|e| e.into_inner()) = Arc::new(fresh);
+        Ok(())
+    }
+
+    /// Sends `call`, refreshing and retrying as described in the module docs.
+    pub async fn send(&self, call: &Call) -> Result<Response> {
+        let mut refreshed = false;
+        let mut attempt = 0;
+        loop {
+            let authz = self.authz();
+            if authz.expires_within(REFRESH_MARGIN) && !refreshed {
+                refreshed = true;
+                self.refresh(&authz).await?;
+                continue;
+            }
+            let url = format!("{}{}", call.base.url(), call.path);
+            let mut request = self
+                .http
+                .request(call.method.clone(), &url)
+                .bearer_auth(&authz.access_token)
+                .header("x-tidal-client-version", CLIENT_VERSION)
+                .query(&[
+                    ("countryCode", authz.country_code.as_deref().unwrap_or("US")),
+                    ("locale", &self.locale),
+                    ("deviceType", "BROWSER"),
+                ])
+                .query(&call.query);
+            for (key, value) in &call.headers {
+                request = request.header(*key, value);
+            }
+            if let Some(form) = &call.form {
+                request = request.form(form);
+            }
+
+            let retry = attempt < MAX_RETRIES && call.idempotent();
+            let response = match request.send().await {
+                Ok(response) => response,
+                Err(err) if retry && (err.is_connect() || err.is_timeout() || err.is_request()) => {
+                    attempt += 1;
+                    log::debug!("{} {url}: {err}; retrying", call.method);
+                    tokio::time::sleep(backoff(attempt)).await;
+                    continue;
+                }
+                Err(err) => return Err(anyhow::Error::new(err).context("could not reach TIDAL")),
+            };
+            let status = response.status();
+            let headers = response.headers().clone();
+            let body = response.bytes().await.context("TIDAL's answer was cut off")?;
+
+            if status.is_success() || status == StatusCode::NOT_MODIFIED {
+                return Ok(Response {
+                    status,
+                    headers,
+                    body,
+                });
+            }
+            let error = api_error(status, &body);
+            if status == StatusCode::UNAUTHORIZED
+                && !refreshed
+                && matches!(&error, Error::Api { sub_status, .. } if (11000..12000).contains(sub_status))
+            {
+                refreshed = true;
+                self.refresh(&authz).await?;
+                continue;
+            }
+            if retry && (status == StatusCode::TOO_MANY_REQUESTS || status.is_server_error()) {
+                attempt += 1;
+                let wait = headers
+                    .get(reqwest::header::RETRY_AFTER)
+                    .and_then(|v| v.to_str().ok())
+                    .and_then(|v| v.parse::<u64>().ok())
+                    .map(|s| Duration::from_secs(s.min(10)))
+                    .unwrap_or_else(|| backoff(attempt));
+                log::debug!("{} {url}: {status}; retrying in {wait:?}", call.method);
+                tokio::time::sleep(wait).await;
+                continue;
+            }
+            log::debug!("{} {url}: {error}", call.method);
+            return Err(error.into());
+        }
+    }
+
+    pub async fn get<T: DeserializeOwned>(&self, call: Call) -> Result<T> {
+        self.send(&call).await?.json()
+    }
+
+    /// Sends a write and ignores the body.
+    pub async fn write(&self, call: Call) -> Result<Response> {
+        self.send(&call).await
+    }
+}
+
+fn backoff(attempt: u32) -> Duration {
+    Duration::from_millis(250 * 2u64.pow(attempt.saturating_sub(1)))
+}
+
+/// TIDAL's locale (`es_ES`, `en_US`...) from the environment.
+fn locale() -> String {
+    let lang = ["LC_ALL", "LC_MESSAGES", "LANG"]
+        .into_iter()
+        .filter_map(|key| std::env::var(key).ok())
+        .find(|v| !v.is_empty() && v != "C" && v != "POSIX")
+        .unwrap_or_default();
+    let tag = lang.split(['.', '@']).next().unwrap_or("");
+    if tag.len() == 5 && tag.as_bytes()[2] == b'_' {
+        tag.to_owned()
+    } else {
+        "en_US".to_owned()
+    }
+}

@@ -6,7 +6,7 @@
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
-use tidalrs::{AudioQuality, Authz};
+use crate::tidal::{Authz, Quality};
 use tokio::sync::OnceCell;
 
 use crate::config::{self, OAuthClient};
@@ -30,10 +30,10 @@ impl LoginFlow {
         }
     }
 
-    pub fn max_quality(self) -> AudioQuality {
+    pub fn max_quality(self) -> Quality {
         match self {
-            Self::Pkce => AudioQuality::HiResLossless,
-            Self::DeviceCode => AudioQuality::Lossless,
+            Self::Pkce => Quality::HiResLossless,
+            Self::DeviceCode => Quality::Lossless,
         }
     }
 }

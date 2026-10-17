@@ -252,7 +252,7 @@ impl Ui {
     }
 
     async fn load_library(self: Rc<Self>, api: Arc<Api>, list: Rc<TrackList>) {
-        let user_id = api.client.get_user_id();
+        let user_id = Some(api.user_id());
         let (cache, cached) = runtime::spawn(async move { Ok(open_cache(user_id).await) })
             .await
             .unwrap_or((None, None));

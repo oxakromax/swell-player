@@ -1,13 +1,13 @@
-//! Thin layer over the `tidalrs` client: building it for a login flow, the
-//! sign-in steps, and keeping the keyring in sync when tokens are refreshed.
+//! The signed-in API client: the TIDAL client plus the app-level work built
+//! on it (keeping the keyring in sync, syncing favourites, resolving
+//! streams).
 
+use std::ops::Deref;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use futures_util::{StreamExt, stream};
-use tidalrs::{DeviceAuthorizationResponse, FavoriteTrack, TidalClient};
 use tokio::sync::mpsc::UnboundedSender;
 
 use crate::cache::{Cache, CachedCollection};
@@ -15,6 +15,7 @@ use crate::config;
 use crate::model::TrackInfo;
 use crate::player::Stream;
 use crate::session::{self, LoginFlow, StoredSession};
+use crate::tidal::{self, Authz, Client, DeviceCode, Pkce};
 
 /// One HTTP client for the whole app: API calls and image downloads share
 /// its connection pool. Both TIDAL hosts speak HTTP/2, so concurrent
@@ -58,97 +59,97 @@ const API_HOST: &str = "https://api.tidal.com/";
 const IMAGE_HOST: &str = "https://resources.tidal.com/";
 
 pub struct Api {
-    pub client: TidalClient,
-    pub flow: LoginFlow,
-    /// Set by [`Api::sign_out`]; a token refresh or sync that finishes
-    /// afterwards must not write anything back.
-    signed_out: Arc<AtomicBool>,
+    pub client: Client,
+}
+
+impl Deref for Api {
+    type Target = Client;
+
+    fn deref(&self) -> &Client {
+        &self.client
+    }
 }
 
 impl Api {
-    pub fn new(flow: LoginFlow, http: reqwest::Client) -> Arc<Self> {
-        Self::build(flow, http, None)
-    }
-
+    /// A client for a session; refreshed tokens are written back to the
+    /// keyring unless the user has signed out meanwhile.
     pub fn restore(stored: StoredSession, http: reqwest::Client) -> Arc<Self> {
-        Self::build(stored.flow, http, Some(stored.authz))
-    }
-
-    fn build(flow: LoginFlow, http: reqwest::Client, authz: Option<tidalrs::Authz>) -> Arc<Self> {
-        let oauth = flow.oauth_client();
-        let signed_out = Arc::new(AtomicBool::new(false));
-        let refresh_signed_out = signed_out.clone();
-        let mut client = TidalClient::new(oauth.id.to_owned())
-            .with_client_secret(oauth.secret)
-            .with_client(http)
-            .with_authz_refresh_callback(move |authz| {
-                // Called on the I/O runtime right after a refresh (access
-                // tokens last 4 hours): persist the new tokens.
-                let signed_out = refresh_signed_out.clone();
-                tokio::spawn(async move {
-                    if signed_out.load(Ordering::SeqCst) {
-                        return;
-                    }
-                    if let Err(err) = session::save(&StoredSession { flow, authz }).await {
-                        log::warn!("could not store refreshed tokens: {err:#}");
-                    }
-                });
+        let flow = stored.flow;
+        let client = Client::new(http, flow, stored.authz, move |authz: &Authz| {
+            let authz = authz.clone();
+            tokio::spawn(async move {
+                if let Err(err) = session::save(&StoredSession { flow, authz }).await {
+                    log::warn!("could not store refreshed tokens: {err:#}");
+                }
             });
-        if let Some(authz) = authz {
-            client = client.with_authz(authz);
-        }
-        Arc::new(Self {
-            client,
-            flow,
-            signed_out,
-        })
+        });
+        Arc::new(Self { client })
     }
 
     /// Persists the tokens the client currently holds. Called once a login
     /// has won, never by a flow that might still lose.
     pub async fn store(&self) -> Result<()> {
-        let authz = self.client.get_authz().context("not signed in")?;
         session::save(&StoredSession {
             flow: self.flow,
-            authz: (*authz).clone(),
+            authz: (*self.authz()).clone(),
         })
         .await
     }
 
     /// First half of the PKCE login: the URL to open in the browser.
-    pub fn pkce_login_url(&self) -> Result<String> {
-        Ok(self.client.start_pkce(config::PKCE_REDIRECT_URI)?)
+    pub fn start_pkce() -> Result<Pkce> {
+        Pkce::start(LoginFlow::Pkce.oauth_client(), config::PKCE_REDIRECT_URI)
     }
 
     /// Second half of the PKCE login: `redirect_url` is the address of the
     /// page TIDAL lands on after signing in; it carries the one-time code.
-    pub async fn finish_pkce_login(&self, redirect_url: &str) -> Result<()> {
-        self.client.finish_pkce(redirect_url.trim()).await?;
-        Ok(())
+    pub async fn finish_pkce(
+        http: reqwest::Client,
+        pkce: &Pkce,
+        redirect_url: &str,
+    ) -> Result<Arc<Self>> {
+        let authz = pkce
+            .finish(&http, LoginFlow::Pkce.oauth_client(), redirect_url)
+            .await?;
+        Ok(Self::restore(
+            StoredSession {
+                flow: LoginFlow::Pkce,
+                authz,
+            },
+            http,
+        ))
     }
 
-    pub async fn start_device_login(&self) -> Result<DeviceAuthorizationResponse> {
-        Ok(self.client.device_authorization().await?)
+    pub async fn start_device_login(http: &reqwest::Client) -> Result<DeviceCode> {
+        DeviceCode::start(http, LoginFlow::DeviceCode.oauth_client()).await
     }
 
     /// Polls until the user approves the code or it expires.
-    pub async fn finish_device_login(&self, device: &DeviceAuthorizationResponse) -> Result<()> {
-        self.client
-            .wait_for_authorization(&device.device_code, device.expires_in, device.interval)
+    pub async fn finish_device_login(
+        http: reqwest::Client,
+        device: &DeviceCode,
+    ) -> Result<Arc<Self>> {
+        let authz = device
+            .wait(&http, LoginFlow::DeviceCode.oauth_client())
             .await?;
-        Ok(())
+        Ok(Self::restore(
+            StoredSession {
+                flow: LoginFlow::DeviceCode,
+                authz,
+            },
+            http,
+        ))
     }
 
     /// Removes the tokens from the keyring, then (best effort) the user's
     /// cached library. Running work must be stopped first.
     pub async fn sign_out(&self) -> Result<()> {
-        self.signed_out.store(true, Ordering::SeqCst);
+        self.mark_signed_out();
         session::clear().await?;
-        if let Some(user_id) = self.client.get_user_id() {
-            let forget = async { Cache::open().await?.forget_user(user_id).await };
-            if let Err(err) = forget.await {
-                log::warn!("could not clear the library cache: {err:#}");
-            }
+        let user_id = self.user_id();
+        let forget = async { Cache::open().await?.forget_user(user_id).await };
+        if let Err(err) = forget.await {
+            log::warn!("could not clear the library cache: {err:#}");
         }
         Ok(())
     }
@@ -212,9 +213,9 @@ impl Api {
         }
         let _ = updates.send(Ok(FavoritesUpdate::Finished));
 
-        if let (Some(cache), Some(user_id)) = (cache, self.client.get_user_id())
-            && !self.signed_out.load(Ordering::SeqCst)
-            && let Err(err) = cache.store_favorite_tracks(user_id, total, all).await
+        if let Some(cache) = cache
+            && !self.is_signed_out()
+            && let Err(err) = cache.store_favorite_tracks(self.user_id(), total, all).await
         {
             log::warn!("could not cache favourites: {err:#}");
         }
@@ -225,19 +226,13 @@ impl Api {
     /// allows. Hi-Res comes back as MPEG-DASH, the rest as a direct URL.
     pub async fn stream(&self, track_id: u64) -> Result<Stream> {
         let info = self
-            .client
-            .track_dash_playback_info(track_id, self.flow.max_quality())
+            .playback_info(track_id, self.flow.max_quality())
             .await?;
         Stream::from_playback_info(info).await
     }
 
-    async fn favorite_tracks_page(&self, offset: usize) -> Result<tidalrs::List<FavoriteTrack>> {
-        let offset = offset.try_into()?;
-        let limit = FAVORITES_PAGE.try_into()?;
-        let page = self
-            .client
-            .favorite_tracks(Some(offset), Some(limit), None, None)
-            .await?;
+    async fn favorite_tracks_page(&self, offset: usize) -> Result<tidal::models::Page<tidal::models::Track>> {
+        let page = self.favorite_tracks(offset, FAVORITES_PAGE).await?;
         log::debug!(
             "favourites at offset {offset}: {} items of {}",
             page.items.len(),
@@ -263,19 +258,7 @@ pub enum FavoritesUpdate {
     Finished,
 }
 
-/// Whether `err` means the session is no longer valid (revoked, or the
-/// refresh token expired), so the user has to sign in again.
-pub fn is_auth_error(err: &anyhow::Error) -> bool {
-    match err.downcast_ref::<tidalrs::Error>() {
-        Some(tidalrs::Error::OAuth { .. } | tidalrs::Error::NoAuthzToken) => true,
-        // 401 with an 11xxx sub-status is TIDAL's "token invalid/expired";
-        // other 401s (e.g. a track not playable in this region) are not.
-        Some(tidalrs::Error::TidalApiError(api)) => {
-            api.status == 401 && (11000..12000).contains(&api.sub_status)
-        }
-        _ => false,
-    }
-}
+pub use tidal::is_auth_error;
 
 /// What a cached list looked like, to check it against the first page.
 pub struct CachedHead {
@@ -309,9 +292,6 @@ impl CachedHead {
     }
 }
 
-fn into_infos(items: Vec<FavoriteTrack>) -> Vec<TrackInfo> {
-    items
-        .into_iter()
-        .map(|favorite| favorite.item.into())
-        .collect()
+fn into_infos(items: Vec<tidal::models::Track>) -> Vec<TrackInfo> {
+    items.into_iter().map(TrackInfo::from).collect()
 }

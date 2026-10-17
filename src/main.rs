@@ -6,6 +6,7 @@ mod cache;
 mod config;
 mod covers;
 mod model;
+mod tidal;
 mod player;
 mod runtime;
 mod session;

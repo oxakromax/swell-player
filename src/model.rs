@@ -1,9 +1,9 @@
 //! The compact track record the UI keeps for every list row.
 //!
-//! `tidalrs::Track` carries every field the API returns; a library of a few
-//! thousand tracks only needs these.
+//! TIDAL's track object carries every field the API returns; a library of a
+//! few thousand tracks only needs these.
 
-use tidalrs::Track;
+use crate::tidal::models::Track;
 
 #[derive(Clone, Debug)]
 pub struct TrackInfo {
@@ -32,7 +32,9 @@ impl From<Track> for TrackInfo {
             .join(", ");
         let hires = track
             .media_metadata
-            .is_some_and(|meta| meta.tags.iter().any(|tag| tag == "HIRES_LOSSLESS"));
+            .tags
+            .iter()
+            .any(|tag| tag == "HIRES_LOSSLESS");
         Self {
             id: track.id,
             title,

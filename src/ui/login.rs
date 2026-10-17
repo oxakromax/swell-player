@@ -9,10 +9,7 @@ use gtk::{gio, glib};
 
 use crate::api::Api;
 use crate::runtime;
-use crate::session::LoginFlow;
-
-/// The PKCE client and the login URL it generated.
-type PendingPkce = (Arc<Api>, String);
+use crate::tidal::Pkce;
 
 pub fn page(
     window: &adw::ApplicationWindow,
@@ -151,30 +148,27 @@ pub fn page(
         }
     });
 
-    // The PKCE verifier lives in the client that built the URL, so a second
-    // click reopens the same URL instead of invalidating the first one.
-    let pkce: Rc<RefCell<Option<PendingPkce>>> = Rc::default();
+    // The PKCE verifier belongs to the URL it built, so a second click
+    // reopens the same URL instead of invalidating the first one.
+    let pkce: Rc<RefCell<Option<Arc<Pkce>>>> = Rc::default();
 
     browser_button.connect_clicked({
         let window = window.clone();
-        let http = http.clone();
         let pkce = pkce.clone();
         let redirect_entry = redirect_entry.clone();
         let show_error = show_error.clone();
         move |_| {
-            let existing = pkce.borrow().as_ref().map(|(_, url)| url.clone());
+            let existing = pkce.borrow().as_ref().map(|pending| pending.url.clone());
             let url = match existing {
                 Some(url) => url,
-                None => {
-                    let api = Api::new(LoginFlow::Pkce, http.clone());
-                    match api.pkce_login_url() {
-                        Ok(url) => {
-                            pkce.replace(Some((api, url.clone())));
-                            url
-                        }
-                        Err(err) => return show_error(format!("{err:#}")),
+                None => match Api::start_pkce() {
+                    Ok(pending) => {
+                        let url = pending.url.clone();
+                        pkce.replace(Some(Arc::new(pending)));
+                        url
                     }
-                }
+                    Err(err) => return show_error(format!("{err:#}")),
+                },
             };
             gtk::UriLauncher::new(&url).launch(Some(&window), gio::Cancellable::NONE, {
                 let show_error = show_error.clone();
@@ -192,25 +186,28 @@ pub fn page(
     });
 
     let finish_pkce = {
+        let http = http.clone();
         let entry = redirect_entry.clone();
         let button = continue_button.clone();
         let on_signed_in = on_signed_in.clone();
         let show_error = show_error.clone();
         move || {
-            let Some(api) = pkce.borrow().as_ref().map(|(api, _)| api.clone()) else {
+            let Some(pending) = pkce.borrow().clone() else {
                 return;
             };
+            let http = http.clone();
             let redirect = entry.text().to_string();
             button.set_sensitive(false);
             let button = button.clone();
             let on_signed_in = on_signed_in.clone();
             let show_error = show_error.clone();
             glib::spawn_future_local(async move {
-                let task_api = api.clone();
-                match runtime::spawn(async move { task_api.finish_pkce_login(&redirect).await })
-                    .await
+                match runtime::spawn(async move {
+                    Api::finish_pkce(http, &pending, &redirect).await
+                })
+                .await
                 {
-                    Ok(()) => on_signed_in(api, false),
+                    Ok(api) => on_signed_in(api, false),
                     Err(err) => {
                         show_error(format!("Sign-in failed: {err:#}"));
                         button.set_sensitive(true);
@@ -227,7 +224,7 @@ pub fn page(
 
     device_button.connect_clicked(move |button| {
         button.set_sensitive(false);
-        let api = Api::new(LoginFlow::DeviceCode, http.clone());
+        let http = http.clone();
         let button = button.clone();
         let device_box = device_box.clone();
         let device_code = device_code.clone();
@@ -235,9 +232,11 @@ pub fn page(
         let on_signed_in = on_signed_in.clone();
         let show_error = show_error.clone();
         let task = glib::spawn_future_local(async move {
-            let task_api = api.clone();
+            let start_http = http.clone();
             let device =
-                match runtime::spawn(async move { task_api.start_device_login().await }).await {
+                match runtime::spawn(async move { Api::start_device_login(&start_http).await })
+                    .await
+                {
                     Ok(device) => device,
                     Err(err) => {
                         show_error(format!("Could not get a device code: {err:#}"));
@@ -250,9 +249,10 @@ pub fn page(
             device_link.set_label(&device.url);
             device_box.set_visible(true);
 
-            let task_api = api.clone();
-            match runtime::spawn(async move { task_api.finish_device_login(&device).await }).await {
-                Ok(()) => on_signed_in(api, true),
+            match runtime::spawn(async move { Api::finish_device_login(http, &device).await })
+                .await
+            {
+                Ok(api) => on_signed_in(api, true),
                 Err(err) => {
                     show_error(format!("Device sign-in failed: {err:#}"));
                     device_box.set_visible(false);
