@@ -187,9 +187,16 @@ pub fn play(ctx: &Rc<Ctx>, subject: &Subject, mode: PlayMode) {
         }
         return;
     };
-    let ctx = ctx.clone();
+    // Held weakly across the fetch: a sign-out meanwhile drops this
+    // session's context, and nothing may reach it afterwards.
+    let api = ctx.api.clone();
+    let weak = Rc::downgrade(ctx);
     glib::spawn_future_local(async move {
-        match query.fetch(ctx.api.clone()).await {
+        let result = query.fetch(api).await;
+        let Some(ctx) = weak.upgrade() else {
+            return;
+        };
+        match result {
             Ok(tracks) if tracks.is_empty() => ctx.toast("There's nothing to play here"),
             Ok(tracks) => apply(&ctx, tracks, source, mode),
             Err(err) => ctx.report("Couldn't load the tracks", &err),
@@ -291,10 +298,14 @@ pub fn toast_with_action(ctx: &Ctx, message: &str, label: &str, action: impl Fn(
 
 /// Plays a single track from its id (links to tracks in pages).
 pub fn play_track_id(ctx: &Rc<Ctx>, id: u64) {
-    let ctx = ctx.clone();
+    let api = ctx.api.clone();
+    let weak = Rc::downgrade(ctx);
     glib::spawn_future_local(async move {
-        let api = ctx.api.clone();
-        match runtime::spawn(async move { api.track(id).await }).await {
+        let result = runtime::spawn(async move { api.track(id).await }).await;
+        let Some(ctx) = weak.upgrade() else {
+            return;
+        };
+        match result {
             Ok(track) => {
                 let track = TrackInfo::from(track);
                 let source = Subject::track(track.clone()).source();
@@ -796,9 +807,14 @@ fn with_track_ids(ctx: &Rc<Ctx>, subject: &Subject, f: impl FnOnce(&Rc<Ctx>, Vec
         }
         return;
     };
-    let ctx = ctx.clone();
+    let api = ctx.api.clone();
+    let weak = Rc::downgrade(ctx);
     glib::spawn_future_local(async move {
-        match query.fetch(ctx.api.clone()).await {
+        let result = query.fetch(api).await;
+        let Some(ctx) = weak.upgrade() else {
+            return;
+        };
+        match result {
             Ok(tracks) => f(&ctx, tracks.into_iter().map(|t| t.id).collect()),
             Err(err) => ctx.report("Couldn't load the tracks", &err),
         }
@@ -807,10 +823,14 @@ fn with_track_ids(ctx: &Rc<Ctx>, subject: &Subject, f: impl FnOnce(&Rc<Ctx>, Vec
 
 /// Blocks (or unblocks) an artist, with Undo.
 fn block_artist(ctx: &Rc<Ctx>, id: u64, name: String, blocked: bool) {
-    let ctx = ctx.clone();
+    let api = ctx.api.clone();
+    let weak = Rc::downgrade(ctx);
     glib::spawn_future_local(async move {
-        let api = ctx.api.clone();
-        match runtime::spawn(async move { api.set_artist_blocked(id, blocked).await }).await {
+        let result = runtime::spawn(async move { api.set_artist_blocked(id, blocked).await }).await;
+        let Some(ctx) = weak.upgrade() else {
+            return;
+        };
+        match result {
             Ok(()) if blocked => {
                 let weak = Rc::downgrade(&ctx);
                 let name_again = name.clone();

@@ -123,8 +123,11 @@ fn oauth_error(status: reqwest::StatusCode, body: &[u8]) -> anyhow::Error {
     }
 }
 
-/// Exchanges the refresh token for a new access token. A rejected refresh
-/// token means the session is over: [`Error::SessionExpired`].
+/// Exchanges the refresh token for a new access token. Only TIDAL saying
+/// the grant itself is no longer valid ends the session
+/// ([`Error::SessionExpired`]); anything else (a network error, a 5xx, an
+/// HTML page from a CDN, a malformed request) is a transient error, so a
+/// hiccup never signs the user out.
 pub async fn refresh(http: &reqwest::Client, client: &OAuthClient, authz: &Authz) -> Result<Authz> {
     let refresh_token = authz
         .refresh_token
@@ -142,14 +145,49 @@ pub async fn refresh(http: &reqwest::Client, client: &OAuthClient, authz: &Authz
     )
     .await?;
     if status.is_success() {
-        let token: TokenResponse = serde_json::from_slice(&body)?;
+        let token: TokenResponse = serde_json::from_slice(&body)
+            .context("TIDAL's sign-in server sent an unreadable answer")?;
         return Ok(token.into_authz(Some(authz)));
     }
-    if matches!(status.as_u16(), 400 | 401 | 403) {
-        log::warn!("token refresh rejected: {:#}", oauth_error(status, &body));
-        return Err(Error::SessionExpired.into());
+    let error = oauth_error(status, &body);
+    match refresh_failure(&body) {
+        RefreshFailure::Expired => {
+            log::warn!("token refresh rejected: {error:#}");
+            Err(Error::SessionExpired.into())
+        }
+        RefreshFailure::ClientRejected => {
+            log::error!("TIDAL rejected this app's OAuth client on refresh: {error:#}");
+            Err(Error::SessionExpired.into())
+        }
+        RefreshFailure::Transient => {
+            log::warn!("token refresh failed: {error:#}");
+            Err(error.context("could not renew the TIDAL session"))
+        }
     }
-    Err(oauth_error(status, &body))
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum RefreshFailure {
+    /// `invalid_grant`: the refresh token was revoked or has expired.
+    Expired,
+    /// `invalid_client` / `unauthorized_client`: these credentials can no
+    /// longer refresh; signing in again is the only way out.
+    ClientRejected,
+    /// Anything else: try again later.
+    Transient,
+}
+
+/// Classifies a failed refresh by its OAuth error body (RFC 6749 §5.2),
+/// whatever the HTTP status.
+fn refresh_failure(body: &[u8]) -> RefreshFailure {
+    match serde_json::from_slice::<OAuthError>(body) {
+        Ok(err) => match err.error.as_str() {
+            "invalid_grant" => RefreshFailure::Expired,
+            "invalid_client" | "unauthorized_client" => RefreshFailure::ClientRejected,
+            _ => RefreshFailure::Transient,
+        },
+        Err(_) => RefreshFailure::Transient,
+    }
 }
 
 /// A browser sign-in in progress.
@@ -305,6 +343,29 @@ mod tests {
         assert!(pkce.url.contains("code_challenge_method=S256"));
         assert_eq!(pkce.verifier.len(), 43);
         assert_eq!(pkce.unique_key.len(), 16);
+    }
+
+    #[test]
+    fn only_a_rejected_grant_ends_the_session() {
+        let expired = br#"{"status":400,"error":"invalid_grant","sub_status":11101,"error_description":"Token could not be verified"}"#;
+        assert_eq!(refresh_failure(expired), RefreshFailure::Expired);
+        assert_eq!(
+            refresh_failure(br#"{"error":"invalid_client"}"#),
+            RefreshFailure::ClientRejected
+        );
+        assert_eq!(
+            refresh_failure(br#"{"error":"unauthorized_client"}"#),
+            RefreshFailure::ClientRejected
+        );
+        for transient in [
+            &br#"{"error":"invalid_request","error_description":"Missing parameter"}"#[..],
+            br#"{"error":"temporarily_unavailable"}"#,
+            br#"{"status":503}"#,
+            b"<html><body>403 Forbidden</body></html>",
+            b"",
+        ] {
+            assert_eq!(refresh_failure(transient), RefreshFailure::Transient);
+        }
     }
 
     #[test]
