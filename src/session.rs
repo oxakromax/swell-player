@@ -4,9 +4,9 @@
 //! inside Flatpak, to the secret portal. They are never written to disk in
 //! plain text.
 
+use crate::tidal::{Authz, Quality};
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
-use crate::tidal::{Authz, Quality};
 use tokio::sync::OnceCell;
 
 use crate::config::{self, OAuthClient};

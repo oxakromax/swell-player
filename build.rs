@@ -12,6 +12,8 @@ fn main() {
         .arg(format!("--target={out_dir}/swell.gresource"))
         .arg("data/resources.gresource.xml")
         .status()
-        .expect("glib-compile-resources (part of GLib's development tools) is needed to build Swell");
+        .expect(
+            "glib-compile-resources (part of GLib's development tools) is needed to build Swell",
+        );
     assert!(status.success(), "glib-compile-resources failed");
 }

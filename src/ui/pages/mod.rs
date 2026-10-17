@@ -21,7 +21,6 @@ use std::rc::Rc;
 
 use super::context::Ctx;
 use super::nav::Route;
-use crate::i18n::tr;
 
 pub fn build(ctx: &Rc<Ctx>, route: &Route) -> adw::NavigationPage {
     // Recently Played says when tracks played: start noting it as soon as
@@ -43,20 +42,4 @@ pub fn build(ctx: &Rc<Ctx>, route: &Route) -> adw::NavigationPage {
         Route::More { title, more } => more::page(ctx, title.clone(), more.clone()),
         Route::History => history::page(ctx),
     }
-}
-
-/// A page that is not built yet.
-pub(super) fn placeholder(title: &str) -> adw::NavigationPage {
-    let status = adw::StatusPage::builder()
-        .icon_name("applications-engineering-symbolic")
-        .title(title)
-        .description(tr("Coming soon"))
-        .build();
-    let toolbar = adw::ToolbarView::new();
-    toolbar.add_top_bar(&adw::HeaderBar::new());
-    toolbar.set_content(Some(&status));
-    adw::NavigationPage::builder()
-        .title(title)
-        .child(&toolbar)
-        .build()
 }

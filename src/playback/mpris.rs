@@ -434,9 +434,7 @@ impl Player {
 
     fn open_uri(&self, uri: &str) -> zbus::fdo::Result<()> {
         if crate::tidal::pages::Target::from_url(uri).is_none() {
-            return Err(zbus::fdo::Error::InvalidArgs(
-                "not a TIDAL link".to_owned(),
-            ));
+            return Err(zbus::fdo::Error::InvalidArgs("not a TIDAL link".to_owned()));
         }
         self.send(Command::OpenUri(uri.to_owned()));
         Ok(())

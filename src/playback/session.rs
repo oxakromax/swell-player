@@ -155,7 +155,8 @@ fn write_atomic(path: &Path, data: &[u8]) -> std::io::Result<()> {
         std::fs::create_dir_all(parent)?;
     }
     let partial = super::rundir::temp_path(path);
-    if let Err(err) = std::fs::write(&partial, data).and_then(|()| std::fs::rename(&partial, path)) {
+    if let Err(err) = std::fs::write(&partial, data).and_then(|()| std::fs::rename(&partial, path))
+    {
         let _ = std::fs::remove_file(&partial);
         return Err(err);
     }

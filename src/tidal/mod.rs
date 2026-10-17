@@ -230,8 +230,7 @@ impl Response {
     }
 }
 
-type RefreshCallback =
-    Box<dyn Fn(Authz) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync>;
+type RefreshCallback = Box<dyn Fn(Authz) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync>;
 
 pub struct Client {
     http: reqwest::Client,
@@ -376,7 +375,10 @@ impl Client {
             };
             let status = response.status();
             let headers = response.headers().clone();
-            let body = response.bytes().await.context("TIDAL's answer was cut off")?;
+            let body = response
+                .bytes()
+                .await
+                .context("TIDAL's answer was cut off")?;
 
             if status.is_success() || status == StatusCode::NOT_MODIFIED {
                 return Ok(Response {

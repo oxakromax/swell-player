@@ -69,6 +69,8 @@ fn catalogue() -> Option<&'static Catalogue> {
 }
 
 /// The UI language's code (`"es"`), or `None` for the built-in English.
+/// Tests use it to expect the English strings.
+#[cfg(test)]
 pub fn ui_language() -> Option<&'static str> {
     language()
 }
@@ -195,7 +197,10 @@ fn parse(source: &str) -> Catalogue {
         match field {
             Field::None => {}
             Field::Id => entry.id.push_str(&text),
-            Field::IdPlural => entry.id_plural.get_or_insert_with(String::new).push_str(&text),
+            Field::IdPlural => entry
+                .id_plural
+                .get_or_insert_with(String::new)
+                .push_str(&text),
             Field::Str(index) => {
                 while entry.strs.len() <= index {
                     entry.strs.push(String::new());
@@ -341,7 +346,11 @@ msgstr "Di \"hola\""
                 }
             }
         }
-        assert!(missing.is_empty(), "untranslated strings:\n{}", missing.join("\n"));
+        assert!(
+            missing.is_empty(),
+            "untranslated strings:\n{}",
+            missing.join("\n")
+        );
     }
 
     #[test]

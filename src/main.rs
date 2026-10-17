@@ -9,11 +9,11 @@ mod i18n;
 mod library;
 mod mem;
 mod model;
-mod tidal;
 mod playback;
-mod settings;
 mod runtime;
 mod session;
+mod settings;
+mod tidal;
 mod timing;
 mod ui;
 

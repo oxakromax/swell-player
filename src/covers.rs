@@ -127,9 +127,12 @@ fn is_tidal_image_url(url: &str) -> bool {
     };
     url.scheme() == "https"
         && url.port().is_none()
-        && ["tidal.com", "tidalhifi.com"]
-            .iter()
-            .any(|domain| host == *domain || host.strip_suffix(domain).is_some_and(|sub| sub.ends_with('.')))
+        && ["tidal.com", "tidalhifi.com"].iter().any(|domain| {
+            host == *domain
+                || host
+                    .strip_suffix(domain)
+                    .is_some_and(|sub| sub.ends_with('.'))
+        })
 }
 
 /// Bumped when the disk cache is deleted: downloads that started before
@@ -588,7 +591,14 @@ mod tests {
     fn only_tidal_images_are_loaded() {
         assert!(Image::Cover("a1b2c3d4-e5f6-4789-abcd-ef0123456789".into()).is_valid());
         assert!(Image::Artist("ABCDEF12".into()).is_valid());
-        for id in ["", "../../etc", "abc", "a1b2c3d4/../x", "a1b2c3d4-e5f6.jpg", &"a".repeat(65)] {
+        for id in [
+            "",
+            "../../etc",
+            "abc",
+            "a1b2c3d4/../x",
+            "a1b2c3d4-e5f6.jpg",
+            &"a".repeat(65),
+        ] {
             assert!(!Image::Playlist(id.into()).is_valid(), "{id}");
         }
         for url in [

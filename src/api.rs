@@ -326,7 +326,9 @@ impl Api {
             let _ = updates.send(Ok(FavoritesUpdate::Replace(all.clone())));
             let _ = updates.send(Ok(FavoritesUpdate::Finished));
             if !self.is_signed_out()
-                && let Err(err) = cache.store_favorite_tracks(self.user_id(), total, all).await
+                && let Err(err) = cache
+                    .store_favorite_tracks(self.user_id(), total, all)
+                    .await
             {
                 log::warn!("could not cache favourites: {err:#}");
             }
@@ -358,7 +360,9 @@ impl Api {
 
         if let Some(cache) = cache
             && !self.is_signed_out()
-            && let Err(err) = cache.store_favorite_tracks(self.user_id(), total, all).await
+            && let Err(err) = cache
+                .store_favorite_tracks(self.user_id(), total, all)
+                .await
         {
             log::warn!("could not cache favourites: {err:#}");
         }
@@ -375,13 +379,20 @@ impl Api {
     /// Like [`Self::stream`], asking for `quality` (which the caller caps
     /// at what the session allows). TIDAL may answer with less when the
     /// track is not available in it.
-    pub async fn stream_with_quality(&self, track_id: u64, quality: tidal::Quality) -> Result<Stream> {
+    pub async fn stream_with_quality(
+        &self,
+        track_id: u64,
+        quality: tidal::Quality,
+    ) -> Result<Stream> {
         debug_stream_failure().await?;
         let info = self.playback_info(track_id, quality).await?;
         Stream::from_playback_info(track_id, info).await
     }
 
-    async fn favorite_tracks_page(&self, offset: usize) -> Result<tidal::models::Page<tidal::models::Track>> {
+    async fn favorite_tracks_page(
+        &self,
+        offset: usize,
+    ) -> Result<tidal::models::Page<tidal::models::Track>> {
         let page = self.favorite_tracks(offset, FAVORITES_PAGE).await?;
         log::debug!(
             "favourites at offset {offset}: {} items of {}",
@@ -396,8 +407,8 @@ impl Api {
 /// lookups (after the first `skip`) fail with a real connection error, as
 /// when the network is down.
 async fn debug_stream_failure() -> Result<()> {
-    use std::sync::atomic::{AtomicI64, Ordering};
     use std::sync::OnceLock;
+    use std::sync::atomic::{AtomicI64, Ordering};
 
     static PLAN: OnceLock<Option<(i64, i64)>> = OnceLock::new();
     static CALLS: AtomicI64 = AtomicI64::new(0);
@@ -412,7 +423,10 @@ async fn debug_stream_failure() -> Result<()> {
     if call < skip || call >= skip + fail {
         return Ok(());
     }
-    log::info!("SWELL_DEBUG_STREAM_FAIL: failing stream lookup {}", call + 1);
+    log::info!(
+        "SWELL_DEBUG_STREAM_FAIL: failing stream lookup {}",
+        call + 1
+    );
     let client = reqwest::Client::builder().no_proxy().build()?;
     let err = client
         .get("http://127.0.0.1:9/")
@@ -486,7 +500,10 @@ impl Api {
             && *age < FAVORITES_MAX_AGE
             && *cached_total == total
             && first.len() <= items.len()
-            && first.iter().zip(items).all(|(a, b)| item_id(a) == item_id(b))
+            && first
+                .iter()
+                .zip(items)
+                .all(|(a, b)| item_id(a) == item_id(b))
         {
             let _ = updates.send(Ok(ListUpdate::Finished));
             return Ok(());

@@ -1012,7 +1012,8 @@ impl SleepIndicator {
             }
         };
         self.label.set_label(&text);
-        self.label.set_visible(self.show_minutes && !text.is_empty());
+        self.label
+            .set_visible(self.show_minutes && !text.is_empty());
         self.widget.set_tooltip_text(Some(&tooltip));
         self.widget
             .update_property(&[gtk::accessible::Property::Label(&tooltip)]);

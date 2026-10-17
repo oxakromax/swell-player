@@ -421,10 +421,13 @@ impl Client {
         limit: usize,
     ) -> Result<Page<Wrapped<T>>> {
         self.get(
-            Call::get(Base::V1, self.uid_path(&format!("favorites/{}", kind.plural())))
-                .page(offset, limit)
-                .query("order", "DATE")
-                .query("orderDirection", "DESC"),
+            Call::get(
+                Base::V1,
+                self.uid_path(&format!("favorites/{}", kind.plural())),
+            )
+            .page(offset, limit)
+            .query("order", "DATE")
+            .query("orderDirection", "DESC"),
         )
         .await
     }
@@ -443,8 +446,11 @@ impl Client {
 
     pub async fn add_favorite(&self, kind: Favorite, id: &str) -> Result<()> {
         self.write(
-            Call::post(Base::V1, self.uid_path(&format!("favorites/{}", kind.plural())))
-                .form(kind.form_key(), id),
+            Call::post(
+                Base::V1,
+                self.uid_path(&format!("favorites/{}", kind.plural())),
+            )
+            .form(kind.form_key(), id),
         )
         .await?;
         Ok(())
@@ -479,11 +485,7 @@ impl Client {
         offset: usize,
         limit: usize,
     ) -> Result<SearchResults> {
-        let types = types
-            .iter()
-            .map(|t| t.name())
-            .collect::<Vec<_>>()
-            .join(",");
+        let types = types.iter().map(|t| t.name()).collect::<Vec<_>>().join(",");
         self.get(
             Call::get(Base::V1, "search")
                 .query("query", query)
@@ -499,18 +501,22 @@ impl Client {
     /// Every blocked artist (fetched 100 at a time).
     pub async fn blocked_artists(&self) -> Result<Page<Artist>> {
         let path = self.uid_path("blocks/artists");
-        let page: Page<Wrapped<Artist>> = self.get(Call::get(Base::V1, &path).page(0, MAX_PAGE)).await?;
+        let page: Page<Wrapped<Artist>> = self
+            .get(Call::get(Base::V1, &path).page(0, MAX_PAGE))
+            .await?;
         let mut all = unwrap_page(page, |_, artist| artist);
         // Advance by the page size, not by the items kept: lenient parsing
         // may drop malformed ones. Bounded in case the total is wrong.
         let mut offset = MAX_PAGE;
         while offset < all.total && offset < 100 * MAX_PAGE {
-            let page: Page<Wrapped<Artist>> =
-                self.get(Call::get(Base::V1, &path).page(offset, MAX_PAGE)).await?;
+            let page: Page<Wrapped<Artist>> = self
+                .get(Call::get(Base::V1, &path).page(offset, MAX_PAGE))
+                .await?;
             if page.items.is_empty() {
                 break;
             }
-            all.items.extend(unwrap_page(page, |_, artist| artist).items);
+            all.items
+                .extend(unwrap_page(page, |_, artist| artist).items);
             offset += MAX_PAGE;
         }
         all.limit = all.items.len();
@@ -556,7 +562,11 @@ fn tracks_of(page: Page<Wrapped<Value>>) -> Page<Track> {
         items: page
             .items
             .into_iter()
-            .filter(|w| w.kind.as_deref().is_none_or(|k| k.eq_ignore_ascii_case("track")))
+            .filter(|w| {
+                w.kind
+                    .as_deref()
+                    .is_none_or(|k| k.eq_ignore_ascii_case("track"))
+            })
             .filter_map(|w| {
                 let mut track: Track = serde_json::from_value(w.item).ok()?;
                 track.date_added = w.created.or(track.date_added);

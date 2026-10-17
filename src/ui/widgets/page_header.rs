@@ -692,11 +692,6 @@ impl PageHeader {
             .insert_child_after(widget, self.badges.prev_sibling().as_ref());
     }
 
-    /// The menu of the header's "⋯" button.
-    pub fn menu(&self) -> &Rc<ItemMenu> {
-        &self.menu
-    }
-
     /// Stacked and centred (narrow pages) or side by side.
     pub fn set_compact(&self, compact: bool) {
         self.art.compact.set(compact);
@@ -803,7 +798,9 @@ fn same_words(a: &str, b: &str) -> bool {
     let words = |text: &str| -> Vec<String> {
         text.split(|c: char| !c.is_alphanumeric())
             .map(str::to_lowercase)
-            .filter(|w| !w.is_empty() && !matches!(w.as_str(), "de" | "del" | "la" | "el" | "the" | "a"))
+            .filter(|w| {
+                !w.is_empty() && !matches!(w.as_str(), "de" | "del" | "la" | "el" | "the" | "a")
+            })
             .collect()
     };
     let (a, b) = (words(a), words(b));

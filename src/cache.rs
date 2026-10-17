@@ -361,9 +361,14 @@ mod tests {
         assert_eq!(ids, [2, 3]);
         assert!(cached.tracks[0].hires);
         drop(db);
-        let rt = tokio::runtime::Builder::new_current_thread().build().unwrap();
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .build()
+            .unwrap();
         rt.block_on(async {
-            cache.store_response(7, "pages/a".into(), b"x".to_vec()).await.unwrap();
+            cache
+                .store_response(7, "pages/a".into(), b"x".to_vec())
+                .await
+                .unwrap();
             let (data, _) = cache.response(7, "pages/a".into()).await.unwrap().unwrap();
             assert_eq!(data, b"x");
             cache.forget_responses(7, "pages/".into()).await.unwrap();
@@ -381,16 +386,28 @@ mod tests {
     fn nothing_is_stored_after_forgetting_the_user() {
         let cache = Cache::open_at(Path::new(":memory:")).unwrap();
         let late = cache.clone();
-        let rt = tokio::runtime::Builder::new_current_thread().build().unwrap();
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .build()
+            .unwrap();
         rt.block_on(async {
-            cache.store_response(7, "a".into(), b"x".to_vec()).await.unwrap();
-            cache.store_favorite_tracks(7, 1, vec![track(1)]).await.unwrap();
+            cache
+                .store_response(7, "a".into(), b"x".to_vec())
+                .await
+                .unwrap();
+            cache
+                .store_favorite_tracks(7, 1, vec![track(1)])
+                .await
+                .unwrap();
             cache.forget_user(7).await.unwrap();
             assert!(cache.response(7, "a".into()).await.unwrap().is_none());
             assert!(cache.favorite_tracks(7).await.unwrap().is_none());
 
-            late.store_response(7, "b".into(), b"y".to_vec()).await.unwrap();
-            late.store_favorite_tracks(7, 1, vec![track(2)]).await.unwrap();
+            late.store_response(7, "b".into(), b"y".to_vec())
+                .await
+                .unwrap();
+            late.store_favorite_tracks(7, 1, vec![track(2)])
+                .await
+                .unwrap();
             assert!(cache.response(7, "b".into()).await.unwrap().is_none());
             assert!(cache.favorite_tracks(7).await.unwrap().is_none());
         });

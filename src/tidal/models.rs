@@ -384,11 +384,7 @@ impl From<MixV2> for Mix {
         let image_large = pick(["MEDIUM", "LARGE", "SMALL"]);
         Self {
             id: mix.id,
-            title: mix
-                .title_text_info
-                .text
-                .or(mix.title)
-                .unwrap_or_default(),
+            title: mix.title_text_info.text.or(mix.title).unwrap_or_default(),
             subtitle: mix
                 .subtitle_text_info
                 .text
@@ -486,14 +482,6 @@ pub struct ArtistBio {
     pub source: Option<String>,
 }
 
-#[derive(Debug, Default, Deserialize)]
-#[serde(rename_all = "camelCase", default)]
-pub struct AlbumReview {
-    #[serde(deserialize_with = "nullable")]
-    pub text: String,
-    pub source: Option<String>,
-}
-
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Credit {
@@ -543,7 +531,10 @@ mod tests {
     fn video_only_playlist() {
         let playlist: Playlist =
             serde_json::from_str(r#"{"uuid":"x","numberOfTracks":0,"numberOfVideos":12}"#).unwrap();
-        assert_eq!((playlist.number_of_tracks, playlist.number_of_videos), (0, 12));
+        assert_eq!(
+            (playlist.number_of_tracks, playlist.number_of_videos),
+            (0, 12)
+        );
     }
 
     #[test]

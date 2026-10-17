@@ -1259,7 +1259,11 @@ impl Playback {
             .set(self.prepare_generation.get() + 1);
         // Withdrawn from the engine first: if the streaming thread took it
         // already, it is what plays next and stays.
-        if self.engine.as_ref().is_none_or(|engine| engine.set_next(None)) {
+        if self
+            .engine
+            .as_ref()
+            .is_none_or(|engine| engine.set_next(None))
+        {
             self.prepared.replace(None);
         }
     }
@@ -1874,7 +1878,10 @@ impl Playback {
             let strikes = self.net_strikes.get() + 1;
             self.net_strikes.set(strikes);
             if strikes > MAX_NETWORK_STRIKES {
-                log::info!("track {} keeps failing while TIDAL answers: blaming it", track.id);
+                log::info!(
+                    "track {} keeps failing while TIDAL answers: blaming it",
+                    track.id
+                );
                 self.net_strikes.set(0);
                 Failure::Track
             } else {

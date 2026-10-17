@@ -380,14 +380,6 @@ impl ItemMenu {
         self.move_to.replace(Some((Rc::new(move_to), Rc::new(len))));
     }
 
-    pub fn is_open(&self) -> bool {
-        self.popover.is_visible()
-    }
-
-    pub fn popover(&self) -> &gtk::PopoverMenu {
-        &self.popover
-    }
-
     /// Shows the menu for `subject`, pointing at `rect` (in the parent's
     /// coordinates; `None`: the whole parent).
     pub fn popup(&self, subject: Subject, rect: Option<gdk::Rectangle>) {

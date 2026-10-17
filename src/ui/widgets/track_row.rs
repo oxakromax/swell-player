@@ -78,18 +78,6 @@ pub struct TrackDrag {
 /// MIME type of the links offered to other applications.
 pub const TRACK_URI_MIME: &str = "text/uri-list";
 
-/// Track ids in a `text/uri-list` or plain-text list of TIDAL links.
-pub fn track_ids_from_uris(text: &str) -> Vec<u64> {
-    text.lines()
-        .filter_map(
-            |line| match crate::tidal::pages::Target::from_url(line.trim())? {
-                crate::tidal::pages::Target::Track(id) => Some(id),
-                _ => None,
-            },
-        )
-        .collect()
-}
-
 /// A track with what its row shows precomputed (formatting happens when
 /// tracks are loaded, not on every bind).
 #[derive(Debug)]
@@ -791,15 +779,5 @@ mod tests {
         assert_eq!(spoken_duration(60), "1 minute");
         assert_eq!(spoken_duration(0), "0 seconds");
         assert_eq!(spoken_duration(3601), "1 hour 1 second");
-    }
-
-    #[test]
-    fn uris() {
-        assert_eq!(
-            track_ids_from_uris(
-                "https://tidal.com/browse/track/5\r\nhttps://tidal.com/browse/album/2\r\n"
-            ),
-            vec![5]
-        );
     }
 }

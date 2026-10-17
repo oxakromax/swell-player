@@ -17,8 +17,8 @@ use gtk::glib;
 
 use crate::api::Api;
 use crate::runtime;
-use crate::tidal::models::{Mix, Playlist};
 use crate::tidal::Favorite;
+use crate::tidal::models::{Mix, Playlist};
 
 /// `playlistsAndFavoritePlaylists` serves at most 50 per page.
 const PLAYLIST_PAGE: usize = 50;
@@ -79,7 +79,9 @@ impl Library {
     }
 
     pub fn disconnect(&self, id: u64) {
-        self.listeners.borrow_mut().retain(|(other, _)| *other != id);
+        self.listeners
+            .borrow_mut()
+            .retain(|(other, _)| *other != id);
     }
 
     fn emit(&self, change: Change) {
@@ -98,18 +100,30 @@ impl Library {
     pub async fn load(self: Rc<Self>) -> Result<()> {
         let api = self.api.clone();
         let (ids, mixes, playlists) = runtime::spawn(async move {
-            let (ids, mixes, playlists) = tokio::join!(
-                api.favorite_ids(),
-                all_mixes(&api),
-                all_playlists(&api)
-            );
+            let (ids, mixes, playlists) =
+                tokio::join!(api.favorite_ids(), all_mixes(&api), all_playlists(&api));
             Ok((ids?, mixes.unwrap_or_default(), playlists?))
         })
         .await?;
         let mut favorites = HashSet::new();
-        favorites.extend(ids.track.iter().filter_map(|id| id.parse().ok()).map(Item::Track));
-        favorites.extend(ids.album.iter().filter_map(|id| id.parse().ok()).map(Item::Album));
-        favorites.extend(ids.artist.iter().filter_map(|id| id.parse().ok()).map(Item::Artist));
+        favorites.extend(
+            ids.track
+                .iter()
+                .filter_map(|id| id.parse().ok())
+                .map(Item::Track),
+        );
+        favorites.extend(
+            ids.album
+                .iter()
+                .filter_map(|id| id.parse().ok())
+                .map(Item::Album),
+        );
+        favorites.extend(
+            ids.artist
+                .iter()
+                .filter_map(|id| id.parse().ok())
+                .map(Item::Artist),
+        );
         favorites.extend(ids.playlist.iter().cloned().map(Item::Playlist));
         favorites.extend(mixes.iter().map(|mix| Item::Mix(mix.id.clone())));
         // Toggles still being written keep showing what the user asked for.
@@ -137,7 +151,11 @@ impl Library {
 
     /// Number of favourites of a kind (for counters).
     pub fn favorite_count(&self, kind: fn(&Item) -> bool) -> usize {
-        self.favorites.borrow().iter().filter(|item| kind(item)).count()
+        self.favorites
+            .borrow()
+            .iter()
+            .filter(|item| kind(item))
+            .count()
     }
 
     pub fn is_favorite(&self, item: &Item) -> bool {
@@ -370,7 +388,9 @@ impl<W> Writes<W> {
 
     /// Items with a write in flight and the state the user wants for them.
     fn desired(&self) -> impl Iterator<Item = (&Item, bool)> {
-        self.pending.iter().map(|(item, write)| (item, write.desired))
+        self.pending
+            .iter()
+            .map(|(item, write)| (item, write.desired))
     }
 }
 
@@ -424,8 +444,14 @@ mod tests {
     #[test]
     fn one_toggle() {
         let mut writes = Writes::default();
-        assert!(matches!(writes.request(&ITEM, false, false, 1), Request::Unchanged(1)));
-        assert!(matches!(writes.request(&ITEM, false, true, 1), Request::Send));
+        assert!(matches!(
+            writes.request(&ITEM, false, false, 1),
+            Request::Unchanged(1)
+        ));
+        assert!(matches!(
+            writes.request(&ITEM, false, true, 1),
+            Request::Send
+        ));
         assert_eq!(writes.finished(&ITEM, true), settled(true, false, vec![1]));
         assert_eq!(writes.desired().count(), 0);
     }
@@ -440,12 +466,24 @@ mod tests {
     #[test]
     fn toggles_in_flight_are_coalesced() {
         let mut writes = Writes::default();
-        assert!(matches!(writes.request(&ITEM, false, true, 1), Request::Send));
-        assert!(matches!(writes.request(&ITEM, true, false, 2), Request::Wait));
-        assert!(matches!(writes.request(&ITEM, false, true, 3), Request::Wait));
+        assert!(matches!(
+            writes.request(&ITEM, false, true, 1),
+            Request::Send
+        ));
+        assert!(matches!(
+            writes.request(&ITEM, true, false, 2),
+            Request::Wait
+        ));
+        assert!(matches!(
+            writes.request(&ITEM, false, true, 3),
+            Request::Wait
+        ));
         assert_eq!(writes.desired().collect::<Vec<_>>(), [(&ITEM, true)]);
         // TIDAL already has what the user wants last: nothing more to send.
-        assert_eq!(writes.finished(&ITEM, true), settled(true, false, vec![1, 2, 3]));
+        assert_eq!(
+            writes.finished(&ITEM, true),
+            settled(true, false, vec![1, 2, 3])
+        );
     }
 
     #[test]
@@ -454,8 +492,14 @@ mod tests {
         writes.request(&ITEM, false, true, 1);
         writes.request(&ITEM, true, false, 2);
         assert_eq!(writes.finished(&ITEM, true), Outcome::Send(false));
-        assert!(matches!(writes.request(&ITEM, false, false, 3), Request::Wait));
-        assert_eq!(writes.finished(&ITEM, true), settled(false, false, vec![1, 2, 3]));
+        assert!(matches!(
+            writes.request(&ITEM, false, false, 3),
+            Request::Wait
+        ));
+        assert_eq!(
+            writes.finished(&ITEM, true),
+            settled(false, false, vec![1, 2, 3])
+        );
     }
 
     #[test]
@@ -465,7 +509,10 @@ mod tests {
         writes.request(&ITEM, true, false, 2);
         assert_eq!(writes.finished(&ITEM, true), Outcome::Send(false));
         // The add went through, the remove did not: TIDAL has it.
-        assert_eq!(writes.finished(&ITEM, false), settled(true, true, vec![1, 2]));
+        assert_eq!(
+            writes.finished(&ITEM, false),
+            settled(true, true, vec![1, 2])
+        );
     }
 
     #[test]
@@ -473,16 +520,28 @@ mod tests {
         let mut writes = Writes::default();
         writes.request(&ITEM, false, true, 1);
         writes.request(&ITEM, true, false, 2);
-        assert_eq!(writes.finished(&ITEM, false), settled(false, false, vec![1, 2]));
+        assert_eq!(
+            writes.finished(&ITEM, false),
+            settled(false, false, vec![1, 2])
+        );
     }
 
     #[test]
     fn items_are_independent() {
         let mut writes = Writes::default();
         let other = Item::Album(1);
-        assert!(matches!(writes.request(&ITEM, false, true, 1), Request::Send));
-        assert!(matches!(writes.request(&other, false, true, 2), Request::Send));
-        assert_eq!(writes.finished(&other, false), settled(false, true, vec![2]));
+        assert!(matches!(
+            writes.request(&ITEM, false, true, 1),
+            Request::Send
+        ));
+        assert!(matches!(
+            writes.request(&other, false, true, 2),
+            Request::Send
+        ));
+        assert_eq!(
+            writes.finished(&other, false),
+            settled(false, true, vec![2])
+        );
         assert_eq!(writes.finished(&ITEM, true), settled(true, false, vec![1]));
     }
 }

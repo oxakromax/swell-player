@@ -73,11 +73,9 @@ impl Queue {
 
     /// `upcoming()[0]` without building the list.
     pub fn first_upcoming(&self) -> Option<&TrackInfo> {
-        self.up_next.front().or_else(|| {
-            self.order
-                .get(self.next)
-                .map(|&i| &self.context[i])
-        })
+        self.up_next
+            .front()
+            .or_else(|| self.order.get(self.next).map(|&i| &self.context[i]))
     }
 
     pub fn history(&self) -> Vec<TrackInfo> {
@@ -543,7 +541,9 @@ impl Queue {
             entry.context = entry.context.filter(|&at| {
                 !context_changed
                     && at < next
-                    && order.get(at).is_some_and(|&i| context[i].id == entry.track.id)
+                    && order
+                        .get(at)
+                        .is_some_and(|&i| context[i].id == entry.track.id)
             });
         }
         self.next = next;
@@ -950,7 +950,13 @@ mod tests {
         let count = all.len();
         all.sort_unstable();
         all.dedup();
-        assert_eq!(all.len(), count, "{:?} + {:?}", q.current(), ids(&q.upcoming()));
+        assert_eq!(
+            all.len(),
+            count,
+            "{:?} + {:?}",
+            q.current(),
+            ids(&q.upcoming())
+        );
     }
 
     #[test]

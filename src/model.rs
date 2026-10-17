@@ -62,7 +62,12 @@ impl TrackInfo {
 
 impl From<Track> for TrackInfo {
     fn from(track: Track) -> Self {
-        let title = match track.version.as_deref().map(str::trim).filter(|v| !v.is_empty()) {
+        let title = match track
+            .version
+            .as_deref()
+            .map(str::trim)
+            .filter(|v| !v.is_empty())
+        {
             Some(version) if !track.title.contains(version) => {
                 format!("{} ({version})", track.title)
             }

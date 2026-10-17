@@ -217,7 +217,8 @@ fn parse(data: &[u8]) -> Settings {
     for (key, value) in saved {
         let mut candidate = merged.clone();
         candidate.insert(key.clone(), value);
-        if serde_json::from_value::<Settings>(serde_json::Value::Object(candidate.clone())).is_ok() {
+        if serde_json::from_value::<Settings>(serde_json::Value::Object(candidate.clone())).is_ok()
+        {
             merged = candidate;
         } else {
             log::warn!("ignoring the invalid setting “{key}”");

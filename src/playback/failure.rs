@@ -243,14 +243,24 @@ mod tests {
             count = next;
         }
         assert_eq!(kinds.last(), Some(&Failure::Track));
-        assert!(kinds[..kinds.len() - 1].iter().all(|k| *k == Failure::Network));
+        assert!(
+            kinds[..kinds.len() - 1]
+                .iter()
+                .all(|k| *k == Failure::Network)
+        );
         assert_eq!(count, 0);
         // No answer at all: always retried, the count stays.
         for _ in 0..20 {
-            assert_eq!(after_lookup(Failure::Network, false, 2), (Failure::Network, 2));
+            assert_eq!(
+                after_lookup(Failure::Network, false, 2),
+                (Failure::Network, 2)
+            );
         }
         assert_eq!(after_lookup(Failure::Track, true, 1), (Failure::Track, 1));
-        assert_eq!(after_lookup(Failure::Session, true, 1), (Failure::Session, 1));
+        assert_eq!(
+            after_lookup(Failure::Session, true, 1),
+            (Failure::Session, 1)
+        );
     }
 
     #[test]
@@ -284,8 +294,14 @@ mod tests {
 
     #[test]
     fn handover_errors() {
-        assert_eq!(blame_handover(Failure::Network, false), HandoverBlame::Current);
-        assert_eq!(blame_handover(Failure::Network, true), HandoverBlame::Current);
+        assert_eq!(
+            blame_handover(Failure::Network, false),
+            HandoverBlame::Current
+        );
+        assert_eq!(
+            blame_handover(Failure::Network, true),
+            HandoverBlame::Current
+        );
         assert_eq!(blame_handover(Failure::Track, true), HandoverBlame::Current);
         assert_eq!(blame_handover(Failure::Track, false), HandoverBlame::Next);
     }

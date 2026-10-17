@@ -435,8 +435,6 @@ impl Navigator {
     }
 }
 
-/// Gives memory freed by dropped pages back to the system, on idle.
-
 /// Builds the page of `route`, tagged.
 fn build(ctx: &Rc<Ctx>, route: &Route) -> adw::NavigationPage {
     let page = pages::build(ctx, route);

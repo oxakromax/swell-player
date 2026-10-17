@@ -1,6 +1,6 @@
 pub mod context;
-pub mod dialogs;
 mod debug;
+pub mod dialogs;
 pub mod format;
 mod login;
 pub mod menus;

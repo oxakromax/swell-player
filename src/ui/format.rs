@@ -25,12 +25,6 @@ fn group_digits_with(n: usize, separator: &str) -> String {
     out
 }
 
-/// "1 track", "1,295 tracks" from untranslated words. Prefer [`counted`],
-/// which translates.
-pub fn count(n: usize, one: &str, many: &str) -> String {
-    format!("{} {}", group_digits(n), if n == 1 { one } else { many })
-}
-
 /// "1 track", "1,295 tracks", translated: `one` and `many` are msgids
 /// with a `{n}` placeholder (`counted(n, "{n} track", "{n} tracks")`).
 pub fn counted(n: usize, one: &'static str, many: &'static str) -> String {
@@ -152,8 +146,7 @@ mod tests {
             // The rest checks the English texts.
             return;
         }
-        assert_eq!(count(1, "track", "tracks"), "1 track");
-        assert_eq!(count(1295, "track", "tracks"), "1,295 tracks");
+        assert_eq!(counted(1, "{n} track", "{n} tracks"), "1 track");
         assert_eq!(counted(1295, "{n} track", "{n} tracks"), "1,295 tracks");
         assert_eq!(total_duration(20), "1 min");
         assert_eq!(total_duration(42 * 60 + 10), "42 min");

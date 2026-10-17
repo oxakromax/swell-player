@@ -360,13 +360,15 @@ impl Engine {
         if *self.local.output_applied.borrow() == wanted {
             return;
         }
-        let sink = wanted.as_deref().and_then(|name| match audio_sink_for(name) {
-            Some(sink) => Some(sink),
-            None => {
-                log::warn!("output device “{name}” not found; using the default");
-                None
-            }
-        });
+        let sink = wanted
+            .as_deref()
+            .and_then(|name| match audio_sink_for(name) {
+                Some(sink) => Some(sink),
+                None => {
+                    log::warn!("output device “{name}” not found; using the default");
+                    None
+                }
+            });
         // Only what was built counts as applied.
         let applied = if sink.is_some() { wanted } else { None };
         if sink.is_some() || self.local.output_applied.borrow().is_some() {
@@ -419,11 +421,12 @@ impl Engine {
         let details = gst::Structure::builder("details")
             .field("http-status-code", status)
             .build();
-        let message = gst::message::Error::builder(gst::ResourceError::Read, "Simulated connection loss")
-            .debug("simulated, URL: https://example.invalid/segment.mp4?token=SECRET")
-            .details(details)
-            .src(&self.playbin)
-            .build();
+        let message =
+            gst::message::Error::builder(gst::ResourceError::Read, "Simulated connection loss")
+                .debug("simulated, URL: https://example.invalid/segment.mp4?token=SECRET")
+                .details(details)
+                .src(&self.playbin)
+                .build();
         if let Some(bus) = self.playbin.bus() {
             let _ = bus.post(message);
         }
@@ -632,7 +635,10 @@ fn handle_message(
                     && !element.is::<gst::Bin>()
             }) || error.kind::<gst::ResourceError>().is_some_and(|code| {
                 // Sinks report a device that is gone or busy this way.
-                matches!(code, gst::ResourceError::OpenWrite | gst::ResourceError::Write)
+                matches!(
+                    code,
+                    gst::ResourceError::OpenWrite | gst::ResourceError::Write
+                )
             });
             let debug = err.debug().map(|d| failure::redact(&d)).unwrap_or_default();
             let resource_io = error.kind::<gst::ResourceError>().is_some_and(|code| {

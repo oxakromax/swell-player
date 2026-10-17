@@ -395,11 +395,6 @@ impl TrackList {
         );
     }
 
-    /// Same as [`TrackList::set_tracks`].
-    pub fn replace(&self, tracks: Vec<TrackInfo>) {
-        self.set_tracks(tracks);
-    }
-
     /// Adds tracks at the end (pagination).
     pub fn append(&self, tracks: Vec<TrackInfo>) {
         let inner = &self.inner;
