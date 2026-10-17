@@ -15,6 +15,8 @@ pub mod models;
 pub mod pages;
 
 use std::fmt;
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
@@ -228,12 +230,15 @@ impl Response {
     }
 }
 
-type RefreshCallback = Box<dyn Fn(&Authz) + Send + Sync>;
+type RefreshCallback =
+    Box<dyn Fn(Authz) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync>;
 
 pub struct Client {
     http: reqwest::Client,
     pub flow: LoginFlow,
     authz: RwLock<Arc<Authz>>,
+    /// Held while tokens are refreshed and saved, and by sign-out while it
+    /// clears them, so a refresh can never write tokens back afterwards.
     refreshing: tokio::sync::Mutex<()>,
     on_refresh: RefreshCallback,
     /// Set on sign-out: nothing may be written back afterwards.
@@ -242,18 +247,19 @@ pub struct Client {
 }
 
 impl Client {
-    pub fn new(
-        http: reqwest::Client,
-        flow: LoginFlow,
-        authz: Authz,
-        on_refresh: impl Fn(&Authz) + Send + Sync + 'static,
-    ) -> Self {
+    /// `on_refresh` persists refreshed tokens; it is awaited before the
+    /// refresh completes (and never runs after sign-out has begun).
+    pub fn new<F, Fut>(http: reqwest::Client, flow: LoginFlow, authz: Authz, on_refresh: F) -> Self
+    where
+        F: Fn(Authz) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = ()> + Send + 'static,
+    {
         Self {
             http,
             flow,
             authz: RwLock::new(Arc::new(authz)),
             refreshing: tokio::sync::Mutex::new(()),
-            on_refresh: Box::new(on_refresh),
+            on_refresh: Box::new(move |authz| Box::pin(on_refresh(authz))),
             signed_out: AtomicBool::new(false),
             locale: locale(),
         }
@@ -267,8 +273,21 @@ impl Client {
         self.authz.read().unwrap_or_else(|e| e.into_inner()).clone()
     }
 
+    /// The signed-in user's id, or 0 if TIDAL never said (only fit for
+    /// paths and cache keys; use [`Self::known_user_id`] to compare).
     pub fn user_id(&self) -> u64 {
         self.authz().user_id.unwrap_or(0)
+    }
+
+    /// The signed-in user's id, if known. Never 0, which editorial
+    /// playlists use as their creator.
+    pub fn known_user_id(&self) -> Option<u64> {
+        self.authz().user_id.filter(|&id| id != 0)
+    }
+
+    /// The locale sent with every request (`es_ES`...).
+    pub fn locale(&self) -> &str {
+        &self.locale
     }
 
     pub fn country_code(&self) -> String {
@@ -286,19 +305,31 @@ impl Client {
         self.signed_out.load(Ordering::SeqCst)
     }
 
+    /// Marks the session signed out and waits for a refresh in flight to
+    /// finish saving its tokens. Clear the stored tokens while holding the
+    /// returned guard: no refresh can store them again afterwards.
+    pub async fn begin_sign_out(&self) -> tokio::sync::MutexGuard<'_, ()> {
+        self.mark_signed_out();
+        self.refreshing.lock().await
+    }
+
     /// Refreshes the token unless another request already did since `stale`
     /// was read.
     async fn refresh(&self, stale: &Arc<Authz>) -> Result<()> {
         let _guard = self.refreshing.lock().await;
+        if self.is_signed_out() {
+            anyhow::bail!("signed out");
+        }
         if !Arc::ptr_eq(&self.authz(), stale) {
             return Ok(());
         }
         let fresh = auth::refresh(&self.http, self.flow.oauth_client(), stale).await?;
         log::info!("access token refreshed");
+        *self.authz.write().unwrap_or_else(|e| e.into_inner()) = Arc::new(fresh.clone());
+        // Saved under the lock: sign-out waits for it before clearing.
         if !self.is_signed_out() {
-            (self.on_refresh)(&fresh);
+            (self.on_refresh)(fresh).await;
         }
-        *self.authz.write().unwrap_or_else(|e| e.into_inner()) = Arc::new(fresh);
         Ok(())
     }
 
@@ -394,17 +425,8 @@ fn backoff(attempt: u32) -> Duration {
     Duration::from_millis(250 * 2u64.pow(attempt.saturating_sub(1)))
 }
 
-/// TIDAL's locale (`es_ES`, `en_US`...) from the environment.
+/// TIDAL's locale (`es_CL`, `en_US`...): the UI's language, so content
+/// and interface never mix languages.
 fn locale() -> String {
-    let lang = ["LC_ALL", "LC_MESSAGES", "LANG"]
-        .into_iter()
-        .filter_map(|key| std::env::var(key).ok())
-        .find(|v| !v.is_empty() && v != "C" && v != "POSIX")
-        .unwrap_or_default();
-    let tag = lang.split(['.', '@']).next().unwrap_or("");
-    if tag.len() == 5 && tag.as_bytes()[2] == b'_' {
-        tag.to_owned()
-    } else {
-        "en_US".to_owned()
-    }
+    crate::i18n::tidal_locale()
 }

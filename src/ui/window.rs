@@ -34,10 +34,14 @@ use crate::{config, runtime, session, settings};
 const SEEK_STEP: f64 = 10.0;
 /// Volume step of Ctrl+↑/↓.
 const VOLUME_STEP: f64 = 0.05;
+/// Windows this short get the `short` class (smaller page headers).
+const SHORT: &str = "max-height: 640px";
 
-/// Accelerators of the app and window actions (§5.2). Space and the arrow
-/// shortcuts are handled by a capture-phase key controller instead, so they
-/// never fire while typing.
+/// Accelerators of the app and window actions (§5.2) that act wherever the
+/// focus is. Shortcuts that mean something else while editing text (Space,
+/// the arrows, Ctrl+Z/S/R/M/D) are handled by a capture-phase key
+/// controller instead ([`KEYS`]), so they never fire while typing or in
+/// dialogs.
 pub const ACCELS: &[(&str, &[&str])] = &[
     ("app.quit", &["<Control>q"]),
     ("win.close", &["<Control>w"]),
@@ -50,16 +54,68 @@ pub const ACCELS: &[(&str, &[&str])] = &[
     ("win.section('collection')", &["<Alt>4"]),
     ("win.show-sidebar", &["F9"]),
     ("win.back", &["<Alt>Left", "Back"]),
-    ("win.undo", &["<Control>z"]),
     ("win.panel('playing')", &["<Control><Shift>n"]),
     ("win.panel('lyrics')", &["<Control><Shift>l"]),
     ("win.panel('queue')", &["<Control>l"]),
     ("win.play-pause", &["<Control>space"]),
-    ("win.mute", &["<Control>m"]),
-    ("win.shuffle", &["<Control>s"]),
-    ("win.repeat", &["<Control>r"]),
-    ("win.favorite", &["<Control>d"]),
 ];
+
+/// Shortcuts of the window's key controller: (key, modifiers, action).
+/// They act only when [`shortcut_allowed`] says so; Space also leaves
+/// buttons, switches and scales alone.
+const KEYS: &[(gdk::Key, Modifiers, &str)] = &[
+    (gdk::Key::space, Modifiers::None, "play-pause"),
+    (gdk::Key::Right, Modifiers::Control, "next"),
+    (gdk::Key::Left, Modifiers::Control, "previous"),
+    (gdk::Key::Right, Modifiers::Shift, "seek-forward"),
+    (gdk::Key::Left, Modifiers::Shift, "seek-backward"),
+    (gdk::Key::Up, Modifiers::Control, "volume-up"),
+    (gdk::Key::Down, Modifiers::Control, "volume-down"),
+    (gdk::Key::z, Modifiers::Control, "undo"),
+    (gdk::Key::m, Modifiers::Control, "mute"),
+    (gdk::Key::s, Modifiers::Control, "shuffle"),
+    (gdk::Key::r, Modifiers::Control, "repeat"),
+    (gdk::Key::d, Modifiers::Control, "favorite"),
+];
+
+/// The modifier combinations [`KEYS`] use.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Modifiers {
+    None,
+    Control,
+    Shift,
+}
+
+impl Modifiers {
+    fn of(state: gdk::ModifierType) -> Option<Self> {
+        let state = state
+            & (gdk::ModifierType::CONTROL_MASK
+                | gdk::ModifierType::SHIFT_MASK
+                | gdk::ModifierType::ALT_MASK
+                | gdk::ModifierType::SUPER_MASK);
+        if state.is_empty() {
+            Some(Self::None)
+        } else if state == gdk::ModifierType::CONTROL_MASK {
+            Some(Self::Control)
+        } else if state == gdk::ModifierType::SHIFT_MASK {
+            Some(Self::Shift)
+        } else {
+            None
+        }
+    }
+}
+
+/// The text of [`KEYS`]'s accelerator for `action`, for the Keyboard
+/// Shortcuts dialog (`GtkShortcutTrigger` syntax).
+pub fn key_accel(action: &str) -> Option<String> {
+    let (key, modifiers, _) = KEYS.iter().find(|(_, _, a)| *a == action)?;
+    let prefix = match modifiers {
+        Modifiers::None => "",
+        Modifiers::Control => "<Control>",
+        Modifiers::Shift => "<Shift>",
+    };
+    Some(format!("{prefix}{}", key.name()?))
+}
 
 thread_local! {
     /// The window's state, while it exists (held strongly by the window).
@@ -216,7 +272,14 @@ fn build(app: &adw::Application) {
         match stored {
             Ok(Some(stored)) => ui.show_shell(Api::restore(stored, ui.http.clone())),
             Ok(None) => ui.show_login(None),
-            Err(err) => ui.show_login(Some(format!("Could not open the keyring: {err:#}"))),
+            Err(err) => {
+                log::warn!("could not open the keyring: {err:#}");
+                ui.show_login(Some(
+                    "Couldn't open the keyring. Make sure a keyring service (GNOME Keyring, \
+                     KWallet) is running."
+                        .to_owned(),
+                ))
+            }
         }
     });
 }
@@ -278,8 +341,11 @@ impl Ui {
         if let Some(session) = self.session.take() {
             session.ctx.playback.stop();
         }
+        // Ctrl+Z must not reach back into the old session.
+        UNDO.with(|slot| slot.take());
         self.window.remove_action("show-sidebar");
         self.window.remove_css_class("narrow");
+        self.window.remove_css_class("short");
         for action in self.session_actions.borrow().iter() {
             action.set_enabled(false);
         }
@@ -307,14 +373,19 @@ impl Ui {
         };
         ctx.playback.forget_session();
         self.end_session();
+        // Nothing of this account may show in the next one.
+        super::pages::search_data::forget_all();
+        self.covers.clear_memory();
+        self.pending.borrow_mut().clear();
         let api = ctx.api.clone();
         let ui = self.clone();
         glib::spawn_future_local(async move {
             let error = match runtime::spawn(async move { api.sign_out().await }).await {
                 Ok(()) => reason,
-                Err(err) => Some(format!(
-                    "Could not remove the session from the keyring: {err:#}"
-                )),
+                Err(err) => {
+                    log::warn!("could not remove the session from the keyring: {err:#}");
+                    Some("Couldn't remove your session from the keyring.".to_owned())
+                }
             };
             ui.show_login(error);
         });
@@ -417,12 +488,18 @@ impl Ui {
                 }
             }
         });
+        // Weakly: a load that ends after signing out must not report to
+        // (or sign out) the next session.
         glib::spawn_future_local({
-            let ctx = ctx.clone();
+            let ctx = Rc::downgrade(&ctx);
             async move {
-                match library.load().await {
+                let result = library.load().await;
+                let Some(ctx) = ctx.upgrade() else {
+                    return;
+                };
+                match result {
                     Ok(()) => ctx.network_ok(),
-                    Err(err) => ctx.report("Could not load your library", &err),
+                    Err(err) => ctx.report("Couldn't load your library", &err),
                 }
             }
         });
@@ -561,9 +638,10 @@ impl Ui {
         });
     }
 
-    /// Space and the arrow shortcuts (§5.2), in the capture phase so lists
-    /// do not swallow them, but never while typing (and Space never on
-    /// buttons, switches or scales, where it has its own meaning).
+    /// [`KEYS`] (§5.2), in the capture phase so lists do not swallow them,
+    /// but never while typing or in dialogs (and Space never on buttons,
+    /// switches or scales, where it has its own meaning); and F6 /
+    /// Shift+F6, which move between the window's regions.
     fn install_key_controller(self: &Rc<Self>) {
         let keys = gtk::EventControllerKey::new();
         keys.set_propagation_phase(gtk::PropagationPhase::Capture);
@@ -572,22 +650,22 @@ impl Ui {
             let Some(ui) = ui.upgrade() else {
                 return glib::Propagation::Proceed;
             };
-            let modifiers = state
-                & (gdk::ModifierType::CONTROL_MASK
-                    | gdk::ModifierType::SHIFT_MASK
-                    | gdk::ModifierType::ALT_MASK
-                    | gdk::ModifierType::SUPER_MASK);
-            let control = gdk::ModifierType::CONTROL_MASK;
-            let shift = gdk::ModifierType::SHIFT_MASK;
-            let action = match key {
-                gdk::Key::space if modifiers.is_empty() => "play-pause",
-                gdk::Key::Right if modifiers == control => "next",
-                gdk::Key::Left if modifiers == control => "previous",
-                gdk::Key::Right if modifiers == shift => "seek-forward",
-                gdk::Key::Left if modifiers == shift => "seek-backward",
-                gdk::Key::Up if modifiers == control => "volume-up",
-                gdk::Key::Down if modifiers == control => "volume-down",
-                _ => return glib::Propagation::Proceed,
+            let Some(modifiers) = Modifiers::of(state) else {
+                return glib::Propagation::Proceed;
+            };
+            if key == gdk::Key::F6 && modifiers != Modifiers::Control {
+                return match ui.shell() {
+                    Some(shell) if !in_dialog(&ui.window) => {
+                        shell.cycle_region(&ui.window, modifiers == Modifiers::Shift);
+                        glib::Propagation::Stop
+                    }
+                    _ => glib::Propagation::Proceed,
+                };
+            }
+            let key = key.to_lower();
+            let Some((_, _, action)) = KEYS.iter().find(|(k, m, _)| *k == key && *m == modifiers)
+            else {
+                return glib::Propagation::Proceed;
             };
             if ui.ctx().is_none() || !shortcut_allowed(&ui.window, key == gdk::Key::space) {
                 return glib::Propagation::Proceed;
@@ -599,7 +677,16 @@ impl Ui {
     }
 }
 
-/// Whether a single-key or arrow shortcut may act with the current focus.
+/// Whether the focus is in a dialog or popover over the window.
+fn in_dialog(window: &adw::ApplicationWindow) -> bool {
+    gtk::prelude::RootExt::focus(window).is_some_and(|focus| {
+        focus.ancestor(adw::Dialog::static_type()).is_some()
+            || focus.ancestor(gtk::Popover::static_type()).is_some()
+    })
+}
+
+/// Whether a [`KEYS`] shortcut may act with the current focus: not while
+/// editing text, and not in dialogs or popovers.
 fn shortcut_allowed(window: &adw::ApplicationWindow, space: bool) -> bool {
     let Some(focus) = gtk::prelude::RootExt::focus(window) else {
         return true;
@@ -607,8 +694,8 @@ fn shortcut_allowed(window: &adw::ApplicationWindow, space: bool) -> bool {
     if focus.is::<gtk::Editable>()
         || focus.is::<gtk::Text>()
         || focus.is::<gtk::TextView>()
-        || focus.ancestor(adw::Dialog::static_type()).is_some()
-        || focus.ancestor(gtk::Popover::static_type()).is_some()
+        || focus.ancestor(gtk::Editable::static_type()).is_some()
+        || in_dialog(window)
     {
         return false;
     }
@@ -687,8 +774,8 @@ struct Shell {
     panel_collapsed: Cell<bool>,
     /// Set while the shell itself opens or closes the panel.
     updating_panel: Cell<bool>,
-    _sidebar: Rc<Sidebar>,
-    _mini_player: Rc<MiniPlayer>,
+    sidebar: Rc<Sidebar>,
+    mini_player: Rc<MiniPlayer>,
 }
 
 impl Shell {
@@ -778,41 +865,59 @@ impl Shell {
             .child(&multi)
             .build();
         // Only one breakpoint applies at a time (the last that matches), so
-        // each repeats the setters of the wider ones.
-        let condition =
-            |c: &str| adw::BreakpointCondition::parse(c).expect("valid breakpoint condition");
-        let a = adw::Breakpoint::new(condition("max-width: 1180sp"));
-        a.add_setters(&[(&panel_split, "collapsed", true.to_value())]);
-        let b = adw::Breakpoint::new(condition("max-width: 900sp"));
-        b.add_setters(&[
+        // each repeats the setters of the wider ones. Every width has a
+        // twin for short windows (≤ 640 px high), which also gives the
+        // window the `short` class (smaller page header artwork).
+        let collapsed = (
+            panel_split.upcast_ref::<glib::Object>(),
+            "collapsed",
+            true.to_value(),
+        );
+        let slim_sidebar = (
+            sidebar_split.upcast_ref::<glib::Object>(),
+            "min-sidebar-width",
+            180.0_f64.to_value(),
+        );
+        let narrow_layout = (
+            multi.upcast_ref::<glib::Object>(),
+            "layout-name",
+            "narrow".to_value(),
+        );
+        let levels: [(Option<&str>, Vec<_>); 4] = [
+            (None, vec![]),
+            (Some("max-width: 1180sp"), vec![collapsed.clone()]),
             (
-                panel_split.upcast_ref::<glib::Object>(),
-                "collapsed",
-                true.to_value(),
+                Some("max-width: 900sp"),
+                vec![collapsed.clone(), slim_sidebar.clone()],
             ),
             (
-                sidebar_split.upcast_ref(),
-                "min-sidebar-width",
-                180.0_f64.to_value(),
+                Some("max-width: 720sp"),
+                vec![collapsed, slim_sidebar, narrow_layout],
             ),
-        ]);
-        let c = adw::Breakpoint::new(condition("max-width: 720sp"));
-        c.add_setters(&[
-            (
-                panel_split.upcast_ref::<glib::Object>(),
-                "collapsed",
-                true.to_value(),
-            ),
-            (
-                sidebar_split.upcast_ref(),
-                "min-sidebar-width",
-                180.0_f64.to_value(),
-            ),
-            (multi.upcast_ref(), "layout-name", "narrow".to_value()),
-        ]);
-        root.add_breakpoint(a);
-        root.add_breakpoint(b.clone());
-        root.add_breakpoint(c.clone());
+        ];
+        // (breakpoint, compact player bar, short window)
+        let mut breakpoints = Vec::new();
+        for (level, (width, setters)) in levels.iter().enumerate() {
+            for short in [false, true] {
+                let condition = match (width, short) {
+                    (None, false) => continue,
+                    (None, true) => SHORT.to_owned(),
+                    (Some(width), false) => (*width).to_owned(),
+                    (Some(width), true) => format!("{width} and {SHORT}"),
+                };
+                let breakpoint = adw::Breakpoint::new(
+                    adw::BreakpointCondition::parse(&condition)
+                        .expect("valid breakpoint condition"),
+                );
+                let setters: Vec<(&glib::Object, &str, &glib::Value)> = setters
+                    .iter()
+                    .map(|(object, property, value)| (*object, *property, value))
+                    .collect();
+                breakpoint.add_setters(&setters);
+                root.add_breakpoint(breakpoint.clone());
+                breakpoints.push((breakpoint, level >= 2, short));
+            }
+        }
 
         let shell = Rc::new_cyclic(|this| Self {
             this: this.clone(),
@@ -828,11 +933,12 @@ impl Shell {
             narrow: Cell::new(false),
             panel_collapsed: Cell::new(false),
             updating_panel: Cell::new(false),
-            _sidebar: sidebar,
-            _mini_player: mini_player,
+            sidebar,
+            mini_player,
         });
 
-        // Breakpoint B and narrower: compact player bar.
+        // Breakpoint B and narrower: compact player bar. Short windows: the
+        // `short` class.
         shell.root.connect_current_breakpoint_notify({
             let shell = Rc::downgrade(&shell);
             move |root| {
@@ -840,8 +946,18 @@ impl Shell {
                     return;
                 };
                 let current = root.current_breakpoint();
-                let compact = current.as_ref() == Some(&b) || current.as_ref() == Some(&c);
+                let (compact, short) = breakpoints
+                    .iter()
+                    .find(|(breakpoint, _, _)| current.as_ref() == Some(breakpoint))
+                    .map_or((false, false), |(_, compact, short)| (*compact, *short));
                 shell.player_bar.set_compact(compact);
+                if let Some(ctx) = shell.ctx.upgrade() {
+                    if short {
+                        ctx.window.add_css_class("short");
+                    } else {
+                        ctx.window.remove_css_class("short");
+                    }
+                }
             }
         });
         multi.connect_layout_name_notify({
@@ -1017,6 +1133,60 @@ impl Shell {
         }
     }
 
+    /// F6 / Shift+F6 (§5.1): moves the focus to the next (previous) region
+    /// that is showing: sidebar → content → now-playing panel → player.
+    fn cycle_region(&self, window: &adw::ApplicationWindow, backward: bool) {
+        let narrow = self.narrow.get();
+        let panel_open = self.ctx.upgrade().is_some_and(|ctx| ctx.panel().is_some());
+        let content = self
+            .navigator
+            .visible_view()
+            .visible_page()
+            .map(|page| page.upcast::<gtk::Widget>());
+        let player = if narrow {
+            self.mini_player.widget.clone()
+        } else {
+            self.player_bar.widget.clone().upcast()
+        };
+        let regions: Vec<gtk::Widget> = [
+            (!narrow && self.sidebar_split.shows_sidebar())
+                .then(|| self.sidebar.widget.clone().upcast()),
+            content,
+            panel_open.then(|| self.panel.widget.clone().upcast()),
+            Some(player),
+        ]
+        .into_iter()
+        .flatten()
+        .filter(|region| region.is_mapped())
+        .collect();
+        if regions.is_empty() {
+            return;
+        }
+        let focus = gtk::prelude::RootExt::focus(window);
+        let current = focus.as_ref().and_then(|focus| {
+            regions
+                .iter()
+                .position(|region| focus == region || focus.is_ancestor(region))
+        });
+        let n = regions.len();
+        let start = match (current, backward) {
+            (Some(i), false) => i + 1,
+            (Some(i), true) => i + n - 1,
+            (None, false) => 0,
+            (None, true) => n - 1,
+        };
+        for step in 0..n {
+            let index = if backward {
+                (start + n - step) % n
+            } else {
+                (start + step) % n
+            };
+            if focus_first(window, &regions[index]) {
+                return;
+            }
+        }
+    }
+
     /// Ctrl+F: the Search section at its root, with the focus in its
     /// search entry.
     fn focus_search(&self) {
@@ -1049,6 +1219,21 @@ fn tab_from_name(name: &str) -> Option<PanelTab> {
         "queue" => Some(PanelTab::Queue),
         _ => None,
     }
+}
+
+/// Moves the focus to the first focusable widget in `region`, the way Tab
+/// would enter it.
+fn focus_first(window: &adw::ApplicationWindow, region: &gtk::Widget) -> bool {
+    let previous = gtk::prelude::RootExt::focus(window);
+    // Forget the region's last focus child, so traversal starts at its top.
+    gtk::prelude::RootExt::set_focus(window, None::<&gtk::Widget>);
+    if region.child_focus(gtk::DirectionType::TabForward) {
+        return true;
+    }
+    if let Some(previous) = previous {
+        previous.grab_focus();
+    }
+    false
 }
 
 /// The first descendant of `widget` of type `T`, depth first.

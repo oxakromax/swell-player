@@ -44,9 +44,13 @@ pub struct Ctx {
     /// "You're offline" (docs/design.md §4.8); the shell shows it above
     /// the content.
     pub offline_banner: adw::Banner,
+    /// Length of the synced favourite tracks list, once known.
+    favorite_track_count: Cell<Option<usize>>,
+    count_listeners: RefCell<Vec<CountListener>>,
 }
 
 type PanelListener = Rc<dyn Fn(Option<PanelTab>)>;
+type CountListener = Rc<dyn Fn(Option<usize>)>;
 type PanelHandler = Box<dyn Fn(Option<PanelTab>)>;
 type SignOut = Box<dyn Fn(Option<String>)>;
 
@@ -100,7 +104,33 @@ impl Ctx {
                 .title("You’re offline — showing saved data")
                 .revealed(false)
                 .build(),
+            favorite_track_count: Cell::new(None),
+            count_listeners: RefCell::default(),
         })
+    }
+
+    /// The number of favourite tracks the Tracks page lists (TIDAL's own
+    /// total also counts tracks it no longer serves, so it is not used).
+    /// Whoever holds the synced list reports its length here; the sidebar
+    /// shows it.
+    pub fn set_favorite_track_count(&self, count: usize) {
+        if self.favorite_track_count.replace(Some(count)) == Some(count) {
+            return;
+        }
+        let listeners: Vec<CountListener> = self.count_listeners.borrow().clone();
+        for listener in listeners {
+            listener(Some(count));
+        }
+    }
+
+    pub fn favorite_track_count(&self) -> Option<usize> {
+        self.favorite_track_count.get()
+    }
+
+    /// Calls `listener` whenever [`Ctx::set_favorite_track_count`] changes
+    /// the count. For listeners that live as long as the window.
+    pub fn connect_favorite_track_count(&self, listener: impl Fn(Option<usize>) + 'static) {
+        self.count_listeners.borrow_mut().push(Rc::new(listener));
     }
 
     pub fn set_navigator(&self, navigator: &Rc<Navigator>) {

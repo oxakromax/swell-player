@@ -481,8 +481,13 @@ impl Player {
         1.0
     }
 
+    /// Only 1.0 is supported; the spec says a rate of 0 pauses.
     #[zbus(property)]
-    fn set_rate(&mut self, _rate: f64) {}
+    fn set_rate(&mut self, rate: f64) {
+        if rate == 0.0 {
+            self.send(Command::Pause);
+        }
+    }
 
     #[zbus(property(emits_changed_signal = "const"))]
     fn minimum_rate(&self) -> f64 {

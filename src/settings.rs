@@ -65,6 +65,10 @@ pub struct Settings {
     pub panel_open: bool,
     /// Its last tab: "playing", "lyrics" or "queue".
     pub panel_tab: String,
+    /// The audio output chosen in Preferences, by its GStreamer device
+    /// display name (`Audio/Sink` devices of a `gst::DeviceMonitor`);
+    /// `None` follows the system default.
+    pub output_device: Option<String>,
 }
 
 impl Default for Settings {
@@ -85,11 +89,12 @@ impl Default for Settings {
             restore_session: true,
             panel_open: false,
             panel_tab: "playing".to_owned(),
+            output_device: None,
         }
     }
 }
 
-type Listener = Box<dyn Fn(&Settings)>;
+type Listener = Rc<dyn Fn(&Settings)>;
 
 /// The shared, observable settings of the running app.
 pub struct Store {
@@ -135,7 +140,14 @@ impl Store {
             }
             current.clone()
         };
-        for (_, listener) in self.listeners.borrow().iter() {
+        // A listener may connect or disconnect others while it runs.
+        let listeners: Vec<Listener> = self
+            .listeners
+            .borrow()
+            .iter()
+            .map(|(_, listener)| listener.clone())
+            .collect();
+        for listener in listeners {
             listener(&snapshot);
         }
         if !self.save_pending.replace(true) {
@@ -173,7 +185,7 @@ impl Store {
     pub fn connect_changed(&self, listener: impl Fn(&Settings) + 'static) -> u64 {
         let id = self.next_id.get();
         self.next_id.set(id + 1);
-        self.listeners.borrow_mut().push((id, Box::new(listener)));
+        self.listeners.borrow_mut().push((id, Rc::new(listener)));
         id
     }
 

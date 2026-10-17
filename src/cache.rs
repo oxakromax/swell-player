@@ -10,6 +10,7 @@
 //! never go here. The file is a cache: deleting it only costs reloads.
 
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -35,6 +36,9 @@ pub struct CachedCollection {
 #[derive(Clone)]
 pub struct Cache {
     connection: Arc<Mutex<Connection>>,
+    /// Set by [`Cache::forget_user`], under the connection lock: writes
+    /// that come later (work still in flight at sign-out) are dropped.
+    closed: Arc<AtomicBool>,
 }
 
 impl Cache {
@@ -93,6 +97,7 @@ impl Cache {
         connection.pragma_update(None, "user_version", SCHEMA_VERSION)?;
         Ok(Self {
             connection: Arc::new(Mutex::new(connection)),
+            closed: Arc::new(AtomicBool::new(false)),
         })
     }
 
@@ -107,7 +112,7 @@ impl Cache {
         total: usize,
         tracks: Vec<TrackInfo>,
     ) -> Result<()> {
-        self.blocking(move |db| write_collection(db, user_id, FAVORITE_TRACKS, total, &tracks))
+        self.write(move |db| write_collection(db, user_id, FAVORITE_TRACKS, total, &tracks))
             .await
     }
 
@@ -149,7 +154,7 @@ impl Cache {
     }
 
     pub async fn store_response(&self, user_id: u64, key: String, data: Vec<u8>) -> Result<()> {
-        self.blocking(move |db| {
+        self.write(move |db| {
             let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
             db.prepare_cached(
                 "INSERT INTO response (user_id, key, data, fetched_at) VALUES (?1, ?2, ?3, ?4)
@@ -196,15 +201,34 @@ impl Cache {
         std::fs::metadata(path).map(|m| m.len()).unwrap_or(0)
     }
 
-    /// Forgets everything cached for `user_id` (on sign-out).
+    /// Forgets everything cached for `user_id` (on sign-out). From then on
+    /// this handle (and its clones) store nothing.
     pub async fn forget_user(&self, user_id: u64) -> Result<()> {
+        let closed = self.closed.clone();
         self.blocking(move |db| {
+            closed.store(true, Ordering::SeqCst);
             let tx = db.transaction()?;
             tx.execute("DELETE FROM collection_track WHERE user_id = ?1", [user_id])?;
             tx.execute("DELETE FROM collection WHERE user_id = ?1", [user_id])?;
             tx.execute("DELETE FROM response WHERE user_id = ?1", [user_id])?;
             tx.execute(ORPHAN_TRACKS, [])?;
             Ok(tx.commit()?)
+        })
+        .await
+    }
+
+    /// Runs a write unless [`Cache::forget_user`] ran first. The check
+    /// happens under the connection lock, so the two cannot interleave.
+    async fn write<F>(&self, f: F) -> Result<()>
+    where
+        F: FnOnce(&mut Connection) -> Result<()> + Send + 'static,
+    {
+        let closed = self.closed.clone();
+        self.blocking(move |db| {
+            if closed.load(Ordering::SeqCst) {
+                return Ok(());
+            }
+            f(db)
         })
         .await
     }
@@ -351,5 +375,24 @@ mod tests {
                 .unwrap()
                 .is_none()
         );
+    }
+
+    #[test]
+    fn nothing_is_stored_after_forgetting_the_user() {
+        let cache = Cache::open_at(Path::new(":memory:")).unwrap();
+        let late = cache.clone();
+        let rt = tokio::runtime::Builder::new_current_thread().build().unwrap();
+        rt.block_on(async {
+            cache.store_response(7, "a".into(), b"x".to_vec()).await.unwrap();
+            cache.store_favorite_tracks(7, 1, vec![track(1)]).await.unwrap();
+            cache.forget_user(7).await.unwrap();
+            assert!(cache.response(7, "a".into()).await.unwrap().is_none());
+            assert!(cache.favorite_tracks(7).await.unwrap().is_none());
+
+            late.store_response(7, "b".into(), b"y".to_vec()).await.unwrap();
+            late.store_favorite_tracks(7, 1, vec![track(2)]).await.unwrap();
+            assert!(cache.response(7, "b".into()).await.unwrap().is_none());
+            assert!(cache.favorite_tracks(7).await.unwrap().is_none());
+        });
     }
 }

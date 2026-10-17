@@ -13,15 +13,20 @@ use crate::runtime;
 use crate::session::LoginFlow;
 use crate::settings::{Normalization, QualityPreference, Settings};
 
+/// Three pages, so the view switcher fits the header bar even in narrow
+/// windows: Playback (quality, processing, output), General (behaviour,
+/// storage) and Account (who is signed in, blocked artists, Sign Out).
 pub fn present(ctx: &Rc<Ctx>) {
     let dialog = adw::PreferencesDialog::builder()
         .search_enabled(true)
+        .content_height(600)
         .build();
     dialog.add(&playback_page(ctx));
-    dialog.add(&general_page(ctx));
-    dialog.add(&storage_page(ctx, &dialog));
-    dialog.add(&blocked_page(ctx, &dialog));
+    dialog.add(&general_page(ctx, &dialog));
     dialog.add(&account_page(ctx, &dialog));
+    if let Some(page) = super::super::debug::preferences_page() {
+        dialog.set_visible_page_name(&page);
+    }
     dialog.present(Some(&ctx.window));
 }
 
@@ -41,11 +46,17 @@ fn playback_page(ctx: &Rc<Ctx>) -> adw::PreferencesPage {
     ]);
     let selected = match current.quality {
         QualityPreference::Best => 0,
-        quality => qualities.iter().position(|(_, q)| *q == quality).unwrap_or(0),
+        quality => qualities
+            .iter()
+            .position(|(_, q)| *q == quality)
+            .unwrap_or(0),
     };
     let quality = combo_row(
         "Streaming Quality",
-        &qualities.iter().map(|(label, _)| *label).collect::<Vec<_>>(),
+        &qualities
+            .iter()
+            .map(|(label, _)| *label)
+            .collect::<Vec<_>>(),
         selected,
     );
     if !hires {
@@ -57,7 +68,11 @@ fn playback_page(ctx: &Rc<Ctx>) -> adw::PreferencesPage {
     let quality_group = adw::PreferencesGroup::builder().title("Quality").build();
     quality_group.add(&quality);
 
-    let normalizations = [Normalization::Off, Normalization::Track, Normalization::Album];
+    let normalizations = [
+        Normalization::Off,
+        Normalization::Track,
+        Normalization::Album,
+    ];
     let normalization = combo_row(
         "Volume Normalisation",
         &["Off", "Track", "Album"],
@@ -70,29 +85,100 @@ fn playback_page(ctx: &Rc<Ctx>) -> adw::PreferencesPage {
     connect_combo(ctx, &normalization, move |s, index| {
         s.normalization = normalizations[index];
     });
-    let gapless = switch_row(
-        ctx,
-        "Gapless Playback",
-        None,
-        current.gapless,
-        |s, on| s.gapless = on,
-    );
+    let gapless = switch_row(ctx, "Gapless Playback", None, current.gapless, |s, on| {
+        s.gapless = on
+    });
     let processing = adw::PreferencesGroup::builder().title("Processing").build();
     processing.add(&normalization);
     processing.add(&gapless);
 
     let page = adw::PreferencesPage::builder()
+        .name("playback")
         .title("Playback")
         .icon_name("media-playback-start-symbolic")
         .build();
     page.add(&quality_group);
     page.add(&processing);
+    page.add(&output_group(ctx));
     page
 }
 
-fn general_page(ctx: &Rc<Ctx>) -> adw::PreferencesPage {
+/// "Output Device": the system default or one of the audio sinks
+/// GStreamer finds (PipeWire, PulseAudio, ALSA), listed off the main
+/// thread.
+fn output_group(ctx: &Rc<Ctx>) -> adw::PreferencesGroup {
+    const DEFAULT: &str = "System Default";
+    let names = gtk::StringList::new(&[DEFAULT]);
+    let row = adw::ComboRow::builder()
+        .title("Output Device")
+        .model(&names)
+        .build();
+    // The saved device is offered even while it is unplugged.
+    let saved = ctx.settings.get().output_device;
+    if let Some(saved) = &saved {
+        names.append(saved);
+        row.set_selected(1);
+    }
+    row.set_sensitive(false);
+    let settings = ctx.settings.clone();
+    let row_ref = row.downgrade();
+    glib::spawn_future_local(async move {
+        let found =
+            runtime::spawn(async move { Ok(tokio::task::spawn_blocking(audio_sinks).await?) })
+                .await
+                .unwrap_or_else(|err| {
+                    log::warn!("could not list audio devices: {err:#}");
+                    Vec::new()
+                });
+        let Some(row) = row_ref.upgrade() else {
+            return;
+        };
+        for name in found {
+            if saved.as_deref() != Some(name.as_str()) {
+                names.append(&name);
+            }
+        }
+        row.set_sensitive(true);
+        row.connect_selected_notify(move |row| {
+            let device = row
+                .selected_item()
+                .and_downcast::<gtk::StringObject>()
+                .map(|item| item.string().to_string())
+                .filter(|_| row.selected() > 0);
+            settings.update(|s| s.output_device = device);
+        });
+    });
+    let group = adw::PreferencesGroup::builder().title("Output").build();
+    group.add(&row);
+    group
+}
+
+/// Display names of the audio outputs GStreamer can see.
+fn audio_sinks() -> Vec<String> {
+    use gst::prelude::{DeviceExt, DeviceMonitorExt, DeviceMonitorExtManual};
+    if let Err(err) = gst::init() {
+        log::warn!("GStreamer is unavailable: {err}");
+        return Vec::new();
+    }
+    let monitor = gst::DeviceMonitor::new();
+    monitor.add_filter(Some("Audio/Sink"), None);
+    if monitor.start().is_err() {
+        return Vec::new();
+    }
+    let mut names: Vec<String> = Vec::new();
+    for device in monitor.devices() {
+        let name = device.display_name().to_string();
+        if !names.contains(&name) {
+            names.push(name);
+        }
+    }
+    monitor.stop();
+    names
+}
+
+fn general_page(ctx: &Rc<Ctx>, dialog: &adw::PreferencesDialog) -> adw::PreferencesPage {
     let current = ctx.settings.get();
-    let group = adw::PreferencesGroup::new();
+    let group = adw::PreferencesGroup::builder().title("Behaviour").build();
     group.add(&switch_row(
         ctx,
         "Run in Background",
@@ -115,10 +201,12 @@ fn general_page(ctx: &Rc<Ctx>) -> adw::PreferencesPage {
         |s, on| s.restore_session = on,
     ));
     let page = adw::PreferencesPage::builder()
+        .name("general")
         .title("General")
         .icon_name("preferences-system-symbolic")
         .build();
     page.add(&group);
+    page.add(&storage_group(ctx, dialog));
     page
 }
 
@@ -126,9 +214,9 @@ fn cache_dir() -> PathBuf {
     glib::user_cache_dir().join("swell-player")
 }
 
-fn storage_page(ctx: &Rc<Ctx>, dialog: &adw::PreferencesDialog) -> adw::PreferencesPage {
+fn storage_group(ctx: &Rc<Ctx>, dialog: &adw::PreferencesDialog) -> adw::PreferencesGroup {
     let group = adw::PreferencesGroup::builder()
-        .title("Cache")
+        .title("Storage")
         .description("Downloaded artwork and saved answers from TIDAL, so pages open instantly and work offline.")
         .build();
     let covers = cache_row(
@@ -159,10 +247,14 @@ fn storage_page(ctx: &Rc<Ctx>, dialog: &adw::PreferencesDialog) -> adw::Preferen
         "Pages are loaded again from TIDAL. Your collection is not affected.",
         || {
             let dir = cache_dir();
-            ["library.sqlite3", "library.sqlite3-wal", "library.sqlite3-shm"]
-                .iter()
-                .map(|name| dir.join(name))
-                .collect()
+            [
+                "library.sqlite3",
+                "library.sqlite3-wal",
+                "library.sqlite3-shm",
+            ]
+            .iter()
+            .map(|name| dir.join(name))
+            .collect()
         },
         move || {
             let api = api.clone();
@@ -179,12 +271,7 @@ fn storage_page(ctx: &Rc<Ctx>, dialog: &adw::PreferencesDialog) -> adw::Preferen
     );
     group.add(&covers);
     group.add(&library);
-    let page = adw::PreferencesPage::builder()
-        .title("Storage")
-        .icon_name("drive-harddisk-symbolic")
-        .build();
-    page.add(&group);
-    page
+    group
 }
 
 /// A row showing the size of `paths` with a "Clear" button that asks
@@ -218,7 +305,10 @@ where
             let row = row.clone();
             glib::spawn_future_local(async move {
                 let size = runtime::spawn(async move {
-                    Ok(tokio::task::spawn_blocking(move || paths().iter().map(|p| size_of(p)).sum::<u64>()).await?)
+                    Ok(tokio::task::spawn_blocking(move || {
+                        paths().iter().map(|p| size_of(p)).sum::<u64>()
+                    })
+                    .await?)
                 })
                 .await
                 .unwrap_or(0);
@@ -298,16 +388,13 @@ fn size_of(path: &Path) -> u64 {
         .unwrap_or(0)
 }
 
-fn blocked_page(ctx: &Rc<Ctx>, dialog: &adw::PreferencesDialog) -> adw::PreferencesPage {
+/// The artists blocked with "Block Artist", each with "Unblock". (TIDAL's
+/// API offers no list of blocked tracks, so there is none here.)
+fn blocked_group(ctx: &Rc<Ctx>, dialog: &adw::PreferencesDialog) -> adw::PreferencesGroup {
     let group = adw::PreferencesGroup::builder()
         .title("Blocked Artists")
         .description("Loading…")
         .build();
-    let page = adw::PreferencesPage::builder()
-        .title("Blocked")
-        .icon_name("action-unavailable-symbolic")
-        .build();
-    page.add(&group);
 
     let api = ctx.api.clone();
     let group_ref = group.downgrade();
@@ -326,9 +413,16 @@ fn blocked_page(ctx: &Rc<Ctx>, dialog: &adw::PreferencesDialog) -> adw::Preferen
                 return;
             }
         };
-        group.set_description(artists.is_empty().then_some("Nothing blocked"));
+        group.set_description(Some(if artists.is_empty() {
+            "Nothing blocked. Blocked artists are skipped in radios and mixes."
+        } else {
+            "Skipped in radios and mixes."
+        }));
         for artist in artists {
-            let row = adw::ActionRow::builder().title(&artist.name).build();
+            // Row titles are Pango markup.
+            let row = adw::ActionRow::builder()
+                .title(glib::markup_escape_text(&artist.name).as_str())
+                .build();
             row.add_prefix(&adw::Avatar::new(32, Some(&artist.name), true));
             let unblock = gtk::Button::builder()
                 .label("Unblock")
@@ -355,13 +449,18 @@ fn blocked_page(ctx: &Rc<Ctx>, dialog: &adw::PreferencesDialog) -> adw::Preferen
                 let group = group.clone();
                 let name = name.clone();
                 glib::spawn_future_local(async move {
-                    match runtime::spawn(async move { api.set_artist_blocked(id, false).await }).await {
+                    match runtime::spawn(async move { api.set_artist_blocked(id, false).await })
+                        .await
+                    {
                         Ok(()) => {
                             if let (Some(group), Some(row)) = (group.upgrade(), row.upgrade()) {
                                 group.remove(&row);
                             }
                             if let Some(dialog) = dialog.upgrade() {
-                                dialog.add_toast(adw::Toast::new(&format!("Unblocked {name}")));
+                                dialog.add_toast(adw::Toast::new(&format!(
+                                    "Unblocked {}",
+                                    glib::markup_escape_text(&name)
+                                )));
                             }
                         }
                         Err(err) => {
@@ -377,14 +476,17 @@ fn blocked_page(ctx: &Rc<Ctx>, dialog: &adw::PreferencesDialog) -> adw::Preferen
             });
         }
     });
-    page.connect_destroy(move |_| task.abort());
-    page
+    group.connect_destroy(move |_| task.abort());
+    group
 }
 
 fn account_page(ctx: &Rc<Ctx>, dialog: &adw::PreferencesDialog) -> adw::PreferencesPage {
     let (method, quality) = match ctx.api.flow {
         LoginFlow::Pkce => ("Signed in with the browser", "Up to Hi-Res Lossless"),
-        LoginFlow::DeviceCode => ("Signed in with a device code", "Up to Lossless (16-bit/44.1 kHz)"),
+        LoginFlow::DeviceCode => (
+            "Signed in with a device code",
+            "Up to Lossless (16-bit/44.1 kHz)",
+        ),
     };
     let avatar = adw::Avatar::builder()
         .size(64)
@@ -431,10 +533,12 @@ fn account_page(ctx: &Rc<Ctx>, dialog: &adw::PreferencesDialog) -> adw::Preferen
     group.add(&sign_out);
 
     let page = adw::PreferencesPage::builder()
+        .name("account")
         .title("Account")
         .icon_name("avatar-default-symbolic")
         .build();
     page.add(&header_group);
+    page.add(&blocked_group(ctx, dialog));
     page.add(&group);
     page
 }

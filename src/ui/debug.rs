@@ -11,7 +11,8 @@
 //! - `SWELL_PANEL=playing|lyrics|queue` opens the now-playing panel.
 //! - `SWELL_SECTION=home|explore|search|collection` shows that section
 //!   (before `SWELL_ROUTE` is opened).
-//! - `SWELL_DIALOG=preferences|shortcuts|about` opens that dialog.
+//! - `SWELL_DIALOG=preferences|shortcuts|about` opens that dialog
+//!   (`SWELL_PREFERENCES_PAGE=playback|general|account` picks the page).
 //! - `SWELL_ACTIONS=win.a,win.b('x'),...` activates those actions in turn,
 //!   one every 700 ms, once signed in (e.g. `win.section('search')`,
 //!   `player.sleep('30')`).
@@ -108,6 +109,12 @@ fn activate_below(widget: &gtk::Widget, name: &str, target: Option<&glib::Varian
         child = current.next_sibling();
     }
     false
+}
+
+/// The Preferences page to open on (`SWELL_PREFERENCES_PAGE=playback|
+/// general|account`).
+pub fn preferences_page() -> Option<String> {
+    std::env::var("SWELL_PREFERENCES_PAGE").ok()
 }
 
 pub fn section() -> Option<String> {

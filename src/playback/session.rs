@@ -3,8 +3,14 @@
 //! changes and at quit) and `position.json` (just the position, written
 //! every few seconds while playing, so a long queue is not rewritten that
 //! often).
+//!
+//! Writers hold a lock and check a "saving off" flag under it, so once
+//! [`clear`] ran after the flag was set (sign-out), no write that was
+//! already on its way can bring the files back.
 
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Mutex, PoisonError};
 
 use anyhow::Result;
 use gtk::glib;
@@ -141,35 +147,61 @@ fn position_path() -> PathBuf {
     dir().join("position.json")
 }
 
+/// Serialises writing and clearing.
+static FILES: Mutex<()> = Mutex::new(());
+
 fn write_atomic(path: &Path, data: &[u8]) -> std::io::Result<()> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
     }
-    let partial = path.with_extension("json.part");
-    std::fs::write(&partial, data)?;
-    std::fs::rename(&partial, path)
+    let partial = super::rundir::temp_path(path);
+    if let Err(err) = std::fs::write(&partial, data).and_then(|()| std::fs::rename(&partial, path)) {
+        let _ = std::fs::remove_file(&partial);
+        return Err(err);
+    }
+    Ok(())
 }
 
 /// Writes the whole session (blocking but small and fast: used at quit
-/// and from the I/O runtime's blocking pool).
-pub fn write(saved: &Saved) -> Result<()> {
-    write_atomic(&queue_path(), &saved.encode()?)?;
-    write_position(&SavedPosition {
-        track_id: saved.queue.current.as_ref().map_or(0, |t| t.id),
-        position: saved.position,
-    })
+/// and from the I/O runtime's blocking pool), unless `off` is set.
+pub fn write(saved: &Saved, off: &AtomicBool) -> Result<()> {
+    write_in(&dir(), saved, off)
 }
 
-pub fn write_position(position: &SavedPosition) -> Result<()> {
-    Ok(write_atomic(
-        &position_path(),
-        &serde_json::to_vec(position)?,
-    )?)
+fn write_in(dir: &Path, saved: &Saved, off: &AtomicBool) -> Result<()> {
+    let data = saved.encode()?;
+    let position = serde_json::to_vec(&SavedPosition {
+        track_id: saved.queue.current.as_ref().map_or(0, |t| t.id),
+        position: saved.position,
+    })?;
+    let _files = FILES.lock().unwrap_or_else(PoisonError::into_inner);
+    if off.load(Ordering::SeqCst) {
+        return Ok(());
+    }
+    write_atomic(&dir.join("queue.json"), &data)?;
+    write_atomic(&dir.join("position.json"), &position)?;
+    Ok(())
+}
+
+/// Writes just the position, unless `off` is set.
+pub fn write_position(position: &SavedPosition, off: &AtomicBool) -> Result<()> {
+    let data = serde_json::to_vec(position)?;
+    let _files = FILES.lock().unwrap_or_else(PoisonError::into_inner);
+    if off.load(Ordering::SeqCst) {
+        return Ok(());
+    }
+    Ok(write_atomic(&position_path(), &data)?)
 }
 
 /// Forgets the saved session (on sign-out: the next user must not see it).
+/// Set the writer's `off` flag first.
 pub fn clear() {
-    for path in [queue_path(), position_path()] {
+    clear_in(&dir());
+}
+
+fn clear_in(dir: &Path) {
+    let _files = FILES.lock().unwrap_or_else(PoisonError::into_inner);
+    for path in [dir.join("queue.json"), dir.join("position.json")] {
         if let Err(err) = std::fs::remove_file(&path)
             && err.kind() != std::io::ErrorKind::NotFound
         {
@@ -253,5 +285,23 @@ mod tests {
         let empty = Saved::new(QueueSnapshot::default(), None, 0.0);
         assert_eq!(Saved::decode(&empty.encode().unwrap(), None), None);
         assert_eq!(Saved::decode(b"not json", None), None);
+    }
+
+    #[test]
+    fn nothing_is_written_once_off() {
+        let dir = std::env::temp_dir().join(format!("swell-session-test-{}", std::process::id()));
+        let off = AtomicBool::new(false);
+        write_in(&dir, &saved(), &off).unwrap();
+        assert!(dir.join("queue.json").exists());
+        assert!(dir.join("position.json").exists());
+        // Sign-out: flag first, then clear; later writes are dropped.
+        off.store(true, Ordering::SeqCst);
+        clear_in(&dir);
+        write_in(&dir, &saved(), &off).unwrap();
+        assert!(!dir.join("queue.json").exists());
+        assert!(!dir.join("position.json").exists());
+        // No temporary files are left behind either.
+        assert_eq!(std::fs::read_dir(&dir).unwrap().count(), 0);
+        std::fs::remove_dir(&dir).unwrap();
     }
 }

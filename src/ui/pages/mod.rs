@@ -14,7 +14,7 @@ mod more;
 mod playlist;
 mod playlist_data;
 mod search;
-mod search_data;
+pub(super) mod search_data;
 mod search_views;
 
 use std::rc::Rc;

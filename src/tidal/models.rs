@@ -281,25 +281,33 @@ pub struct Mix {
     pub id: String,
     pub title: String,
     pub subtitle: String,
-    /// Full image URL (mix artwork is not on the cover image server).
+    /// Full image URL (mix artwork is not on the cover image server), 320
+    /// px: enough for cards.
     pub image: Option<String>,
+    /// The same artwork at 640 px or more, for page headers.
+    #[serde(default)]
+    pub image_large: Option<String>,
     pub kind: Option<String>,
 }
 
 impl From<MixV1> for Mix {
     fn from(mix: MixV1) -> Self {
-        let image = mix
-            .images
-            .get("MEDIUM")
-            .or_else(|| mix.images.get("SMALL"))
-            .or_else(|| mix.images.values().next())
-            .map(|image| image.url.clone())
-            .filter(|url| !url.is_empty());
+        let pick = |order: [&str; 3]| {
+            order
+                .iter()
+                .find_map(|size| mix.images.get(*size))
+                .or_else(|| mix.images.values().next())
+                .map(|image| image.url.clone())
+                .filter(|url| !url.is_empty())
+        };
+        let image = pick(["SMALL", "MEDIUM", "LARGE"]);
+        let image_large = pick(["MEDIUM", "LARGE", "SMALL"]);
         Self {
             id: mix.id,
             title: mix.title,
             subtitle: mix.sub_title,
             image,
+            image_large,
             kind: mix.mix_type,
         }
     }
@@ -312,12 +320,16 @@ impl From<MixV2> for Mix {
         } else {
             &mix.mix_images
         };
-        let image = images
-            .iter()
-            .find(|image| image.size.as_deref() == Some("MEDIUM"))
-            .or_else(|| images.first())
-            .map(|image| image.url.clone())
-            .filter(|url| !url.is_empty());
+        let pick = |order: [&str; 3]| {
+            order
+                .iter()
+                .find_map(|size| images.iter().find(|i| i.size.as_deref() == Some(*size)))
+                .or_else(|| images.first())
+                .map(|image| image.url.clone())
+                .filter(|url| !url.is_empty())
+        };
+        let image = pick(["SMALL", "MEDIUM", "LARGE"]);
+        let image_large = pick(["MEDIUM", "LARGE", "SMALL"]);
         Self {
             id: mix.id,
             title: mix
@@ -332,6 +344,7 @@ impl From<MixV2> for Mix {
                 .or(mix.short_subtitle_text_info.text)
                 .unwrap_or_default(),
             image,
+            image_large,
             kind: mix.kind,
         }
     }
@@ -486,6 +499,7 @@ mod tests {
         .unwrap();
         let mix = Mix::from(mix);
         assert_eq!(mix.title, "Mix");
-        assert_eq!(mix.image.as_deref(), Some("m"));
+        assert_eq!(mix.image.as_deref(), Some("s"));
+        assert_eq!(mix.image_large.as_deref(), Some("m"));
     }
 }

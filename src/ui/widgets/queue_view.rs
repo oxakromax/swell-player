@@ -9,7 +9,7 @@
 //! Shift+F10 open the track menu (with Move Up/Down); "Clear" empties what
 //! is upcoming, and Undo puts it back as it was.
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::rc::{Rc, Weak};
 
 use adw::prelude::*;
@@ -76,6 +76,8 @@ pub struct QueueView {
     stores: [gio::ListStore; 3],
     source_title: RefCell<String>,
     rows: RefCell<Vec<Rc<Row>>>,
+    /// The queue changed while hidden: refreshed when shown.
+    stale: Cell<bool>,
     _events: Subscription,
 }
 
@@ -173,9 +175,15 @@ impl QueueView {
             stores,
             source_title: RefCell::default(),
             rows: RefCell::default(),
+            stale: Cell::new(false),
             _events: subscribe(playback, weak, |view, event| {
                 if matches!(event, Event::Queue | Event::Track(_)) {
-                    view.refresh();
+                    // Hidden (panel closed, other tab): catch up when shown.
+                    if view.widget.is_mapped() {
+                        view.refresh();
+                    } else {
+                        view.stale.set(true);
+                    }
                 }
             }),
         });
@@ -227,6 +235,16 @@ impl QueueView {
             }
         });
         view.list.add_controller(keys);
+        view.widget.connect_map({
+            let weak = weak.clone();
+            move |_| {
+                if let Some(view) = weak.upgrade()
+                    && view.stale.replace(false)
+                {
+                    view.refresh();
+                }
+            }
+        });
         // Opening the tab shows the current track.
         view.list.connect_map(move |list| {
             if weak

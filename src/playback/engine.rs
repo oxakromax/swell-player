@@ -16,7 +16,7 @@
 //! asks for it on `about-to-finish` (a streaming thread, so it only takes a
 //! lock), and the switch is reported when the new stream actually starts.
 
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex, PoisonError};
@@ -28,6 +28,7 @@ use gst::prelude::*;
 use gtk::glib;
 use serde::Deserialize;
 
+use super::failure::{self, EngineError, Failure};
 use super::format::{FormatDetails, ReplayGain};
 use crate::tidal::models::PlaybackInfo;
 
@@ -43,9 +44,13 @@ pub struct Stream {
 }
 
 impl Stream {
-    /// Decodes the manifest of `info`. DASH manifests are written to disk,
-    /// so this runs on the I/O runtime.
-    pub async fn from_playback_info(info: PlaybackInfo) -> Result<Self> {
+    /// Decodes the manifest of `info`, TIDAL's answer for `track_id` (the
+    /// id asked for, which the answer's own id need not match). DASH
+    /// manifests are written to disk, so this runs on the I/O runtime.
+    pub async fn from_playback_info(track_id: u64, info: PlaybackInfo) -> Result<Self> {
+        if info.track_id != track_id {
+            log::debug!("track {track_id} streams as track {}", info.track_id);
+        }
         let manifest = BASE64
             .decode(info.manifest.as_bytes())
             .context("the playback manifest is not base64")?;
@@ -53,7 +58,7 @@ impl Stream {
 
         let (uri, codecs) = if mime.starts_with("application/dash+xml") {
             let codecs = dash_codecs(&String::from_utf8_lossy(&manifest));
-            let path = write_manifest(info.track_id, &manifest).await?;
+            let path = write_manifest(track_id, &manifest).await?;
             (glib::filename_to_uri(&path, None)?.to_string(), codecs)
         } else if mime.starts_with("application/vnd.tidal.bts") {
             let bts: BtsManifest = serde_json::from_slice(&manifest)?;
@@ -76,7 +81,7 @@ impl Stream {
         Ok(Self {
             uri,
             format: details.describe(),
-            track_id: info.track_id,
+            track_id,
             details,
             replay_gain: ReplayGain::new(&info),
         })
@@ -111,15 +116,21 @@ pub fn keep_manifests(track_ids: &[u64]) {
         .unwrap_or_else(PoisonError::into_inner) = track_ids.to_vec();
 }
 
-/// Manifests carry signed segment URLs, so they go to the private, in-memory
-/// runtime directory, one file per track.
+/// Manifests carry signed segment URLs, so they go to this process's
+/// private, in-memory runtime directory, one file per track.
 async fn write_manifest(track_id: u64, manifest: &[u8]) -> Result<PathBuf> {
-    let dir = glib::user_runtime_dir().join("swell-player");
+    let dir = super::rundir::dir();
     tokio::fs::create_dir_all(&dir).await?;
     let path = dir.join(format!("{track_id}.mpd"));
-    let partial = dir.join(format!("{track_id}.mpd.part"));
-    tokio::fs::write(&partial, manifest).await?;
-    tokio::fs::rename(&partial, &path).await?;
+    let partial = super::rundir::temp_path(&path);
+    let written = match tokio::fs::write(&partial, manifest).await {
+        Ok(()) => tokio::fs::rename(&partial, &path).await,
+        Err(err) => Err(err),
+    };
+    if let Err(err) = written {
+        let _ = tokio::fs::remove_file(&partial).await;
+        return Err(err.into());
+    }
 
     let keep = KEEP_MANIFESTS
         .lock()
@@ -149,7 +160,8 @@ pub enum EngineEvent {
     Buffering,
     /// The end of the last stream (nothing was handed over).
     Finished,
-    Error(String),
+    /// Playback failed; `kind` says whether the network is to blame.
+    Error { message: String, kind: Failure },
     /// The track handed over with [`Engine::set_next`] started playing.
     NextStarted(u64),
 }
@@ -187,6 +199,10 @@ struct Local {
     seeking_to_start: Cell<bool>,
     /// The first stream of a load has not started yet.
     awaiting_first_start: Cell<bool>,
+    /// The output device asked for (display name), `None` = system default.
+    output_wanted: RefCell<Option<String>>,
+    /// The device the pipeline was last built with.
+    output_applied: RefCell<Option<String>>,
 }
 
 /// `playbin3`, audio only. Events arrive on the main thread.
@@ -195,6 +211,21 @@ pub struct Engine {
     shared: Arc<Mutex<Shared>>,
     local: Rc<Local>,
     _bus_watch: gst::bus::BusWatchGuard,
+}
+
+/// A sink element for the `Audio/Sink` device called `name`.
+fn audio_sink_for(name: &str) -> Option<gst::Element> {
+    let monitor = gst::DeviceMonitor::new();
+    monitor.add_filter(Some("Audio/Sink"), None);
+    if monitor.start().is_err() {
+        return None;
+    }
+    let device = monitor
+        .devices()
+        .into_iter()
+        .find(|device| device.display_name() == name);
+    monitor.stop();
+    device?.create_element(None).ok()
 }
 
 fn lock(shared: &Mutex<Shared>) -> std::sync::MutexGuard<'_, Shared> {
@@ -275,6 +306,7 @@ impl Engine {
             shared.pending_gain = None;
         }
         self.install_filter(gain);
+        self.apply_output_device();
         self.playbin.set_property("uri", uri);
         let start = start.filter(|s| *s > 0.5);
         self.local.target_playing.set(play);
@@ -287,6 +319,30 @@ impl Engine {
         } else {
             gst::State::Paused
         });
+    }
+
+    /// Chooses the output device for the next load (display name of a
+    /// GStreamer `Audio/Sink` device; `None` = the system default).
+    pub fn set_output_device(&self, name: Option<String>) {
+        self.local.output_wanted.replace(name);
+    }
+
+    /// Builds the audio sink for the wanted device. Only while the pipeline
+    /// is in `Null` (from `load`).
+    fn apply_output_device(&self) {
+        let wanted = self.local.output_wanted.borrow().clone();
+        if *self.local.output_applied.borrow() == wanted {
+            return;
+        }
+        let sink = wanted.as_deref().and_then(|name| match audio_sink_for(name) {
+            Some(sink) => Some(sink),
+            None => {
+                log::warn!("output device “{name}” not found; using the default");
+                None
+            }
+        });
+        self.playbin.set_property("audio-sink", sink.as_ref());
+        self.local.output_applied.replace(wanted);
     }
 
     /// Puts a `volume` element in the pipeline for normalisation, or none.
@@ -314,6 +370,31 @@ impl Engine {
         let filter = lock(&self.shared).filter.clone();
         if let Some(filter) = filter {
             filter.set_property("volume", gain.clamp(0.0, 10.0));
+        }
+    }
+
+    /// Changes the gain waiting for the handed-over stream (normalisation
+    /// changed during the gapless switch).
+    pub fn set_pending_gain(&self, gain: Option<f64>) {
+        let mut shared = lock(&self.shared);
+        if shared.handed_over.is_some() {
+            shared.pending_gain = gain;
+        }
+    }
+
+    /// Debugging (`SWELL_DEBUG_ENGINE_FAIL`): posts the error an HTTP
+    /// source gives when the connection drops.
+    pub fn simulate_network_error(&self) {
+        let details = gst::Structure::builder("details")
+            .field("http-status-code", 0u32)
+            .build();
+        let message = gst::message::Error::builder(gst::ResourceError::Read, "Simulated connection loss")
+            .debug("simulated, URL: https://example.invalid/segment.mp4?token=SECRET")
+            .details(details)
+            .src(&self.playbin)
+            .build();
+        if let Some(bus) = self.playbin.bus() {
+            let _ = bus.post(message);
         }
     }
 
@@ -372,6 +453,14 @@ impl Engine {
         !self.local.buffering.get()
             && self.local.start_at.get().is_none()
             && is_playing(&self.playbin)
+    }
+
+    /// Waiting for data or for the start position: not audible yet even
+    /// if wanted.
+    pub fn is_waiting(&self) -> bool {
+        self.local.buffering.get()
+            || self.local.start_at.get().is_some()
+            || self.local.seeking_to_start.get()
     }
 
     /// Seconds.
@@ -500,8 +589,37 @@ fn handle_message(
         MessageView::Error(err) => {
             let _ = playbin.set_state(gst::State::Null);
             local.start_at.set(None);
-            log::warn!("playback error: {} ({:?})", err.error(), err.debug());
-            on_event(EngineEvent::Error(err.error().to_string()));
+            let error = err.error();
+            let factory = err
+                .src()
+                .and_then(|src| src.downcast_ref::<gst::Element>())
+                .and_then(gst::Element::factory)
+                .map(|factory| factory.name().to_string())
+                .unwrap_or_default();
+            let debug = err.debug().map(|d| failure::redact(&d)).unwrap_or_default();
+            let resource_io = error.kind::<gst::ResourceError>().is_some_and(|code| {
+                matches!(
+                    code,
+                    gst::ResourceError::Read
+                        | gst::ResourceError::OpenRead
+                        | gst::ResourceError::Seek
+                        | gst::ResourceError::Failed
+                        | gst::ResourceError::Busy
+                )
+            });
+            let info = EngineError {
+                resource_io,
+                from_http: failure::is_http_element(&factory),
+                http_status: err
+                    .details()
+                    .and_then(|d| d.get::<u32>("http-status-code").ok()),
+                download_error: debug.contains("Download error"),
+            };
+            let kind = failure::classify_engine(&info);
+            let message = failure::redact(error.message());
+            log::warn!("playback error ({kind:?}) from {factory}: {message}");
+            log::debug!("playback error details: {debug} ({info:?})");
+            on_event(EngineEvent::Error { message, kind });
         }
         MessageView::StreamStart(_) => {
             if local.awaiting_first_start.replace(false) {

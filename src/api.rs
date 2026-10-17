@@ -75,16 +75,14 @@ impl Deref for Api {
 
 impl Api {
     /// A client for a session; refreshed tokens are written back to the
-    /// keyring unless the user has signed out meanwhile.
+    /// keyring unless the user has signed out meanwhile (the client awaits
+    /// the save under its refresh lock, which sign-out also takes).
     pub fn restore(stored: StoredSession, http: reqwest::Client) -> Arc<Self> {
         let flow = stored.flow;
-        let client = Client::new(http, flow, stored.authz, move |authz: &Authz| {
-            let authz = authz.clone();
-            tokio::spawn(async move {
-                if let Err(err) = session::save(&StoredSession { flow, authz }).await {
-                    log::warn!("could not store refreshed tokens: {err:#}");
-                }
-            });
+        let client = Client::new(http, flow, stored.authz, move |authz: Authz| async move {
+            if let Err(err) = session::save(&StoredSession { flow, authz }).await {
+                log::warn!("could not store refreshed tokens: {err:#}");
+            }
         });
         Arc::new(Self {
             client,
@@ -96,13 +94,29 @@ impl Api {
     pub async fn cache(&self) -> Option<&Cache> {
         self.cache
             .get_or_init(|| async {
-                Cache::open()
+                let cache = Cache::open()
                     .await
                     .inspect_err(|err| log::warn!("library cache unavailable: {err:#}"))
-                    .ok()
+                    .ok();
+                if let Some(cache) = &cache {
+                    schedule_maintenance(cache.clone());
+                }
+                cache
             })
             .await
             .as_ref()
+    }
+
+    /// The cache key of the answer to `base`/`path`. Answers depend on the
+    /// country and language, so both are part of the key; they go last so
+    /// that [`Self::invalidate`] by path prefix still matches.
+    pub fn cache_key(&self, base: tidal::Base, path: &str) -> String {
+        format!(
+            "{}{path}|{}|{}",
+            base.prefix(),
+            self.country_code(),
+            self.locale()
+        )
     }
 
     /// Stale-while-revalidate GET: sends the cached answer (if any) parsed
@@ -119,7 +133,7 @@ impl Api {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let this = self.clone();
         crate::runtime::runtime().spawn(async move {
-            let key = format!("{}{path}", base.prefix());
+            let key = this.cache_key(base, &path);
             let user_id = this.user_id();
             let cached = match this.cache().await {
                 Some(cache) => cache.response(user_id, key.clone()).await.ok().flatten(),
@@ -171,7 +185,8 @@ impl Api {
         rx
     }
 
-    /// Forgets cached answers under `prefix` (e.g. after editing a playlist).
+    /// Forgets cached answers under `prefix` (e.g. after editing a playlist),
+    /// whatever their country and language.
     pub async fn invalidate(&self, base: tidal::Base, prefix: &str) {
         if let Some(cache) = self.cache().await {
             let _ = cache
@@ -236,16 +251,31 @@ impl Api {
     }
 
     /// Removes the tokens from the keyring, then (best effort) the user's
-    /// cached library. Running work must be stopped first.
+    /// cached library and the downloaded artwork. Running work must be
+    /// stopped first; anything still in flight can no longer write.
     pub async fn sign_out(&self) -> Result<()> {
-        self.mark_signed_out();
-        session::clear().await?;
+        let cleared = {
+            // Waits for a refresh in flight to save its tokens, so they are
+            // gone for good once cleared.
+            let _refresh = self.client.begin_sign_out().await;
+            session::clear().await
+        };
         let user_id = self.user_id();
-        let forget = async { Cache::open().await?.forget_user(user_id).await };
+        // The same connection as every writer of this session: writes that
+        // got in first are deleted, later ones are refused.
+        let forget = async {
+            match self.cache().await {
+                Some(cache) => cache.forget_user(user_id).await,
+                None => Cache::open().await?.forget_user(user_id).await,
+            }
+        };
         if let Err(err) = forget.await {
             log::warn!("could not clear the library cache: {err:#}");
         }
-        Ok(())
+        if let Err(err) = crate::covers::forget_disk_cache().await {
+            log::warn!("could not clear the cover cache: {err:#}");
+        }
+        cleared
     }
 
     /// Brings the favourite tracks up to date and reports to `updates`.
@@ -281,6 +311,25 @@ impl Api {
             .is_some_and(|cached| cached.matches(total, &first))
         {
             let _ = updates.send(Ok(FavoritesUpdate::Finished));
+            return Ok(());
+        }
+
+        // The usual change: a few tracks liked elsewhere, now at the top.
+        // Prepend them to the cached list instead of downloading it again.
+        if let (Some(head), Some(cache)) = (cached.as_ref(), cache.as_ref())
+            && let Some(added) = head.added_on_top(total, &first)
+            && let Ok(Some(stored)) = cache.favorite_tracks(self.user_id()).await
+        {
+            let mut all = first[..added].to_vec();
+            all.extend(stored.tracks);
+            log::debug!("{added} new favourites on top; {} in all", all.len());
+            let _ = updates.send(Ok(FavoritesUpdate::Replace(all.clone())));
+            let _ = updates.send(Ok(FavoritesUpdate::Finished));
+            if !self.is_signed_out()
+                && let Err(err) = cache.store_favorite_tracks(self.user_id(), total, all).await
+            {
+                log::warn!("could not cache favourites: {err:#}");
+            }
             return Ok(());
         }
 
@@ -327,8 +376,9 @@ impl Api {
     /// at what the session allows). TIDAL may answer with less when the
     /// track is not available in it.
     pub async fn stream_with_quality(&self, track_id: u64, quality: tidal::Quality) -> Result<Stream> {
+        debug_stream_failure().await?;
         let info = self.playback_info(track_id, quality).await?;
-        Stream::from_playback_info(info).await
+        Stream::from_playback_info(track_id, info).await
     }
 
     async fn favorite_tracks_page(&self, offset: usize) -> Result<tidal::models::Page<tidal::models::Track>> {
@@ -340,6 +390,37 @@ impl Api {
         );
         Ok(page)
     }
+}
+
+/// Debugging: `SWELL_DEBUG_STREAM_FAIL=<n>[@<skip>]` makes `n` stream
+/// lookups (after the first `skip`) fail with a real connection error, as
+/// when the network is down.
+async fn debug_stream_failure() -> Result<()> {
+    use std::sync::atomic::{AtomicI64, Ordering};
+    use std::sync::OnceLock;
+
+    static PLAN: OnceLock<Option<(i64, i64)>> = OnceLock::new();
+    static CALLS: AtomicI64 = AtomicI64::new(0);
+    let Some((fail, skip)) = *PLAN.get_or_init(|| {
+        let spec = std::env::var("SWELL_DEBUG_STREAM_FAIL").ok()?;
+        let (fail, skip) = spec.split_once('@').unwrap_or((&spec, "0"));
+        Some((fail.parse().ok()?, skip.parse().ok()?))
+    }) else {
+        return Ok(());
+    };
+    let call = CALLS.fetch_add(1, Ordering::SeqCst);
+    if call < skip || call >= skip + fail {
+        return Ok(());
+    }
+    log::info!("SWELL_DEBUG_STREAM_FAIL: failing stream lookup {}", call + 1);
+    let client = reqwest::Client::builder().no_proxy().build()?;
+    let err = client
+        .get("http://127.0.0.1:9/")
+        .send()
+        .await
+        .err()
+        .map(|err| anyhow::Error::new(err).context("could not reach TIDAL"));
+    Err(err.unwrap_or_else(|| anyhow::anyhow!("SWELL_DEBUG_STREAM_FAIL: port 9 answered")))
 }
 
 impl Api {
@@ -387,7 +468,7 @@ impl Api {
     ) -> Result<()> {
         let user_id = self.user_id();
         let path = self.favorite_list_path(kind);
-        let key = format!("{}{path}?all", tidal::Base::V1.prefix());
+        let key = self.cache_key(tidal::Base::V1, &format!("{path}?all"));
         let cache = self.cache().await;
 
         let mut cached: Option<(Vec<Value>, usize, Duration)> = None;
@@ -498,7 +579,7 @@ const FAVORITES_PAGE: usize = 100;
 const FAVORITES_CONCURRENCY: usize = 4;
 /// A cached list older than this is reloaded even if its head still matches,
 /// to pick up tracks that became unavailable or changed metadata.
-const FAVORITES_MAX_AGE: Duration = Duration::from_secs(24 * 60 * 60);
+const FAVORITES_MAX_AGE: Duration = Duration::from_secs(3 * 24 * 60 * 60);
 
 pub enum FavoritesUpdate {
     /// More tracks for the end of the list.
@@ -507,6 +588,30 @@ pub enum FavoritesUpdate {
     Replace(Vec<TrackInfo>),
     /// The list on screen is now current.
     Finished,
+}
+
+/// Answers unused for this long are dropped from the cache.
+const RESPONSE_MAX_AGE: Duration = Duration::from_secs(30 * 24 * 60 * 60);
+/// Artwork cache limits.
+const ARTWORK_MAX_BYTES: u64 = 300 * 1024 * 1024;
+const ARTWORK_MAX_AGE: Duration = Duration::from_secs(90 * 24 * 60 * 60);
+
+/// Prunes the caches once, a little after startup and off the main thread,
+/// so they never grow without bound.
+fn schedule_maintenance(cache: Cache) {
+    crate::runtime::runtime().spawn(async move {
+        tokio::time::sleep(Duration::from_secs(30)).await;
+        if let Err(err) = cache.prune(RESPONSE_MAX_AGE).await {
+            log::debug!("pruning cached answers failed: {err:#}");
+        }
+        let artwork = tokio::task::spawn_blocking(|| {
+            crate::covers::prune_disk_cache(ARTWORK_MAX_BYTES, ARTWORK_MAX_AGE)
+        })
+        .await;
+        if let Ok(Err(err)) = artwork {
+            log::debug!("pruning artwork failed: {err}");
+        }
+    });
 }
 
 /// What a cached list looked like, to check it against the first page.
@@ -530,6 +635,22 @@ impl CachedHead {
         }
     }
 
+    /// If the only change is `n` tracks added at the top (the first page
+    /// is those `n` followed by the cached head), returns `n`.
+    fn added_on_top(&self, total: usize, first_page: &[TrackInfo]) -> Option<usize> {
+        let added = total.checked_sub(self.total)?;
+        let overlap = first_page.len().checked_sub(added)?;
+        (self.age < FAVORITES_MAX_AGE
+            && added > 0
+            && overlap > 0
+            && overlap <= self.ids.len()
+            && first_page[added..]
+                .iter()
+                .zip(&self.ids)
+                .all(|(track, id)| track.id == *id))
+        .then_some(added)
+    }
+
     fn matches(&self, total: usize, first_page: &[TrackInfo]) -> bool {
         self.age < FAVORITES_MAX_AGE
             && self.total == total
@@ -543,4 +664,32 @@ impl CachedHead {
 
 fn into_infos(items: Vec<tidal::models::Track>) -> Vec<TrackInfo> {
     items.into_iter().map(TrackInfo::from).collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn tracks(ids: &[u64]) -> Vec<TrackInfo> {
+        ids.iter()
+            .map(|&id| TrackInfo {
+                id,
+                ..TrackInfo::default()
+            })
+            .collect()
+    }
+
+    #[test]
+    fn new_favourites_on_top() {
+        let head = CachedHead {
+            ids: vec![1, 2, 3],
+            total: 3,
+            age: Duration::ZERO,
+        };
+        assert_eq!(head.added_on_top(5, &tracks(&[9, 8, 1, 2, 3])), Some(2));
+        // A removal below the head is not a plain prepend.
+        assert_eq!(head.added_on_top(3, &tracks(&[1, 2, 3])), None);
+        assert_eq!(head.added_on_top(4, &tracks(&[9, 1, 3])), None);
+        assert_eq!(head.added_on_top(2, &tracks(&[1, 2])), None);
+    }
 }

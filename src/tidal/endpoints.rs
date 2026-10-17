@@ -495,11 +495,25 @@ impl Client {
 
     // ---- Blocking ----
 
+    /// Every blocked artist (fetched 100 at a time).
     pub async fn blocked_artists(&self) -> Result<Page<Artist>> {
-        let page: Page<Wrapped<Artist>> = self
-            .get(Call::get(Base::V1, self.uid_path("blocks/artists")).page(0, MAX_PAGE))
-            .await?;
-        Ok(unwrap_page(page, |_, artist| artist))
+        let path = self.uid_path("blocks/artists");
+        let page: Page<Wrapped<Artist>> = self.get(Call::get(Base::V1, &path).page(0, MAX_PAGE)).await?;
+        let mut all = unwrap_page(page, |_, artist| artist);
+        // Advance by the page size, not by the items kept: lenient parsing
+        // may drop malformed ones. Bounded in case the total is wrong.
+        let mut offset = MAX_PAGE;
+        while offset < all.total && offset < 100 * MAX_PAGE {
+            let page: Page<Wrapped<Artist>> =
+                self.get(Call::get(Base::V1, &path).page(offset, MAX_PAGE)).await?;
+            if page.items.is_empty() {
+                break;
+            }
+            all.items.extend(unwrap_page(page, |_, artist| artist).items);
+            offset += MAX_PAGE;
+        }
+        all.limit = all.items.len();
+        Ok(all)
     }
 
     pub async fn set_artist_blocked(&self, id: u64, blocked: bool) -> Result<()> {
