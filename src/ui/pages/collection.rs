@@ -660,7 +660,7 @@ fn tracks_page(ctx: &Rc<Ctx>) -> adw::NavigationPage {
     let empty = empty_page(
         "swell-heart-symbolic",
         tr("No Favourite Tracks"),
-        tr("Tap the heart on any track to save it here."),
+        tr("Use the heart on a track to save it here."),
         Some(&explore),
     );
     let (template, page) = Template::new(

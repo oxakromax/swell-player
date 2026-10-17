@@ -293,33 +293,50 @@ impl TrackList {
 
     /// Follows the compactness of the nearest `AdwBreakpointBin` around the
     /// list (the page's [`compact_bin`]) instead of having its own: for
-    /// embedded lists inside a page.
+    /// embedded lists inside a page. Connected to the bin only while the
+    /// list is mapped, so lists rebuilt on a long-lived page do not pile
+    /// handlers up on it.
     pub fn follow_page_compact(&self) {
         let Some(view) = self.view() else {
             return;
         };
+        type Followed = Option<(glib::WeakRef<adw::BreakpointBin>, glib::SignalHandlerId)>;
+        let followed: Rc<RefCell<Followed>> = Rc::default();
         let weak = self.downgrade();
-        let connected = Rc::new(Cell::new(false));
-        view.connect_map(move |view| {
-            if connected.replace(true) {
-                return;
-            }
-            let Some(bin) = view
-                .ancestor(adw::BreakpointBin::static_type())
-                .and_downcast::<adw::BreakpointBin>()
-            else {
-                return;
-            };
-            let apply = {
-                let weak = weak.clone();
-                move |bin: &adw::BreakpointBin| {
-                    if let Some(list) = weak.upgrade() {
-                        list.set_compact(bin.current_breakpoint().is_some());
-                    }
+        view.connect_map({
+            let followed = followed.clone();
+            move |view| {
+                if followed.borrow().is_some() {
+                    return;
                 }
-            };
-            apply(&bin);
-            bin.connect_current_breakpoint_notify(apply);
+                let Some(bin) = view
+                    .ancestor(adw::BreakpointBin::static_type())
+                    .and_downcast::<adw::BreakpointBin>()
+                else {
+                    return;
+                };
+                let apply = {
+                    let weak = weak.clone();
+                    move |bin: &adw::BreakpointBin| {
+                        if let Some(list) = weak.upgrade() {
+                            let compact = bin.current_breakpoint().is_some();
+                            if list.inner.shared.compact.get() != compact {
+                                list.set_compact(compact);
+                            }
+                        }
+                    }
+                };
+                apply(&bin);
+                let handler = bin.connect_current_breakpoint_notify(apply);
+                followed.replace(Some((bin.downgrade(), handler)));
+            }
+        });
+        view.connect_unmap(move |_| {
+            if let Some((bin, handler)) = followed.take()
+                && let Some(bin) = bin.upgrade()
+            {
+                bin.disconnect(handler);
+            }
         });
     }
 

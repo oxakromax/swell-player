@@ -136,6 +136,12 @@ msgid_plural "{n} tracks"
 msgstr[0] "{n} canción"
 msgstr[1] "{n} canciones"
 
+#: src/ui/widgets/media_card.rs src/ui/pages/search_views.rs
+msgid "{n} video"
+msgid_plural "{n} videos"
+msgstr[0] "{n} video"
+msgstr[1] "{n} videos"
+
 #: src/ui/dialogs/playlist.rs:210
 msgid "Your Playlists"
 msgstr "Tus playlists"
@@ -1465,6 +1471,12 @@ msgstr "No se pudieron cargar todas las canciones del álbum"
 msgid "Released {date}"
 msgstr "Fecha de lanzamiento: {date}"
 
+#. TRANSLATORS: a release date (strftime format: %B is the month's name).
+#: src/ui/pages/album.rs
+#, no-c-format
+msgid "%B %-d, %Y"
+msgstr "%-d de %B de %Y"
+
 #: src/ui/pages/album.rs
 msgid "Review"
 msgstr "Reseña"
@@ -1531,8 +1543,8 @@ msgid "No Favourite Tracks"
 msgstr "Sin canciones favoritas"
 
 #: src/ui/pages/collection.rs
-msgid "Tap the heart on any track to save it here."
-msgstr "Toca el corazón de cualquier canción para guardarla aquí."
+msgid "Use the heart on a track to save it here."
+msgstr "Usa el corazón de una canción para guardarla aquí."
 
 #: src/ui/pages/collection.rs
 msgid "Filter tracks"
@@ -1579,8 +1591,8 @@ msgid "No Favourite Albums"
 msgstr "Sin álbumes favoritos"
 
 #: src/ui/pages/collection_grid.rs
-msgid "Tap the heart on any album to save it here."
-msgstr "Toca el corazón de cualquier álbum para guardarlo aquí."
+msgid "Use the heart on an album to save it here."
+msgstr "Usa el corazón de un álbum para guardarlo aquí."
 
 #: src/ui/pages/collection_grid.rs
 msgid "No Followed Artists"
@@ -1595,9 +1607,9 @@ msgid "No Playlists"
 msgstr "Sin playlists"
 
 #: src/ui/pages/collection_grid.rs
-msgid "Create a playlist, or tap the heart on someone else's to save it here."
+msgid "Create a playlist, or use the heart on someone else's to save it here."
 msgstr ""
-"Crea una playlist o toca el corazón en la de otra persona para guardarla "
+"Crea una playlist o usa el corazón en la de otra persona para guardarla "
 "aquí."
 
 #: src/ui/pages/collection_grid.rs
@@ -1605,8 +1617,8 @@ msgid "No Saved Mixes"
 msgstr "Sin mixes guardados"
 
 #: src/ui/pages/collection_grid.rs
-msgid "Tap the heart on any mix or radio to save it here."
-msgstr "Toca el corazón de cualquier mix o radio para guardarlo aquí."
+msgid "Use the heart on a mix or radio to save it here."
+msgstr "Usa el corazón de un mix o una radio para guardarlo aquí."
 
 #: src/ui/pages/collection_grid.rs src/ui/pages/search_data.rs
 msgid "All"
@@ -1683,6 +1695,13 @@ msgstr "Hace {n} min"
 #: src/ui/pages/history.rs
 msgid "{n} h ago"
 msgstr "Hace {n} h"
+
+#. TRANSLATORS: a day of an earlier week (strftime format: %b is the
+#. month's short name).
+#: src/ui/pages/history.rs
+#, no-c-format
+msgid "%b %-d"
+msgstr "%-d %b"
 
 #: src/ui/pages/history.rs
 msgid "This Session"
@@ -2004,3 +2023,81 @@ msgid "{n} mix"
 msgid_plural "{n} mixes"
 msgstr[0] "{n} mix"
 msgstr[1] "{n} mixes"
+
+#. TRANSLATORS: month and weekday names in dates; their first three
+#. letters are used as the short forms ("Sep", "sep").
+#: src/ui/format.rs
+msgid "January"
+msgstr "enero"
+
+#: src/ui/format.rs
+msgid "February"
+msgstr "febrero"
+
+#: src/ui/format.rs
+msgid "March"
+msgstr "marzo"
+
+#: src/ui/format.rs
+msgid "April"
+msgstr "abril"
+
+#: src/ui/format.rs
+msgid "May"
+msgstr "mayo"
+
+#: src/ui/format.rs
+msgid "June"
+msgstr "junio"
+
+#: src/ui/format.rs
+msgid "July"
+msgstr "julio"
+
+#: src/ui/format.rs
+msgid "August"
+msgstr "agosto"
+
+#: src/ui/format.rs
+msgid "September"
+msgstr "septiembre"
+
+#: src/ui/format.rs
+msgid "October"
+msgstr "octubre"
+
+#: src/ui/format.rs
+msgid "November"
+msgstr "noviembre"
+
+#: src/ui/format.rs
+msgid "December"
+msgstr "diciembre"
+
+#: src/ui/format.rs
+msgid "Monday"
+msgstr "lunes"
+
+#: src/ui/format.rs
+msgid "Tuesday"
+msgstr "martes"
+
+#: src/ui/format.rs
+msgid "Wednesday"
+msgstr "miércoles"
+
+#: src/ui/format.rs
+msgid "Thursday"
+msgstr "jueves"
+
+#: src/ui/format.rs
+msgid "Friday"
+msgstr "viernes"
+
+#: src/ui/format.rs
+msgid "Saturday"
+msgstr "sábado"
+
+#: src/ui/format.rs
+msgid "Sunday"
+msgstr "domingo"

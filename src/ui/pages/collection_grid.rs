@@ -10,6 +10,7 @@
 //! Hearts flipped anywhere add or remove cards.
 
 use std::cell::{Cell, RefCell};
+use std::collections::HashMap;
 use std::rc::{Rc, Weak};
 use std::time::Duration;
 
@@ -32,7 +33,7 @@ use crate::i18n::{tr, trn};
 use crate::library::{self, Change};
 use crate::runtime;
 use crate::tidal::Favorite;
-use crate::tidal::models::{Album, Artist, Mix, Playlist};
+use crate::tidal::models::{Album, Artist, Cursor, Mix, Playlist};
 use crate::tidal::pages::Item;
 
 const ALBUM_SORTS: &[SortOption] = &[
@@ -295,7 +296,7 @@ fn empty_state(ctx: &Rc<Ctx>, view: CollectionView) -> adw::StatusPage {
         CollectionView::Albums => empty_page(
             "media-optical-symbolic",
             tr("No Favourite Albums"),
-            tr("Tap the heart on any album to save it here."),
+            tr("Use the heart on an album to save it here."),
             None,
         ),
         CollectionView::Artists => empty_page(
@@ -318,14 +319,14 @@ fn empty_state(ctx: &Rc<Ctx>, view: CollectionView) -> adw::StatusPage {
             empty_page(
                 "view-list-symbolic",
                 tr("No Playlists"),
-                tr("Create a playlist, or tap the heart on someone else's to save it here."),
+                tr("Create a playlist, or use the heart on someone else's to save it here."),
                 Some(&button),
             )
         }
         _ => empty_page(
             icon_name("swell-mix-symbolic", "media-playlist-shuffle-symbolic"),
             tr("No Saved Mixes"),
-            tr("Tap the heart on any mix or radio to save it here."),
+            tr("Use the heart on a mix or radio to save it here."),
             None,
         ),
     }
@@ -542,12 +543,29 @@ impl GridPage {
                 if descending { order.reverse() } else { order }
             }),
         }
+        // Cards still shown keep their model items, so GTK keeps their
+        // widgets (and covers); only the range that changed is spliced.
+        let old: Vec<glib::BoxedAnyObject> = (0..self.store.n_items())
+            .filter_map(|i| self.store.item(i).and_downcast())
+            .collect();
+        let mut reusable: HashMap<*const Card, glib::BoxedAnyObject> = old
+            .iter()
+            .map(|object| (Rc::as_ptr(&object.borrow::<Rc<Card>>()), object.clone()))
+            .collect();
         let objects: Vec<glib::BoxedAnyObject> = shown
             .into_iter()
-            .map(|card| glib::BoxedAnyObject::new(card.clone()))
+            .map(|card| {
+                reusable
+                    .remove(&Rc::as_ptr(card))
+                    .unwrap_or_else(|| glib::BoxedAnyObject::new(card.clone()))
+            })
             .collect();
         drop(cards);
-        self.store.splice(0, self.store.n_items(), &objects);
+        let (start, removed, added) = changed_range(&old, &objects);
+        if removed > 0 || !added.is_empty() {
+            self.store
+                .splice(start as u32, removed as u32, &objects[added]);
+        }
         self.refresh_state();
     }
 
@@ -715,17 +733,34 @@ impl GridPage {
     }
 }
 
+/// The part of `old` that differs from `new`: where it starts, how many
+/// items of `old` it spans and the range of `new` that replaces them.
+fn changed_range<T: PartialEq>(old: &[T], new: &[T]) -> (usize, usize, std::ops::Range<usize>) {
+    let prefix = old.iter().zip(new).take_while(|(a, b)| a == b).count();
+    let suffix = old[prefix..]
+        .iter()
+        .rev()
+        .zip(new[prefix..].iter().rev())
+        .take_while(|(a, b)| a == b)
+        .count();
+    (
+        prefix,
+        old.len() - prefix - suffix,
+        prefix..new.len() - suffix,
+    )
+}
+
 async fn all_playlists(api: &api::Api) -> Result<Vec<Playlist>> {
-    let first = api.user_playlists(0, PLAYLIST_PAGE).await?;
-    let mut all = first.items;
-    while all.len() < first.total {
-        let page = api.user_playlists(all.len(), PLAYLIST_PAGE).await?;
-        if page.items.is_empty() {
-            break;
-        }
+    let mut all = Vec::new();
+    let mut cursor = Cursor::default();
+    loop {
+        let page = api.user_playlists(cursor.offset, PLAYLIST_PAGE).await?;
+        cursor.advance(page.sent, PLAYLIST_PAGE, page.total);
         all.extend(page.items);
+        if !cursor.has_more() {
+            return Ok(all);
+        }
     }
-    Ok(all)
 }
 
 async fn all_mixes(api: &api::Api) -> Result<Vec<Mix>> {
@@ -739,4 +774,24 @@ async fn all_mixes(api: &api::Api) -> Result<Vec<Mix>> {
         all.append(&mut page.items);
     }
     Ok(all)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::changed_range;
+
+    #[test]
+    fn only_the_changed_middle_is_spliced() {
+        assert_eq!(changed_range(&[1, 2, 3], &[1, 2, 3]), (3, 0, 3..3));
+        // Narrowing a filter drops items in the middle.
+        assert_eq!(changed_range(&[1, 2, 3, 4], &[1, 4]), (1, 2, 1..1));
+        // Widening it back.
+        assert_eq!(changed_range(&[1, 4], &[1, 2, 3, 4]), (1, 0, 1..3));
+        assert_eq!(changed_range(&[1, 2], &[]), (0, 2, 0..0));
+        assert_eq!(changed_range(&[], &[5]), (0, 0, 0..1));
+        // A new order changes everything between the first and last moved.
+        assert_eq!(changed_range(&[1, 2, 3], &[3, 2, 1]), (0, 3, 0..3));
+        // Repeated items do not overlap prefix and suffix.
+        assert_eq!(changed_range(&[7, 7], &[7]), (1, 1, 1..1));
+    }
 }

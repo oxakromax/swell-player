@@ -3,6 +3,8 @@
 //! Digits are grouped by thousands (with the UI language's separator);
 //! parts are joined with " · ".
 
+use gtk::glib;
+
 use crate::i18n::{tr, trn};
 
 /// "1,317" in English, "1.317" in Spanish.
@@ -73,6 +75,69 @@ pub fn join<S: AsRef<str>>(parts: impl IntoIterator<Item = S>) -> String {
         .join(" · ")
 }
 
+/// `time` written with `format` (strftime, as `glib::DateTime::format`
+/// takes it; translate the format with [`tr`]). Month and weekday names
+/// (`%B`, `%b`, `%A`, `%a`) are the UI language's, not the C library's:
+/// `LC_TIME` may name another language than the interface (an English
+/// desktop with Chilean dates). Short names are the first three letters of
+/// the full ones, as in English and Spanish.
+pub fn date(time: &glib::DateTime, format: &str) -> String {
+    let month = month_name(time.month());
+    let weekday = weekday_name(time.day_of_week());
+    let short = |name: &str| name.chars().take(3).collect::<String>();
+    let mut expanded = String::with_capacity(format.len() + 16);
+    let mut chars = format.chars();
+    while let Some(c) = chars.next() {
+        if c != '%' {
+            expanded.push(c);
+            continue;
+        }
+        match chars.next() {
+            Some('B') => expanded.push_str(month),
+            Some('b' | 'h') => expanded.push_str(&short(month)),
+            Some('A') => expanded.push_str(weekday),
+            Some('a') => expanded.push_str(&short(weekday)),
+            Some(other) => {
+                expanded.push('%');
+                expanded.push(other);
+            }
+            None => expanded.push_str("%%"),
+        }
+    }
+    time.format(&expanded).map(String::from).unwrap_or_default()
+}
+
+/// The name of month 1–12, translated.
+fn month_name(month: i32) -> &'static str {
+    match month {
+        1 => tr("January"),
+        2 => tr("February"),
+        3 => tr("March"),
+        4 => tr("April"),
+        5 => tr("May"),
+        6 => tr("June"),
+        7 => tr("July"),
+        8 => tr("August"),
+        9 => tr("September"),
+        10 => tr("October"),
+        11 => tr("November"),
+        _ => tr("December"),
+    }
+}
+
+/// The name of weekday 1–7 (Monday first), translated.
+fn weekday_name(day: i32) -> &'static str {
+    match day {
+        1 => tr("Monday"),
+        2 => tr("Tuesday"),
+        3 => tr("Wednesday"),
+        4 => tr("Thursday"),
+        5 => tr("Friday"),
+        6 => tr("Saturday"),
+        _ => tr("Sunday"),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -99,5 +164,19 @@ mod tests {
         assert_eq!(tracks_summary(0, 42 * 60), "42 min");
         assert_eq!(tracks_summary(1, 0), "1 track");
         assert_eq!(join(["2026", "", "12 tracks"]), "2026 · 12 tracks");
+    }
+
+    #[test]
+    fn dates_use_the_ui_language_names() {
+        if crate::i18n::ui_language().is_some() {
+            return;
+        }
+        let time = glib::DateTime::from_utc(2013, 5, 17, 9, 5, 0.0).unwrap();
+        assert_eq!(date(&time, "%B %-d, %Y"), "May 17, 2013");
+        assert_eq!(date(&time, "%b %-d"), "May 17");
+        assert_eq!(date(&time, "%a %H:%M"), "Fri 09:05");
+        assert_eq!(date(&time, "%A, 100%%"), "Friday, 100%");
+        let time = glib::DateTime::from_utc(2026, 9, 6, 0, 0, 0.0).unwrap();
+        assert_eq!(date(&time, "%-d %b (%A)"), "6 Sep (Sunday)");
     }
 }

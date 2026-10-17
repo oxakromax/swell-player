@@ -385,6 +385,7 @@ impl Client {
             offset: page.offset,
             limit: page.limit,
             total: page.total,
+            sent: page.sent,
         })
     }
 
@@ -545,6 +546,7 @@ fn unwrap_page<W, T>(page: Page<Wrapped<W>>, f: impl Fn(Option<String>, W) -> T)
         offset: page.offset,
         limit: page.limit,
         total: page.total,
+        sent: page.sent,
     }
 }
 
@@ -564,5 +566,6 @@ fn tracks_of(page: Page<Wrapped<Value>>) -> Page<Track> {
         offset: page.offset,
         limit: page.limit,
         total: page.total,
+        sent: page.sent,
     }
 }

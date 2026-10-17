@@ -291,7 +291,17 @@ impl Drop for Ticket {
     }
 }
 
-type Waiter = (Rc<Cell<bool>>, Box<dyn FnOnce(&gdk::Texture)>);
+/// Why an image did not come (see [`CoverLoader::load_or_report`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Unavailable {
+    /// The server has none: asking again this session is pointless.
+    Missing,
+    /// A network problem: a later request may succeed.
+    Failed,
+}
+
+type Done = Box<dyn FnOnce(Result<&gdk::Texture, Unavailable>)>;
+type Waiter = (Rc<Cell<bool>>, Done);
 
 struct Pending {
     request: Arc<Request>,
@@ -349,18 +359,36 @@ impl CoverLoader {
         position: u32,
         done: impl FnOnce(&gdk::Texture) + 'static,
     ) -> Option<Ticket> {
+        self.load_or_report(image, pixels, position, move |result| {
+            if let Ok(texture) = result {
+                done(texture);
+            }
+        })
+    }
+
+    /// Like [`load`](Self::load), but `done` also hears why an image did
+    /// not come (unless the ticket was dropped first).
+    pub fn load_or_report(
+        self: &Rc<Self>,
+        image: &Image,
+        pixels: u32,
+        position: u32,
+        done: impl FnOnce(Result<&gdk::Texture, Unavailable>) + 'static,
+    ) -> Option<Ticket> {
         if !image.is_valid() {
             log::debug!("ignoring an unexpected image reference: {image:?}");
+            done(Err(Unavailable::Missing));
             return None;
         }
         let size = image.size_for(pixels);
         let file = image.file_name(size);
         let id = file.as_str();
         if let Some(texture) = self.memory.borrow_mut().textures.get(id) {
-            done(texture);
+            done(Ok(texture));
             return None;
         }
         if self.missing.borrow().contains(id) {
+            done(Err(Unavailable::Missing));
             return None;
         }
 
@@ -411,20 +439,27 @@ impl CoverLoader {
                     _ => None,
                 }
             };
+            let waiters = pending.into_iter().flat_map(|p| p.waiters);
+            let waiters = waiters.filter(|(cancelled, _)| !cancelled.get());
             match outcome {
                 Ok(Outcome::Ready(texture)) => {
-                    for (cancelled, done) in pending.into_iter().flat_map(|p| p.waiters) {
-                        if !cancelled.get() {
-                            done(&texture);
-                        }
+                    for (_, done) in waiters {
+                        done(Ok(&texture));
                     }
                     this.memory.borrow_mut().put(id, texture);
                 }
                 Ok(Outcome::Missing) => {
                     this.missing.borrow_mut().insert(id);
+                    for (_, done) in waiters {
+                        done(Err(Unavailable::Missing));
+                    }
                 }
                 // Failed, or skipped because nobody wanted it any more.
-                Ok(Outcome::Failed) | Err(_) => {}
+                Ok(Outcome::Failed) | Err(_) => {
+                    for (_, done) in waiters {
+                        done(Err(Unavailable::Failed));
+                    }
+                }
             }
         });
         Some(Ticket { request, cancelled })

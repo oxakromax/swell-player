@@ -17,6 +17,7 @@ use gtk::glib;
 
 use super::super::context::Ctx;
 use super::super::dialogs;
+use super::super::format;
 use super::super::menus;
 use super::super::nav::Route;
 use super::super::widgets::page_header::PageHeader;
@@ -464,11 +465,12 @@ fn review_card(ctx: &Rc<Ctx>, album: &str, review: String) -> gtk::Widget {
     card.upcast()
 }
 
-/// "2013-05-17" → "17 May 2013" (in the user's locale's month names).
+/// "2013-05-17" → "May 17, 2013" ("17 de mayo de 2013" in Spanish).
 fn format_date(date: &str) -> Option<String> {
     let day = date.get(..10)?;
     let parsed = glib::DateTime::from_iso8601(&format!("{day}T12:00:00Z"), None).ok()?;
-    parsed.format("%-d %B %Y").ok().map(Into::into)
+    // TRANSLATORS: a release date (strftime format: %B is the month's name).
+    Some(format::date(&parsed, tr("%B %-d, %Y")))
 }
 
 /// Credits of the whole album, by role.

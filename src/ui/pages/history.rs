@@ -20,6 +20,7 @@ use adw::prelude::*;
 use gtk::glib;
 
 use super::super::context::Ctx;
+use super::super::format;
 use super::super::menus::ItemMenu;
 use super::super::sidebar;
 use super::super::widgets::carousel::title_row;
@@ -137,9 +138,11 @@ fn when(now: &glib::DateTime, time: Option<i64>) -> (Day, Option<String>) {
         let format = match day {
             Day::Yesterday => "%H:%M",
             Day::ThisWeek => "%a %H:%M",
-            _ => "%b %-e",
+            // TRANSLATORS: a day of an earlier week (strftime format:
+            // %b is the month's short name).
+            _ => tr("%b %-d"),
         };
-        played.format(format).map(String::from).unwrap_or_default()
+        format::date(&played, format)
     };
     (day, Some(note))
 }

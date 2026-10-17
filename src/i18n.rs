@@ -298,7 +298,8 @@ msgstr "Di \"hola\""
     }
 
     /// Every `tr("…")`, `trn("…", "…"` and `n_("…")` literal in the
-    /// sources has a Spanish translation.
+    /// sources (also when it starts on the line after the parenthesis) has
+    /// a Spanish translation.
     #[test]
     fn every_string_is_translated() {
         let catalogue = parse(CATALOGUES[0].1);
@@ -315,16 +316,20 @@ msgstr "Di \"hola\""
                     continue;
                 }
                 let source = std::fs::read_to_string(&path).unwrap();
-                for marker in ["tr(\"", "trn(\"", "n_(\""] {
+                for marker in ["tr(", "trn(", "n_("] {
                     for (at, _) in source.match_indices(marker) {
                         // Skip identifiers that merely end in the marker.
                         let before = source[..at].chars().next_back();
                         if before.is_some_and(|c| c.is_alphanumeric() || c == '_') {
                             continue;
                         }
-                        let rest = &source[at + marker.len()..];
+                        // The literal may start on the next line.
+                        let rest = source[at + marker.len()..].trim_start();
+                        let Some(rest) = rest.strip_prefix('"') else {
+                            continue;
+                        };
                         let Some(id) = literal(rest) else { continue };
-                        let found = if marker == "trn(\"" {
+                        let found = if marker == "trn(" {
                             catalogue.plural.contains_key(id.as_str())
                         } else {
                             catalogue.singular.contains_key(id.as_str())

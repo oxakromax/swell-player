@@ -7,11 +7,12 @@
 
 use std::cell::{Cell, RefCell};
 use std::rc::{Rc, Weak};
+use std::time::{Duration, Instant};
 
 use gtk::prelude::*;
 use gtk::{gdk, glib};
 
-use crate::covers::{CoverLoader, Image, Ticket};
+use crate::covers::{CoverLoader, Image, Ticket, Unavailable};
 use crate::i18n::tr;
 use crate::tidal::pages::{Item, Target};
 use crate::ui::context::Ctx;
@@ -70,22 +71,37 @@ fn placeholder_icon(item: &Item) -> &'static str {
 /// only when their card is near the visible part.
 pub const CAROUSEL_SCROLLER: &str = "carousel-scroller";
 
+/// Frames waited for a mapped widget to be allocated before giving up
+/// (scrolling or mapping it again checks again).
+const MAX_LAYOUT_FRAMES: u32 = 120;
+/// Wait before asking again for an image whose download failed; doubled
+/// after each failure up to [`MAX_RETRY_DELAY`].
+const RETRY_DELAY: Duration = Duration::from_secs(5);
+const MAX_RETRY_DELAY: Duration = Duration::from_secs(300);
+
 /// The download of one image for one widget (see [`load_when_shown`]).
 struct ShownLoader {
     covers: Weak<CoverLoader>,
     image: Image,
     size: i32,
     set: Box<dyn Fn(&gdk::Texture)>,
-    loaded: Cell<bool>,
+    /// Loaded, or the server has none: nothing more to ask.
+    done: Cell<bool>,
     ticket: RefCell<Option<Ticket>>,
     /// Scroll positions (of the carousel, of the page) watched until the
     /// widget comes near the visible part.
     watch: RefCell<Vec<(gtk::Adjustment, [glib::SignalHandlerId; 2])>>,
+    /// Waits for the first frame that has allocated the widget.
+    tick: RefCell<Option<gtk::TickCallbackId>>,
+    /// Downloads that failed in a row, and when asking again is allowed.
+    failures: Cell<u32>,
+    retry_at: Cell<Option<Instant>>,
+    retry: RefCell<Option<glib::SourceId>>,
 }
 
 impl ShownLoader {
     fn mapped(self: &Rc<Self>, widget: &gtk::Widget) {
-        if self.loaded.get() {
+        if self.done.get() {
             return;
         }
         let (carousel, page) = scrollers(widget);
@@ -128,42 +144,109 @@ impl ShownLoader {
         if let Some(adjustment) = first {
             check(&adjustment);
             // Ticks run before layout: wait for the first frame that has
-            // allocated the widget.
-            widget.add_tick_callback(move |widget, _| {
-                if widget.width() <= 0 {
+            // allocated the widget (a bounded number of them, and only
+            // while it stays mapped).
+            if let Some(old) = self.tick.take() {
+                old.remove();
+            }
+            let this = Rc::downgrade(self);
+            let frames = Cell::new(0);
+            let tick = widget.add_tick_callback(move |widget, _| {
+                frames.set(frames.get() + 1);
+                if widget.width() <= 0 && frames.get() < MAX_LAYOUT_FRAMES {
                     return glib::ControlFlow::Continue;
+                }
+                if let Some(this) = this.upgrade() {
+                    this.tick.take();
                 }
                 check(&adjustment);
                 glib::ControlFlow::Break
             });
+            self.tick.replace(Some(tick));
         }
     }
 
     fn request(self: &Rc<Self>, widget: &gtk::Widget) {
-        if self.loaded.get() || self.ticket.borrow().is_some() {
+        if self.done.get() || self.ticket.borrow().is_some() || self.retry.borrow().is_some() {
             return;
+        }
+        if let Some(at) = self.retry_at.get() {
+            let wait = at.saturating_duration_since(Instant::now());
+            if !wait.is_zero() {
+                return self.retry_later(widget, wait);
+            }
         }
         let Some(covers) = self.covers.upgrade() else {
             return;
         };
         let pixels = super::device_pixels(widget, self.size);
         let this = Rc::downgrade(self);
-        let ticket = covers.load(&self.image, pixels, 0, move |texture| {
-            if let Some(this) = this.upgrade() {
-                this.loaded.set(true);
-                (this.set)(texture);
+        let weak_widget = widget.downgrade();
+        let ticket = covers.load_or_report(&self.image, pixels, 0, move |result| {
+            let Some(this) = this.upgrade() else {
+                return;
+            };
+            match result {
+                Ok(texture) => {
+                    this.done.set(true);
+                    this.failures.set(0);
+                    this.retry_at.set(None);
+                    (this.set)(texture);
+                }
+                Err(Unavailable::Missing) => this.done.set(true),
+                Err(Unavailable::Failed) => {
+                    this.ticket.take();
+                    let failures = this.failures.get().saturating_add(1);
+                    this.failures.set(failures);
+                    let wait = RETRY_DELAY
+                        .saturating_mul(1 << (failures - 1).min(6))
+                        .min(MAX_RETRY_DELAY);
+                    this.retry_at.set(Some(Instant::now() + wait));
+                    if let Some(widget) = weak_widget.upgrade() {
+                        this.retry_later(&widget, wait);
+                    }
+                }
             }
         });
-        if !self.loaded.get() {
+        if !self.done.get() {
             self.ticket.replace(ticket);
         }
     }
 
+    /// Asks again after `wait` if the widget is still shown (otherwise
+    /// showing it again does).
+    fn retry_later(self: &Rc<Self>, widget: &gtk::Widget, wait: Duration) {
+        if self.retry.borrow().is_some() {
+            return;
+        }
+        let this = Rc::downgrade(self);
+        let widget = widget.downgrade();
+        let source = glib::timeout_add_local_once(wait, move || {
+            let Some(this) = this.upgrade() else {
+                return;
+            };
+            this.retry.take();
+            if let Some(widget) = widget.upgrade()
+                && widget.is_mapped()
+            {
+                this.mapped(&widget);
+            }
+        });
+        self.retry.replace(Some(source));
+    }
+
     /// Hidden (another page on top, or the card scrolled away with its
-    /// page): stop downloading for it; mapping it again asks again.
+    /// page): stop downloading and waiting for it; mapping it again asks
+    /// again.
     fn unmapped(&self) {
         self.unwatch();
         self.ticket.take();
+        if let Some(tick) = self.tick.take() {
+            tick.remove();
+        }
+        if let Some(retry) = self.retry.take() {
+            retry.remove();
+        }
     }
 
     fn unwatch(&self) {
@@ -234,9 +317,13 @@ pub fn load_when_shown(
         image,
         size,
         set: Box::new(set),
-        loaded: Cell::new(false),
+        done: Cell::new(false),
         ticket: RefCell::default(),
         watch: RefCell::default(),
+        tick: RefCell::default(),
+        failures: Cell::new(0),
+        retry_at: Cell::new(None),
+        retry: RefCell::default(),
     });
     let widget = widget.upcast_ref::<gtk::Widget>();
     // The widget's handlers own the loader; it refers to the widget weakly.
@@ -421,6 +508,11 @@ fn describe(item: &Item) -> (String, String, String) {
                     "{n} track",
                     "{n} tracks",
                 ),
+                None if playlist.number_of_videos > 0 => format::counted(
+                    playlist.number_of_videos as usize,
+                    "{n} video",
+                    "{n} videos",
+                ),
                 None => tr("Playlist").into(),
             };
             (
@@ -579,6 +671,10 @@ impl MediaCard {
             }
         });
 
+        // Only albums, playlists, mixes and artists have a play button
+        // (docs/design.md §4.2). Links (a collection page such as "My
+        // Tracks", an editorial page) only open, in every width: a play
+        // button that navigated would mislead.
         let mut play_button = None;
         if let Some(subject) = Subject::from_item(item) {
             if !matches!(subject, Subject::Track { .. }) {
