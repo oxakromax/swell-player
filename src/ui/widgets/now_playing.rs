@@ -97,6 +97,8 @@ pub struct NowPlayingPanel {
     lyrics: Rc<LyricsView>,
     _queue: Rc<QueueView>,
     syncing: Cell<bool>,
+    /// "Up next" changed while hidden: refreshed when shown.
+    up_next_stale: Cell<bool>,
     _events: Subscription,
 }
 
@@ -341,6 +343,7 @@ impl NowPlayingPanel {
             lyrics,
             _queue: queue,
             syncing: Cell::new(false),
+            up_next_stale: Cell::new(false),
             _events: subscribe(playback, weak, |panel, event| match event {
                 Event::Track(_) => panel.show_track(),
                 Event::Queue => panel.show_up_next(),
@@ -414,6 +417,16 @@ impl NowPlayingPanel {
             match panel.ctx.upgrade() {
                 Some(ctx) if ctx.panel().is_some() => ctx.show_panel(Some(PanelTab::Queue)),
                 _ => panel.show_tab(PanelTab::Queue),
+            }
+        });
+        panel.widget.connect_map({
+            let weak = Rc::downgrade(&panel);
+            move |_| {
+                if let Some(panel) = weak.upgrade()
+                    && panel.up_next_stale.get()
+                {
+                    panel.show_up_next();
+                }
             }
         });
         panel.set_button_sizes(36);
@@ -519,6 +532,14 @@ impl NowPlayingPanel {
         let Some(ctx) = self.ctx.upgrade() else {
             return;
         };
+        // While the panel is closed the queue may change often (each
+        // added album): read it when the row shows again.
+        if !self.widget.is_mapped() {
+            self.up_next_stale.set(true);
+            return;
+        }
+        self.up_next_stale.set(false);
+        // TODO(integration): Playback::next_upcoming().
         let next = ctx.playback.upcoming().into_iter().next();
         self.up_next.set_visible(next.is_some());
         let Some(next) = next else { return };

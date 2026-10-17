@@ -36,7 +36,10 @@ pub fn page(
         .orientation(gtk::Orientation::Vertical)
         .spacing(12)
         .build();
-    choices.append(&method(&browser_button, "Hi-Res Lossless, up to 24-bit/192 kHz"));
+    choices.append(&method(
+        &browser_button,
+        "Hi-Res Lossless, up to 24-bit/192 kHz",
+    ));
     choices.append(&method(&device_button, "Lossless, up to 16-bit/44.1 kHz"));
     choices.append(&choice_error);
     let choice = status_page(
@@ -152,9 +155,12 @@ pub fn page(
                     Ok(()) => on_signed_in(api),
                     Err(err) => {
                         done.set(false);
-                        show_error(format!(
-                            "Could not save the session in the keyring: {err:#}"
-                        ));
+                        log::warn!("could not save the session in the keyring: {err:#}");
+                        show_error(
+                            "Couldn't save the session in the keyring. Make sure a keyring \
+                             service (GNOME Keyring, KWallet) is running."
+                                .to_owned(),
+                        );
                     }
                 }
             });
@@ -180,7 +186,12 @@ pub fn page(
                         pkce.replace(Some(Arc::new(pending)));
                         url
                     }
-                    Err(err) => return show_error(format!("{err:#}")),
+                    Err(err) => {
+                        log::warn!("could not start the browser sign-in: {err:#}");
+                        return show_error(
+                            "Couldn't start the sign-in. Please try again.".to_owned(),
+                        );
+                    }
                 },
             };
             gtk::UriLauncher::new(&url).launch(Some(&window), gio::Cancellable::NONE, {
@@ -188,7 +199,7 @@ pub fn page(
                 move |result| {
                     if let Err(err) = result {
                         show_error(format!(
-                            "Could not open the browser ({err}). Open this address yourself:\n{url}"
+                            "Couldn't open the browser ({err}). Open this address yourself:\n{url}"
                         ));
                     }
                 }
@@ -233,14 +244,18 @@ pub fn page(
             let signed_in = signed_in.clone();
             let show_error = show_error.clone();
             glib::spawn_future_local(async move {
-                match runtime::spawn(async move {
-                    Api::finish_pkce(http, &pending, &redirect).await
-                })
+                match runtime::spawn(
+                    async move { Api::finish_pkce(http, &pending, &redirect).await },
+                )
                 .await
                 {
                     Ok(api) => signed_in(api, show_error),
                     Err(err) => {
-                        show_error(format!("Sign-in failed: {err:#}"));
+                        log::warn!("browser sign-in failed: {err:#}");
+                        show_error(format!(
+                            "Sign-in failed. {}",
+                            super::widgets::status::describe_error(&err)
+                        ));
                         button.set_sensitive(true);
                     }
                 }
@@ -285,19 +300,22 @@ pub fn page(
             let signed_in = signed_in.clone();
             let task = glib::spawn_future_local(async move {
                 let start_http = http.clone();
-                let device = match runtime::spawn(async move {
-                    Api::start_device_login(&start_http).await
-                })
-                .await
-                {
-                    Ok(device) => device,
-                    Err(err) => {
-                        show_error(format!("Could not get a device code: {err:#}"));
-                        device_wait.set_visible(false);
-                        new_code_button.set_visible(true);
-                        return;
-                    }
-                };
+                let device =
+                    match runtime::spawn(async move { Api::start_device_login(&start_http).await })
+                        .await
+                    {
+                        Ok(device) => device,
+                        Err(err) => {
+                            log::warn!("could not get a device code: {err:#}");
+                            show_error(format!(
+                                "Couldn't get a code. {}",
+                                super::widgets::status::describe_error(&err)
+                            ));
+                            device_wait.set_visible(false);
+                            new_code_button.set_visible(true);
+                            return;
+                        }
+                    };
                 device_code.set_label(&device.user_code);
                 device_link.set_uri(&device.url);
                 device_link.set_label(device.url.trim_start_matches("https://"));
@@ -306,7 +324,8 @@ pub fn page(
                 {
                     Ok(api) => signed_in(api, show_error),
                     Err(err) => {
-                        show_error(format!("This code expired or was not approved: {err:#}"));
+                        log::warn!("device sign-in failed: {err:#}");
+                        show_error("This code expired or was not approved.".to_owned());
                         device_wait.set_visible(false);
                         new_code_button.set_visible(true);
                     }
@@ -364,7 +383,12 @@ fn nav_page(title: &str, tag: &str, content: &impl IsA<gtk::Widget>) -> adw::Nav
         .build()
 }
 
-fn status_page(icon: &str, title: &str, description: &str, child: &impl IsA<gtk::Widget>) -> adw::StatusPage {
+fn status_page(
+    icon: &str,
+    title: &str,
+    description: &str,
+    child: &impl IsA<gtk::Widget>,
+) -> adw::StatusPage {
     let clamp = adw::Clamp::builder()
         .maximum_size(360)
         .tightening_threshold(360)

@@ -157,10 +157,11 @@ pub fn choose_playlist(ctx: &Rc<Ctx>, track_ids: Vec<u64>) {
                     title.set_label(&playlist.title);
                 }
                 if let Some(count) = text.last_child().and_downcast::<gtk::Label>() {
-                    count.set_label(&match playlist.number_of_tracks {
-                        1 => "1 track".to_owned(),
-                        n => format!("{n} tracks"),
-                    });
+                    count.set_label(&crate::ui::format::count(
+                        playlist.number_of_tracks as usize,
+                        "track",
+                        "tracks",
+                    ));
                 }
             }
             item.set_accessible_label(&playlist.title);

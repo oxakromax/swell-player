@@ -29,6 +29,7 @@ impl PageStack {
             .build();
         stack.add_named(&gtk::Box::new(gtk::Orientation::Vertical, 0), Some("blank"));
         stack.add_named(skeleton, Some("skeleton"));
+        super::skeleton::animate_while_mapped(skeleton);
         let this = Rc::new(Self {
             stack,
             timer: RefCell::default(),
@@ -94,9 +95,11 @@ impl PageStack {
         self.stack.set_visible_child_name("empty");
     }
 
+    /// The error state for `err` ([`error_page`]); the error itself goes
+    /// to the log.
     pub fn show_error(&self, err: &anyhow::Error, retry: impl Fn() + 'static) {
         self.cancel_timer();
-        self.set_child("error", &error_status(&describe_error(err), retry));
+        self.set_child("error", &error_page(err, retry));
         self.stack.set_visible_child_name("error");
     }
 }
@@ -116,8 +119,76 @@ pub fn empty_status(icon: &str, title: &str, description: &str) -> adw::StatusPa
         .build()
 }
 
+/// What went wrong, as far as the user is concerned.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Failure {
+    /// TIDAL does not have it (404), or not in this country.
+    NotFound,
+    /// TIDAL could not be reached.
+    Offline,
+    /// Anything else: worth retrying.
+    Other,
+}
+
+impl Failure {
+    pub fn of(err: &anyhow::Error) -> Self {
+        if crate::tidal::is_not_found(err) {
+            Self::NotFound
+        } else if crate::ui::context::is_connection_error(err) {
+            Self::Offline
+        } else {
+            Self::Other
+        }
+    }
+}
+
+/// The error state of a page (docs/design.md §3 "Estados comunes"):
+/// "Not Available" with "Go Back" when TIDAL does not have it; "You're
+/// Offline" or "Couldn't Load This Page" with a plain sentence and "Retry"
+/// (also F5) otherwise. The error chain goes to the log, never on screen.
+pub fn error_page(err: &anyhow::Error, retry: impl Fn() + 'static) -> adw::StatusPage {
+    log::warn!("page failed to load: {err:#}");
+    match Failure::of(err) {
+        Failure::NotFound => not_found_status(),
+        failure => retry_status(failure, &describe_error(err), retry),
+    }
+}
+
+/// "Not Available" with a "Go Back" button (to Home when there is nothing
+/// to go back to).
+pub fn not_found_status() -> adw::StatusPage {
+    let button = gtk::Button::builder()
+        .label("Go Back")
+        .halign(gtk::Align::Center)
+        .css_classes(["pill"])
+        .build();
+    button.connect_clicked(|button| {
+        let popped = button
+            .ancestor(adw::NavigationView::static_type())
+            .and_downcast::<adw::NavigationView>()
+            .is_some_and(|view| view.navigation_stack().n_items() > 1 && view.pop());
+        if !popped {
+            let _ = button.activate_action("win.section", Some(&"home".to_variant()));
+        }
+    });
+    adw::StatusPage::builder()
+        .icon_name("swell-unavailable-symbolic")
+        .title("Not Available")
+        .description(describe(Failure::NotFound))
+        .child(&button)
+        .build()
+}
+
 /// "Couldn't Load This Page" with a Retry button (also F5).
 pub fn error_status(description: &str, retry: impl Fn() + 'static) -> adw::StatusPage {
+    retry_status(Failure::Other, description, retry)
+}
+
+fn retry_status(
+    failure: Failure,
+    description: &str,
+    retry: impl Fn() + 'static,
+) -> adw::StatusPage {
     let retry = Rc::new(retry);
     let button = gtk::Button::builder()
         .label("Retry")
@@ -128,9 +199,14 @@ pub fn error_status(description: &str, retry: impl Fn() + 'static) -> adw::Statu
         let retry = retry.clone();
         move |_| retry()
     });
+    // Bundled icons: a theme cannot swap them for full-colour ones.
+    let (icon, title) = match failure {
+        Failure::Offline => ("swell-offline-symbolic", "You're Offline"),
+        _ => ("swell-error-symbolic", "Couldn't Load This Page"),
+    };
     let status = adw::StatusPage::builder()
-        .icon_name("network-error-symbolic")
-        .title("Couldn't Load This Page")
+        .icon_name(icon)
+        .title(title)
         .description(glib::markup_escape_text(description).as_str())
         .child(&button)
         .build();
@@ -147,20 +223,28 @@ pub fn error_status(description: &str, retry: impl Fn() + 'static) -> adw::Statu
     status
 }
 
-/// A sentence for an error, for status pages.
+fn describe(failure: Failure) -> &'static str {
+    match failure {
+        Failure::NotFound => "TIDAL doesn't have this, or it isn't available in your country.",
+        Failure::Offline => "Check your internet connection and try again.",
+        Failure::Other => "Something went wrong. Try again in a moment.",
+    }
+}
+
+/// A plain sentence for an error (status pages, rows that failed to load
+/// more): never the raw error chain, which belongs in the log.
 pub fn describe_error(err: &anyhow::Error) -> String {
-    if crate::tidal::is_not_found(err) {
-        return "TIDAL doesn't have this, or it isn't available in your country.".into();
+    describe(Failure::of(err)).to_owned()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn errors_read_as_sentences() {
+        let raw = anyhow::anyhow!("invalid type: null, expected u64 at line 1 column 42");
+        assert_eq!(Failure::of(&raw), Failure::Other);
+        assert!(!describe_error(&raw).contains("line 1"));
     }
-    if let Some(crate::tidal::Error::Api { message, .. }) = err.downcast_ref() {
-        return format!("TIDAL said: {message}");
-    }
-    if err.chain().any(|cause| {
-        cause
-            .downcast_ref::<reqwest::Error>()
-            .is_some_and(|e| e.is_connect() || e.is_timeout())
-    }) {
-        return "Check your internet connection and try again.".into();
-    }
-    format!("{err:#}")
 }

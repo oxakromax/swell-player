@@ -1,6 +1,7 @@
 pub mod context;
 pub mod dialogs;
 mod debug;
+pub mod format;
 mod login;
 pub mod menus;
 pub mod nav;

@@ -32,6 +32,12 @@ const ALL_LIMIT: usize = 20;
 /// Items per page of a single-type filter.
 pub const PAGE: usize = 50;
 
+/// Bumped by every save (and by [`forget_all`]): when writes overlap, only
+/// the newest reaches the disk.
+static SAVE_GENERATION: AtomicU64 = AtomicU64::new(0);
+/// Held while the file is written or deleted.
+static SAVING: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 /// What the results show.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Filter {
@@ -296,6 +302,24 @@ pub fn clear_recent() {
     edit_recent(Vec::clear);
 }
 
+/// Forgets everything searched (signing out): the recent searches, in
+/// memory and on disk, and the remembered answers. A save still pending is
+/// dropped; the file is deleted off the main thread.
+pub fn forget_all() {
+    RECENT.with_borrow_mut(|recent| *recent = Some(Vec::new()));
+    ANSWERS.with_borrow_mut(LruCache::clear);
+    SAVE_GENERATION.fetch_add(1, Ordering::SeqCst);
+    runtime::runtime().spawn_blocking(|| {
+        let _guard = SAVING.lock().unwrap_or_else(|e| e.into_inner());
+        match std::fs::remove_file(path()) {
+            Err(err) if err.kind() != std::io::ErrorKind::NotFound => {
+                log::warn!("could not delete recent searches: {err}");
+            }
+            _ => {}
+        }
+    });
+}
+
 /// Applies `edit` to the recent searches and saves them (once they have
 /// been read, so the file's list is never lost).
 fn edit_recent(edit: impl FnOnce(&mut Vec<String>) + 'static) {
@@ -335,16 +359,14 @@ struct SavedSearches {
 /// Writes the list on the I/O runtime; when writes overlap, only the
 /// newest reaches the disk.
 fn save(recent: Vec<String>) {
-    static LATEST: AtomicU64 = AtomicU64::new(0);
-    static WRITING: std::sync::Mutex<()> = std::sync::Mutex::new(());
-    let generation = LATEST.fetch_add(1, Ordering::SeqCst) + 1;
+    let generation = SAVE_GENERATION.fetch_add(1, Ordering::SeqCst) + 1;
     let data = match serde_json::to_vec_pretty(&SavedSearches { recent }) {
         Ok(data) => data,
         Err(err) => return log::warn!("could not save recent searches: {err}"),
     };
     runtime::runtime().spawn_blocking(move || {
-        let _guard = WRITING.lock().unwrap_or_else(|e| e.into_inner());
-        if LATEST.load(Ordering::SeqCst) != generation {
+        let _guard = SAVING.lock().unwrap_or_else(|e| e.into_inner());
+        if SAVE_GENERATION.load(Ordering::SeqCst) != generation {
             return;
         }
         if let Err(err) = write_atomic(&path(), &data) {

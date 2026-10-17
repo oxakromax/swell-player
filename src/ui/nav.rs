@@ -48,9 +48,15 @@ pub enum Route {
     /// The radio mix of an artist.
     ArtistRadio(u64),
     /// A v1 editorial page (genre, mood, "explore new music"...).
-    Page { path: String, title: String },
+    Page {
+        path: String,
+        title: String,
+    },
     /// Everything in a section ("View all").
-    More { title: String, more: More },
+    More {
+        title: String,
+        more: More,
+    },
     AlbumCredits(u64),
     /// Recently played.
     History,
@@ -193,6 +199,7 @@ impl Navigator {
             }
         });
         for view in &navigator.views {
+            view.connect_popped(|_, _| trim_soon());
             view.connect_visible_page_notify({
                 let navigator = Rc::downgrade(&navigator);
                 move |_| {
@@ -268,13 +275,15 @@ impl Navigator {
         let Some(ctx) = self.ctx.upgrade() else {
             return;
         };
-        if let Route::Collection(_) = route {
+        // Recently Played belongs to Collection, wherever it is opened from.
+        if let Route::Collection(_) | Route::History = route {
             return self.open_collection_root(route);
         }
         if let Some(section) = route.section() {
             if let Route::Search(Some(_)) = route {
                 // A new query replaces the search page.
                 self.view(section).replace(&[build(&ctx, &route)]);
+                trim_soon();
                 self.sections.set_visible_child_name(section);
                 return;
             }
@@ -327,6 +336,7 @@ impl Navigator {
         } else {
             view.replace(&[build(&ctx, &route)]);
         }
+        trim_soon();
         self.sections.set_visible_child_name("collection");
     }
 
@@ -421,6 +431,10 @@ impl Navigator {
         }
     }
 }
+
+/// Gives memory freed by dropped pages back to the system, on idle.
+// TODO(integration): crate::mem::trim_soon()
+fn trim_soon() {}
 
 /// Builds the page of `route`, tagged.
 fn build(ctx: &Rc<Ctx>, route: &Route) -> adw::NavigationPage {
