@@ -24,6 +24,7 @@ use super::super::widgets::section;
 use super::super::widgets::skeleton;
 use super::super::widgets::status::PageStack;
 use super::super::widgets::track_list::{TrackList, Variant, compact_bin};
+use crate::i18n::tr;
 use crate::model::TrackInfo;
 use crate::playback::Source;
 use crate::runtime;
@@ -46,9 +47,9 @@ pub enum Kind {
 impl Kind {
     fn overtitle(&self) -> &'static str {
         match self {
-            Self::Mix(_) => "Mix",
-            Self::TrackRadio(_) => "Track Radio",
-            Self::ArtistRadio(_) => "Artist Radio",
+            Self::Mix(_) => tr("Mix"),
+            Self::TrackRadio(_) => tr("Track Radio"),
+            Self::ArtistRadio(_) => tr("Artist Radio"),
         }
     }
 
@@ -56,8 +57,8 @@ impl Kind {
     /// feed, the library) are named as radios too.
     fn overtitle_for(&self, mix: &Mix) -> &'static str {
         match (self, mix.kind.as_deref()) {
-            (Self::Mix(_), Some("TRACK_MIX")) => "Track Radio",
-            (Self::Mix(_), Some("ARTIST_MIX")) => "Artist Radio",
+            (Self::Mix(_), Some("TRACK_MIX")) => tr("Track Radio"),
+            (Self::Mix(_), Some("ARTIST_MIX")) => tr("Artist Radio"),
             _ => self.overtitle(),
         }
     }
@@ -237,12 +238,12 @@ impl MixPage {
     fn no_radio(&self) {
         let (title, description) = match self.kind {
             Kind::ArtistRadio(_) => (
-                "No Radio for This Artist",
-                "TIDAL has no radio for this artist yet.",
+                tr("No Radio for This Artist"),
+                tr("TIDAL has no radio for this artist yet."),
             ),
             _ => (
-                "No Radio for This Track",
-                "TIDAL has no radio for this track yet. Try the artist's radio instead.",
+                tr("No Radio for This Track"),
+                tr("TIDAL has no radio for this track yet. Try the artist's radio instead."),
             ),
         };
         self.stack.show_empty(
@@ -260,7 +261,7 @@ impl MixPage {
             return;
         };
         if tidal::is_auth_error(err) {
-            ctx.report("Couldn't load the mix", err);
+            ctx.report(tr("Couldn't load the mix"), err);
         }
         if self.stack.is_showing_content() {
             return;
@@ -290,8 +291,8 @@ impl MixPage {
         // A track radio's mix is named after the track, an artist's after
         // the artist.
         let overtitle = self.kind.overtitle_for(&mix);
-        if overtitle != "Mix" && !mix.title.is_empty() && !mix.title.ends_with(" Radio") {
-            mix.title = format!("{} Radio", mix.title);
+        if overtitle != tr("Mix") && !mix.title.is_empty() {
+            mix.title = radio_title(&mix.title);
         }
 
         let header = PageHeader::mix(&ctx, &mix, overtitle);
@@ -382,7 +383,7 @@ impl MixPage {
                     Ok(_) => return,
                     Err(err) => {
                         if let Some(ctx) = state.ctx.upgrade() {
-                            ctx.report("Couldn't load all the mix's tracks", &err);
+                            ctx.report(tr("Couldn't load all the mix's tracks"), &err);
                         }
                         return;
                     }
@@ -413,6 +414,18 @@ impl MixPage {
     }
 }
 
+/// "<Track> Radio", unless TIDAL already named it so (in English or in
+/// the UI language).
+fn radio_title(title: &str) -> String {
+    let template = tr("{title} Radio");
+    let (prefix, suffix) = template.split_once("{title}").unwrap_or(("", " Radio"));
+    if title.ends_with(" Radio") || (title.starts_with(prefix) && title.ends_with(suffix)) {
+        title.to_owned()
+    } else {
+        template.replace("{title}", title)
+    }
+}
+
 fn source(mix: &Mix) -> Source {
     Source {
         title: mix.title.clone(),
@@ -425,10 +438,10 @@ fn empty_footer(kind: &Kind) -> gtk::Widget {
     super::playlist::empty_note(
         "view-list-symbolic",
         match kind {
-            Kind::Mix(_) => "This Mix Is Empty",
-            _ => "This Radio Is Empty",
+            Kind::Mix(_) => tr("This Mix Is Empty"),
+            _ => tr("This Radio Is Empty"),
         },
-        "TIDAL has nothing in it right now. Try again later.",
+        tr("TIDAL has nothing in it right now. Try again later."),
     )
     .upcast()
 }

@@ -17,6 +17,7 @@ use lru::LruCache;
 use serde::{Deserialize, Serialize};
 
 use crate::api::Api;
+use crate::i18n::tr;
 use crate::model::TrackInfo;
 use crate::runtime;
 use crate::tidal::SearchType;
@@ -74,11 +75,11 @@ impl Filter {
 
     pub fn title(self) -> &'static str {
         match self {
-            Self::All => "All",
-            Self::Tracks => "Tracks",
-            Self::Albums => "Albums",
-            Self::Artists => "Artists",
-            Self::Playlists => "Playlists",
+            Self::All => tr("All"),
+            Self::Tracks => tr("Tracks"),
+            Self::Albums => tr("Albums"),
+            Self::Artists => tr("Artists"),
+            Self::Playlists => tr("Playlists"),
         }
     }
 

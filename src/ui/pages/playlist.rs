@@ -41,6 +41,7 @@ use super::super::widgets::status::{self, PageStack};
 use super::super::widgets::track_list::{TrackList, Variant, compact_bin};
 use super::super::widgets::track_row::{TrackDrag, TrackRow};
 use super::playlist_data::{self as data, Slots, Update};
+use crate::i18n::{tr, trn};
 use crate::library::Change;
 use crate::model::TrackInfo;
 use crate::playback::Source;
@@ -152,7 +153,7 @@ pub fn page(ctx: &Rc<Ctx>, uuid: String) -> adw::NavigationPage {
     let toolbar = adw::ToolbarView::new();
     toolbar.add_top_bar(&header_bar);
     let page = adw::NavigationPage::builder()
-        .title("Playlist")
+        .title(tr("Playlist"))
         .child(&toolbar)
         .build();
 
@@ -417,7 +418,7 @@ impl PlaylistPage {
                 if self.changed_elsewhere.take()
                     && let Some(ctx) = self.ctx.upgrade()
                 {
-                    ctx.toast("The playlist changed elsewhere; refreshed");
+                    ctx.toast(tr("The playlist changed elsewhere; refreshed"));
                 }
                 self.loaded();
             }
@@ -428,7 +429,7 @@ impl PlaylistPage {
                     return;
                 };
                 if crate::tidal::is_auth_error(&err) {
-                    ctx.report("Couldn't load the playlist", &err);
+                    ctx.report(tr("Couldn't load the playlist"), &err);
                 }
                 if self.playlist.borrow().is_none() {
                     let weak = Rc::downgrade(self);
@@ -520,14 +521,17 @@ impl PlaylistPage {
         let message = self.failed.borrow().clone().unwrap_or_default();
         footer.append(
             &gtk::Label::builder()
-                .label(format!("Couldn't load the rest of the playlist. {message}"))
+                .label(
+                    tr("Couldn't load the rest of the playlist. {reason}")
+                        .replace("{reason}", &message),
+                )
                 .wrap(true)
                 .justify(gtk::Justification::Center)
                 .css_classes(["dimmed"])
                 .build(),
         );
         let retry = gtk::Button::builder()
-            .label("Retry")
+            .label(tr("Retry"))
             .halign(gtk::Align::Center)
             .css_classes(["pill"])
             .build();
@@ -545,16 +549,16 @@ impl PlaylistPage {
         let editable = self.editable.get();
         let note = empty_note(
             "view-list-symbolic",
-            "This Playlist Is Empty",
+            tr("This Playlist Is Empty"),
             if editable {
-                "Add tracks from their menu or drag them here."
+                tr("Add tracks from their menu or drag them here.")
             } else {
-                "There's nothing in it yet."
+                tr("There's nothing in it yet.")
             },
         );
         if editable {
             let search = gtk::Button::builder()
-                .label("Search")
+                .label(tr("Search"))
                 .halign(gtk::Align::Center)
                 .margin_top(12)
                 .css_classes(["pill"])
@@ -787,7 +791,7 @@ impl PlaylistPage {
             .unwrap_or_default();
         let weak = Rc::downgrade(self);
         ctx.toast_with_undo(
-            &format!("Removed from “{}”", glib::markup_escape_text(&title)),
+            &tr("Removed from “{title}”").replace("{title}", &glib::markup_escape_text(&title)),
             move || {
                 if let Some(state) = weak.upgrade() {
                     state.restore(index, track.clone());
@@ -913,9 +917,15 @@ impl PlaylistPage {
                         .map(|p| p.title.clone())
                         .unwrap_or_default();
                     ctx.toast(&glib::markup_escape_text(&if ids.len() == 1 {
-                        format!("Added to “{title}”")
+                        tr("Added to “{title}”").replace("{title}", &title)
                     } else {
-                        format!("Added {} tracks to “{title}”", ids.len())
+                        trn(
+                            "Added {n} track to “{title}”",
+                            "Added {n} tracks to “{title}”",
+                            ids.len() as u64,
+                        )
+                        .replace("{n}", &ids.len().to_string())
+                        .replace("{title}", &title)
                     }));
                     // New tracks go at the end: fetch them (or everything,
                     // if the list is still loading).
@@ -937,10 +947,10 @@ impl PlaylistPage {
             }
             Err(err) => {
                 let message = match edit {
-                    Edit::Remove { .. } => "Couldn't remove the track",
-                    Edit::Restore { .. } => "Couldn't put the track back",
-                    Edit::Move { .. } => "Couldn't move the track",
-                    Edit::Add(_) => "Couldn't add to the playlist",
+                    Edit::Remove { .. } => tr("Couldn't remove the track"),
+                    Edit::Restore { .. } => tr("Couldn't put the track back"),
+                    Edit::Move { .. } => tr("Couldn't move the track"),
+                    Edit::Add(_) => tr("Couldn't add to the playlist"),
                 };
                 ctx.report(message, &err);
                 if self.edits.borrow().is_empty() {

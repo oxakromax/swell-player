@@ -30,6 +30,7 @@ use super::super::widgets::status::error_page;
 use super::super::widgets::track_list::{TrackList, Variant, compact_bin};
 use super::search_data::{self, Filter, Results};
 use super::search_views::{self, AllView, CardGrid, PagingStatus};
+use crate::i18n::tr;
 use crate::runtime;
 use crate::tidal;
 use crate::tidal::pages::Target;
@@ -89,11 +90,11 @@ struct SearchPage {
 
 pub fn page(ctx: &Rc<Ctx>, query: Option<String>) -> adw::NavigationPage {
     let entry = gtk::SearchEntry::builder()
-        .placeholder_text("Search TIDAL")
+        .placeholder_text(tr("Search TIDAL"))
         .search_delay(250)
         .hexpand(true)
         .build();
-    entry.update_property(&[gtk::accessible::Property::Label("Search TIDAL")]);
+    entry.update_property(&[gtk::accessible::Property::Label(tr("Search TIDAL"))]);
     let entry_clamp = adw::Clamp::builder()
         .maximum_size(520)
         .tightening_threshold(520)
@@ -107,7 +108,7 @@ pub fn page(ctx: &Rc<Ctx>, query: Option<String>) -> adw::NavigationPage {
         .build();
     spinner
         .upcast_ref::<gtk::Widget>()
-        .update_property(&[gtk::accessible::Property::Label("Searching")]);
+        .update_property(&[gtk::accessible::Property::Label(tr("Searching"))]);
     let header_bar = adw::HeaderBar::builder().title_widget(&entry_clamp).build();
     header_bar.pack_start(&sidebar::show_sidebar_button(&ctx.window));
     header_bar.pack_end(&sidebar::narrow_main_menu_button(&ctx.window));
@@ -126,7 +127,7 @@ pub fn page(ctx: &Rc<Ctx>, query: Option<String>) -> adw::NavigationPage {
     }
     filters
         .upcast_ref::<gtk::Widget>()
-        .update_property(&[gtk::accessible::Property::Label("Show")]);
+        .update_property(&[gtk::accessible::Property::Label(tr("Show"))]);
     let initial_filter = std::env::var("SWELL_SEARCH_FILTER")
         .ok()
         .and_then(|name| Filter::from_name(&name))
@@ -166,7 +167,7 @@ pub fn page(ctx: &Rc<Ctx>, query: Option<String>) -> adw::NavigationPage {
         .build();
     big_spinner
         .upcast_ref::<gtk::Widget>()
-        .update_property(&[gtk::accessible::Property::Label("Searching")]);
+        .update_property(&[gtk::accessible::Property::Label(tr("Searching"))]);
     stack.add_named(&big_spinner, Some("loading"));
 
     let all_clamp = adw::Clamp::builder()
@@ -197,14 +198,14 @@ pub fn page(ctx: &Rc<Ctx>, query: Option<String>) -> adw::NavigationPage {
     stack.add_named(&gtk::Box::new(gtk::Orientation::Vertical, 0), Some("error"));
 
     let retry = gtk::Button::builder()
-        .label("Retry")
+        .label(tr("Retry"))
         .halign(gtk::Align::Center)
         .css_classes(["pill", "suggested-action"])
         .build();
     let offline = adw::StatusPage::builder()
         .icon_name("network-offline-symbolic")
-        .title("You're Offline")
-        .description("Searching needs an internet connection.")
+        .title(tr("You're Offline"))
+        .description(tr("Searching needs an internet connection."))
         .child(&retry)
         .vexpand(true)
         .build();
@@ -215,7 +216,7 @@ pub fn page(ctx: &Rc<Ctx>, query: Option<String>) -> adw::NavigationPage {
         .css_classes(["pill", "suggested-action"])
         .build();
     let link = adw::StatusPage::builder()
-        .title("TIDAL Link")
+        .title(tr("TIDAL Link"))
         .child(&link_button)
         .vexpand(true)
         .build();
@@ -230,7 +231,7 @@ pub fn page(ctx: &Rc<Ctx>, query: Option<String>) -> adw::NavigationPage {
     let toolbar = adw::ToolbarView::new();
     toolbar.add_top_bar(&header_bar);
     let page = adw::NavigationPage::builder()
-        .title("Search")
+        .title(tr("Search"))
         .child(&toolbar)
         .build();
 
@@ -558,11 +559,12 @@ impl SearchPage {
         self.filter_bar.set_visible(true);
         self.reset_paging(filter, results);
         if results.is_empty(filter) {
-            self.empty.set_title(&format!("No Results for “{query}”"));
+            self.empty
+                .set_title(&tr("No Results for “{query}”").replace("{query}", query));
             self.empty.set_description(Some(if filter == Filter::All {
-                "Check the spelling or try other words."
+                tr("Check the spelling or try other words.")
             } else {
-                "Try another filter or other words."
+                tr("Try another filter or other words.")
             }));
             self.stack.set_visible_child_name("empty");
             return;
@@ -668,7 +670,7 @@ impl SearchPage {
                     if tidal::is_auth_error(&err)
                         && let Some(ctx) = state.ctx.upgrade()
                     {
-                        ctx.report("Couldn't load more results", &err);
+                        ctx.report(tr("Couldn't load more results"), &err);
                     }
                     state.paging.borrow_mut().failed = true;
                     let weak = Rc::downgrade(&state);
@@ -720,7 +722,7 @@ impl SearchPage {
         // Searching the same words again (Enter) retries.
         self.requested.take();
         if tidal::is_auth_error(err) {
-            ctx.report("Couldn't search", err);
+            ctx.report(tr("Couldn't search"), err);
         }
         if is_offline(err) {
             self.stack.set_visible_child_name("offline");
@@ -789,7 +791,7 @@ impl SearchPage {
             state.show_recent();
             if let Some(ctx) = state.ctx.upgrade() {
                 let weak = weak.clone();
-                ctx.toast_with_undo("Recent searches cleared", move || {
+                ctx.toast_with_undo(tr("Recent searches cleared"), move || {
                     search_data::set_recent(before.clone());
                     if let Some(state) = weak.upgrade()
                         && state.visible() == "recent"
@@ -814,34 +816,38 @@ impl SearchPage {
         let (icon, description, label) = match &target {
             Target::Album(_) => (
                 "media-optical-symbolic",
-                "This is a link to an album.",
-                "Open Album",
+                tr("This is a link to an album."),
+                tr("Open Album"),
             ),
             Target::Artist(_) => (
                 "avatar-default-symbolic",
-                "This is a link to an artist.",
-                "Open Artist",
+                tr("This is a link to an artist."),
+                tr("Open Artist"),
             ),
             Target::Playlist(_) => (
                 "view-list-symbolic",
-                "This is a link to a playlist.",
-                "Open Playlist",
+                tr("This is a link to a playlist."),
+                tr("Open Playlist"),
             ),
-            Target::Mix(_) => ("view-list-symbolic", "This is a link to a mix.", "Open Mix"),
+            Target::Mix(_) => (
+                "view-list-symbolic",
+                tr("This is a link to a mix."),
+                tr("Open Mix"),
+            ),
             Target::Track(_) => (
                 "audio-x-generic-symbolic",
-                "This is a link to a track.",
-                "Play Track",
+                tr("This is a link to a track."),
+                tr("Play Track"),
             ),
             Target::Collection(_) => (
                 "folder-music-symbolic",
-                "This is a link to your collection.",
-                "Open Collection",
+                tr("This is a link to your collection."),
+                tr("Open Collection"),
             ),
             Target::Page(_) | Target::Url(_) => (
                 "folder-music-symbolic",
-                "This is a link to a TIDAL page.",
-                "Open Link",
+                tr("This is a link to a TIDAL page."),
+                tr("Open Link"),
             ),
         };
         self.link.set_icon_name(Some(icon));

@@ -16,6 +16,7 @@ use super::super::widgets::media_card::{self, MediaCard, attach_menu};
 use super::super::widgets::section::{self, SHORT_LIST, activate_item};
 use super::super::widgets::track_list::{TrackList, Variant};
 use super::search_data::{Filter, Results};
+use crate::i18n::tr;
 use crate::playback::Source;
 use crate::tidal::pages::Item;
 
@@ -27,7 +28,7 @@ const TOP_HIT_WIDTH: i32 = 360;
 /// What "Playing from …" says for search results.
 pub fn source(query: &str) -> Source {
     Source {
-        title: format!("Search “{query}”"),
+        title: tr("Search “{query}”").replace("{query}", query),
         target: None,
     }
 }
@@ -70,7 +71,7 @@ impl AllView {
                 .orientation(gtk::Orientation::Vertical)
                 .spacing(12)
                 .build();
-            let header = title_row("Top Hit", None);
+            let header = title_row(tr("Top Hit"), None);
             titles.add_widget(&header);
             column.append(&header);
             column.append(&top_hit(ctx, item, played.clone()));
@@ -84,7 +85,7 @@ impl AllView {
                 .spacing(12)
                 .hexpand(true)
                 .build();
-            let header = title_row("Tracks", None);
+            let header = title_row(tr("Tracks"), None);
             titles.add_widget(&header);
             if results.total_tracks > SHORT_LIST {
                 header.append(&show_all_button(Filter::Tracks, show_all.clone()));
@@ -152,7 +153,7 @@ impl AllView {
 /// "View All", which switches to `filter`.
 fn show_all_button(filter: Filter, show_all: Rc<dyn Fn(Filter)>) -> gtk::Button {
     let button = gtk::Button::builder()
-        .label("View All")
+        .label(tr("View All"))
         .valign(gtk::Align::Center)
         .css_classes(["flat"])
         .build();
@@ -240,9 +241,9 @@ fn top_hit(ctx: &Rc<Ctx>, item: &Item, played: Rc<dyn Fn()>) -> gtk::Widget {
         .filter(|part| !part.is_empty())
         .collect::<Vec<_>>()
         .join(", ");
-    open.update_property(&[gtk::accessible::Property::Label(&format!(
-        "Top hit: {summary}"
-    ))]);
+    open.update_property(&[gtk::accessible::Property::Label(
+        &tr("Top hit: {summary}").replace("{summary}", &summary),
+    )]);
     let weak = Rc::downgrade(ctx);
     let target = item.clone();
     let opened = played.clone();
@@ -268,7 +269,7 @@ fn top_hit(ctx: &Rc<Ctx>, item: &Item, played: Rc<dyn Fn()>) -> gtk::Widget {
             .margin_end(18)
             .css_classes(["circular", "suggested-action"])
             .build();
-        super::super::widgets::label_button(&play, &format!("Play {name}"));
+        super::super::widgets::label_button(&play, &tr("Play {name}").replace("{name}", &name));
         let weak = Rc::downgrade(ctx);
         let to_play = subject.clone();
         play.connect_clicked(move |_| {
@@ -334,20 +335,20 @@ fn describe(item: &Item) -> (String, String) {
         None => kind.to_owned(),
     };
     match item {
-        Item::Artist(artist) => (artist.name.clone(), "Artist".into()),
+        Item::Artist(artist) => (artist.name.clone(), tr("Artist").into()),
         Item::Album(album) => (
             album.title.clone(),
-            with("Album", album.artists.first().map(|a| a.name.as_str())),
+            with(tr("Album"), album.artists.first().map(|a| a.name.as_str())),
         ),
         Item::Track(track) => (
             track.title.clone(),
-            with("Track", track.artists.first().map(|a| a.name.as_str())),
+            with(tr("Track"), track.artists.first().map(|a| a.name.as_str())),
         ),
         Item::Playlist(playlist) => (
             playlist.title.clone(),
-            with("Playlist", playlist.creator.name.as_deref()),
+            with(tr("Playlist"), playlist.creator.name.as_deref()),
         ),
-        Item::Mix(mix) => (mix.title.clone(), "Mix".into()),
+        Item::Mix(mix) => (mix.title.clone(), tr("Mix").into()),
         Item::Link(link) => (link.title.clone(), String::new()),
     }
 }
@@ -488,10 +489,10 @@ impl PagingStatus {
             .build();
         spinner
             .upcast_ref::<gtk::Widget>()
-            .update_property(&[gtk::accessible::Property::Label("Loading more results")]);
-        let label = gtk::Label::new(Some("Couldn't load more results"));
+            .update_property(&[gtk::accessible::Property::Label(tr("Loading more results"))]);
+        let label = gtk::Label::new(Some(tr("Couldn't load more results")));
         let retry = gtk::Button::builder()
-            .label("Retry")
+            .label(tr("Retry"))
             .css_classes(["pill"])
             .build();
         widget.append(&spinner);
@@ -541,8 +542,8 @@ pub fn recent_view(
     if recent.is_empty() {
         return adw::StatusPage::builder()
             .icon_name("system-search-symbolic")
-            .title("Search TIDAL")
-            .description("Tracks, albums, artists and playlists")
+            .title(tr("Search TIDAL"))
+            .description(tr("Tracks, albums, artists and playlists"))
             .vexpand(true)
             .build()
             .upcast();
@@ -553,9 +554,9 @@ pub fn recent_view(
         .margin_top(24)
         .margin_bottom(24)
         .build();
-    let header = title_row("Recent Searches", None);
+    let header = title_row(tr("Recent Searches"), None);
     let clear_button = gtk::Button::builder()
-        .label("Clear")
+        .label(tr("Clear"))
         .valign(gtk::Align::Center)
         .css_classes(["flat"])
         .build();
@@ -567,7 +568,7 @@ pub fn recent_view(
         .selection_mode(gtk::SelectionMode::None)
         .css_classes(["boxed-list"])
         .build();
-    list.update_property(&[gtk::accessible::Property::Label("Recent Searches")]);
+    list.update_property(&[gtk::accessible::Property::Label(tr("Recent Searches"))]);
     for query in recent {
         let row = adw::ActionRow::builder()
             .title(query)
@@ -580,7 +581,10 @@ pub fn recent_view(
             .valign(gtk::Align::Center)
             .css_classes(["flat", "circular"])
             .build();
-        super::super::widgets::label_button(&remove, &format!("Remove “{query}”"));
+        super::super::widgets::label_button(
+            &remove,
+            &tr("Remove “{query}”").replace("{query}", query),
+        );
         let forget = forget.clone();
         let removed = query.clone();
         remove.connect_clicked(move |_| forget(&removed));

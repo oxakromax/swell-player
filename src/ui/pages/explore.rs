@@ -20,6 +20,7 @@ use super::super::widgets::media_card::MediaCard;
 use super::super::widgets::section;
 use super::super::widgets::status::empty_status;
 use super::home_sections::{self, Scaffold, Shape};
+use crate::i18n::tr;
 use crate::tidal::pages::{self, Page, Section, SectionKind};
 use crate::tidal::{self, Base};
 
@@ -39,11 +40,11 @@ struct EditorialPage {
 /// the page's own title).
 pub fn page(ctx: &Rc<Ctx>, page: Option<(String, String)>) -> adw::NavigationPage {
     let root = page.is_none();
-    let (path, title) = page.unwrap_or_else(|| (EXPLORE_PATH.into(), "Explore".into()));
+    let (path, title) = page.unwrap_or_else(|| (EXPLORE_PATH.into(), tr("Explore").into()));
     let shape = if root { Shape::Chips } else { Shape::Carousels };
     let (view, page) = Scaffold::new(ctx, &title, root, shape);
     if title.is_empty() {
-        page.set_title("Explore");
+        page.set_title(tr("Explore"));
     }
     let state = Rc::new(EditorialPage {
         ctx: Rc::downgrade(ctx),
@@ -106,7 +107,7 @@ impl EditorialPage {
             return;
         };
         if tidal::is_auth_error(err) {
-            ctx.report("Couldn't load the page", err);
+            ctx.report(tr("Couldn't load the page"), err);
         }
         if self.view.stack.is_showing_content() {
             return;
@@ -151,8 +152,8 @@ impl EditorialPage {
         if !shown {
             self.view.sections.append(&empty_status(
                 "folder-music-symbolic",
-                "Nothing Here Yet",
-                "TIDAL has nothing on this page in your country.",
+                tr("Nothing Here Yet"),
+                tr("TIDAL has nothing on this page in your country."),
             ));
         }
         self.view.stack.show_content();
@@ -172,7 +173,7 @@ fn lone_grid(ctx: &Rc<Ctx>, section: &Section) -> gtk::Widget {
         section::view_all_route(section).filter(|_| section.total > section.items.len())
     {
         let button = gtk::Button::builder()
-            .label("View All")
+            .label(tr("View All"))
             .valign(gtk::Align::Center)
             .css_classes(["flat"])
             .build();

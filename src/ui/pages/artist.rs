@@ -24,6 +24,7 @@ use super::super::widgets::section::{self, SHORT_LIST, section_widget, short_tra
 use super::super::widgets::skeleton;
 use super::super::widgets::status::PageStack;
 use super::super::widgets::track_list::compact_bin;
+use crate::i18n::tr;
 use crate::model::TrackInfo;
 use crate::playback::Source;
 use crate::tidal::models::Artist;
@@ -74,7 +75,7 @@ pub fn page(ctx: &Rc<Ctx>, id: u64) -> adw::NavigationPage {
     let toolbar = adw::ToolbarView::new();
     toolbar.add_top_bar(&header_bar);
     let page = adw::NavigationPage::builder()
-        .title("Artist")
+        .title(tr("Artist"))
         .child(&toolbar)
         .build();
 
@@ -170,7 +171,7 @@ impl ArtistPage {
             return;
         };
         if tidal::is_auth_error(err) {
-            ctx.report("Couldn't load the artist", err);
+            ctx.report(tr("Couldn't load the artist"), err);
         }
         if self.stack.is_showing_content() {
             return;
@@ -231,8 +232,8 @@ impl ArtistPage {
             self.content
                 .append(&super::super::widgets::status::empty_status(
                     "avatar-default-symbolic",
-                    "Nothing Here Yet",
-                    "TIDAL has no music from this artist in your country.",
+                    tr("Nothing Here Yet"),
+                    tr("TIDAL has no music from this artist in your country."),
                 ));
         }
 
@@ -267,7 +268,7 @@ impl ArtistPage {
             section::view_all_route(section).filter(|_| section.total > tracks.len())
         {
             let button = gtk::Button::builder()
-                .label("View All")
+                .label(tr("View All"))
                 .valign(gtk::Align::Center)
                 .css_classes(["flat"])
                 .build();
@@ -294,10 +295,10 @@ impl ArtistPage {
                 .fetch(ctx.api.clone())
                 .await
             {
-                Ok(tracks) if tracks.is_empty() => ctx.toast("There's nothing to play here"),
+                Ok(tracks) if tracks.is_empty() => ctx.toast(tr("There's nothing to play here")),
                 Ok(tracks) if shuffle => menus::shuffle_tracks(&ctx, tracks, source(&artist)),
                 Ok(tracks) => menus::play_tracks(&ctx, tracks, 0, source(&artist), false),
-                Err(err) => ctx.report("Couldn't load the artist's tracks", &err),
+                Err(err) => ctx.report(tr("Couldn't load the artist's tracks"), &err),
             }
         });
         if let Some(old) = self.play_task.replace(Some(task)) {
@@ -341,7 +342,7 @@ fn bio_excerpt(ctx: &Rc<Ctx>, name: &str, bio: String) -> gtk::Widget {
         .build();
     widget.append(&label);
     let more = gtk::Button::builder()
-        .label("Read More")
+        .label(tr("Read More"))
         .halign(gtk::Align::Start)
         .css_classes(["flat"])
         .build();
@@ -349,7 +350,7 @@ fn bio_excerpt(ctx: &Rc<Ctx>, name: &str, bio: String) -> gtk::Widget {
     let name = name.to_owned();
     more.connect_clicked(move |_| {
         if let Some(ctx) = weak.upgrade() {
-            dialogs::credits::show_text(&ctx, "Biography", &name, &bio);
+            dialogs::credits::show_text(&ctx, tr("Biography"), &name, &bio);
         }
     });
     widget.append(&more);
