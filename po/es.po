@@ -1810,8 +1810,12 @@ msgid "Couldn't load more"
 msgstr "No se pudo cargar más"
 
 #: src/ui/pages/playlist.rs
-msgid "The playlist changed elsewhere; refreshed"
-msgstr "La playlist cambió en otro lugar; se actualizó"
+msgid "The playlist changed; your last edit was not applied"
+msgstr "La playlist cambió; tu última edición no se aplicó"
+
+#: src/ui/pages/playlist.rs
+msgid "The playlist isn't up to date yet; try again in a moment"
+msgstr "La playlist aún no está actualizada; vuelve a intentarlo en un momento"
 
 #: src/ui/pages/playlist.rs
 msgid "Couldn't load the playlist"
