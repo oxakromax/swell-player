@@ -101,6 +101,11 @@ pub fn force_login() -> bool {
     std::env::var_os("SWELL_LOGIN").is_some()
 }
 
+/// Taking screenshots: the run must not change the user's settings.
+pub fn screenshot_mode() -> bool {
+    std::env::var_os("SWELL_SCREENSHOT").is_some()
+}
+
 /// The first `SWELL_SCREENSHOT_SIZES` size, so the window opens at it.
 pub fn initial_size() -> Option<(i32, i32)> {
     std::env::var_os("SWELL_SCREENSHOT")?;

@@ -1,4 +1,8 @@
 //! What every page and widget of a signed-in window shares.
+//!
+//! Network state: [`Ctx::report`] shows the offline banner when an error
+//! is a connection failure; [`Ctx::network_ok`] hides it again and should
+//! be called after any request that succeeded.
 
 use std::cell::{Cell, RefCell};
 use std::rc::{Rc, Weak};
@@ -35,7 +39,37 @@ pub struct Ctx {
     /// The open panel tab, `None` when closed. Set by the shell.
     panel: Cell<Option<PanelTab>>,
     panel_handler: RefCell<Option<Box<dyn Fn(Option<PanelTab>)>>>,
-    panel_listeners: RefCell<Vec<Rc<dyn Fn(Option<PanelTab>)>>>,
+    panel_listeners: RefCell<Vec<(u64, PanelListener)>>,
+    next_listener: Cell<u64>,
+    /// "You're offline" (docs/design.md §4.8); the shell shows it above
+    /// the content.
+    pub offline_banner: adw::Banner,
+}
+
+type PanelListener = Rc<dyn Fn(Option<PanelTab>)>;
+
+/// Whether `err` (anywhere in its chain) is a failure to reach the server:
+/// no connection, DNS, or a timeout.
+pub fn is_connection_error(err: &anyhow::Error) -> bool {
+    err.chain().any(|cause| {
+        cause
+            .downcast_ref::<reqwest::Error>()
+            .is_some_and(|e| e.is_connect() || e.is_timeout())
+            || cause
+                .downcast_ref::<std::io::Error>()
+                .is_some_and(|e| {
+                    matches!(
+                        e.kind(),
+                        std::io::ErrorKind::ConnectionRefused
+                            | std::io::ErrorKind::ConnectionReset
+                            | std::io::ErrorKind::ConnectionAborted
+                            | std::io::ErrorKind::NotConnected
+                            | std::io::ErrorKind::TimedOut
+                            | std::io::ErrorKind::NetworkUnreachable
+                            | std::io::ErrorKind::HostUnreachable
+                    )
+                })
+    })
 }
 
 impl Ctx {
@@ -61,6 +95,11 @@ impl Ctx {
             panel: Cell::new(None),
             panel_handler: RefCell::default(),
             panel_listeners: RefCell::default(),
+            next_listener: Cell::new(1),
+            offline_banner: adw::Banner::builder()
+                .title("You’re offline — showing saved data")
+                .revealed(false)
+                .build(),
         })
     }
 
@@ -110,14 +149,51 @@ impl Ctx {
     /// Called by the shell when the panel opened, closed or changed tab.
     pub fn panel_changed(&self, tab: Option<PanelTab>) {
         self.panel.set(tab);
-        let listeners: Vec<_> = self.panel_listeners.borrow().clone();
+        let listeners: Vec<PanelListener> = self
+            .panel_listeners
+            .borrow()
+            .iter()
+            .map(|(_, listener)| listener.clone())
+            .collect();
         for listener in listeners {
             listener(tab);
         }
     }
 
-    pub fn connect_panel_changed(&self, listener: impl Fn(Option<PanelTab>) + 'static) {
-        self.panel_listeners.borrow_mut().push(Rc::new(listener));
+    /// Calls `listener` whenever the panel opens, closes or changes tab.
+    /// Returns an id for [`Ctx::disconnect_panel_changed`]; listeners that
+    /// live as long as the window may ignore it.
+    pub fn connect_panel_changed(&self, listener: impl Fn(Option<PanelTab>) + 'static) -> u64 {
+        let id = self.next_listener.get();
+        self.next_listener.set(id + 1);
+        self.panel_listeners
+            .borrow_mut()
+            .push((id, Rc::new(listener)));
+        id
+    }
+
+    pub fn disconnect_panel_changed(&self, id: u64) {
+        self.panel_listeners
+            .borrow_mut()
+            .retain(|(other, _)| *other != id);
+    }
+
+    /// Shows or hides the offline banner.
+    pub fn set_offline(&self, offline: bool) {
+        if self.offline_banner.is_revealed() != offline {
+            self.offline_banner.set_revealed(offline);
+        }
+    }
+
+    pub fn is_offline(&self) -> bool {
+        self.offline_banner.is_revealed()
+    }
+
+    /// A request reached TIDAL: clears the offline banner. Call it after
+    /// any successful network request (pages: after `load_cached`
+    /// delivers fresh data).
+    pub fn network_ok(&self) {
+        self.set_offline(false);
     }
 
     pub fn toast(&self, message: &str) {
@@ -148,6 +224,9 @@ impl Ctx {
             return;
         }
         log::warn!("{message}: {err:#}");
+        if is_connection_error(err) {
+            self.set_offline(true);
+        }
         self.toast(message);
     }
 
