@@ -1,7 +1,22 @@
 //! Loading placeholders with the shape of what is coming (docs/design.md
 //! §4.7). They are presentation only; the container announces "Loading".
+//!
+//! They pulse only while on screen ([`animate_while_mapped`]): a CSS
+//! animation on a hidden widget would still redraw the window every frame.
 
 use gtk::prelude::*;
+
+/// Lets the `.skeleton` parts inside `widget` pulse only while it is
+/// mapped (the `skeleton-live` class), so placeholders left in a stack
+/// under the content cost nothing.
+pub fn animate_while_mapped(widget: &impl IsA<gtk::Widget>) {
+    let widget = widget.upcast_ref::<gtk::Widget>();
+    if widget.is_mapped() {
+        widget.add_css_class("skeleton-live");
+    }
+    widget.connect_map(|widget| widget.add_css_class("skeleton-live"));
+    widget.connect_unmap(|widget| widget.remove_css_class("skeleton-live"));
+}
 
 fn block(width: i32, height: i32) -> gtk::Box {
     gtk::Box::builder()
@@ -34,6 +49,7 @@ pub fn row() -> gtk::Widget {
     text.append(&block(240, 12));
     text.append(&block(150, 12));
     row.append(&text);
+    animate_while_mapped(&row);
     row.upcast()
 }
 
@@ -49,6 +65,7 @@ pub fn card(size: i32) -> gtk::Widget {
     card.append(&cover);
     card.append(&block(size * 3 / 4, 12));
     card.append(&block(size / 2, 10));
+    animate_while_mapped(&card);
     card.upcast()
 }
 
@@ -74,6 +91,7 @@ pub fn header(cover: i32, round: bool) -> gtk::Widget {
     text.append(&block(320, 28));
     text.append(&block(200, 14));
     header.append(&text);
+    animate_while_mapped(&header);
     header.upcast()
 }
 

@@ -232,14 +232,16 @@ impl Sidebar {
                 match change {
                     Change::Playlists => sidebar.reload_playlists(),
                     Change::Loaded => sidebar.count_favorite_tracks(),
+                    // Until the Tracks page (if open) reports its new length.
                     Change::Favorite(Item::Track(_), favorite) => {
-                        if let Some(count) = sidebar.favorite_tracks.get() {
-                            let count = if *favorite {
+                        if let Some(ctx) = sidebar.ctx.upgrade()
+                            && let Some(count) = ctx.favorite_track_count()
+                        {
+                            ctx.set_favorite_track_count(if *favorite {
                                 count + 1
                             } else {
                                 count.saturating_sub(1)
-                            };
-                            sidebar.set_favorite_tracks(Some(count));
+                            });
                         }
                     }
                     _ => {}
@@ -247,6 +249,15 @@ impl Sidebar {
             }
         });
         sidebar.library_listener.set(id);
+        ctx.connect_favorite_track_count({
+            let sidebar = Rc::downgrade(&sidebar);
+            move |count| {
+                if let Some(sidebar) = sidebar.upgrade() {
+                    sidebar.set_favorite_tracks(count);
+                }
+            }
+        });
+        sidebar.favorite_tracks.set(ctx.favorite_track_count());
         let id = ctx.playback.subscribe({
             let sidebar = Rc::downgrade(&sidebar);
             move |event| {
@@ -328,32 +339,45 @@ impl Sidebar {
         }
     }
 
-    /// Asks TIDAL how many favourite tracks there are (the library knows
-    /// the ids but does not expose them), then follows changes.
+    /// Until the Tracks page reports how many tracks it lists
+    /// ([`Ctx::set_favorite_track_count`]), counts the list it would show
+    /// from the cache: TIDAL's own totals (and `favorites/ids`) also count
+    /// tracks it no longer serves, so they never match the page. With
+    /// nothing cached, the count stays hidden.
     fn count_favorite_tracks(self: &Rc<Self>) {
         let Some(ctx) = self.ctx.upgrade() else {
             return;
         };
+        if ctx.favorite_track_count().is_some() {
+            return;
+        }
         let generation = self.count_generation.get() + 1;
         self.count_generation.set(generation);
         let api = ctx.api.clone();
+        let ctx = Rc::downgrade(&ctx);
         let sidebar = Rc::downgrade(self);
         glib::spawn_future_local(async move {
-            let ids = runtime::spawn(async move { api.favorite_ids().await }).await;
-            let Some(sidebar) = sidebar.upgrade() else {
+            let cached = runtime::spawn(async move {
+                let Some(cache) = api.cache().await else {
+                    return Ok(None);
+                };
+                Ok(cache
+                    .favorite_tracks(api.user_id())
+                    .await?
+                    .map(|cached| cached.tracks.len()))
+            })
+            .await;
+            let (Some(sidebar), Some(ctx)) = (sidebar.upgrade(), ctx.upgrade()) else {
                 return;
             };
-            if sidebar.count_generation.get() != generation {
+            if sidebar.count_generation.get() != generation || ctx.favorite_track_count().is_some()
+            {
                 return;
             }
-            match ids {
-                Ok(ids) => {
-                    if let Some(ctx) = sidebar.ctx.upgrade() {
-                        ctx.network_ok();
-                    }
-                    sidebar.set_favorite_tracks(Some(ids.track.len()));
-                }
-                Err(err) => log::debug!("could not count favourite tracks: {err:#}"),
+            match cached {
+                Ok(Some(count)) => ctx.set_favorite_track_count(count),
+                Ok(None) => {}
+                Err(err) => log::debug!("could not count cached favourite tracks: {err:#}"),
             }
         });
     }
@@ -376,7 +400,7 @@ impl Sidebar {
         );
         match self.favorite_tracks.get().filter(|_| tracks) {
             Some(count) => {
-                row.count.set_label(&count.to_string());
+                row.count.set_label(&super::format::group_digits(count));
                 row.count.set_visible(true);
             }
             None => row.count.set_visible(false),
@@ -476,8 +500,9 @@ impl Sidebar {
         row.root.add_controller(target);
     }
 
-    /// Selects the row of `location`: the open playlist if it has a row,
-    /// else the section's root.
+    /// Selects the row of `location`: the visible page's own row if it has
+    /// one (a playlist opened from a card, Recently Played…), else the row
+    /// of the section's root.
     fn select(&self, location: &Location) {
         let mut position = gtk::INVALID_LIST_POSITION;
         let mut root_position = gtk::INVALID_LIST_POSITION;
@@ -495,7 +520,7 @@ impl Sidebar {
             else {
                 continue;
             };
-            if location.visible.as_ref() == Some(&key) && key.starts_with("playlist-") {
+            if location.visible.as_ref() == Some(&key) {
                 position = i;
                 break;
             }

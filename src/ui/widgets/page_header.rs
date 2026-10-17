@@ -14,6 +14,15 @@
 //! The action row stays on one line: when the text column gets too slim
 //! for it, Shuffle loses its label, then Copy link goes (the menu has it);
 //! only then does it wrap, the icon buttons moving down together.
+//!
+//! Titles: pages with this header (and the Home/Explore feeds, with their
+//! large in-content title) keep the header bar's title hidden until the
+//! in-content title scrolls away; list and utility pages (Collection
+//! sub-views, Recently Played, View All, Search) have no in-content title
+//! and show theirs, with a count subtitle, in the header bar.
+//!
+//! In short windows (the window's `short` class, ≤ 640 px high) the
+//! artwork shrinks to 120 px so the list stays in view.
 
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
@@ -26,10 +35,10 @@ use super::heart_button::HeartButton;
 use super::media_card::Cover;
 use super::quality_badge::{self, QualityBadge};
 use crate::covers::Image;
-use crate::model::format_total;
 use crate::tidal::models::{Album, Artist, ArtistRef, Mix, Playlist};
 use crate::ui::context::Ctx;
 use crate::ui::dialogs;
+use crate::ui::format;
 use crate::ui::menus::{ItemMenu, Subject};
 use crate::ui::nav::Route;
 
@@ -46,12 +55,64 @@ impl Art {
         }
     }
 
-    fn set_compact(&self, compact: bool) {
+    /// 240/180 covers and 200/144 avatars (wide/compact, §1.5); 120 in
+    /// short windows, where a large one would fill the screen.
+    fn set_size(&self, compact: bool, short: bool) {
         match self {
-            Self::Cover(cover) => cover.set_size(if compact { 180 } else { 240 }),
-            Self::Avatar(avatar) => avatar.set_size(if compact { 144 } else { 200 }),
+            Self::Cover(cover) => cover.set_size(match (short, compact) {
+                (true, _) => SHORT_ART,
+                (false, true) => 180,
+                (false, false) => 240,
+            }),
+            Self::Avatar(avatar) => avatar.set_size(match (short, compact) {
+                (true, _) => SHORT_ART,
+                (false, true) => 144,
+                (false, false) => 200,
+            }),
         }
     }
+}
+
+/// Artwork size in windows with the `short` class (≤ 640 px high).
+const SHORT_ART: i32 = 120;
+
+/// The artwork and what its size depends on.
+struct ArtSize {
+    art: Art,
+    compact: Cell<bool>,
+    short: Cell<bool>,
+}
+
+impl ArtSize {
+    fn apply(&self) {
+        self.art.set_size(self.compact.get(), self.short.get());
+    }
+}
+
+/// Calls `f(has_class)` once `widget` is in a window, and whenever the
+/// window gains or loses `class`.
+fn follow_window_class(
+    widget: &impl IsA<gtk::Widget>,
+    class: &'static str,
+    f: impl Fn(bool) + 'static,
+) {
+    let f = Rc::new(f);
+    widget.connect_realize(move |widget| {
+        let Some(window) = widget.root().and_downcast::<gtk::Window>() else {
+            return;
+        };
+        f(window.has_css_class(class));
+        let f = f.clone();
+        let handler =
+            window.connect_css_classes_notify(move |window| f(window.has_css_class(class)));
+        let window = window.downgrade();
+        let handler = RefCell::new(Some(handler));
+        widget.connect_unrealize(move |_| {
+            if let (Some(window), Some(handler)) = (window.upgrade(), handler.take()) {
+                window.disconnect(handler);
+            }
+        });
+    });
 }
 
 /// How much the action row has to give up to stay on one line.
@@ -166,9 +227,11 @@ impl FitBin {
 
 pub struct PageHeader {
     widget: gtk::Box,
-    art: Art,
+    art: Rc<ArtSize>,
     text: gtk::Box,
     labels: Vec<gtk::Label>,
+    /// Labels inside detail boxes ("Read More" excerpts).
+    details: Vec<gtk::Label>,
     title: gtk::Label,
     badges: gtk::Box,
     actions: adw::WrapBox,
@@ -192,6 +255,19 @@ impl PageHeader {
             .margin_end(12)
             .build();
         widget.append(&art.widget());
+        let art = Rc::new(ArtSize {
+            art,
+            compact: Cell::new(false),
+            short: Cell::new(false),
+        });
+        follow_window_class(&widget, "short", {
+            let art = art.clone();
+            move |short| {
+                if art.short.replace(short) != short {
+                    art.apply();
+                }
+            }
+        });
         let text = gtk::Box::builder()
             .orientation(gtk::Orientation::Vertical)
             .spacing(6)
@@ -272,6 +348,7 @@ impl PageHeader {
             art,
             text,
             labels: vec![overtitle],
+            details: Vec::new(),
             title,
             badges,
             actions,
@@ -325,6 +402,65 @@ impl PageHeader {
             .css_classes(["dimmed"])
             .build();
         self.add_line(label);
+    }
+
+    /// Three dimmed lines of `text` and, only when they cut it short, a
+    /// "Read More" button that opens all of it (as the artist biography
+    /// does).
+    fn add_read_more(&mut self, ctx: &Rc<Ctx>, text: &str, title: &str, subtitle: &str) {
+        let label = gtk::Label::builder()
+            .label(text)
+            .xalign(0.0)
+            .wrap(true)
+            .wrap_mode(gtk::pango::WrapMode::WordChar)
+            .lines(3)
+            .ellipsize(gtk::pango::EllipsizeMode::End)
+            .max_width_chars(80)
+            .css_classes(["dimmed"])
+            .build();
+        label.set_tooltip_text(Some(text));
+        let more = gtk::Button::builder()
+            .label("Read More")
+            .halign(gtk::Align::Start)
+            .visible(false)
+            .css_classes(["flat"])
+            .build();
+        let weak = Rc::downgrade(ctx);
+        let (text, title, subtitle) = (text.to_owned(), title.to_owned(), subtitle.to_owned());
+        more.connect_clicked(move |_| {
+            if let Some(ctx) = weak.upgrade() {
+                dialogs::credits::show_text(&ctx, &title, &subtitle, &text);
+            }
+        });
+        // Whether the text is cut depends on the width: check after each
+        // allocation (outside it: changing visibility queues a resize).
+        let pending = Rc::new(Cell::new(false));
+        let bin = FitBin::new(&label, {
+            let label = label.downgrade();
+            let more = more.downgrade();
+            move |_| {
+                if pending.replace(true) {
+                    return;
+                }
+                let (label, more, pending) = (label.clone(), more.clone(), pending.clone());
+                glib::idle_add_local_once(move || {
+                    pending.set(false);
+                    if let (Some(label), Some(more)) = (label.upgrade(), more.upgrade()) {
+                        let cut = label.layout().is_ellipsized();
+                        if more.is_visible() != cut {
+                            more.set_visible(cut);
+                        }
+                    }
+                });
+            }
+        });
+        let detail = gtk::Box::builder()
+            .orientation(gtk::Orientation::Vertical)
+            .build();
+        detail.append(&bin);
+        detail.append(&more);
+        self.text.append(&detail);
+        self.details.push(label);
     }
 
     fn add_badges(&self, kinds: &[quality_badge::BadgeKind]) {
@@ -396,22 +532,11 @@ impl PageHeader {
         };
         let mut header = Self::build(ctx, Art::Cover(cover), kind, &title);
         header.add_line(artist_links(ctx, &album.artists));
-        let mut meta = Vec::new();
-        if let Some(year) = album.release_date.as_deref().and_then(|d| d.get(..4)) {
-            meta.push(year.to_owned());
-        }
-        let tracks = match album.number_of_tracks {
-            0 => String::new(),
-            1 => "1 track".into(),
-            n => format!("{n} tracks"),
-        };
-        meta.push(match (tracks.is_empty(), album.duration) {
-            (_, 0) => tracks,
-            (true, seconds) => format_total(seconds.into()),
-            (false, seconds) => format!("{tracks}, {}", format_total(seconds.into())),
-        });
-        meta.retain(|m| !m.is_empty());
-        header.add_dimmed(&meta.join(" · "));
+        let year = album.release_date.as_deref().and_then(|d| d.get(..4));
+        header.add_dimmed(&format::join([
+            year.unwrap_or_default().to_owned(),
+            format::tracks_summary(album.number_of_tracks as usize, album.duration.into()),
+        ]));
         header.add_badges(&quality_badge::album_badges(album));
         header.finish();
         let subject = Subject::Album(Rc::new(album.clone()));
@@ -435,15 +560,10 @@ impl PageHeader {
         } else if !own && playlist.creator.id == Some(0) {
             meta.push("by TIDAL".into());
         }
-        let tracks = match playlist.number_of_tracks {
-            1 => "1 track".to_owned(),
-            n => format!("{n} tracks"),
-        };
-        meta.push(if playlist.duration > 0 {
-            format!("{tracks}, {}", format_total(playlist.duration.into()))
-        } else {
-            tracks
-        });
+        meta.push(format::tracks_summary(
+            playlist.number_of_tracks as usize,
+            playlist.duration.into(),
+        ));
         if own {
             meta.push(
                 if playlist.public_playlist {
@@ -454,17 +574,10 @@ impl PageHeader {
                 .into(),
             );
         }
-        header.add_dimmed(&meta.join(" · "));
-        if !playlist.description.is_empty() {
-            let description = gtk::Label::builder()
-                .label(&playlist.description)
-                .xalign(0.0)
-                .wrap(true)
-                .lines(3)
-                .ellipsize(gtk::pango::EllipsizeMode::End)
-                .css_classes(["dimmed"])
-                .build();
-            header.add_line(description);
+        header.add_dimmed(&format::join(meta));
+        let description = playlist.description.trim();
+        if !description.is_empty() {
+            header.add_read_more(ctx, description, "Description", &playlist.title);
         }
         header.finish();
         let subject = Subject::Playlist(Rc::new(playlist.clone()));
@@ -581,7 +694,8 @@ impl PageHeader {
 
     /// Stacked and centred (narrow pages) or side by side.
     pub fn set_compact(&self, compact: bool) {
-        self.art.set_compact(compact);
+        self.art.compact.set(compact);
+        self.art.apply();
         self.widget.set_orientation(if compact {
             gtk::Orientation::Vertical
         } else {
@@ -593,7 +707,7 @@ impl PageHeader {
         } else {
             (0.0, gtk::Justification::Left, gtk::Align::Start)
         };
-        for label in self.labels.iter().chain([&self.title]) {
+        for label in self.labels.iter().chain(&self.details).chain([&self.title]) {
             label.set_xalign(xalign);
             label.set_justify(justify);
         }
@@ -660,7 +774,7 @@ pub fn artist_links(ctx: &Rc<Ctx>, artists: &[ArtistRef]) -> gtk::Label {
         .label(&markup)
         .xalign(0.0)
         .wrap(true)
-        .css_classes(["heading"])
+        .css_classes(["text-link"])
         .build();
     let ctx = Rc::downgrade(ctx);
     label.connect_activate_link(move |_, uri| {

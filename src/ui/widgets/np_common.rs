@@ -19,6 +19,7 @@ use crate::library::{Change, Item, Library};
 use crate::model::TrackInfo;
 use crate::playback::format::khz;
 use crate::playback::{Event, FormatDetails, PlayState, Playback, SleepTimer};
+use crate::session::LoginFlow;
 use crate::settings::{Normalization, QualityPreference};
 use crate::tidal::Quality;
 use crate::ui::dialogs;
@@ -460,6 +461,8 @@ pub(super) struct FormatBadge {
     rows: Vec<(gtk::Label, gtk::Label)>,
     note: gtk::Label,
     compact: Cell<bool>,
+    /// Show the expected quality until the format is known.
+    expected: Cell<bool>,
     _events: Subscription,
 }
 
@@ -533,6 +536,7 @@ impl FormatBadge {
             rows,
             note,
             compact: Cell::new(false),
+            expected: Cell::new(false),
             _events: subscribe(&ctx.playback, weak, |badge, event| {
                 if matches!(event, Event::Track(_) | Event::Format(_) | Event::Options) {
                     badge.refresh();
@@ -562,7 +566,7 @@ impl FormatBadge {
         };
         let details = ctx.playback.format_details();
         let Some(details) = details.filter(|_| ctx.playback.current().is_some()) else {
-            self.widget.set_visible(false);
+            self.show_expected(&ctx);
             return;
         };
         let settings = ctx.settings.get();
@@ -592,7 +596,15 @@ impl FormatBadge {
         self.set_row(4, details.bitrate.map(|b| format!("{b} kbit/s")).as_deref());
         self.set_row(5, Some(replay_gain.as_deref().unwrap_or("Off")));
         self.set_row(6, Some(&output));
-        self.set_row(7, Some("System default"));
+        self.set_row(
+            7,
+            Some(
+                settings
+                    .output_device
+                    .as_ref()
+                    .map_or("System default", String::as_str),
+            ),
+        );
 
         let track_hires = ctx.playback.current().is_some_and(|t| t.hires);
         let note = (track_hires && !details.is_hires()).then_some(match settings.quality {
@@ -620,6 +632,64 @@ impl FormatBadge {
         self.widget
             .update_property(&[gtk::accessible::Property::Label(&spoken)]);
         self.widget.set_visible(true);
+    }
+
+    /// Before the stream is resolved (a restored, paused track): with
+    /// [`FormatBadge::set_expected`], the quality the track should play in,
+    /// from its catalogue data and the settings; hidden otherwise.
+    fn show_expected(&self, ctx: &Ctx) {
+        let Some(track) = self
+            .expected
+            .get()
+            .then(|| ctx.playback.current())
+            .flatten()
+        else {
+            self.widget.set_visible(false);
+            return;
+        };
+        let settings = ctx.settings.get();
+        let hires = track.hires
+            && settings.quality == QualityPreference::Best
+            && ctx.api.flow == LoginFlow::Pkce;
+        let lossless = matches!(
+            settings.quality,
+            QualityPreference::Best | QualityPreference::Lossless
+        );
+        let kind = if hires {
+            BadgeKind::HiRes
+        } else if lossless {
+            BadgeKind::Lossless
+        } else {
+            self.widget.set_visible(false);
+            return;
+        };
+        for row in 1..Self::ROWS.len() {
+            self.set_row(row, None);
+        }
+        self.set_row(0, Some(kind.description()));
+        self.note
+            .set_label("The exact format shows once the track starts playing.");
+        self.note.set_visible(true);
+        if hires {
+            self.label.add_css_class("hires");
+        } else {
+            self.label.remove_css_class("hires");
+        }
+        self.label
+            .set_label(if hires { "HI-RES" } else { "LOSSLESS" });
+        self.widget
+            .update_property(&[gtk::accessible::Property::Label(&format!(
+                "Audio quality: {}",
+                kind.description()
+            ))]);
+        self.widget.set_visible(true);
+    }
+
+    /// Shows the track's expected quality until the delivered format is
+    /// known (the player bar, which has no other quality badge).
+    pub fn set_expected(&self, expected: bool) {
+        self.expected.set(expected);
+        self.refresh();
     }
 }
 

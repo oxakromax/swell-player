@@ -66,16 +66,18 @@ impl HeartButton {
     fn build(ctx: &Rc<Ctx>, style: Style) -> Self {
         let button = gtk::ToggleButton::builder()
             .valign(gtk::Align::Center)
-            .css_classes(["heart"])
             .build();
         let content = match style {
             Style::Heart => {
+                button.add_css_class("heart");
                 button.add_css_class("circular");
                 button.add_css_class("flat");
                 button.update_property(&[gtk::accessible::Property::Label("Favourite")]);
                 None
             }
             Style::Follow => {
+                // Neutral when on (style.css): not an accent heart.
+                button.add_css_class("follow");
                 button.add_css_class("pill");
                 let content = adw::ButtonContent::new();
                 button.set_child(Some(&content));
