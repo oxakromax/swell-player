@@ -314,6 +314,25 @@ impl Api {
             return Ok(());
         }
 
+        // The usual change: a few tracks liked elsewhere, now at the top.
+        // Prepend them to the cached list instead of downloading it again.
+        if let (Some(head), Some(cache)) = (cached.as_ref(), cache.as_ref())
+            && let Some(added) = head.added_on_top(total, &first)
+            && let Ok(Some(stored)) = cache.favorite_tracks(self.user_id()).await
+        {
+            let mut all = first[..added].to_vec();
+            all.extend(stored.tracks);
+            log::debug!("{added} new favourites on top; {} in all", all.len());
+            let _ = updates.send(Ok(FavoritesUpdate::Replace(all.clone())));
+            let _ = updates.send(Ok(FavoritesUpdate::Finished));
+            if !self.is_signed_out()
+                && let Err(err) = cache.store_favorite_tracks(self.user_id(), total, all).await
+            {
+                log::warn!("could not cache favourites: {err:#}");
+            }
+            return Ok(());
+        }
+
         // Without a cached list on screen, show each page as it arrives.
         let progressive = cached.is_none();
         let mut all = Vec::with_capacity(total);
@@ -560,7 +579,7 @@ const FAVORITES_PAGE: usize = 100;
 const FAVORITES_CONCURRENCY: usize = 4;
 /// A cached list older than this is reloaded even if its head still matches,
 /// to pick up tracks that became unavailable or changed metadata.
-const FAVORITES_MAX_AGE: Duration = Duration::from_secs(24 * 60 * 60);
+const FAVORITES_MAX_AGE: Duration = Duration::from_secs(3 * 24 * 60 * 60);
 
 pub enum FavoritesUpdate {
     /// More tracks for the end of the list.
@@ -616,6 +635,22 @@ impl CachedHead {
         }
     }
 
+    /// If the only change is `n` tracks added at the top (the first page
+    /// is those `n` followed by the cached head), returns `n`.
+    fn added_on_top(&self, total: usize, first_page: &[TrackInfo]) -> Option<usize> {
+        let added = total.checked_sub(self.total)?;
+        let overlap = first_page.len().checked_sub(added)?;
+        (self.age < FAVORITES_MAX_AGE
+            && added > 0
+            && overlap > 0
+            && overlap <= self.ids.len()
+            && first_page[added..]
+                .iter()
+                .zip(&self.ids)
+                .all(|(track, id)| track.id == *id))
+        .then_some(added)
+    }
+
     fn matches(&self, total: usize, first_page: &[TrackInfo]) -> bool {
         self.age < FAVORITES_MAX_AGE
             && self.total == total
@@ -629,4 +664,32 @@ impl CachedHead {
 
 fn into_infos(items: Vec<tidal::models::Track>) -> Vec<TrackInfo> {
     items.into_iter().map(TrackInfo::from).collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn tracks(ids: &[u64]) -> Vec<TrackInfo> {
+        ids.iter()
+            .map(|&id| TrackInfo {
+                id,
+                ..TrackInfo::default()
+            })
+            .collect()
+    }
+
+    #[test]
+    fn new_favourites_on_top() {
+        let head = CachedHead {
+            ids: vec![1, 2, 3],
+            total: 3,
+            age: Duration::ZERO,
+        };
+        assert_eq!(head.added_on_top(5, &tracks(&[9, 8, 1, 2, 3])), Some(2));
+        // A removal below the head is not a plain prepend.
+        assert_eq!(head.added_on_top(3, &tracks(&[1, 2, 3])), None);
+        assert_eq!(head.added_on_top(4, &tracks(&[9, 1, 3])), None);
+        assert_eq!(head.added_on_top(2, &tracks(&[1, 2])), None);
+    }
 }
