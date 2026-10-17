@@ -5,6 +5,7 @@ mod api;
 mod cache;
 mod config;
 mod covers;
+mod i18n;
 mod library;
 mod mem;
 mod model;

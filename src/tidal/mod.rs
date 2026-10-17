@@ -425,17 +425,8 @@ fn backoff(attempt: u32) -> Duration {
     Duration::from_millis(250 * 2u64.pow(attempt.saturating_sub(1)))
 }
 
-/// TIDAL's locale (`es_ES`, `en_US`...) from the environment.
+/// TIDAL's locale (`es_CL`, `en_US`...): the UI's language, so content
+/// and interface never mix languages.
 fn locale() -> String {
-    let lang = ["LC_ALL", "LC_MESSAGES", "LANG"]
-        .into_iter()
-        .filter_map(|key| std::env::var(key).ok())
-        .find(|v| !v.is_empty() && v != "C" && v != "POSIX")
-        .unwrap_or_default();
-    let tag = lang.split(['.', '@']).next().unwrap_or("");
-    if tag.len() == 5 && tag.as_bytes()[2] == b'_' {
-        tag.to_owned()
-    } else {
-        "en_US".to_owned()
-    }
+    crate::i18n::tidal_locale()
 }
