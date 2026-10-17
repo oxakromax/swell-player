@@ -5,10 +5,11 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use adw::prelude::*;
-use gtk::glib;
-use tidalrs::AudioQuality;
+use gtk::{gio, glib};
 
+use super::library::TrackList;
 use crate::api::{self, Api};
+use crate::covers::CoverLoader;
 use crate::{config, runtime, session};
 
 pub fn build(app: &adw::Application) {
@@ -30,15 +31,38 @@ pub fn build(app: &adw::Application) {
         .build();
     stack.add_named(&spinner, Some("loading"));
 
+    let title = adw::WindowTitle::new(config::APP_NAME, "");
+    let menu = gio::Menu::new();
+    menu.append(Some("Sign Out"), Some("win.sign-out"));
+    let menu_button = gtk::MenuButton::builder()
+        .icon_name("open-menu-symbolic")
+        .tooltip_text("Main Menu")
+        .menu_model(&menu)
+        .visible(false)
+        .build();
+    let header = adw::HeaderBar::builder().title_widget(&title).build();
+    header.pack_end(&menu_button);
+
     let toolbar = adw::ToolbarView::new();
-    toolbar.add_top_bar(&adw::HeaderBar::new());
+    toolbar.add_top_bar(&header);
     toolbar.set_content(Some(&stack));
     window.set_content(Some(&toolbar));
     window.present();
 
-    let ui = Rc::new(Ui { window, stack, http: api::http_client() });
+    let http = api::http_client();
+    api::preconnect(&http);
+    let ui = Rc::new(Ui {
+        window,
+        stack,
+        title,
+        menu_button,
+        covers: CoverLoader::new(http.clone()),
+        http,
+    });
     glib::spawn_future_local(async move {
-        match runtime::spawn(session::load()).await {
+        let stored = runtime::spawn(session::load()).await;
+        crate::timing::mark("session read from the keyring");
+        match stored {
             Ok(Some(stored)) => ui.show_library(Api::restore(stored, ui.http.clone())),
             Ok(None) => ui.show_login(None),
             Err(err) => ui.show_login(Some(format!("Could not open the keyring: {err:#}"))),
@@ -49,6 +73,9 @@ pub fn build(app: &adw::Application) {
 struct Ui {
     window: adw::ApplicationWindow,
     stack: gtk::Stack,
+    title: adw::WindowTitle,
+    menu_button: gtk::MenuButton,
+    covers: Rc<CoverLoader>,
     http: reqwest::Client,
 }
 
@@ -62,6 +89,13 @@ impl Ui {
     }
 
     fn show_login(self: &Rc<Self>, error: Option<String>) {
+        self.title.set_subtitle("");
+        self.menu_button.set_visible(false);
+        self.window.remove_action("sign-out");
+        if let Some(library) = self.stack.child_by_name("library") {
+            self.stack.remove(&library);
+        }
+
         let ui = self.clone();
         let page = super::login::page(&self.window, self.http.clone(), error, move |api| {
             ui.show_library(api);
@@ -70,49 +104,59 @@ impl Ui {
     }
 
     fn show_library(self: &Rc<Self>, api: Arc<Api>) {
-        let quality = match api.flow.max_quality() {
-            AudioQuality::HiResLossless => "Hi-Res Lossless",
-            AudioQuality::Lossless => "Lossless",
-            AudioQuality::High | AudioQuality::Low => "AAC",
-        };
-        let page = adw::StatusPage::builder()
-            .icon_name("emblem-ok-symbolic")
-            .title("Signed in")
-            .description(format!("Best quality: {quality}"))
-            .build();
-        let sign_out = gtk::Button::builder()
-            .label("Sign Out")
-            .css_classes(["pill"])
-            .halign(gtk::Align::Center)
-            .build();
-        page.set_child(Some(&sign_out));
-
-        sign_out.connect_clicked({
-            let ui = self.clone();
-            let api = api.clone();
-            move |_| {
-                let ui = ui.clone();
+        let sign_out = gio::ActionEntry::builder("sign-out")
+            .activate({
+                let ui = self.clone();
                 let api = api.clone();
-                glib::spawn_future_local(async move {
-                    if let Err(err) = runtime::spawn(async move { api.sign_out().await }).await {
-                        log::warn!("could not remove the stored session: {err:#}");
+                move |_: &adw::ApplicationWindow, _, _| {
+                    let ui = ui.clone();
+                    let api = api.clone();
+                    glib::spawn_future_local(async move {
+                        if let Err(err) = runtime::spawn(async move { api.sign_out().await }).await
+                        {
+                            log::warn!("could not remove the stored session: {err:#}");
+                        }
+                        ui.show_login(None);
+                    });
+                }
+            })
+            .build();
+        self.window.add_action_entries([sign_out]);
+        self.menu_button.set_visible(true);
+        self.title.set_title("Favourite Tracks");
+        self.title.set_subtitle("Loading…");
+
+        let list = Rc::new(TrackList::new(self.covers.clone()));
+        self.set_page("library", &list.widget);
+
+        let (pages_tx, mut pages) = tokio::sync::mpsc::unbounded_channel();
+        runtime::runtime().spawn(api.load_favorite_tracks(pages_tx));
+
+        let ui = self.clone();
+        glib::spawn_future_local(async move {
+            let mut first = true;
+            while let Some(page) = pages.recv().await {
+                if first {
+                    crate::timing::mark("first favourites page received");
+                }
+                match page {
+                    Ok(tracks) => list.append(tracks),
+                    Err(err) => {
+                        log::warn!("loading favourites failed: {err:#}");
+                        ui.title.set_subtitle("Could not load all favourites");
+                        return;
                     }
-                    ui.show_login(None);
-                });
+                }
+                if first {
+                    first = false;
+                    crate::timing::mark_after_next_frame(
+                        &list.widget,
+                        "first favourites on screen",
+                    );
+                }
+                ui.title.set_subtitle(&format!("{} tracks", list.len()));
             }
+            crate::timing::mark("all favourites loaded");
         });
-
-        glib::spawn_future_local({
-            let page = page.clone();
-            async move {
-                let description = match runtime::spawn(async move { api.favorite_track_count().await }).await {
-                    Ok(count) => format!("Best quality: {quality} · {count} favourite tracks"),
-                    Err(err) => format!("Best quality: {quality} · could not reach TIDAL: {err:#}"),
-                };
-                page.set_description(Some(&description));
-            }
-        });
-
-        self.set_page("library", &page);
     }
 }

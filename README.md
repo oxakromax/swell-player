@@ -52,6 +52,28 @@ expired access token, the client refreshes it and stores the new one.
 - **No network on the main thread.** GTK owns the main thread; all HTTP and
   keyring I/O runs on a small Tokio runtime (two worker threads) and is awaited
   from the GLib main loop.
+- **Few, warm connections.** One `reqwest` client serves the API and the
+  images. Both TIDAL hosts speak HTTP/2, so concurrent requests share one
+  connection per host, and Swell opens both connections at startup while it
+  reads the keyring. Names are resolved with
+  [hickory](https://crates.io/crates/hickory-resolver) rather than glibc: on
+  networks where one of glibc's parallel A/AAAA answers gets lost, every
+  lookup stalls for 5 s, which used to delay the first list by that much.
+- **Favourites arrive page by page.** The first page of 100 tracks is shown as
+  soon as it arrives; the rest is fetched with at most four requests in
+  flight and appended in order. (TIDAL's total counts tracks that are no
+  longer available and leaves them out of the pages, so a page can hold fewer
+  than 100.)
+- **Virtualised list.** Tracks live in a `gio::ListStore` of compact records
+  shown by a `gtk::ListView` that is the direct child of its
+  `ScrolledWindow`, so GTK only keeps widgets for the rows around the
+  viewport (about 200), not one per track.
+- **Covers.** 80×80 JPEGs, at most four downloads at a time, cached on disk
+  under `~/.cache/swell-player/covers/` and kept decoded in a 400-entry LRU
+  (under 10 MB). The pending request nearest the middle of the viewport goes
+  first, newest first among equals; plain LIFO is not enough because the list
+  binds ~200 rows up front and the last of them is far off screen. Requests
+  from rows that scroll away before a download starts are dropped.
 - **API client:** [tidalrs](https://crates.io/crates/tidalrs) (MIT), built
   without its playback features. It was chosen over
   [tidlers](https://crates.io/crates/tidlers) (whose 0.5.0 favourites call

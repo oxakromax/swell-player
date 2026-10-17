@@ -41,7 +41,10 @@ pub fn page(
         .placeholder_text("https://tidal.com/android/login/auth?code=…")
         .input_purpose(gtk::InputPurpose::Url)
         .build();
-    let continue_button = gtk::Button::builder().label("Continue").css_classes(["suggested-action"]).build();
+    let continue_button = gtk::Button::builder()
+        .label("Continue")
+        .css_classes(["suggested-action"])
+        .build();
     redirect_box.append(&redirect_help);
     redirect_box.append(&redirect_entry);
     redirect_box.append(&continue_button);
@@ -54,9 +57,15 @@ pub fn page(
         .spacing(6)
         .visible(false)
         .build();
-    let device_code = gtk::Label::builder().css_classes(["title-1"]).selectable(true).build();
+    let device_code = gtk::Label::builder()
+        .css_classes(["title-1"])
+        .selectable(true)
+        .build();
     let device_link = gtk::LinkButton::new("https://link.tidal.com");
-    let device_wait = gtk::Box::builder().spacing(6).halign(gtk::Align::Center).build();
+    let device_wait = gtk::Box::builder()
+        .spacing(6)
+        .halign(gtk::Align::Center)
+        .build();
     device_wait.append(&adw::Spinner::new());
     device_wait.append(&gtk::Label::new(Some("Waiting for approval…")));
     device_box.append(&device_code);
@@ -122,7 +131,9 @@ pub fn page(
                 let show_error = show_error.clone();
                 move |result| {
                     if let Err(err) = result {
-                        show_error(format!("Could not open the browser ({err}). Open this address yourself:\n{url}"));
+                        show_error(format!(
+                            "Could not open the browser ({err}). Open this address yourself:\n{url}"
+                        ));
                     }
                 }
             });
@@ -138,7 +149,9 @@ pub fn page(
         let on_signed_in = on_signed_in.clone();
         let show_error = show_error.clone();
         move || {
-            let Some(api) = pkce_api.borrow().clone() else { return };
+            let Some(api) = pkce_api.borrow().clone() else {
+                return;
+            };
             let redirect = entry.text().to_string();
             button.set_sensitive(false);
             let button = button.clone();
@@ -146,7 +159,9 @@ pub fn page(
             let show_error = show_error.clone();
             glib::spawn_future_local(async move {
                 let task_api = api.clone();
-                match runtime::spawn(async move { task_api.finish_pkce_login(&redirect).await }).await {
+                match runtime::spawn(async move { task_api.finish_pkce_login(&redirect).await })
+                    .await
+                {
                     Ok(()) => on_signed_in(api),
                     Err(err) => {
                         show_error(format!("Sign-in failed: {err:#}"));
@@ -173,14 +188,15 @@ pub fn page(
         let show_error = show_error.clone();
         glib::spawn_future_local(async move {
             let task_api = api.clone();
-            let device = match runtime::spawn(async move { task_api.start_device_login().await }).await {
-                Ok(device) => device,
-                Err(err) => {
-                    show_error(format!("Could not get a device code: {err:#}"));
-                    button.set_sensitive(true);
-                    return;
-                }
-            };
+            let device =
+                match runtime::spawn(async move { task_api.start_device_login().await }).await {
+                    Ok(device) => device,
+                    Err(err) => {
+                        show_error(format!("Could not get a device code: {err:#}"));
+                        button.set_sensitive(true);
+                        return;
+                    }
+                };
             device_code.set_label(&device.user_code);
             device_link.set_uri(&device.url);
             device_link.set_label(&device.url);
@@ -202,7 +218,10 @@ pub fn page(
 }
 
 fn pill_button(label: &str, suggested: bool) -> gtk::Button {
-    let button = gtk::Button::builder().label(label).css_classes(["pill"]).build();
+    let button = gtk::Button::builder()
+        .label(label)
+        .css_classes(["pill"])
+        .build();
     if suggested {
         button.add_css_class("suggested-action");
     }
@@ -210,5 +229,8 @@ fn pill_button(label: &str, suggested: bool) -> gtk::Button {
 }
 
 fn hint(text: &str) -> gtk::Label {
-    gtk::Label::builder().label(text).css_classes(["dim-label", "caption"]).build()
+    gtk::Label::builder()
+        .label(text)
+        .css_classes(["dim-label", "caption"])
+        .build()
 }

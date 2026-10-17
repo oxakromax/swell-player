@@ -6,7 +6,7 @@
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
-use tidalrs::{AudioQuality, Authz};
+use tidalrs::Authz;
 use tokio::sync::OnceCell;
 
 use crate::config::{self, OAuthClient};
@@ -29,13 +29,6 @@ impl LoginFlow {
             Self::DeviceCode => &config::DEVICE_CLIENT,
         }
     }
-
-    pub fn max_quality(self) -> AudioQuality {
-        match self {
-            Self::Pkce => AudioQuality::HiResLossless,
-            Self::DeviceCode => AudioQuality::Lossless,
-        }
-    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -51,8 +44,13 @@ async fn keyring() -> Result<&'static oo7::Keyring> {
     static KEYRING: OnceCell<oo7::Keyring> = OnceCell::const_new();
     KEYRING
         .get_or_try_init(|| async {
-            let keyring = oo7::Keyring::new().await.context("no Secret Service available")?;
-            keyring.unlock().await.context("the keyring could not be unlocked")?;
+            let keyring = oo7::Keyring::new()
+                .await
+                .context("no Secret Service available")?;
+            keyring
+                .unlock()
+                .await
+                .context("the keyring could not be unlocked")?;
             Ok(keyring)
         })
         .await

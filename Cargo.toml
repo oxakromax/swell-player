@@ -11,11 +11,13 @@ categories = ["multimedia::audio"]
 adw = { version = "0.9.2", package = "libadwaita", features = ["v1_7"] }
 anyhow = "1.0.104"
 env_logger = { version = "0.11.11", default-features = false, features = ["auto-color"] }
+futures-util = { version = "0.3.34", default-features = false, features = ["std"] }
 gst = { version = "0.25.4", package = "gstreamer" }
 gtk = { version = "0.11.5", package = "gtk4", features = ["v4_18"] }
 log = "0.4.34"
+lru = "0.18.5"
 oo7 = { version = "0.6.0", default-features = false, features = ["tokio", "native_crypto"] }
-reqwest = { version = "0.13.5", default-features = false, features = ["rustls", "http2"] }
+reqwest = { version = "0.13.5", default-features = false, features = ["rustls", "http2", "hickory-dns"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
 # Only the API client: playback goes through GStreamer, not tidalrs' rodio/DASH stack.
