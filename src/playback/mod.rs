@@ -1140,6 +1140,13 @@ impl Playback {
             Command::Repeat(repeat) => self.set_repeat(repeat),
             Command::Raise => self.desktop.raise(),
             Command::Quit => self.desktop.quit(),
+            // The application's `open` handler routes links (pages, or
+            // playing a track).
+            Command::OpenUri(uri) => {
+                if let Some(app) = gio::Application::default() {
+                    app.open(&[gio::File::for_uri(&uri)], "");
+                }
+            }
         }
     }
 

@@ -446,7 +446,9 @@ impl SeekBar {
     }
 
     fn show_position(&self, position: f64, duration: f64) {
-        let (position, duration) = (position.max(0.0) as u64, duration.max(0.0) as u64);
+        // The stream's length is a little under TIDAL's whole seconds
+        // (206.9 for 207): round it, so the bar agrees with the lists.
+        let (position, duration) = (position.max(0.0) as u64, duration.max(0.0).round() as u64);
         self.position.set_label(&format_duration(position));
         self.duration.set_label(&format_duration(duration));
         self.scale

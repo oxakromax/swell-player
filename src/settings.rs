@@ -102,6 +102,8 @@ pub struct Store {
     listeners: RefCell<Vec<(u64, Listener)>>,
     next_id: Cell<u64>,
     save_pending: Cell<bool>,
+    /// False for screenshot/debug runs: changes stay in memory.
+    persist: bool,
 }
 
 fn path() -> PathBuf {
@@ -114,13 +116,14 @@ impl Store {
     pub fn load() -> Rc<Self> {
         let current = std::fs::read(path())
             .ok()
-            .and_then(|data| serde_json::from_slice(&data).ok())
+            .map(|data| parse(&data))
             .unwrap_or_default();
         Rc::new(Self {
             current: RefCell::new(current),
             listeners: RefCell::default(),
             next_id: Cell::new(1),
             save_pending: Cell::new(false),
+            persist: std::env::var_os("SWELL_SCREENSHOT").is_none(),
         })
     }
 
@@ -162,6 +165,9 @@ impl Store {
     }
 
     pub fn save_now(&self) {
+        if !self.persist {
+            return;
+        }
         let data = match serde_json::to_vec_pretty(&*self.current.borrow()) {
             Ok(data) => data,
             Err(err) => return log::warn!("could not encode settings: {err}"),
@@ -196,9 +202,42 @@ impl Store {
     }
 }
 
+/// Reads settings field by field: a field that does not fit (a hand edit,
+/// a value from a newer version) falls back to its default and is logged,
+/// instead of discarding every other setting.
+fn parse(data: &[u8]) -> Settings {
+    let Ok(serde_json::Value::Object(saved)) = serde_json::from_slice(data) else {
+        log::warn!("settings.json is unreadable; using the defaults");
+        return Settings::default();
+    };
+    let mut merged = match serde_json::to_value(Settings::default()) {
+        Ok(serde_json::Value::Object(map)) => map,
+        _ => return Settings::default(),
+    };
+    for (key, value) in saved {
+        let mut candidate = merged.clone();
+        candidate.insert(key.clone(), value);
+        if serde_json::from_value::<Settings>(serde_json::Value::Object(candidate.clone())).is_ok() {
+            merged = candidate;
+        } else {
+            log::warn!("ignoring the invalid setting “{key}”");
+        }
+    }
+    serde_json::from_value(serde_json::Value::Object(merged)).unwrap_or_default()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn one_bad_field_keeps_the_others() {
+        let settings = parse(br#"{"quality":"lossless","repeat":"sideways","volume":0.3}"#);
+        assert_eq!(settings.quality, QualityPreference::Lossless);
+        assert_eq!(settings.repeat, Repeat::Off);
+        assert_eq!(settings.volume, 0.3);
+        assert_eq!(parse(b"garbage"), Settings::default());
+    }
 
     #[test]
     fn unknown_and_missing_fields() {

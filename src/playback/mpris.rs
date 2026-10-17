@@ -43,6 +43,8 @@ pub enum Command {
     Volume(f64),
     Shuffle(bool),
     Repeat(Repeat),
+    /// A `tidal://` or TIDAL web link to open in the app.
+    OpenUri(String),
     Raise,
     Quit,
 }
@@ -363,7 +365,7 @@ impl Root {
 
     #[zbus(property(emits_changed_signal = "const"))]
     fn supported_uri_schemes(&self) -> Vec<String> {
-        Vec::new()
+        vec!["tidal".to_owned(), "https".to_owned()]
     }
 
     #[zbus(property(emits_changed_signal = "const"))]
@@ -430,10 +432,14 @@ impl Player {
         }
     }
 
-    fn open_uri(&self, _uri: &str) -> zbus::fdo::Result<()> {
-        Err(zbus::fdo::Error::NotSupported(
-            "Opening URIs is not supported".to_owned(),
-        ))
+    fn open_uri(&self, uri: &str) -> zbus::fdo::Result<()> {
+        if crate::tidal::pages::Target::from_url(uri).is_none() {
+            return Err(zbus::fdo::Error::InvalidArgs(
+                "not a TIDAL link".to_owned(),
+            ));
+        }
+        self.send(Command::OpenUri(uri.to_owned()));
+        Ok(())
     }
 
     #[zbus(signal)]

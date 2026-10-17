@@ -653,7 +653,11 @@ impl PageHeader {
             true,
         );
         let mut header = Self::build(ctx, Art::Cover(cover), overtitle, &mix.title);
-        header.add_dimmed(&mix.subtitle);
+        // TIDAL's subtitle is often just the kind again ("Artist Radio"
+        // under ARTIST RADIO); show it only when it says something else.
+        if !same_words(&mix.subtitle, overtitle) {
+            header.add_dimmed(&mix.subtitle);
+        }
         header.finish();
         let subject = Subject::Mix(Rc::new(mix.clone()));
         header.add_heart(ctx, &subject);
@@ -790,4 +794,29 @@ pub fn artist_links(ctx: &Rc<Ctx>, artists: &[ArtistRef]) -> gtk::Label {
         glib::Propagation::Proceed
     });
     label
+}
+
+/// Whether two labels say the same, ignoring case, punctuation and the
+/// little words that differ between phrasings ("Radio del artista" /
+/// "Radio de artista").
+fn same_words(a: &str, b: &str) -> bool {
+    let words = |text: &str| -> Vec<String> {
+        text.split(|c: char| !c.is_alphanumeric())
+            .map(str::to_lowercase)
+            .filter(|w| !w.is_empty() && !matches!(w.as_str(), "de" | "del" | "la" | "el" | "the" | "a"))
+            .collect()
+    };
+    let (a, b) = (words(a), words(b));
+    !a.is_empty() && a == b
+}
+
+#[cfg(test)]
+mod same_words_tests {
+    #[test]
+    fn phrasings() {
+        assert!(super::same_words("Artist Radio", "ARTIST RADIO"));
+        assert!(super::same_words("Radio de artista", "RADIO DEL ARTISTA"));
+        assert!(!super::same_words("Evan Call", "TRACK RADIO"));
+        assert!(!super::same_words("", "MIX"));
+    }
 }

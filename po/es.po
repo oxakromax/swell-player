@@ -919,7 +919,7 @@ msgstr "Mixes y radios"
 
 #: src/ui/sidebar.rs:146 src/ui/window.rs:1214
 msgid "Recently Played"
-msgstr "Escuchado recientemente"
+msgstr "Recientes"
 
 #: src/ui/sidebar.rs:194
 msgid "Sidebar"

@@ -165,6 +165,9 @@ fn write_atomic(path: &Path, data: &[u8]) -> std::io::Result<()> {
 /// Writes the whole session (blocking but small and fast: used at quit
 /// and from the I/O runtime's blocking pool), unless `off` is set.
 pub fn write(saved: &Saved, off: &AtomicBool) -> Result<()> {
+    if debug_run() {
+        return Ok(());
+    }
     write_in(&dir(), saved, off)
 }
 
@@ -184,7 +187,15 @@ fn write_in(dir: &Path, saved: &Saved, off: &AtomicBool) -> Result<()> {
 }
 
 /// Writes just the position, unless `off` is set.
+/// Screenshot runs (ui/debug.rs) must not change the user's saved queue.
+fn debug_run() -> bool {
+    std::env::var_os("SWELL_SCREENSHOT").is_some()
+}
+
 pub fn write_position(position: &SavedPosition, off: &AtomicBool) -> Result<()> {
+    if debug_run() {
+        return Ok(());
+    }
     let data = serde_json::to_vec(position)?;
     let _files = FILES.lock().unwrap_or_else(PoisonError::into_inner);
     if off.load(Ordering::SeqCst) {
