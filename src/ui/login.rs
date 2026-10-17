@@ -11,6 +11,9 @@ use crate::api::Api;
 use crate::runtime;
 use crate::session::LoginFlow;
 
+/// The PKCE client and the login URL it generated.
+type PendingPkce = (Arc<Api>, String);
+
 pub fn page(
     window: &adw::ApplicationWindow,
     http: reqwest::Client,
@@ -98,13 +101,6 @@ pub fn page(
         .child(&content)
         .build();
 
-    // Both flows may be started; whichever finishes first wins.
-    let done = Rc::new(Cell::new(false));
-    let on_signed_in = Rc::new(move |api: Arc<Api>| {
-        if !done.replace(true) {
-            on_signed_in(api);
-        }
-    });
     let show_error = {
         let error_label = error_label.clone();
         move |message: String| {
@@ -113,19 +109,72 @@ pub fn page(
         }
     };
 
-    let pkce_api: Rc<RefCell<Option<Arc<Api>>>> = Rc::default();
+    // Both flows may be started; whichever finishes first wins. Only the
+    // winner's tokens are stored, and a device code still being polled is
+    // abandoned (also when the page goes away).
+    let device_task: Rc<RefCell<Option<glib::JoinHandle<()>>>> = Rc::default();
+    status.connect_destroy({
+        let device_task = device_task.clone();
+        move |_| {
+            if let Some(task) = device_task.take() {
+                task.abort();
+            }
+        }
+    });
+    let done = Rc::new(Cell::new(false));
+    let on_signed_in = Rc::new({
+        let device_task = device_task.clone();
+        let show_error = show_error.clone();
+        let on_signed_in = Rc::new(on_signed_in);
+        move |api: Arc<Api>, from_device: bool| {
+            if done.replace(true) {
+                return;
+            }
+            if !from_device && let Some(task) = device_task.take() {
+                task.abort();
+            }
+            let done = done.clone();
+            let show_error = show_error.clone();
+            let on_signed_in = on_signed_in.clone();
+            glib::spawn_future_local(async move {
+                let task_api = api.clone();
+                match runtime::spawn(async move { task_api.store().await }).await {
+                    Ok(()) => on_signed_in(api),
+                    Err(err) => {
+                        done.set(false);
+                        show_error(format!(
+                            "Could not save the session in the keyring: {err:#}"
+                        ));
+                    }
+                }
+            });
+        }
+    });
+
+    // The PKCE verifier lives in the client that built the URL, so a second
+    // click reopens the same URL instead of invalidating the first one.
+    let pkce: Rc<RefCell<Option<PendingPkce>>> = Rc::default();
 
     browser_button.connect_clicked({
         let window = window.clone();
         let http = http.clone();
-        let pkce_api = pkce_api.clone();
+        let pkce = pkce.clone();
         let redirect_entry = redirect_entry.clone();
         let show_error = show_error.clone();
         move |_| {
-            let api = Api::new(LoginFlow::Pkce, http.clone());
-            let url = match api.pkce_login_url() {
-                Ok(url) => url,
-                Err(err) => return show_error(format!("{err:#}")),
+            let existing = pkce.borrow().as_ref().map(|(_, url)| url.clone());
+            let url = match existing {
+                Some(url) => url,
+                None => {
+                    let api = Api::new(LoginFlow::Pkce, http.clone());
+                    match api.pkce_login_url() {
+                        Ok(url) => {
+                            pkce.replace(Some((api, url.clone())));
+                            url
+                        }
+                        Err(err) => return show_error(format!("{err:#}")),
+                    }
+                }
             };
             gtk::UriLauncher::new(&url).launch(Some(&window), gio::Cancellable::NONE, {
                 let show_error = show_error.clone();
@@ -137,7 +186,6 @@ pub fn page(
                     }
                 }
             });
-            pkce_api.replace(Some(api));
             redirect_box.set_visible(true);
             redirect_entry.grab_focus();
         }
@@ -149,7 +197,7 @@ pub fn page(
         let on_signed_in = on_signed_in.clone();
         let show_error = show_error.clone();
         move || {
-            let Some(api) = pkce_api.borrow().clone() else {
+            let Some(api) = pkce.borrow().as_ref().map(|(api, _)| api.clone()) else {
                 return;
             };
             let redirect = entry.text().to_string();
@@ -162,7 +210,7 @@ pub fn page(
                 match runtime::spawn(async move { task_api.finish_pkce_login(&redirect).await })
                     .await
                 {
-                    Ok(()) => on_signed_in(api),
+                    Ok(()) => on_signed_in(api, false),
                     Err(err) => {
                         show_error(format!("Sign-in failed: {err:#}"));
                         button.set_sensitive(true);
@@ -186,7 +234,7 @@ pub fn page(
         let device_link = device_link.clone();
         let on_signed_in = on_signed_in.clone();
         let show_error = show_error.clone();
-        glib::spawn_future_local(async move {
+        let task = glib::spawn_future_local(async move {
             let task_api = api.clone();
             let device =
                 match runtime::spawn(async move { task_api.start_device_login().await }).await {
@@ -204,7 +252,7 @@ pub fn page(
 
             let task_api = api.clone();
             match runtime::spawn(async move { task_api.finish_device_login(&device).await }).await {
-                Ok(()) => on_signed_in(api),
+                Ok(()) => on_signed_in(api, true),
                 Err(err) => {
                     show_error(format!("Device sign-in failed: {err:#}"));
                     device_box.set_visible(false);
@@ -212,6 +260,7 @@ pub fn page(
                 }
             }
         });
+        device_task.replace(Some(task));
     });
 
     status

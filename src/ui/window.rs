@@ -1,7 +1,7 @@
 //! The main window: a stack that switches between loading, sign-in and the
 //! library once a session exists.
 
-use std::cell::{Cell, OnceCell};
+use std::cell::{Cell, OnceCell, RefCell};
 use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Instant;
@@ -19,6 +19,12 @@ use crate::player::{Event, Player, State};
 use crate::{config, runtime, session};
 
 pub fn build(app: &adw::Application) {
+    // Launching Swell again only raises the running window.
+    if let Some(window) = app.active_window() {
+        window.present();
+        return;
+    }
+
     let window = adw::ApplicationWindow::builder()
         .application(app)
         .title(config::APP_NAME)
@@ -71,6 +77,7 @@ pub fn build(app: &adw::Application) {
         http,
         playback,
         play_request: Cell::new(0),
+        library_task: RefCell::default(),
     });
     glib::spawn_future_local(async move {
         let stored = runtime::spawn(session::load()).await;
@@ -95,6 +102,9 @@ struct Ui {
     /// Bumped on every track activation, so a slow stream lookup that was
     /// overtaken by a newer one is ignored.
     play_request: Cell<u64>,
+    /// Loads and syncs the library; aborting it also aborts the sync on the
+    /// I/O runtime.
+    library_task: RefCell<Option<glib::JoinHandle<()>>>,
 }
 
 struct Playback {
@@ -156,13 +166,23 @@ impl Ui {
         self.stack.set_visible_child_name(name);
     }
 
-    fn show_login(self: &Rc<Self>, error: Option<String>) {
-        self.title.set_subtitle("");
-        self.menu_button.set_visible(false);
+    /// Stops everything tied to the signed-in session: library sync, pending
+    /// stream lookups and playback.
+    fn stop_session_work(&self) {
+        if let Some(task) = self.library_task.take() {
+            task.abort();
+        }
+        self.play_request.set(self.play_request.get() + 1);
         if let Some(playback) = &self.playback {
             playback.player.stop();
             playback.bar.widget.set_visible(false);
         }
+    }
+
+    fn show_login(self: &Rc<Self>, error: Option<String>) {
+        self.stop_session_work();
+        self.title.set_subtitle("");
+        self.menu_button.set_visible(false);
         self.window.remove_action("sign-out");
         if let Some(library) = self.stack.child_by_name("library") {
             self.stack.remove(&library);
@@ -175,21 +195,31 @@ impl Ui {
         self.set_page("login", &page);
     }
 
+    /// Stops session work, deletes the tokens and cached library, and goes
+    /// back to the sign-in page with `reason`.
+    fn sign_out(self: &Rc<Self>, api: Arc<Api>, reason: Option<String>) {
+        self.stop_session_work();
+        let ui = self.clone();
+        glib::spawn_future_local(async move {
+            let error = match runtime::spawn(async move { api.sign_out().await }).await {
+                Ok(()) => reason,
+                Err(err) => Some(format!(
+                    "Could not remove the session from the keyring: {err:#}"
+                )),
+            };
+            ui.show_login(error);
+        });
+    }
+
     fn show_library(self: &Rc<Self>, api: Arc<Api>) {
         let sign_out = gio::ActionEntry::builder("sign-out")
             .activate({
-                let ui = self.clone();
+                let ui = Rc::downgrade(self);
                 let api = api.clone();
                 move |_: &adw::ApplicationWindow, _, _| {
-                    let ui = ui.clone();
-                    let api = api.clone();
-                    glib::spawn_future_local(async move {
-                        if let Err(err) = runtime::spawn(async move { api.sign_out().await }).await
-                        {
-                            log::warn!("could not remove the stored session: {err:#}");
-                        }
-                        ui.show_login(None);
-                    });
+                    if let Some(ui) = ui.upgrade() {
+                        ui.sign_out(api.clone(), None);
+                    }
                 }
             })
             .build();
@@ -210,51 +240,71 @@ impl Ui {
             }
         });
 
-        let ui = self.clone();
-        glib::spawn_future_local(async move {
-            let user_id = api.client.get_user_id();
-            let (cache, cached) = runtime::spawn(open_cache(user_id)).await;
-            let head = cached.as_ref().map(CachedHead::of);
-            if let Some(cached) = cached {
-                list.append(cached.tracks);
-                ui.title.set_subtitle(&format!("{} tracks", list.len()));
-                crate::timing::mark_after_next_frame(&list.widget, "cached favourites on screen");
-            }
+        let task = glib::spawn_future_local(self.clone().load_library(api, list));
+        if let Some(old) = self.library_task.replace(Some(task)) {
+            old.abort();
+        }
+    }
 
-            let (updates_tx, mut updates) = tokio::sync::mpsc::unbounded_channel();
+    async fn load_library(self: Rc<Self>, api: Arc<Api>, list: Rc<TrackList>) {
+        let user_id = api.client.get_user_id();
+        let (cache, cached) = runtime::spawn(async move { Ok(open_cache(user_id).await) })
+            .await
+            .unwrap_or((None, None));
+        let head = cached.as_ref().map(CachedHead::of);
+        if let Some(cached) = cached {
+            list.append(cached.tracks);
+            self.title.set_subtitle(&format!("{} tracks", list.len()));
+            crate::timing::mark_after_next_frame(&list.widget, "cached favourites on screen");
+        }
+
+        let (updates_tx, mut updates) = tokio::sync::mpsc::unbounded_channel();
+        let sync =
             runtime::runtime().spawn(api.clone().sync_favorite_tracks(cache, head, updates_tx));
+        let _sync = runtime::AbortOnDrop(sync.abort_handle());
 
-            let mut first = true;
-            while let Some(update) = updates.recv().await {
-                match update {
-                    Ok(FavoritesUpdate::Append(tracks)) => {
-                        list.append(tracks);
-                        if first {
-                            crate::timing::mark_after_next_frame(
-                                &list.widget,
-                                "first favourites on screen",
-                            );
-                        }
-                    }
-                    Ok(FavoritesUpdate::Replace(tracks)) => list.replace(tracks),
-                    Ok(FavoritesUpdate::UpToDate) => {}
-                    Err(err) => {
-                        log::warn!("loading favourites failed: {err:#}");
-                        ui.title.set_subtitle("Could not load all favourites");
-                        return;
+        let mut first = true;
+        let mut finished = false;
+        while let Some(update) = updates.recv().await {
+            match update {
+                Ok(FavoritesUpdate::Append(tracks)) => {
+                    list.append(tracks);
+                    if first {
+                        crate::timing::mark_after_next_frame(
+                            &list.widget,
+                            "first favourites on screen",
+                        );
                     }
                 }
-                first = false;
-                ui.title.set_subtitle(&format!("{} tracks", list.len()));
+                Ok(FavoritesUpdate::Replace(tracks)) => list.replace(tracks),
+                Ok(FavoritesUpdate::Finished) => finished = true,
+                Err(err) if api::is_auth_error(&err) => {
+                    log::warn!("the session is no longer valid: {err:#}");
+                    self.sign_out(
+                        api,
+                        Some("Your TIDAL session has expired. Please sign in again.".into()),
+                    );
+                    return;
+                }
+                Err(err) => {
+                    log::warn!("loading favourites failed: {err:#}");
+                    break;
+                }
             }
-            crate::timing::mark("favourites up to date");
+            first = false;
+            self.title.set_subtitle(&format!("{} tracks", list.len()));
+        }
+        if !finished {
+            self.title.set_subtitle("Could not load all favourites");
+            return;
+        }
+        crate::timing::mark("favourites up to date");
 
-            if std::env::var_os("SWELL_BENCH_PLAY").is_some()
-                && let Some(track) = list.first_where(|track| track.hires)
-            {
-                ui.play(api, track);
-            }
-        });
+        if std::env::var_os("SWELL_BENCH_PLAY").is_some()
+            && let Some(track) = list.first_where(|track| track.hires)
+        {
+            self.play(api, track);
+        }
     }
 }
 

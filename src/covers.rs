@@ -7,16 +7,23 @@
 //! - The pending request closest to the middle of the viewport goes first,
 //!   newest first among equals. Plain LIFO is not enough: `gtk::ListView`
 //!   binds ~200 rows up front, so the last request is far off screen.
-//! - A request whose row is recycled before a worker picks it up is skipped.
+//! - Rows asking for the same cover (tracks of one album) share one request.
+//! - A request whose rows are all recycled before a worker picks it up is
+//!   skipped.
+//!
+//! The loader lives as long as the application (there is one window), so its
+//! workers never need to stop.
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
+use std::collections::{HashMap, HashSet};
 use std::num::NonZeroUsize;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::rc::Rc;
-use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+use std::sync::atomic::{AtomicU32, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use gtk::{gdk, glib};
 use lru::LruCache;
 use tokio::sync::{Notify, oneshot};
@@ -28,18 +35,39 @@ pub const COVER_SIZE: u32 = 80;
 const WORKERS: usize = 4;
 /// Decoded 80×80 covers take ~25 KB each; 400 of them stay under 10 MB.
 const MEMORY_ENTRIES: usize = 400;
+const DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(15);
+
+/// One cover being fetched, shared by the queue and the rows waiting for it.
+struct Request {
+    /// Rows still waiting; at zero the job is skipped.
+    waiters: AtomicUsize,
+    /// List position of the latest row that asked for it.
+    position: AtomicU32,
+}
+
+impl Request {
+    fn wanted(&self) -> bool {
+        self.waiters.load(Ordering::Relaxed) > 0
+    }
+}
+
+enum Outcome {
+    Ready(gdk::Texture),
+    /// The server has no usable image; do not ask again this session.
+    Missing,
+    /// A network problem; a later request may succeed.
+    Failed,
+}
 
 struct Job {
     id: String,
-    /// Position of the requesting row in its list.
-    position: u32,
-    cancelled: Arc<AtomicBool>,
-    reply: oneshot::Sender<gdk::Texture>,
+    request: Arc<Request>,
+    reply: oneshot::Sender<Outcome>,
 }
 
 #[derive(Default)]
 struct Queue {
-    stack: Mutex<Vec<Job>>,
+    jobs: Mutex<Vec<Job>>,
     ready: Notify,
     /// List position at the middle of the viewport.
     focus: AtomicU32,
@@ -47,22 +75,25 @@ struct Queue {
 
 impl Queue {
     fn push(&self, job: Job) {
-        self.stack.lock().unwrap().push(job);
+        self.jobs
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .push(job);
         self.ready.notify_one();
     }
 
     /// The wanted request nearest the viewport; the newest among equals.
     fn pop(&self) -> Option<Job> {
         let focus = self.focus.load(Ordering::Relaxed);
-        let mut stack = self.stack.lock().unwrap();
-        stack.retain(|job| !job.cancelled.load(Ordering::Relaxed));
-        let nearest = stack
+        let mut jobs = self.jobs.lock().unwrap_or_else(|e| e.into_inner());
+        jobs.retain(|job| job.request.wanted());
+        let nearest = jobs
             .iter()
             .enumerate()
             .rev()
-            .min_by_key(|(_, job)| job.position.abs_diff(focus))
+            .min_by_key(|(_, job)| job.request.position.load(Ordering::Relaxed).abs_diff(focus))
             .map(|(index, _)| index)?;
-        Some(stack.remove(nearest))
+        Some(jobs.remove(nearest))
     }
 
     async fn next(&self) -> Job {
@@ -75,18 +106,31 @@ impl Queue {
     }
 }
 
-/// Keeps a cover request alive; dropping it cancels the request.
-pub struct Ticket(Arc<AtomicBool>);
+/// Keeps a row's interest in a cover; dropping it withdraws that interest.
+pub struct Ticket {
+    request: Arc<Request>,
+    cancelled: Rc<Cell<bool>>,
+}
 
 impl Drop for Ticket {
     fn drop(&mut self) {
-        self.0.store(true, Ordering::Relaxed);
+        self.cancelled.set(true);
+        self.request.waiters.fetch_sub(1, Ordering::Relaxed);
     }
+}
+
+type Waiter = (Rc<Cell<bool>>, Box<dyn FnOnce(&gdk::Texture)>);
+
+struct Pending {
+    request: Arc<Request>,
+    waiters: Vec<Waiter>,
 }
 
 pub struct CoverLoader {
     queue: Arc<Queue>,
     memory: RefCell<LruCache<String, gdk::Texture>>,
+    pending: RefCell<HashMap<String, Pending>>,
+    missing: RefCell<HashSet<String>>,
 }
 
 impl CoverLoader {
@@ -103,6 +147,8 @@ impl CoverLoader {
         Rc::new(Self {
             queue,
             memory: RefCell::new(LruCache::new(NonZeroUsize::new(MEMORY_ENTRIES).unwrap())),
+            pending: RefCell::default(),
+            missing: RefCell::default(),
         })
     }
 
@@ -125,72 +171,155 @@ impl CoverLoader {
             done(texture);
             return None;
         }
+        if self.missing.borrow().contains(id) {
+            return None;
+        }
 
-        let cancelled = Arc::new(AtomicBool::new(false));
-        let (reply, receiver) = oneshot::channel();
+        let cancelled = Rc::new(Cell::new(false));
+        let waiter: Waiter = (cancelled.clone(), Box::new(done));
+
+        if let Some(pending) = self.pending.borrow_mut().get_mut(id)
+            && pending.request.wanted()
+        {
+            pending.request.waiters.fetch_add(1, Ordering::Relaxed);
+            pending.request.position.store(position, Ordering::Relaxed);
+            pending.waiters.push(waiter);
+            return Some(Ticket {
+                request: pending.request.clone(),
+                cancelled,
+            });
+        }
+
+        let request = Arc::new(Request {
+            waiters: AtomicUsize::new(1),
+            position: AtomicU32::new(position),
+        });
+        self.pending.borrow_mut().insert(
+            id.to_owned(),
+            Pending {
+                request: request.clone(),
+                waiters: vec![waiter],
+            },
+        );
+        let (reply, outcome) = oneshot::channel();
         self.queue.push(Job {
             id: id.to_owned(),
-            position,
-            cancelled: cancelled.clone(),
+            request: request.clone(),
             reply,
         });
 
         let this = self.clone();
         let id = id.to_owned();
-        let flag = cancelled.clone();
+        let job_request = request.clone();
         glib::spawn_future_local(async move {
-            if let Ok(texture) = receiver.await {
-                if !flag.load(Ordering::Relaxed) {
-                    done(&texture);
+            let outcome = outcome.await;
+            // A newer request may have replaced this one; leave it alone.
+            let pending = {
+                let mut pending = this.pending.borrow_mut();
+                match pending.get(&id) {
+                    Some(entry) if Arc::ptr_eq(&entry.request, &job_request) => pending.remove(&id),
+                    _ => None,
                 }
-                this.memory.borrow_mut().put(id, texture);
+            };
+            match outcome {
+                Ok(Outcome::Ready(texture)) => {
+                    for (cancelled, done) in pending.into_iter().flat_map(|p| p.waiters) {
+                        if !cancelled.get() {
+                            done(&texture);
+                        }
+                    }
+                    this.memory.borrow_mut().put(id, texture);
+                }
+                Ok(Outcome::Missing) => {
+                    this.missing.borrow_mut().insert(id);
+                }
+                // Failed, or skipped because nobody wanted it any more.
+                Ok(Outcome::Failed) | Err(_) => {}
             }
         });
-        Some(Ticket(cancelled))
+        Some(Ticket { request, cancelled })
     }
 }
 
 async fn worker(queue: Arc<Queue>, http: reqwest::Client, dir: Arc<Path>) {
     loop {
         let job = queue.next().await;
-        match fetch(&http, &dir, &job.id).await {
-            Ok(texture) => {
-                let _ = job.reply.send(texture);
+        let outcome = fetch(&http, &dir, &job.id).await;
+        let _ = job.reply.send(outcome);
+    }
+}
+
+async fn fetch(http: &reqwest::Client, dir: &Path, id: &str) -> Outcome {
+    let path = dir.join(format!("{id}.jpg"));
+    if let Ok(bytes) = tokio::fs::read(&path).await {
+        match decode(bytes) {
+            Ok((texture, _)) => return Outcome::Ready(texture),
+            Err(err) => {
+                log::debug!("dropping unreadable cached cover {id}: {err:#}");
+                let _ = tokio::fs::remove_file(&path).await;
             }
-            Err(err) => log::debug!("cover {}: {err:#}", job.id),
+        }
+    }
+
+    let bytes = match download(http, id).await {
+        Ok(bytes) => bytes,
+        Err(err) => {
+            log::debug!("cover {id}: {err}");
+            return match err.status() {
+                Some(status) if status.is_client_error() => Outcome::Missing,
+                _ => Outcome::Failed,
+            };
+        }
+    };
+    // Only images that decode are cached.
+    match decode(bytes) {
+        Ok((texture, bytes)) => {
+            if let Err(err) = store(dir, &path, &bytes).await {
+                log::debug!("could not cache cover {id}: {err:#}");
+            }
+            Outcome::Ready(texture)
+        }
+        Err(err) => {
+            log::debug!("cover {id} does not decode: {err:#}");
+            Outcome::Missing
         }
     }
 }
 
-async fn fetch(http: &reqwest::Client, dir: &Path, id: &str) -> Result<gdk::Texture> {
-    let path = dir.join(format!("{id}.jpg"));
-    let bytes = match tokio::fs::read(&path).await {
-        Ok(bytes) => bytes,
-        Err(_) => {
-            let bytes = download(http, id).await?;
-            if let Err(err) = store(dir, &path, &bytes).await {
-                log::debug!("could not cache cover {id}: {err:#}");
-            }
-            bytes
-        }
-    };
-    Ok(gdk::Texture::from_bytes(&glib::Bytes::from_owned(bytes))?)
+fn decode(bytes: Vec<u8>) -> Result<(gdk::Texture, glib::Bytes)> {
+    let bytes = glib::Bytes::from_owned(bytes);
+    let texture = gdk::Texture::from_bytes(&bytes).context("not a readable image")?;
+    Ok((texture, bytes))
 }
 
-async fn download(http: &reqwest::Client, id: &str) -> Result<Vec<u8>> {
+async fn download(http: &reqwest::Client, id: &str) -> reqwest::Result<Vec<u8>> {
     let url = format!(
         "https://resources.tidal.com/images/{}/{COVER_SIZE}x{COVER_SIZE}.jpg",
         id.replace('-', "/")
     );
-    let response = http.get(url).send().await?.error_for_status()?;
+    let response = http
+        .get(url)
+        .timeout(DOWNLOAD_TIMEOUT)
+        .send()
+        .await?
+        .error_for_status()?;
     Ok(response.bytes().await?.to_vec())
 }
 
-/// Writes through a temporary file so a crash never leaves a truncated image.
+/// Writes through a uniquely named temporary file, so a crash or a parallel
+/// write never leaves a truncated image under the final name.
 async fn store(dir: &Path, path: &Path, bytes: &[u8]) -> Result<()> {
+    static NEXT: AtomicU64 = AtomicU64::new(0);
     tokio::fs::create_dir_all(dir).await?;
-    let partial: PathBuf = path.with_extension("part");
+    let partial = path.with_extension(format!(
+        "{}.{}.part",
+        std::process::id(),
+        NEXT.fetch_add(1, Ordering::Relaxed)
+    ));
     tokio::fs::write(&partial, bytes).await?;
-    tokio::fs::rename(&partial, path).await?;
+    if let Err(err) = tokio::fs::rename(&partial, path).await {
+        let _ = tokio::fs::remove_file(&partial).await;
+        return Err(err.into());
+    }
     Ok(())
 }

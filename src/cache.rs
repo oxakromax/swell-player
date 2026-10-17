@@ -18,6 +18,9 @@ use crate::model::TrackInfo;
 
 const SCHEMA_VERSION: i32 = 1;
 const FAVORITE_TRACKS: &str = "favorite_tracks";
+/// Drops metadata no collection refers to any more.
+const ORPHAN_TRACKS: &str =
+    "DELETE FROM track WHERE id NOT IN (SELECT track_id FROM collection_track)";
 
 pub struct CachedCollection {
     pub tracks: Vec<TrackInfo>,
@@ -106,10 +109,7 @@ impl Cache {
             let tx = db.transaction()?;
             tx.execute("DELETE FROM collection_track WHERE user_id = ?1", [user_id])?;
             tx.execute("DELETE FROM collection WHERE user_id = ?1", [user_id])?;
-            tx.execute(
-                "DELETE FROM track WHERE id NOT IN (SELECT track_id FROM collection_track)",
-                [],
-            )?;
+            tx.execute(ORPHAN_TRACKS, [])?;
             Ok(tx.commit()?)
         })
         .await
@@ -204,6 +204,7 @@ fn write_collection(
             insert_position.execute(params![user_id, name, position, track.id])?;
         }
     }
+    tx.execute(ORPHAN_TRACKS, [])?;
     tx.execute(
         "INSERT INTO collection (user_id, name, total, fetched_at) VALUES (?1, ?2, ?3, ?4)
          ON CONFLICT (user_id, name) DO UPDATE SET total = excluded.total, fetched_at = excluded.fetched_at",
@@ -224,7 +225,7 @@ mod tests {
             album: "Album".into(),
             duration: 180,
             cover: Some("ab-cd".into()),
-            hires: id % 2 == 0,
+            hires: id.is_multiple_of(2),
         }
     }
 

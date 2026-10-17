@@ -2,6 +2,7 @@
 //! sign-in steps, and keeping the keyring in sync when tokens are refreshed.
 
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use anyhow::{Context, Result};
@@ -22,11 +23,19 @@ use crate::session::{self, LoginFlow, StoredSession};
 /// Names are resolved with hickory instead of glibc's `getaddrinfo`, which
 /// on some networks stalls for its 5 s timeout when one of the parallel
 /// A/AAAA answers is lost.
+///
+/// HTTP/2 pings detect a connection that died silently (network switch,
+/// VPN), so requests multiplexed on it fail fast instead of hanging; every
+/// request also has an overall deadline.
 pub fn http_client() -> reqwest::Client {
     reqwest::Client::builder()
         .connect_timeout(Duration::from_secs(10))
+        .timeout(Duration::from_secs(30))
         .pool_idle_timeout(Duration::from_secs(90))
         .tcp_keepalive(Duration::from_secs(60))
+        .http2_keep_alive_interval(Duration::from_secs(20))
+        .http2_keep_alive_timeout(Duration::from_secs(10))
+        .http2_keep_alive_while_idle(true)
         .build()
         .expect("failed to build the HTTP client")
 }
@@ -51,6 +60,9 @@ const IMAGE_HOST: &str = "https://resources.tidal.com/";
 pub struct Api {
     pub client: TidalClient,
     pub flow: LoginFlow,
+    /// Set by [`Api::sign_out`]; a token refresh or sync that finishes
+    /// afterwards must not write anything back.
+    signed_out: Arc<AtomicBool>,
 }
 
 impl Api {
@@ -64,13 +76,19 @@ impl Api {
 
     fn build(flow: LoginFlow, http: reqwest::Client, authz: Option<tidalrs::Authz>) -> Arc<Self> {
         let oauth = flow.oauth_client();
+        let signed_out = Arc::new(AtomicBool::new(false));
+        let refresh_signed_out = signed_out.clone();
         let mut client = TidalClient::new(oauth.id.to_owned())
             .with_client_secret(oauth.secret)
             .with_client(http)
             .with_authz_refresh_callback(move |authz| {
-                // Called on the I/O runtime right after a refresh: persist the
-                // new tokens so the next start does not need to refresh again.
+                // Called on the I/O runtime right after a refresh (access
+                // tokens last 4 hours): persist the new tokens.
+                let signed_out = refresh_signed_out.clone();
                 tokio::spawn(async move {
+                    if signed_out.load(Ordering::SeqCst) {
+                        return;
+                    }
                     if let Err(err) = session::save(&StoredSession { flow, authz }).await {
                         log::warn!("could not store refreshed tokens: {err:#}");
                     }
@@ -79,11 +97,16 @@ impl Api {
         if let Some(authz) = authz {
             client = client.with_authz(authz);
         }
-        Arc::new(Self { client, flow })
+        Arc::new(Self {
+            client,
+            flow,
+            signed_out,
+        })
     }
 
-    /// Persists the tokens the client currently holds.
-    async fn store(&self) -> Result<()> {
+    /// Persists the tokens the client currently holds. Called once a login
+    /// has won, never by a flow that might still lose.
+    pub async fn store(&self) -> Result<()> {
         let authz = self.client.get_authz().context("not signed in")?;
         session::save(&StoredSession {
             flow: self.flow,
@@ -101,7 +124,7 @@ impl Api {
     /// page TIDAL lands on after signing in; it carries the one-time code.
     pub async fn finish_pkce_login(&self, redirect_url: &str) -> Result<()> {
         self.client.finish_pkce(redirect_url.trim()).await?;
-        self.store().await
+        Ok(())
     }
 
     pub async fn start_device_login(&self) -> Result<DeviceAuthorizationResponse> {
@@ -113,15 +136,21 @@ impl Api {
         self.client
             .wait_for_authorization(&device.device_code, device.expires_in, device.interval)
             .await?;
-        self.store().await
+        Ok(())
     }
 
-    /// Removes the tokens from the keyring and the user's cached library.
+    /// Removes the tokens from the keyring, then (best effort) the user's
+    /// cached library. Running work must be stopped first.
     pub async fn sign_out(&self) -> Result<()> {
+        self.signed_out.store(true, Ordering::SeqCst);
+        session::clear().await?;
         if let Some(user_id) = self.client.get_user_id() {
-            Cache::open().await?.forget_user(user_id).await?;
+            let forget = async { Cache::open().await?.forget_user(user_id).await };
+            if let Err(err) = forget.await {
+                log::warn!("could not clear the library cache: {err:#}");
+            }
         }
-        session::clear().await
+        Ok(())
     }
 
     /// Brings the favourite tracks up to date and reports to `updates`.
@@ -129,9 +158,9 @@ impl Api {
     /// With nothing cached, the list fills page by page ([`FavoritesUpdate::Append`]).
     /// With a cached list, one request usually settles it: favourites come
     /// newest first, so if the first page and the total still match, nothing
-    /// was added or removed ([`FavoritesUpdate::UpToDate`]). Otherwise the
-    /// whole list is fetched and sent at once ([`FavoritesUpdate::Replace`]).
-    /// Either way a fresh download is written back to `cache`.
+    /// was added or removed. Otherwise the whole list is fetched and sent at
+    /// once ([`FavoritesUpdate::Replace`]). A fresh download is written back
+    /// to `cache`. Success always ends with [`FavoritesUpdate::Finished`].
     pub async fn sync_favorite_tracks(
         self: Arc<Self>,
         cache: Option<Cache>,
@@ -156,7 +185,7 @@ impl Api {
             .as_ref()
             .is_some_and(|cached| cached.matches(total, &first))
         {
-            let _ = updates.send(Ok(FavoritesUpdate::UpToDate));
+            let _ = updates.send(Ok(FavoritesUpdate::Finished));
             return Ok(());
         }
 
@@ -181,8 +210,10 @@ impl Api {
         if !progressive {
             let _ = updates.send(Ok(FavoritesUpdate::Replace(all.clone())));
         }
+        let _ = updates.send(Ok(FavoritesUpdate::Finished));
 
         if let (Some(cache), Some(user_id)) = (cache, self.client.get_user_id())
+            && !self.signed_out.load(Ordering::SeqCst)
             && let Err(err) = cache.store_favorite_tracks(user_id, total, all).await
         {
             log::warn!("could not cache favourites: {err:#}");
@@ -228,8 +259,22 @@ pub enum FavoritesUpdate {
     Append(Vec<TrackInfo>),
     /// The cached list was stale: this is the whole current list.
     Replace(Vec<TrackInfo>),
-    /// The cached list is current.
-    UpToDate,
+    /// The list on screen is now current.
+    Finished,
+}
+
+/// Whether `err` means the session is no longer valid (revoked, or the
+/// refresh token expired), so the user has to sign in again.
+pub fn is_auth_error(err: &anyhow::Error) -> bool {
+    match err.downcast_ref::<tidalrs::Error>() {
+        Some(tidalrs::Error::OAuth { .. } | tidalrs::Error::NoAuthzToken) => true,
+        // 401 with an 11xxx sub-status is TIDAL's "token invalid/expired";
+        // other 401s (e.g. a track not playable in this region) are not.
+        Some(tidalrs::Error::TidalApiError(api)) => {
+            api.status == 401 && (11000..12000).contains(&api.sub_status)
+        }
+        _ => false,
+    }
 }
 
 /// What a cached list looked like, to check it against the first page.

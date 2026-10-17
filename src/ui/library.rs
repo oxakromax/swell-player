@@ -99,7 +99,11 @@ impl TrackList {
 
     pub fn first_where(&self, predicate: impl Fn(&TrackInfo) -> bool) -> Option<TrackInfo> {
         (0..self.store.n_items())
-            .filter_map(|position| self.store.item(position).and_downcast::<glib::BoxedAnyObject>())
+            .filter_map(|position| {
+                self.store
+                    .item(position)
+                    .and_downcast::<glib::BoxedAnyObject>()
+            })
             .map(|object| object.borrow::<TrackInfo>().clone())
             .find(|track| predicate(track))
     }
