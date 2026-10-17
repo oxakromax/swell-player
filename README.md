@@ -44,8 +44,10 @@ cannot copy a URL, for example on a remote session.
 The access and refresh tokens are stored in your desktop keyring through the
 Secret Service API (KWallet, GNOME Keyring, KeePassXC…, or the secret portal
 inside Flatpak) using [oo7](https://crates.io/crates/oo7). They are never
-written to disk in plain text. Signing out deletes them. When TIDAL rejects an
-expired access token, the client refreshes it and stores the new one.
+written to disk in plain text. Signing out deletes them. Access tokens last
+four hours; when TIDAL rejects an expired one, the client refreshes it and
+stores the new one. If the refresh itself is refused (the session was revoked),
+Swell goes back to the sign-in page.
 
 ## Design
 
@@ -80,8 +82,10 @@ expired access token, the client refreshes it and stores the new one.
   under `~/.cache/swell-player/covers/` and kept decoded in a 400-entry LRU
   (under 10 MB). The pending request nearest the middle of the viewport goes
   first, newest first among equals; plain LIFO is not enough because the list
-  binds ~200 rows up front and the last of them is far off screen. Requests
-  from rows that scroll away before a download starts are dropped.
+  binds ~200 rows up front and the last of them is far off screen. Rows of
+  the same album share one request, requests from rows that scroll away
+  before a download starts are dropped, and an image is cached only once it
+  decodes.
 - **API client:** [tidalrs](https://crates.io/crates/tidalrs) (MIT), built
   without its playback features. It was chosen over
   [tidlers](https://crates.io/crates/tidlers) (whose 0.5.0 favourites call
@@ -122,6 +126,39 @@ context.properties = {
 
 and restart PipeWire (`systemctl --user restart pipewire`). Check what
 actually reaches the device with `pw-top`.
+
+## Measurements
+
+Swell against High Tide (Python + PyGObject, with a set of performance fixes
+applied) on the same flow: start with a saved session, show the 1,295
+favourite tracks, scroll through all of them to the end at one page per
+100 ms, then play the same 24-bit Hi-Res track for 20 s. "Cold" starts without
+the apps' caches (library and covers), "warm" with them. Medians of three runs
+each (range in brackets), measured with the harness in [`bench/`](bench/),
+which also lists what differs between the two flows.
+
+| | List on screen | RssAnon at list | RssAnon peak | RSS peak |
+|---|---|---|---|---|
+| **Swell, warm** | **0.32 s** [0.3–0.3] | **55 MB** | **87 MB** [86–87] | 410 MB |
+| **Swell, cold** | **0.62 s** [0.6–1.0] | **48 MB** | **89 MB** [84–89] | 402 MB |
+| High Tide, warm | 13.3 s [13.3–14.2] | 149 MB | 196 MB [196–196] | 772 MB |
+| High Tide, cold | 13.4 s [13.2–13.6] | 113 MB | 194 MB [194–196] | 689 MB |
+
+- **Time to the list:** about 40 times faster. High Tide logs in, downloads
+  all favourites and is then navigated to them (by the harness, with no click
+  delay, so its figure is a lower bound). Swell draws them from its cache and
+  checks them with one request (validated after ~0.8 s); without a cache, the
+  first page is on screen after one request.
+- **Memory:** RssAnon, the app's own heap, is less than half of High Tide's
+  at every point. RSS adds the GPU driver's mappings, around 250 MB for any
+  GTK 4 app on this machine (NVIDIA RTX 4090 + AMD iGPU), so it shrinks by
+  less in relative terms: 0.4 GB instead of 0.7–0.8 GB.
+- **Playback:** Swell starts audio about 0.4 s after a track is chosen
+  (stream lookup, DASH manifest, GStreamer preroll). High Tide's figure is not
+  comparable (see `bench/README.md`).
+
+Machine: Arch Linux, KDE Plasma 6 (Wayland), GTK 4.24, libadwaita 1.10,
+GStreamer 1.28, Rust 1.99, release build.
 
 ## License
 
