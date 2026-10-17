@@ -26,24 +26,39 @@
 //! MPRIS (`org.mpris.MediaPlayer2.SwellPlayer`) and the logind sleep lock
 //! while playing work by themselves.
 //!
+//! Failures: when the network is to blame (no connection, timeouts, 5xx),
+//! the current track and position stay, the state goes to
+//! [`PlayState::Loading`] and loading is retried with backoff (1, 2, 4… 30 s,
+//! or as soon as GIO reports connectivity), with one
+//! "Connection lost — retrying" [`Event::Error`]. Only failures of the track
+//! itself count towards skipping it (after two attempts) and towards
+//! stopping (after [`MAX_FAILED_TRACKS`] tracks in a row).
+//!
 //! Debugging: `SWELL_PLAY=<track id>[,<track id>…][@<seconds>]` plays those
 //! tracks at startup, starting at `seconds` (negative: from the end);
-//! `SWELL_PLAY=restore` restores the saved queue and plays it.
+//! `SWELL_PLAY=restore` restores the saved queue and plays it. Neither saves
+//! the session. `SWELL_DEBUG_STREAM_FAIL=<n>[@<skip>]` (see `api.rs`) and
+//! `SWELL_DEBUG_ENGINE_FAIL=<seconds>` (a dropped connection that many
+//! seconds into playback) simulate network failures.
 
 pub mod engine;
+mod failure;
 pub mod format;
 mod mpris;
 mod notify;
 pub mod queue;
+mod rundir;
 mod session;
 mod sleep;
 
 use std::cell::{Cell, RefCell};
 use std::rc::{Rc, Weak};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
-use gtk::glib;
+use gtk::gio::prelude::*;
+use gtk::{gio, glib};
 
 use crate::api::Api;
 use crate::model::TrackInfo;
@@ -53,6 +68,7 @@ use crate::tidal::pages::Target;
 
 pub use engine::Stream;
 use engine::{Engine, EngineEvent, NextStream};
+use failure::Failure;
 #[allow(unused_imports)] // Public API for the UI.
 pub use format::{Codec, FormatDetails};
 use queue::Queue;
@@ -111,6 +127,12 @@ const PREPARED_MAX_AGE: Duration = Duration::from_secs(20 * 60);
 const HEALTHY_AFTER: f64 = 5.0;
 /// Consecutive tracks that failed before playback stops altogether.
 const MAX_FAILED_TRACKS: u32 = 3;
+/// Network-type engine errors on one track, while TIDAL itself answers,
+/// before the track is blamed instead.
+const MAX_NETWORK_STRIKES: u32 = 4;
+/// A prefetch that failed for lack of network is tried again after this.
+const PREFETCH_RETRY: Duration = Duration::from_secs(15);
+const CONNECTION_LOST: &str = "Connection lost — retrying";
 const SAVE_DELAY: Duration = Duration::from_secs(2);
 const POSITION_SAVE_INTERVAL: Duration = Duration::from_secs(10);
 
@@ -172,6 +194,21 @@ pub struct Playback {
     prepare_generation: Cell<u64>,
     /// Do not keep retrying a track whose prefetch failed.
     prefetch_failed: Cell<Option<u64>>,
+    /// No prefetch before this (it failed for lack of network).
+    prefetch_retry_at: Cell<Option<Instant>>,
+
+    /// Where the load in progress starts (seeking while it resolves moves
+    /// it).
+    load_start: Cell<Option<f64>>,
+    /// Waiting to retry the current track after a network failure.
+    net_waiting: Cell<bool>,
+    net_attempts: Cell<u32>,
+    /// "Connection lost" was said for this outage.
+    net_reported: Cell<bool>,
+    /// Network-type engine errors on the current track since it was healthy.
+    net_strikes: Cell<u32>,
+    net_timer: RefCell<Option<glib::SourceId>>,
+    network: RefCell<Option<(gio::NetworkMonitor, glib::SignalHandlerId)>>,
 
     normalization: Cell<Normalization>,
     quality: Cell<QualityPreference>,
@@ -179,6 +216,12 @@ pub struct Playback {
     applied_volume: Cell<Option<(f64, bool)>>,
 
     sleep: RefCell<Option<sleep::Armed>>,
+    /// Set for good after sign-out (and for debug runs): nothing writes the
+    /// session files any more.
+    saving_off: Arc<AtomicBool>,
+    forgotten: Cell<bool>,
+    /// `SWELL_DEBUG_ENGINE_FAIL`: seconds into playback.
+    debug_engine_fail: Cell<Option<f64>>,
     desktop: notify::Desktop,
     mpris: Option<mpris::Mpris>,
     save_pending: Cell<bool>,
@@ -238,11 +281,26 @@ impl Playback {
                 preparing: Cell::new(None),
                 prepare_generation: Cell::new(0),
                 prefetch_failed: Cell::new(None),
+                prefetch_retry_at: Cell::new(None),
+                load_start: Cell::new(None),
+                net_waiting: Cell::new(false),
+                net_attempts: Cell::new(0),
+                net_reported: Cell::new(false),
+                net_strikes: Cell::new(0),
+                net_timer: RefCell::default(),
+                network: RefCell::default(),
                 normalization: Cell::new(current.normalization),
                 quality: Cell::new(current.quality),
                 gapless: Cell::new(current.gapless),
                 applied_volume: Cell::new(None),
                 sleep: RefCell::default(),
+                saving_off: Arc::new(AtomicBool::new(false)),
+                forgotten: Cell::new(false),
+                debug_engine_fail: Cell::new(
+                    std::env::var("SWELL_DEBUG_ENGINE_FAIL")
+                        .ok()
+                        .and_then(|s| s.parse().ok()),
+                ),
                 desktop: notify::Desktop::default(),
                 mpris: Some(mpris::Mpris::start(commands)),
                 save_pending: Cell::new(false),
@@ -278,6 +336,22 @@ impl Playback {
             None => glib::ControlFlow::Break,
         });
         this.tick.replace(Some(tick));
+
+        // Retry at once when the network comes back.
+        let monitor = gio::NetworkMonitor::default();
+        let weak = Rc::downgrade(&this);
+        let handler = monitor.connect_network_changed(move |_, available| {
+            if let Some(this) = weak.upgrade()
+                && available
+                && this.net_waiting.get()
+            {
+                log::info!("network is back: retrying now");
+                this.retry_now();
+            }
+        });
+        this.network.replace(Some((monitor, handler)));
+        runtime::runtime().spawn_blocking(rundir::prune_stale);
+
         this.sync_mpris();
         this.debug_autoplay();
         this
@@ -374,10 +448,13 @@ impl Playback {
 
     // ---- Transport ----
 
+    /// Pauses if playback is wanted (playing, or loading to play),
+    /// otherwise plays.
     pub fn toggle(self: &Rc<Self>) {
-        match self.state.get() {
-            PlayState::Playing | PlayState::Loading => self.pause(),
-            PlayState::Paused | PlayState::Stopped => self.play(),
+        if self.want_play.get() && self.state.get() != PlayState::Stopped {
+            self.pause();
+        } else {
+            self.play();
         }
     }
 
@@ -386,35 +463,47 @@ impl Playback {
             let start = self.resume_at.get();
             return self.load_current(true, start, false);
         }
-        match self.state.get() {
-            PlayState::Paused if self.loaded.get() => {
-                self.want_play.set(true);
-                if let Some(engine) = &self.engine {
-                    engine.resume();
+        if self.current().is_none() {
+            return;
+        }
+        let state = self.state.get();
+        if self.loaded.get() {
+            self.want_play.set(true);
+            if let Some(engine) = &self.engine {
+                engine.resume();
+                if state != PlayState::Playing && engine.is_waiting() {
+                    self.set_state(PlayState::Loading);
                 }
             }
-            PlayState::Paused if self.resolving.get() => {
-                self.want_play.set(true);
-                self.set_state(PlayState::Loading);
-            }
-            PlayState::Paused | PlayState::Stopped if self.queue.borrow().current().is_some() => {
-                let start =
-                    (self.state.get() == PlayState::Paused).then(|| self.last_position.get());
-                self.load_current(true, start, self.state.get() == PlayState::Stopped);
-            }
-            _ => {}
+            // A prepared stream may have expired during a long pause.
+            self.refresh_next();
+        } else if self.resolving.get() {
+            self.want_play.set(true);
+            self.set_state(PlayState::Loading);
+        } else if self.net_waiting.get() {
+            self.want_play.set(true);
+            self.set_state(PlayState::Loading);
+            self.retry_now();
+        } else {
+            let start = (state != PlayState::Stopped).then(|| self.last_position.get());
+            self.load_current(true, start, state == PlayState::Stopped);
         }
+        self.sync_mpris();
     }
 
+    /// Pauses, whatever is going on: a stream still resolving or buffering
+    /// stays paused once ready.
     pub fn pause(&self) {
         self.want_play.set(false);
-        if self.loaded.get() {
-            if let Some(engine) = &self.engine {
-                engine.pause();
-            }
-        } else if self.state.get() == PlayState::Loading {
+        if self.loaded.get()
+            && let Some(engine) = &self.engine
+        {
+            engine.pause();
+        }
+        if matches!(self.state.get(), PlayState::Loading | PlayState::Playing) {
             self.set_state(PlayState::Paused);
         }
+        self.sync_mpris();
     }
 
     pub fn stop(&self) {
@@ -422,6 +511,7 @@ impl Playback {
         if let Some(engine) = &self.engine {
             engine.stop();
         }
+        self.cancel_network_retry();
         self.loaded.set(false);
         self.resolving.set(false);
         self.unloaded.set(false);
@@ -467,6 +557,12 @@ impl Playback {
             return;
         };
         if !self.loaded.get() {
+            // Still resolving or waiting for the network: start there.
+            if self.current().is_some() && (self.resolving.get() || self.net_waiting.get()) {
+                self.load_start.set(Some(position));
+                self.last_position.set(position);
+                self.emit(Event::Seeked(position));
+            }
             return;
         }
         if let Some(duration) = self.duration().filter(|d| *d > 1.0)
@@ -498,6 +594,9 @@ impl Playback {
     pub fn position(&self) -> Option<f64> {
         if self.unloaded.get() {
             return self.resume_at.get();
+        }
+        if !self.loaded.get() && (self.resolving.get() || self.net_waiting.get()) {
+            return Some(self.load_start.get().unwrap_or(0.0));
         }
         self.engine.as_ref()?.position()
     }
@@ -765,21 +864,41 @@ impl Playback {
 
     // ---- Session ----
 
+    /// Stops playback, empties the queue and forgets the saved one
+    /// (sign-out). From then on this `Playback` never writes the session
+    /// files again, not even at shutdown.
+    pub fn forget_session(&self) {
+        self.saving_off.store(true, Ordering::SeqCst);
+        self.forgotten.set(true);
+        self.stop();
+        let mut queue = Queue::default();
+        queue.set_shuffle(self.shuffle());
+        queue.set_repeat(self.repeat());
+        self.queue.replace(queue);
+        self.format.replace(None);
+        self.details.replace(None);
+        self.current_stream.replace(None);
+        self.desktop.clear();
+        session::clear();
+        self.emit(Event::Queue);
+        self.emit(Event::Track(None));
+        self.emit(Event::Format(None));
+    }
+
+    /// Whether the session may be written now.
+    fn may_save(&self) -> bool {
+        !self.saving_off.load(Ordering::SeqCst) && self.settings.get().restore_session
+    }
+
     /// Writes the queue and position to disk now. It is also saved by
     /// itself as things change, and at shutdown once attached.
     #[allow(dead_code)] // Public API for the shell and the UI.
-    /// Stops playback and forgets the saved queue (sign-out).
-    pub fn forget_session(&self) {
-        self.stop();
-        session::clear();
-    }
-
     pub fn save_session(&self) {
-        if !self.settings.get().restore_session {
+        if !self.may_save() {
             return;
         }
         if let Some(saved) = self.saved_state()
-            && let Err(err) = session::write(&saved)
+            && let Err(err) = session::write(&saved, &self.saving_off)
         {
             log::warn!("could not save the queue: {err:#}");
         }
@@ -790,7 +909,7 @@ impl Playback {
     /// resolved when playback starts.
     #[allow(dead_code)] // Public API for the shell and the UI.
     pub fn restore_session(&self) {
-        if !self.settings.get().restore_session {
+        if self.forgotten.get() || !self.settings.get().restore_session {
             return;
         }
         let weak = self.weak_self.clone();
@@ -806,7 +925,10 @@ impl Playback {
     }
 
     fn apply_saved(&self, saved: session::Saved) {
-        if self.queue.borrow().current().is_some() || self.state.get() != PlayState::Stopped {
+        if self.forgotten.get()
+            || self.queue.borrow().current().is_some()
+            || self.state.get() != PlayState::Stopped
+        {
             return;
         }
         let queue = Queue::restore(saved.queue, saved.source.map(Source::from));
@@ -845,13 +967,14 @@ impl Playback {
         glib::timeout_add_local_once(SAVE_DELAY, move || {
             let Some(this) = weak.upgrade() else { return };
             this.save_pending.set(false);
-            if !this.settings.get().restore_session {
+            if !this.may_save() {
                 return;
             }
             if let Some(saved) = this.saved_state() {
                 this.position_saved_at.set(Instant::now());
+                let off = this.saving_off.clone();
                 runtime::runtime().spawn_blocking(move || {
-                    if let Err(err) = session::write(&saved) {
+                    if let Err(err) = session::write(&saved, &off) {
                         log::warn!("could not save the queue: {err:#}");
                     }
                 });
@@ -862,15 +985,16 @@ impl Playback {
     fn save_position(&self, position: f64) {
         self.position_saved_at.set(Instant::now());
         let Some(track) = self.current() else { return };
-        if !self.settings.get().restore_session {
+        if !self.may_save() {
             return;
         }
         let saved = session::SavedPosition {
             track_id: track.id,
             position,
         };
+        let off = self.saving_off.clone();
         runtime::runtime().spawn_blocking(move || {
-            if let Err(err) = session::write_position(&saved) {
+            if let Err(err) = session::write_position(&saved, &off) {
                 log::debug!("could not save the position: {err:#}");
             }
         });
@@ -1026,6 +1150,13 @@ impl Playback {
                 if let Some(gain) = gain {
                     engine.set_gain(gain);
                 }
+                // The next track may be handed over already, its gain
+                // waiting for it to start.
+                if engine.handover_pending()
+                    && let Some(prepared) = self.prepared.borrow().as_ref()
+                {
+                    engine.set_pending_gain(self.gain_for(&prepared.stream));
+                }
             } else {
                 let position = self.position().unwrap_or(self.last_position.get());
                 engine.load(&stream.uri, self.want_play.get(), Some(position), gain);
@@ -1035,16 +1166,21 @@ impl Playback {
         self.emit(Event::Format(self.format()));
     }
 
+    /// Forgets the stream prepared for the next track, unless it is
+    /// already handed over (then it plays as it is: dropping it would make
+    /// the switch restart the next track).
     fn drop_prepared(&self) {
-        self.prepared.replace(None);
         self.preparing.set(None);
         self.prefetch_failed.set(None);
+        self.prefetch_retry_at.set(None);
         self.prepare_generation
             .set(self.prepare_generation.get() + 1);
-        if let Some(engine) = &self.engine
-            && !engine.handover_pending()
-        {
-            engine.set_next(None);
+        let handed_over = self.engine.as_ref().is_some_and(Engine::handover_pending);
+        if !handed_over {
+            self.prepared.replace(None);
+            if let Some(engine) = &self.engine {
+                engine.set_next(None);
+            }
         }
     }
 
@@ -1121,8 +1257,15 @@ impl Playback {
             .prepared
             .borrow()
             .as_ref()
-            .is_some_and(|p| p.stream.track_id == next_id);
+            .is_some_and(|p| p.stream.track_id == next_id && p.is_fresh());
         if ready || self.preparing.get().is_some() || self.prefetch_failed.get() == Some(next_id) {
+            return;
+        }
+        if self
+            .prefetch_retry_at
+            .get()
+            .is_some_and(|at| Instant::now() < at)
+        {
             return;
         }
         let Some(duration) = self.duration() else {
@@ -1160,8 +1303,17 @@ impl Playback {
                     this.refresh_next();
                 }
                 Err(err) => {
-                    log::warn!("could not prepare track {next_id}: {err:#}");
-                    this.prefetch_failed.set(Some(next_id));
+                    let kind = failure::classify(&err);
+                    log::warn!(
+                        "could not prepare track {next_id} ({kind:?}): {}",
+                        failure::redact(&format!("{err:#}"))
+                    );
+                    if kind == Failure::Network {
+                        this.prefetch_retry_at
+                            .set(Some(Instant::now() + PREFETCH_RETRY));
+                    } else {
+                        this.prefetch_failed.set(Some(next_id));
+                    }
                 }
             }
         });
@@ -1185,10 +1337,14 @@ impl Playback {
         };
         if self.loaded_track.replace(Some(track.id)) != Some(track.id) {
             self.failures.set(0);
+            self.net_strikes.set(0);
             self.prefetch_failed.set(None);
+            self.prefetch_retry_at.set(None);
         }
+        self.cancel_network_retry();
         self.unloaded.set(false);
         self.resume_at.set(None);
+        self.load_start.set(start);
         self.want_play.set(autoplay);
         self.loaded.set(false);
         if announce || skipped > 0 {
@@ -1203,7 +1359,11 @@ impl Playback {
         self.generation.set(generation);
         self.requested_at.set(Some(Instant::now()));
         engine.stop();
-        self.set_state(PlayState::Loading);
+        self.set_state(if autoplay {
+            PlayState::Loading
+        } else {
+            PlayState::Paused
+        });
 
         if let Some(stream) = self.take_prepared(track.id) {
             return self.start_stream(stream, start);
@@ -1222,8 +1382,11 @@ impl Playback {
             }
             this.resolving.set(false);
             match stream {
-                Ok(stream) => this.start_stream(Rc::new(stream), start),
-                Err(err) => this.load_failed(&track, &format!("{err:#}"), start),
+                Ok(stream) => this.start_stream(Rc::new(stream), this.load_start.get()),
+                Err(err) => {
+                    let detail = failure::redact(&format!("{err:#}"));
+                    this.failed(failure::classify(&err), &track, &detail, Duration::from_secs(1));
+                }
             }
         });
     }
@@ -1253,21 +1416,98 @@ impl Playback {
         self.emit(Event::Format(Some(format)));
     }
 
-    /// The stream could not be resolved: retry once, then skip.
-    fn load_failed(self: &Rc<Self>, track: &TrackInfo, error: &str, start: Option<f64>) {
-        log::warn!("could not play track {}: {error}", track.id);
+    /// Loading or playing the current track failed (`detail` is already
+    /// redacted). The load target is in `load_start`.
+    fn failed(self: &Rc<Self>, kind: Failure, track: &TrackInfo, detail: &str, retry_in: Duration) {
+        self.loaded.set(false);
+        self.resolving.set(false);
+        match kind {
+            Failure::Network => self.network_failed(track, detail),
+            Failure::Track => self.track_failed(track, detail, retry_in),
+            Failure::Session => {
+                log::warn!("could not play track {}: {detail}", track.id);
+                self.stop();
+                self.emit(Event::Error(
+                    "The TIDAL session has expired: sign in again to play".to_owned(),
+                ));
+            }
+        }
+    }
+
+    /// The network failed: keep the track and position, retry with backoff
+    /// (sooner if the network comes back), and say so once.
+    fn network_failed(self: &Rc<Self>, track: &TrackInfo, detail: &str) {
+        let attempt = self.net_attempts.get() + 1;
+        self.net_attempts.set(attempt);
+        let wait = failure::backoff(attempt);
+        log::warn!(
+            "network trouble playing track {} (retry {attempt} in {} s): {detail}",
+            track.id,
+            wait.as_secs()
+        );
+        self.cancel_network_retry();
+        self.net_waiting.set(true);
+        self.set_state(if self.want_play.get() {
+            PlayState::Loading
+        } else {
+            PlayState::Paused
+        });
+        if !self.net_reported.replace(true) {
+            self.emit(Event::Error(CONNECTION_LOST.to_owned()));
+        }
+        let generation = self.generation.get();
+        let weak = Rc::downgrade(self);
+        let timer = glib::timeout_add_local_once(wait, move || {
+            let Some(this) = weak.upgrade() else { return };
+            // It fired: nothing to remove any more.
+            let _fired = this.net_timer.take();
+            if this.generation.get() == generation {
+                this.retry_now();
+            }
+        });
+        self.net_timer.replace(Some(timer));
+    }
+
+    /// Retries the track waiting for the network, now.
+    fn retry_now(self: &Rc<Self>) {
+        if !self.net_waiting.get() {
+            return;
+        }
+        self.cancel_network_retry();
+        self.load_current(self.want_play.get(), self.load_start.get(), false);
+    }
+
+    fn cancel_network_retry(&self) {
+        self.net_waiting.set(false);
+        if let Some(timer) = self.net_timer.take() {
+            timer.remove();
+        }
+    }
+
+    /// The track itself failed: retry once (after `retry_in`), then skip.
+    fn track_failed(self: &Rc<Self>, track: &TrackInfo, detail: &str, retry_in: Duration) {
+        log::warn!("could not play track {}: {detail}", track.id);
         let failures = self.failures.get() + 1;
         self.failures.set(failures);
         if failures >= 2 {
             return self.skip_failed(track);
         }
+        let start = self.load_start.get();
+        if retry_in.is_zero() {
+            return self.load_current(self.want_play.get(), start, false);
+        }
+        self.set_state(if self.want_play.get() {
+            PlayState::Loading
+        } else {
+            PlayState::Paused
+        });
         let generation = self.generation.get();
         let weak = Rc::downgrade(self);
-        glib::timeout_add_local_once(Duration::from_secs(1), move || {
+        glib::timeout_add_local_once(retry_in, move || {
             if let Some(this) = weak.upgrade()
                 && this.generation.get() == generation
             {
-                this.load_current(this.want_play.get(), start, false);
+                this.load_current(this.want_play.get(), this.load_start.get(), false);
             }
         });
     }
@@ -1281,7 +1521,7 @@ impl Playback {
             self.failed_tracks.set(0);
             self.stop();
             return self.emit(Event::Error(format!(
-                "Could not play “{}”. Playback stopped: check the connection",
+                "Could not play “{}”. Playback stopped after {MAX_FAILED_TRACKS} tracks failed",
                 track.title
             )));
         }
@@ -1299,6 +1539,16 @@ impl Playback {
 
     fn tick(self: &Rc<Self>) {
         self.check_sleep_timer();
+        // Signed URLs expire: a prepared stream that sat too long is
+        // resolved again before the switch needs it.
+        let stale = self
+            .prepared
+            .borrow()
+            .as_ref()
+            .is_some_and(|p| !p.is_fresh());
+        if stale {
+            self.refresh_next();
+        }
         // A missed engine message must not leave the UI loading while
         // audio plays.
         if self.state.get() == PlayState::Loading
@@ -1322,6 +1572,15 @@ impl Playback {
         if position >= self.healthy_at.get() {
             self.failures.set(0);
             self.failed_tracks.set(0);
+            self.net_strikes.set(0);
+        }
+        if let Some(at) = self.debug_engine_fail.get()
+            && position >= at
+            && let Some(engine) = &self.engine
+        {
+            log::info!("SWELL_DEBUG_ENGINE_FAIL: dropping the connection at {position:.1} s");
+            self.debug_engine_fail.set(None);
+            engine.simulate_network_error();
         }
         self.maybe_prefetch();
         if self.position_saved_at.get().elapsed() >= POSITION_SAVE_INTERVAL {
@@ -1338,6 +1597,12 @@ impl Playback {
                         at.elapsed().as_millis()
                     );
                 }
+                self.stream_works();
+                if !self.want_play.get() {
+                    // Paused while it started: the pause is on its way.
+                    log::debug!("engine playing, though paused");
+                    return;
+                }
                 if self.log_output.replace(false)
                     && let Some((format, rate)) =
                         self.engine.as_ref().and_then(Engine::output_format)
@@ -1346,8 +1611,15 @@ impl Playback {
                 }
                 self.set_state(PlayState::Playing);
             }
-            EngineEvent::Paused => self.set_state(PlayState::Paused),
-            EngineEvent::Buffering => self.set_state(PlayState::Loading),
+            EngineEvent::Paused => {
+                self.stream_works();
+                self.set_state(PlayState::Paused);
+            }
+            EngineEvent::Buffering => {
+                if self.want_play.get() {
+                    self.set_state(PlayState::Loading);
+                }
+            }
             EngineEvent::Finished => {
                 self.loaded.set(false);
                 if self.sleep_timer() == Some(SleepTimer::EndOfTrack) {
@@ -1362,8 +1634,16 @@ impl Playback {
                 }
             }
             EngineEvent::NextStarted(track_id) => self.next_started(track_id),
-            EngineEvent::Error(message) => self.engine_failed(&message),
+            EngineEvent::Error { message, kind } => self.engine_failed(&message, kind),
         }
+    }
+
+    /// Data flows again: the outage (if any) is over.
+    fn stream_works(&self) {
+        if self.net_reported.replace(false) {
+            log::info!("connection back");
+        }
+        self.net_attempts.set(0);
     }
 
     /// The gapless switch happened: the queue follows.
@@ -1386,7 +1666,9 @@ impl Playback {
         log::info!("gapless switch to track {track_id}");
         self.loaded_track.set(Some(track_id));
         self.failures.set(0);
+        self.net_strikes.set(0);
         self.prefetch_failed.set(None);
+        self.prefetch_retry_at.set(None);
         self.last_position.set(0.0);
         self.healthy_at.set(HEALTHY_AFTER);
         self.log_output.set(true);
@@ -1421,24 +1703,31 @@ impl Playback {
         self.emit(Event::SleepTimer);
     }
 
-    /// A playback error: reload once at the same position (expired URLs),
-    /// then skip.
-    fn engine_failed(self: &Rc<Self>, message: &str) {
+    /// A playback error. The network's fault: retry the same track at the
+    /// same position until it works. The track's: reload once at the same
+    /// position (expired URLs), then skip.
+    fn engine_failed(self: &Rc<Self>, message: &str, kind: Failure) {
+        let handed_over = self.engine.as_ref().is_some_and(Engine::handover_pending);
         self.loaded.set(false);
         let Some(track) = self.current() else {
             self.set_state(PlayState::Stopped);
             return self.emit(Event::Error(format!("Playback failed: {message}")));
         };
-        let failures = self.failures.get() + 1;
-        self.failures.set(failures);
-        if failures >= 2 {
-            return self.skip_failed(&track);
+        if handed_over {
+            // The next track's stream failed (the end of this one was
+            // already decoded): its prepared stream is to blame, likely
+            // expired. Move on and load that track afresh.
+            log::info!("the stream handed over after track {} failed: {message}", track.id);
+            self.prepared.replace(None);
+            let advanced = self.queue.borrow_mut().advance(false);
+            self.emit(Event::Queue);
+            if advanced {
+                self.load_current(self.want_play.get(), None, true);
+            } else {
+                self.finish();
+            }
+            return;
         }
-        let position = self.last_position.get();
-        log::info!(
-            "reloading track {} at {position:.1} s after an error: {message}",
-            track.id
-        );
         // The prepared stream may be just as stale.
         if self
             .prepared
@@ -1448,7 +1737,21 @@ impl Playback {
         {
             self.prepared.replace(None);
         }
-        self.load_current(self.want_play.get(), Some(position), false);
+        self.load_start.set(Some(self.last_position.get()));
+        let kind = if kind == Failure::Network {
+            let strikes = self.net_strikes.get() + 1;
+            self.net_strikes.set(strikes);
+            if strikes > MAX_NETWORK_STRIKES {
+                log::info!("track {} keeps failing while TIDAL answers: blaming it", track.id);
+                self.net_strikes.set(0);
+                Failure::Track
+            } else {
+                Failure::Network
+            }
+        } else {
+            kind
+        };
+        self.failed(kind, &track, message, Duration::ZERO);
     }
 
     /// `SWELL_PLAY=<id>[,<id>…][@<seconds>]`: plays tracks at startup;
@@ -1457,6 +1760,8 @@ impl Playback {
         let Ok(spec) = std::env::var("SWELL_PLAY") else {
             return;
         };
+        // A debug run must not overwrite the user's saved queue.
+        self.saving_off.store(true, Ordering::SeqCst);
         if spec == "restore" {
             self.restore_session();
             let weak = Rc::downgrade(self);
@@ -1493,7 +1798,18 @@ impl Playback {
             .await;
             let tracks = match tracks {
                 Ok(tracks) => tracks,
-                Err(err) => return log::warn!("SWELL_PLAY: {err:#}"),
+                Err(err) => {
+                    return log::warn!("SWELL_PLAY: {}", failure::redact(&format!("{err:#}")));
+                }
+            };
+            let Some(first) = tracks.first() else { return };
+            let source = Source {
+                title: if first.album.is_empty() {
+                    first.title.clone()
+                } else {
+                    first.album.clone()
+                },
+                target: (first.album_id != 0).then_some(Target::Album(first.album_id)),
             };
             let start = at.map(|at| {
                 let duration = tracks.first().map_or(0.0, |t| f64::from(t.duration));
@@ -1503,14 +1819,7 @@ impl Playback {
                     at
                 }
             });
-            this.queue.borrow_mut().set_context(
-                tracks,
-                0,
-                Source {
-                    title: "SWELL_PLAY".to_owned(),
-                    target: None,
-                },
-            );
+            this.queue.borrow_mut().set_context(tracks, 0, source);
             this.emit(Event::Queue);
             this.load_current(true, start, true);
         });
@@ -1524,6 +1833,12 @@ impl Drop for Playback {
         }
         if let Some(listener) = self.settings_listener.take() {
             self.settings.disconnect(listener);
+        }
+        if let Some((monitor, handler)) = self.network.take() {
+            monitor.disconnect(handler);
+        }
+        if let Some(timer) = self.net_timer.take() {
+            timer.remove();
         }
         self.desktop.clear();
     }

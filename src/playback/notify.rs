@@ -236,7 +236,8 @@ impl Desktop {
     }
 }
 
-/// Downloads a cover for the notification into the runtime directory.
+/// Downloads a cover for the notification into this process's runtime
+/// directory.
 async fn save_cover(cover: String) -> Result<std::path::PathBuf> {
     static HTTP: OnceLock<reqwest::Client> = OnceLock::new();
     let http = HTTP.get_or_init(crate::api::http_client);
@@ -247,7 +248,7 @@ async fn save_cover(cover: String) -> Result<std::path::PathBuf> {
         .error_for_status()?
         .bytes()
         .await?;
-    let dir = glib::user_runtime_dir().join("swell-player");
+    let dir = super::rundir::dir();
     tokio::fs::create_dir_all(&dir).await?;
     // A new name per cover: the notification server may read it late.
     let path = dir.join(format!("cover-{}.jpg", cover.replace('/', "-")));

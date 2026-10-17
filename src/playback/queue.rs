@@ -96,7 +96,7 @@ impl Queue {
         self.context = tracks;
         self.source = Some(source);
         self.order = (0..self.context.len()).collect();
-        let first = if self.shuffle {
+        let first = if self.shuffle && !self.order.is_empty() {
             self.order.swap(0, start);
             shuffle(&mut self.order[1..]);
             0
@@ -363,39 +363,29 @@ impl Queue {
         self.order.truncate(self.next.min(self.order.len()));
     }
 
-    /// Shuffling reorders what is left of the context; turning it off goes
-    /// back to the original order after the current track.
+    /// Shuffling reorders what is left of the context; turning it off puts
+    /// what is left back in the original order, continuing after the last
+    /// context track played (then wrapping round to the ones before it).
+    /// Only the tracks still upcoming are reordered: removed or played ones
+    /// do not come back, and the played part (which history points into)
+    /// stays as it is.
     pub fn set_shuffle(&mut self, shuffle_on: bool) {
         if self.shuffle == shuffle_on {
             return;
         }
         self.shuffle = shuffle_on;
-        for entry in &mut self.history {
-            entry.context = None;
-        }
-        if self.order.is_empty() {
-            return;
-        }
         let next = self.next.min(self.order.len());
         if shuffle_on {
             shuffle(&mut self.order[next..]);
             return;
         }
-        // Back to the original order, continuing after the current track.
-        let current_original = self
-            .current
-            .as_ref()
-            .and_then(|c| c.context)
-            .and_then(|at| self.order.get(at).copied());
-        self.order = (0..self.context.len()).collect();
-        match current_original {
-            Some(original) => {
-                if let Some(current) = &mut self.current {
-                    current.context = Some(original);
-                }
-                self.next = original + 1;
-            }
-            None => self.next = 0,
+        // The last context track taken (current, or before the up-next
+        // track that plays now).
+        let last = next.checked_sub(1).map(|at| self.order[at]);
+        let rest = &mut self.order[next..];
+        match last {
+            Some(last) => rest.sort_by_key(|&i| (i < last, i)),
+            None => rest.sort_unstable(),
         }
     }
 }
@@ -456,6 +446,11 @@ impl Queue {
                 .zip(current.as_ref())
                 .is_some_and(|(&i, current)| context[i].id == current.id)
         });
+        // The next context track comes after the current one.
+        let next = match current_at {
+            Some(at) if next <= at => at + 1,
+            _ => next,
+        };
         Self {
             next: next.min(order.len()),
             current: current.map(|track| Entry {
@@ -758,5 +753,154 @@ mod tests {
         assert!(!all.contains(&11));
         q.set_shuffle(false);
         assert_eq!(ids(&q.upcoming())[..3], [12, 13, 14]);
+    }
+    #[test]
+    fn unshuffle_keeps_removed_and_cleared_tracks_out() {
+        let mut q = Queue::default();
+        q.set_context(tracks(5), 0, source());
+        q.remove(0);
+        q.set_shuffle(true);
+        q.set_shuffle(false);
+        assert_eq!(ids(&q.upcoming()), [3, 4, 5]);
+
+        let mut q = Queue::default();
+        q.set_context(tracks(5), 0, source());
+        q.clear_upcoming();
+        q.set_shuffle(true);
+        q.set_shuffle(false);
+        assert!(q.upcoming().is_empty());
+    }
+
+    #[test]
+    fn unshuffle_during_up_next_continues_the_context() {
+        let mut q = Queue::default();
+        q.set_context(tracks(5), 0, source());
+        q.advance(false);
+        q.advance(false);
+        q.play_next(vec![track(99)]);
+        q.advance(true);
+        assert_eq!(q.current().unwrap().id, 99);
+        q.set_shuffle(true);
+        q.set_shuffle(false);
+        assert_eq!(ids(&q.upcoming()), [4, 5]);
+        // History still leads back through the context.
+        assert!(q.go_back());
+        assert_eq!(q.current().unwrap().id, 3);
+        assert_eq!(ids(&q.upcoming()), [99, 4, 5]);
+    }
+
+    #[test]
+    fn unshuffle_wraps_round_to_earlier_tracks() {
+        let mut q = Queue::default();
+        q.set_shuffle(true);
+        q.set_context(tracks(6), 3, source());
+        q.set_shuffle(false);
+        assert_eq!(ids(&q.upcoming()), [5, 6, 1, 2, 3]);
+        q.move_item(0, 4);
+        q.set_shuffle(true);
+        q.set_shuffle(false);
+        assert_eq!(ids(&q.upcoming()), [5, 6, 1, 2, 3]);
+    }
+
+    #[test]
+    fn moved_in_track_survives_unshuffle() {
+        let mut q = Queue::default();
+        q.set_context(tracks(3), 0, source());
+        q.add_to_queue(vec![track(9)]);
+        q.move_item(0, 2);
+        assert_eq!(ids(&q.upcoming()), [2, 3, 9]);
+        q.set_shuffle(true);
+        q.set_shuffle(false);
+        assert_eq!(ids(&q.upcoming()), [2, 3, 9]);
+    }
+
+    #[test]
+    fn shuffled_empty_context_does_not_panic() {
+        let mut q = Queue::default();
+        q.set_shuffle(true);
+        q.set_context(Vec::new(), 0, source());
+        assert!(q.current().is_none());
+        assert!(q.upcoming().is_empty());
+    }
+
+    #[test]
+    fn restore_repairs_next_before_current() {
+        let mut q = Queue::default();
+        q.set_context(tracks(5), 2, source());
+        let mut snapshot = q.snapshot();
+        snapshot.next = 0;
+        let r = Queue::restore(snapshot, None);
+        assert_eq!(ids(&r.upcoming()), [4, 5]);
+    }
+
+    #[test]
+    fn peek_matches_advance_everywhere() {
+        for seed in 0..200u64 {
+            let mut q = Queue::default();
+            let mut list = tracks(6);
+            for (i, t) in list.iter_mut().enumerate() {
+                if (seed >> i) & 1 == 1 && i % 2 == 1 {
+                    t.available = false;
+                }
+            }
+            q.set_context(list, (seed % 6) as usize, source());
+            q.set_repeat(match seed % 3 {
+                0 => Repeat::All,
+                1 => Repeat::One,
+                _ => Repeat::Off,
+            });
+            if seed % 4 == 0 {
+                let mut extra = track(50);
+                extra.available = seed % 8 == 0;
+                q.add_to_queue(vec![extra]);
+            }
+            q.skip_unavailable();
+            for _ in 0..10 {
+                let peek = q.peek_next().map(|t| t.id);
+                let advanced = q.advance(false);
+                if let Some(peek) = peek {
+                    assert!(advanced, "seed {seed}");
+                    assert_eq!(q.current().unwrap().id, peek, "seed {seed}");
+                }
+                if !advanced {
+                    break;
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn jump_and_back_keep_consistency() {
+        let mut q = Queue::default();
+        q.set_context(tracks(5), 0, source());
+        q.advance(false);
+        q.move_item(2, 0);
+        assert_eq!(ids(&q.upcoming()), [5, 3, 4]);
+        assert!(q.go_back());
+        assert_eq!(ids(&q.upcoming()), [2, 5, 3, 4]);
+
+        let mut q = Queue::default();
+        q.set_context(tracks(5), 0, source());
+        q.add_to_queue(vec![track(9)]);
+        q.jump_to(3);
+        assert_eq!(q.current().unwrap().id, 4);
+        assert!(q.go_back());
+        let upcoming = ids(&q.upcoming());
+        let mut unique = upcoming.clone();
+        unique.sort_unstable();
+        unique.dedup();
+        assert_eq!(unique.len(), upcoming.len(), "{upcoming:?}");
+    }
+
+    #[test]
+    fn undo_clear_after_playing_up_next() {
+        let mut q = Queue::default();
+        q.set_context(tracks(5), 0, source());
+        let snapshot = q.snapshot();
+        q.clear_upcoming();
+        q.add_to_queue(vec![track(9)]);
+        q.advance(true);
+        q.restore_upcoming(snapshot);
+        assert_eq!(ids(&q.upcoming()), [2, 3, 4, 5]);
     }
 }

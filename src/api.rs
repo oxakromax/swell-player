@@ -327,8 +327,9 @@ impl Api {
     /// at what the session allows). TIDAL may answer with less when the
     /// track is not available in it.
     pub async fn stream_with_quality(&self, track_id: u64, quality: tidal::Quality) -> Result<Stream> {
+        debug_stream_failure().await?;
         let info = self.playback_info(track_id, quality).await?;
-        Stream::from_playback_info(info).await
+        Stream::from_playback_info(track_id, info).await
     }
 
     async fn favorite_tracks_page(&self, offset: usize) -> Result<tidal::models::Page<tidal::models::Track>> {
@@ -340,6 +341,37 @@ impl Api {
         );
         Ok(page)
     }
+}
+
+/// Debugging: `SWELL_DEBUG_STREAM_FAIL=<n>[@<skip>]` makes `n` stream
+/// lookups (after the first `skip`) fail with a real connection error, as
+/// when the network is down.
+async fn debug_stream_failure() -> Result<()> {
+    use std::sync::atomic::{AtomicI64, Ordering};
+    use std::sync::OnceLock;
+
+    static PLAN: OnceLock<Option<(i64, i64)>> = OnceLock::new();
+    static CALLS: AtomicI64 = AtomicI64::new(0);
+    let Some((fail, skip)) = *PLAN.get_or_init(|| {
+        let spec = std::env::var("SWELL_DEBUG_STREAM_FAIL").ok()?;
+        let (fail, skip) = spec.split_once('@').unwrap_or((&spec, "0"));
+        Some((fail.parse().ok()?, skip.parse().ok()?))
+    }) else {
+        return Ok(());
+    };
+    let call = CALLS.fetch_add(1, Ordering::SeqCst);
+    if call < skip || call >= skip + fail {
+        return Ok(());
+    }
+    log::info!("SWELL_DEBUG_STREAM_FAIL: failing stream lookup {}", call + 1);
+    let client = reqwest::Client::builder().no_proxy().build()?;
+    let err = client
+        .get("http://127.0.0.1:9/")
+        .send()
+        .await
+        .err()
+        .map(|err| anyhow::Error::new(err).context("could not reach TIDAL"));
+    Err(err.unwrap_or_else(|| anyhow::anyhow!("SWELL_DEBUG_STREAM_FAIL: port 9 answered")))
 }
 
 impl Api {
