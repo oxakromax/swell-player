@@ -317,9 +317,15 @@ impl Api {
     /// Asks TIDAL how to stream `track_id` at the best quality this session
     /// allows. Hi-Res comes back as MPEG-DASH, the rest as a direct URL.
     pub async fn stream(&self, track_id: u64) -> Result<Stream> {
-        let info = self
-            .playback_info(track_id, self.flow.max_quality())
-            .await?;
+        self.stream_with_quality(track_id, self.flow.max_quality())
+            .await
+    }
+
+    /// Like [`Self::stream`], asking for `quality` (which the caller caps
+    /// at what the session allows). TIDAL may answer with less when the
+    /// track is not available in it.
+    pub async fn stream_with_quality(&self, track_id: u64, quality: tidal::Quality) -> Result<Stream> {
+        let info = self.playback_info(track_id, quality).await?;
         Stream::from_playback_info(info).await
     }
 
