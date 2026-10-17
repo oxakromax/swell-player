@@ -2,7 +2,6 @@
 name = "swell-player"
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.88"
 description = "A lightweight native TIDAL client for Linux (GTK 4 + libadwaita + GStreamer)"
 license = "GPL-3.0-or-later"
 keywords = ["tidal", "music", "gtk4", "libadwaita", "gstreamer"]
