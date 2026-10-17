@@ -246,6 +246,12 @@ impl Ctx {
     /// Reports an error: signs out when the session is gone, toasts
     /// `message` otherwise.
     pub fn report(&self, message: &str, err: &anyhow::Error) {
+        // A late answer from a session that already ended must not act on
+        // the next one.
+        if self.api.is_signed_out() {
+            log::debug!("ignoring an error from an ended session: {err:#}");
+            return;
+        }
         if crate::tidal::is_auth_error(err) {
             if let Some(sign_out) = self.sign_out.borrow().as_ref() {
                 sign_out(Some(

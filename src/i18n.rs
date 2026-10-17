@@ -35,10 +35,17 @@ fn language() -> Option<&'static str> {
     }
     static LANGUAGE: OnceLock<Option<&'static str>> = OnceLock::new();
     *LANGUAGE.get_or_init(|| {
-        let wanted = ["LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG"]
-            .into_iter()
-            .filter_map(|key| std::env::var(key).ok())
-            .find(|value| !value.is_empty())?;
+        let var = |key| std::env::var(key).ok().filter(|v: &String| !v.is_empty());
+        // Like gettext: the locale (LC_ALL, then LC_MESSAGES, then LANG)
+        // decides first; "C"/"POSIX" means untranslated even if LANGUAGE
+        // is set, and only then does LANGUAGE pick among languages.
+        let locale = var("LC_ALL")
+            .or_else(|| var("LC_MESSAGES"))
+            .or_else(|| var("LANG"))?;
+        if locale == "C" || locale == "POSIX" || locale.starts_with("C.") {
+            return None;
+        }
+        let wanted = var("LANGUAGE").unwrap_or(locale);
         // LANGUAGE may list several ("es_CL:es:en"); take the first we have.
         wanted.split(':').find_map(|entry| {
             let code = entry.split(['_', '.', '@']).next()?;
