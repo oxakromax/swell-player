@@ -777,6 +777,11 @@ impl Playback {
     }
 
     /// What will play after the current track, in order.
+    /// `upcoming()[0]` (what "Up next" shows), without copying the queue.
+    pub fn next_upcoming(&self) -> Option<TrackInfo> {
+        self.queue.borrow().first_upcoming().cloned()
+    }
+
     pub fn upcoming(&self) -> Vec<TrackInfo> {
         self.queue.borrow().upcoming()
     }

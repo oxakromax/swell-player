@@ -71,6 +71,15 @@ impl Queue {
             .collect()
     }
 
+    /// `upcoming()[0]` without building the list.
+    pub fn first_upcoming(&self) -> Option<&TrackInfo> {
+        self.up_next.front().or_else(|| {
+            self.order
+                .get(self.next)
+                .map(|&i| &self.context[i])
+        })
+    }
+
     pub fn history(&self) -> Vec<TrackInfo> {
         self.history.iter().map(|e| e.track.clone()).collect()
     }

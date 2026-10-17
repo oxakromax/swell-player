@@ -6,6 +6,7 @@ mod cache;
 mod config;
 mod covers;
 mod library;
+mod mem;
 mod model;
 mod tidal;
 mod playback;

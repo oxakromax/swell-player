@@ -140,6 +140,62 @@ fn disk_dir() -> PathBuf {
     glib::user_cache_dir().join("swell-player").join("covers")
 }
 
+/// Marks a cached file as recently used (its modification time), at most
+/// once a day per file, so [`prune_disk_cache`] drops the least used first.
+fn touch(path: &Path) {
+    const DAY: Duration = Duration::from_secs(24 * 60 * 60);
+    let Ok(file) = std::fs::File::options().append(true).open(path) else {
+        return;
+    };
+    let stale = file
+        .metadata()
+        .and_then(|m| m.modified())
+        .ok()
+        .and_then(|modified| modified.elapsed().ok())
+        .is_some_and(|age| age > DAY);
+    if stale {
+        let _ = file.set_modified(std::time::SystemTime::now());
+    }
+}
+
+/// Keeps the artwork cache under `max_bytes` (least recently used files go
+/// first) and drops files unused for `max_age`. Blocking: run it on the
+/// blocking pool.
+pub fn prune_disk_cache(max_bytes: u64, max_age: Duration) -> std::io::Result<()> {
+    let mut files = Vec::new();
+    let mut stack = vec![disk_dir()];
+    while let Some(dir) = stack.pop() {
+        let Ok(entries) = std::fs::read_dir(&dir) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let Ok(meta) = entry.metadata() else { continue };
+            if meta.is_dir() {
+                stack.push(entry.path());
+            } else {
+                let modified = meta.modified().unwrap_or(std::time::UNIX_EPOCH);
+                files.push((modified, meta.len(), entry.path()));
+            }
+        }
+    }
+    files.sort_by_key(|(modified, ..)| std::cmp::Reverse(*modified));
+    let now = std::time::SystemTime::now();
+    let mut kept = 0u64;
+    let mut removed = 0usize;
+    for (modified, len, path) in files {
+        let old = now.duration_since(modified).unwrap_or_default() > max_age;
+        if old || kept + len > max_bytes {
+            if std::fs::remove_file(&path).is_ok() {
+                removed += 1;
+            }
+        } else {
+            kept += len;
+        }
+    }
+    log::debug!("artwork cache: {kept} bytes kept, {removed} files removed");
+    Ok(())
+}
+
 /// Deletes the downloaded artwork (on sign-out). Downloads in flight are
 /// not stored. Call from the tokio runtime.
 pub async fn forget_disk_cache() -> Result<()> {
@@ -406,7 +462,10 @@ async fn fetch(http: &reqwest::Client, dir: &Path, url: &str, file: &str) -> Out
     let epoch = DISK_EPOCH.load(Ordering::SeqCst);
     if let Ok(bytes) = tokio::fs::read(&path).await {
         match decode(bytes) {
-            Ok((texture, _)) => return Outcome::Ready(texture),
+            Ok((texture, _)) => {
+                touch(&path);
+                return Outcome::Ready(texture);
+            }
             Err(err) => {
                 log::debug!("dropping unreadable cached cover {id}: {err:#}");
                 let _ = tokio::fs::remove_file(&path).await;

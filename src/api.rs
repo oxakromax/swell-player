@@ -94,10 +94,14 @@ impl Api {
     pub async fn cache(&self) -> Option<&Cache> {
         self.cache
             .get_or_init(|| async {
-                Cache::open()
+                let cache = Cache::open()
                     .await
                     .inspect_err(|err| log::warn!("library cache unavailable: {err:#}"))
-                    .ok()
+                    .ok();
+                if let Some(cache) = &cache {
+                    schedule_maintenance(cache.clone());
+                }
+                cache
             })
             .await
             .as_ref()
@@ -565,6 +569,30 @@ pub enum FavoritesUpdate {
     Replace(Vec<TrackInfo>),
     /// The list on screen is now current.
     Finished,
+}
+
+/// Answers unused for this long are dropped from the cache.
+const RESPONSE_MAX_AGE: Duration = Duration::from_secs(30 * 24 * 60 * 60);
+/// Artwork cache limits.
+const ARTWORK_MAX_BYTES: u64 = 300 * 1024 * 1024;
+const ARTWORK_MAX_AGE: Duration = Duration::from_secs(90 * 24 * 60 * 60);
+
+/// Prunes the caches once, a little after startup and off the main thread,
+/// so they never grow without bound.
+fn schedule_maintenance(cache: Cache) {
+    crate::runtime::runtime().spawn(async move {
+        tokio::time::sleep(Duration::from_secs(30)).await;
+        if let Err(err) = cache.prune(RESPONSE_MAX_AGE).await {
+            log::debug!("pruning cached answers failed: {err:#}");
+        }
+        let artwork = tokio::task::spawn_blocking(|| {
+            crate::covers::prune_disk_cache(ARTWORK_MAX_BYTES, ARTWORK_MAX_AGE)
+        })
+        .await;
+        if let Ok(Err(err)) = artwork {
+            log::debug!("pruning artwork failed: {err}");
+        }
+    });
 }
 
 /// What a cached list looked like, to check it against the first page.
