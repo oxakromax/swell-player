@@ -20,6 +20,7 @@ use adw::prelude::*;
 use gtk::{gio, glib};
 
 use super::super::context::Ctx;
+use super::super::format;
 use super::super::menus;
 use super::super::nav::{CollectionView, Route};
 use super::super::sidebar;
@@ -29,7 +30,7 @@ use super::super::widgets::track_list::{TrackList, Variant, compact_bin};
 use super::collection_grid;
 use crate::api::{CachedHead, FavoritesUpdate};
 use crate::library::{Change, Item};
-use crate::model::{TrackInfo, format_total};
+use crate::model::TrackInfo;
 use crate::playback::Source;
 use crate::runtime;
 use crate::tidal::pages::Target;
@@ -429,29 +430,19 @@ pub(super) fn fold(text: &str) -> String {
         .collect()
 }
 
-/// "1,234".
-pub(super) fn group_digits(n: usize) -> String {
-    let digits = n.to_string();
-    let mut out = String::with_capacity(digits.len() + digits.len() / 3);
-    for (i, c) in digits.chars().enumerate() {
-        if i > 0 && (digits.len() - i).is_multiple_of(3) {
-            out.push(',');
-        }
-        out.push(c);
-    }
-    out
-}
-
 /// "1,234 albums", "1 album", or "12 of 1,234 albums" while filtering.
 pub(super) fn count_label(shown: usize, total: usize, one: &str, many: &str) -> String {
-    let noun = if total == 1 { one } else { many };
     if total == 0 {
         // The empty state says it.
         String::new()
     } else if shown == total {
-        format!("{} {noun}", group_digits(total))
+        format::count(total, one, many)
     } else {
-        format!("{} of {} {noun}", group_digits(shown), group_digits(total))
+        format!(
+            "{} of {}",
+            format::group_digits(shown),
+            format::count(total, one, many)
+        )
     }
 }
 
@@ -909,12 +900,16 @@ impl TracksPage {
         }
         self.drawn.set(true);
         let seconds: u64 = all.iter().map(|row| u64::from(row.info.duration)).sum();
-        let mut subtitle = count_label(shown, all.len(), "track", "tracks");
-        if shown == all.len() && seconds > 0 {
-            subtitle.push_str(" · ");
-            subtitle.push_str(&long_total(seconds));
-        }
+        let subtitle = if shown == all.len() {
+            format::tracks_summary(shown, seconds)
+        } else {
+            count_label(shown, all.len(), "track", "tracks")
+        };
         self.template.title.set_subtitle(&subtitle);
+        // The sidebar shows the length of this list (what TIDAL serves).
+        if let Some(ctx) = self.ctx.upgrade() {
+            ctx.set_favorite_track_count(all.len());
+        }
         self.play.button.set_sensitive(shown > 0);
         self.shuffle.button.set_sensitive(shown > 0);
         self.template.show_items(shown, all.len());
@@ -1046,17 +1041,6 @@ impl TracksPage {
     }
 }
 
-/// "3 d 4 h" past a day, "5 h 12 min" below.
-pub(super) fn long_total(seconds: u64) -> String {
-    let days = seconds / 86_400;
-    if days == 0 {
-        return format_total(seconds);
-    }
-    match (seconds % 86_400) / 3600 {
-        0 => format!("{days} d"),
-        hours => format!("{days} d {hours} h"),
-    }
-}
 
 #[cfg(test)]
 mod tests {
@@ -1069,11 +1053,7 @@ mod tests {
             fold("夜に駆ける"),
             glib::normalize("夜に駆ける", glib::NormalizeMode::All)
         );
-        assert_eq!(group_digits(1234567), "1,234,567");
-        assert_eq!(group_digits(999), "999");
         assert_eq!(count_label(3, 1317, "track", "tracks"), "3 of 1,317 tracks");
         assert_eq!(count_label(1, 1, "track", "tracks"), "1 track");
-        assert_eq!(long_total(3 * 86_400 + 4 * 3600 + 60), "3 d 4 h");
-        assert_eq!(long_total(3900), "1 h 5 min");
     }
 }

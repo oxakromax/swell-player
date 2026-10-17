@@ -20,6 +20,7 @@
 //! dropped freely once the widget is in the page.
 
 use std::cell::{Cell, RefCell};
+use std::collections::{HashMap, VecDeque};
 use std::rc::{Rc, Weak};
 
 use adw::prelude::*;
@@ -321,7 +322,10 @@ impl TrackList {
         self.inner.set_edge(1, footer.map(|f| f.as_ref().clone()));
     }
 
-    /// Replaces all the tracks.
+    /// Replaces all the tracks. Tracks already in the list keep their model
+    /// items, which lets GTK keep their rows (it reuses the row of an item
+    /// that is removed and added back in one change): filtering or sorting
+    /// a long list does not build every row again.
     pub fn set_tracks(&self, tracks: Vec<TrackInfo>) {
         let inner = &self.inner;
         let start = u32::from(inner.header.borrow().is_some());
@@ -330,6 +334,16 @@ impl TrackList {
             let first = tracks.first().map(|t| t.volume_number);
             tracks.iter().any(|t| Some(t.volume_number) != first)
         };
+        let mut shown: HashMap<u64, VecDeque<glib::BoxedAnyObject>> = HashMap::new();
+        for position in start..end {
+            if let Some(object) = entry_at(&inner.store, position) {
+                let id = match &*object.borrow::<Entry>() {
+                    Entry::Track(entry) => entry.info.id,
+                    _ => continue,
+                };
+                shown.entry(id).or_default().push_back(object);
+            }
+        }
         let mut objects = Vec::with_capacity(tracks.len() + 4);
         let mut volume = None;
         for track in tracks {
@@ -337,9 +351,15 @@ impl TrackList {
                 volume = Some(track.volume_number);
                 objects.push(glib::BoxedAnyObject::new(Entry::Disc(track.volume_number)));
             }
-            objects.push(glib::BoxedAnyObject::new(Entry::Track(Rc::new(
-                TrackEntry::new(track),
-            ))));
+            let same = shown.get_mut(&track.id).and_then(|objects| {
+                let at = objects.iter().position(|object| {
+                    matches!(&*object.borrow::<Entry>(), Entry::Track(entry) if entry.info == track)
+                })?;
+                objects.remove(at)
+            });
+            objects.push(same.unwrap_or_else(|| {
+                glib::BoxedAnyObject::new(Entry::Track(Rc::new(TrackEntry::new(track))))
+            }));
         }
         inner.store.splice(start, end - start, &objects);
         inner.index_discs();

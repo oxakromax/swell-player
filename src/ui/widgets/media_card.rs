@@ -14,6 +14,7 @@ use gtk::{gdk, glib};
 use crate::covers::{CoverLoader, Image, Ticket};
 use crate::tidal::pages::{Item, Target};
 use crate::ui::context::Ctx;
+use crate::ui::format;
 use crate::ui::menus::{self, ItemMenu, PlayMode, Subject};
 
 /// Logical size of a card's cover (144 in narrow windows is left to CSS
@@ -360,7 +361,7 @@ fn describe(item: &Item) -> (String, String, String) {
             let subtitle = match playlist.creator.name.as_deref().filter(|n| !n.is_empty()) {
                 Some(owner) => format!("by {owner}"),
                 None if playlist.number_of_tracks > 0 => {
-                    format!("{} tracks", playlist.number_of_tracks)
+                    format::count(playlist.number_of_tracks as usize, "track", "tracks")
                 }
                 None => "Playlist".into(),
             };

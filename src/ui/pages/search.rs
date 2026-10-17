@@ -26,7 +26,7 @@ use gtk::{gio, glib};
 use super::super::context::Ctx;
 use super::super::sidebar;
 use super::super::widgets::section::activate_target;
-use super::super::widgets::status::{describe_error, error_status};
+use super::super::widgets::status::error_page;
 use super::super::widgets::track_list::{TrackList, Variant, compact_bin};
 use super::search_data::{self, Filter, Results};
 use super::search_views::{self, AllView, CardGrid, PagingStatus};
@@ -727,12 +727,11 @@ impl SearchPage {
             return;
         }
         let weak = Rc::downgrade(self);
-        let status = error_status(&describe_error(err), move || {
+        let status = error_page(err, move || {
             if let Some(state) = weak.upgrade() {
                 state.run(true);
             }
         });
-        status.set_title("Couldn't Search");
         if let Some(old) = self.stack.child_by_name("error") {
             self.stack.remove(&old);
         }
