@@ -1,5 +1,6 @@
-//! Album covers: a small download pool backed by a disk cache and an
-//! in-memory LRU of decoded textures.
+//! Artwork (album covers, artist pictures, playlist and mix images): a small
+//! download pool backed by a disk cache and an in-memory LRU of decoded
+//! textures with a byte budget.
 //!
 //! - At most [`WORKERS`] downloads run at once, all over the shared HTTP
 //!   client: TIDAL's image server speaks HTTP/2, so they are multiplexed on
@@ -16,7 +17,6 @@
 
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
-use std::num::NonZeroUsize;
 use std::path::Path;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicU32, AtomicU64, AtomicUsize, Ordering};
@@ -24,18 +24,82 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use anyhow::{Context, Result};
+use gtk::prelude::*;
 use gtk::{gdk, glib};
 use lru::LruCache;
 use tokio::sync::{Notify, oneshot};
 
 use crate::runtime;
 
-/// Edge of the square JPEG requested from TIDAL's image server.
-pub const COVER_SIZE: u32 = 80;
 const WORKERS: usize = 4;
-/// Decoded 80×80 covers take ~25 KB each; 400 of them stay under 10 MB.
-const MEMORY_ENTRIES: usize = 400;
+/// Decoded textures kept in memory (RGBA: an 80 px cover is 25 KB, a 640 px
+/// one 1.6 MB).
+const MEMORY_BUDGET: usize = 64 * 1024 * 1024;
 const DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(15);
+
+/// A piece of artwork. TIDAL serves each kind in a fixed set of sizes.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum Image {
+    /// Album cover image id.
+    Cover(String),
+    /// Artist picture image id.
+    Artist(String),
+    /// Playlist (square) image id.
+    Playlist(String),
+    /// A full URL (mix artwork).
+    Url(String),
+}
+
+impl Image {
+    fn sizes(&self) -> &'static [u32] {
+        match self {
+            Self::Cover(_) => &[80, 160, 320, 640, 1280],
+            Self::Artist(_) => &[160, 320, 480, 750],
+            Self::Playlist(_) => &[160, 320, 480, 640, 750, 1080],
+            Self::Url(_) => &[0],
+        }
+    }
+
+    /// The smallest served size at least `pixels` wide.
+    fn size_for(&self, pixels: u32) -> u32 {
+        let sizes = self.sizes();
+        sizes
+            .iter()
+            .copied()
+            .find(|&size| size >= pixels)
+            .unwrap_or(sizes[sizes.len() - 1])
+    }
+
+    fn url(&self, size: u32) -> String {
+        let path = |id: &str| {
+            format!(
+                "https://resources.tidal.com/images/{}/{size}x{size}.jpg",
+                id.replace('-', "/")
+            )
+        };
+        match self {
+            Self::Cover(id) | Self::Artist(id) | Self::Playlist(id) => path(id),
+            Self::Url(url) => url.clone(),
+        }
+    }
+
+    /// File name in the disk cache.
+    fn file_name(&self, size: u32) -> String {
+        use sha2::Digest;
+        match self {
+            Self::Cover(id) => format!("{size}/{id}.jpg"),
+            Self::Artist(id) => format!("artist-{size}/{id}.jpg"),
+            Self::Playlist(id) => format!("playlist-{size}/{id}.jpg"),
+            Self::Url(url) => {
+                // Mix image URLs carry a rotating token; key on the path.
+                let stable = url.split('?').next().unwrap_or(url);
+                let digest = sha2::Sha256::digest(stable.as_bytes());
+                let hex: String = digest[..16].iter().map(|b| format!("{b:02x}")).collect();
+                format!("url/{hex}.jpg")
+            }
+        }
+    }
+}
 
 /// One cover being fetched, shared by the queue and the rows waiting for it.
 struct Request {
@@ -60,7 +124,8 @@ enum Outcome {
 }
 
 struct Job {
-    id: String,
+    url: String,
+    file: String,
     request: Arc<Request>,
     reply: oneshot::Sender<Outcome>,
 }
@@ -128,7 +193,7 @@ struct Pending {
 
 pub struct CoverLoader {
     queue: Arc<Queue>,
-    memory: RefCell<LruCache<String, gdk::Texture>>,
+    memory: RefCell<Memory>,
     pending: RefCell<HashMap<String, Pending>>,
     missing: RefCell<HashSet<String>>,
 }
@@ -139,14 +204,16 @@ impl CoverLoader {
         let dir: Arc<Path> = glib::user_cache_dir()
             .join("swell-player")
             .join("covers")
-            .join(COVER_SIZE.to_string())
             .into();
         for _ in 0..WORKERS {
             runtime::runtime().spawn(worker(queue.clone(), http.clone(), dir.clone()));
         }
         Rc::new(Self {
             queue,
-            memory: RefCell::new(LruCache::new(NonZeroUsize::new(MEMORY_ENTRIES).unwrap())),
+            memory: RefCell::new(Memory {
+                textures: LruCache::unbounded(),
+                bytes: 0,
+            }),
             pending: RefCell::default(),
             missing: RefCell::default(),
         })
@@ -157,17 +224,23 @@ impl CoverLoader {
         self.queue.focus.store(position, Ordering::Relaxed);
     }
 
-    /// Calls `done` on the main thread once the cover `id` is available
-    /// (immediately if it is in memory). `position` is the requesting row's
-    /// place in its list. Returns a ticket while the request is pending;
-    /// drop it to cancel.
+    /// Calls `done` on the main thread once `image` is available at least
+    /// `pixels` wide (immediately if it is in memory). Pass the widget size
+    /// times its scale factor. `position` is the requesting row's place in
+    /// its list (rows nearest the viewport centre load first; use 0 for
+    /// anything not in a list). Returns a ticket while the request is
+    /// pending; drop it to cancel.
     pub fn load(
         self: &Rc<Self>,
-        id: &str,
+        image: &Image,
+        pixels: u32,
         position: u32,
         done: impl FnOnce(&gdk::Texture) + 'static,
     ) -> Option<Ticket> {
-        if let Some(texture) = self.memory.borrow_mut().get(id) {
+        let size = image.size_for(pixels);
+        let file = image.file_name(size);
+        let id = file.as_str();
+        if let Some(texture) = self.memory.borrow_mut().textures.get(id) {
             done(texture);
             return None;
         }
@@ -203,7 +276,8 @@ impl CoverLoader {
         );
         let (reply, outcome) = oneshot::channel();
         self.queue.push(Job {
-            id: id.to_owned(),
+            url: image.url(size),
+            file: file.clone(),
             request: request.clone(),
             reply,
         });
@@ -241,16 +315,42 @@ impl CoverLoader {
     }
 }
 
+/// Decoded textures, least recently used dropped first past the budget.
+struct Memory {
+    textures: LruCache<String, gdk::Texture>,
+    bytes: usize,
+}
+
+impl Memory {
+    fn cost(texture: &gdk::Texture) -> usize {
+        (texture.width().max(1) as usize) * (texture.height().max(1) as usize) * 4
+    }
+
+    fn put(&mut self, key: String, texture: gdk::Texture) {
+        self.bytes += Self::cost(&texture);
+        if let Some(old) = self.textures.put(key, texture) {
+            self.bytes -= Self::cost(&old);
+        }
+        while self.bytes > MEMORY_BUDGET && self.textures.len() > 1 {
+            match self.textures.pop_lru() {
+                Some((_, old)) => self.bytes -= Self::cost(&old),
+                None => break,
+            }
+        }
+    }
+}
+
 async fn worker(queue: Arc<Queue>, http: reqwest::Client, dir: Arc<Path>) {
     loop {
         let job = queue.next().await;
-        let outcome = fetch(&http, &dir, &job.id).await;
+        let outcome = fetch(&http, &dir, &job.url, &job.file).await;
         let _ = job.reply.send(outcome);
     }
 }
 
-async fn fetch(http: &reqwest::Client, dir: &Path, id: &str) -> Outcome {
-    let path = dir.join(format!("{id}.jpg"));
+async fn fetch(http: &reqwest::Client, dir: &Path, url: &str, file: &str) -> Outcome {
+    let id = file;
+    let path = dir.join(file);
     if let Ok(bytes) = tokio::fs::read(&path).await {
         match decode(bytes) {
             Ok((texture, _)) => return Outcome::Ready(texture),
@@ -261,7 +361,7 @@ async fn fetch(http: &reqwest::Client, dir: &Path, id: &str) -> Outcome {
         }
     }
 
-    let bytes = match download(http, id).await {
+    let bytes = match download(http, url).await {
         Ok(bytes) => bytes,
         Err(err) => {
             log::debug!("cover {id}: {err}");
@@ -274,7 +374,7 @@ async fn fetch(http: &reqwest::Client, dir: &Path, id: &str) -> Outcome {
     // Only images that decode are cached.
     match decode(bytes) {
         Ok((texture, bytes)) => {
-            if let Err(err) = store(dir, &path, &bytes).await {
+            if let Err(err) = store(&path, &bytes).await {
                 log::debug!("could not cache cover {id}: {err:#}");
             }
             Outcome::Ready(texture)
@@ -292,11 +392,7 @@ fn decode(bytes: Vec<u8>) -> Result<(gdk::Texture, glib::Bytes)> {
     Ok((texture, bytes))
 }
 
-async fn download(http: &reqwest::Client, id: &str) -> reqwest::Result<Vec<u8>> {
-    let url = format!(
-        "https://resources.tidal.com/images/{}/{COVER_SIZE}x{COVER_SIZE}.jpg",
-        id.replace('-', "/")
-    );
+async fn download(http: &reqwest::Client, url: &str) -> reqwest::Result<Vec<u8>> {
     let response = http
         .get(url)
         .timeout(DOWNLOAD_TIMEOUT)
@@ -308,9 +404,11 @@ async fn download(http: &reqwest::Client, id: &str) -> reqwest::Result<Vec<u8>> 
 
 /// Writes through a uniquely named temporary file, so a crash or a parallel
 /// write never leaves a truncated image under the final name.
-async fn store(dir: &Path, path: &Path, bytes: &[u8]) -> Result<()> {
+async fn store(path: &Path, bytes: &[u8]) -> Result<()> {
     static NEXT: AtomicU64 = AtomicU64::new(0);
-    tokio::fs::create_dir_all(dir).await?;
+    if let Some(dir) = path.parent() {
+        tokio::fs::create_dir_all(dir).await?;
+    }
     let partial = path.with_extension(format!(
         "{}.{}.part",
         std::process::id(),

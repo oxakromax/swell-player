@@ -1,10 +1,13 @@
-//! A SQLite cache of library metadata, so the favourites can be drawn at
-//! startup before TIDAL answers.
+//! A SQLite cache, so the library and pages can be drawn before TIDAL
+//! answers and unchanged data is not downloaded again.
 //!
-//! Only data that is safe to reuse lives here: track metadata and the order
-//! of the user's favourites. Playback manifests (signed, short-lived URLs)
-//! and tokens (in the keyring) never do. The file is a cache: deleting it
-//! only costs one full reload.
+//! - Collections (favourite tracks...) with their order, validated against
+//!   TIDAL with one request at startup.
+//! - API answers for pages (album, artist, home...) keyed by path, served
+//!   while they are fresh and shown while they are being revalidated.
+//!
+//! Playback manifests (signed, short-lived URLs) and tokens (in the keyring)
+//! never go here. The file is a cache: deleting it only costs reloads.
 
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -16,7 +19,7 @@ use rusqlite::{Connection, params};
 
 use crate::model::TrackInfo;
 
-const SCHEMA_VERSION: i32 = 1;
+const SCHEMA_VERSION: i32 = 2;
 const FAVORITE_TRACKS: &str = "favorite_tracks";
 /// Drops metadata no collection refers to any more.
 const ORPHAN_TRACKS: &str =
@@ -46,6 +49,8 @@ impl Cache {
 
     fn open_at(path: &Path) -> Result<Self> {
         let connection = Connection::open(path).context("could not open the library cache")?;
+        // Takes effect for a new file only; lets `prune` give space back.
+        connection.pragma_update(None, "auto_vacuum", "INCREMENTAL")?;
         connection.pragma_update(None, "journal_mode", "WAL")?;
         connection.pragma_update(None, "synchronous", "NORMAL")?;
         let version: i32 = connection.pragma_query_value(None, "user_version", |row| row.get(0))?;
@@ -54,18 +59,21 @@ impl Cache {
             connection.execute_batch(
                 "DROP TABLE IF EXISTS collection_track;
                  DROP TABLE IF EXISTS collection;
-                 DROP TABLE IF EXISTS track;",
+                 DROP TABLE IF EXISTS track;
+                 DROP TABLE IF EXISTS response;",
             )?;
         }
         connection.execute_batch(
             "CREATE TABLE IF NOT EXISTS track (
-                 id       INTEGER PRIMARY KEY,
-                 title    TEXT NOT NULL,
-                 artists  TEXT NOT NULL,
-                 album    TEXT NOT NULL,
-                 duration INTEGER NOT NULL,
-                 cover    TEXT,
-                 hires    INTEGER NOT NULL
+                 id   INTEGER PRIMARY KEY,
+                 data BLOB NOT NULL
+             );
+             CREATE TABLE IF NOT EXISTS response (
+                 user_id    INTEGER NOT NULL,
+                 key        TEXT NOT NULL,
+                 data       BLOB NOT NULL,
+                 fetched_at INTEGER NOT NULL,
+                 PRIMARY KEY (user_id, key)
              );
              CREATE TABLE IF NOT EXISTS collection (
                  user_id    INTEGER NOT NULL,
@@ -103,12 +111,80 @@ impl Cache {
             .await
     }
 
+    /// A cached API answer and its age.
+    pub async fn response(&self, user_id: u64, key: String) -> Result<Option<(Vec<u8>, Duration)>> {
+        self.blocking(move |db| {
+            let row = db
+                .prepare_cached(
+                    "SELECT data, fetched_at FROM response WHERE user_id = ?1 AND key = ?2",
+                )?
+                .query_row(params![user_id, key], |row| {
+                    Ok((row.get::<_, Vec<u8>>(0)?, row.get::<_, u64>(1)?))
+                });
+            match row {
+                Ok((data, fetched_at)) => Ok(Some((data, age_of(fetched_at)))),
+                Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+                Err(err) => Err(err.into()),
+            }
+        })
+        .await
+    }
+
+    pub async fn store_response(&self, user_id: u64, key: String, data: Vec<u8>) -> Result<()> {
+        self.blocking(move |db| {
+            let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
+            db.prepare_cached(
+                "INSERT INTO response (user_id, key, data, fetched_at) VALUES (?1, ?2, ?3, ?4)
+                 ON CONFLICT (user_id, key) DO UPDATE SET
+                     data = excluded.data, fetched_at = excluded.fetched_at",
+            )?
+            .execute(params![user_id, key, data, now])?;
+            Ok(())
+        })
+        .await
+    }
+
+    /// Drops cached answers whose key starts with `prefix` (after an edit).
+    pub async fn forget_responses(&self, user_id: u64, prefix: String) -> Result<()> {
+        self.blocking(move |db| {
+            db.execute(
+                "DELETE FROM response WHERE user_id = ?1 AND substr(key, 1, length(?2)) = ?2",
+                params![user_id, prefix],
+            )?;
+            Ok(())
+        })
+        .await
+    }
+
+    /// Removes answers older than `max_age` and compacts the file a little.
+    pub async fn prune(&self, max_age: Duration) -> Result<()> {
+        self.blocking(move |db| {
+            let cutoff = SystemTime::now()
+                .duration_since(UNIX_EPOCH)?
+                .as_secs()
+                .saturating_sub(max_age.as_secs());
+            db.execute("DELETE FROM response WHERE fetched_at < ?1", [cutoff])?;
+            db.pragma_update(None, "incremental_vacuum", 0)?;
+            Ok(())
+        })
+        .await
+    }
+
+    /// Size of the cache file in bytes.
+    pub fn file_size() -> u64 {
+        let path = glib::user_cache_dir()
+            .join("swell-player")
+            .join("library.sqlite3");
+        std::fs::metadata(path).map(|m| m.len()).unwrap_or(0)
+    }
+
     /// Forgets everything cached for `user_id` (on sign-out).
     pub async fn forget_user(&self, user_id: u64) -> Result<()> {
         self.blocking(move |db| {
             let tx = db.transaction()?;
             tx.execute("DELETE FROM collection_track WHERE user_id = ?1", [user_id])?;
             tx.execute("DELETE FROM collection WHERE user_id = ?1", [user_id])?;
+            tx.execute("DELETE FROM response WHERE user_id = ?1", [user_id])?;
             tx.execute(ORPHAN_TRACKS, [])?;
             Ok(tx.commit()?)
         })
@@ -142,29 +218,26 @@ fn read_collection(
     };
 
     let mut statement = db.prepare_cached(
-        "SELECT t.id, t.title, t.artists, t.album, t.duration, t.cover, t.hires
+        "SELECT t.data
          FROM collection_track c JOIN track t ON t.id = c.track_id
          WHERE c.user_id = ?1 AND c.name = ?2
          ORDER BY c.position",
     )?;
     let tracks = statement
-        .query_map(params![user_id, name], |row| {
-            Ok(TrackInfo {
-                id: row.get(0)?,
-                title: row.get(1)?,
-                artists: row.get(2)?,
-                album: row.get(3)?,
-                duration: row.get(4)?,
-                cover: row.get(5)?,
-                hires: row.get(6)?,
-            })
-        })?
-        .collect::<rusqlite::Result<Vec<_>>>()?;
+        .query_map(params![user_id, name], |row| row.get::<_, Vec<u8>>(0))?
+        .filter_map(|data| serde_json::from_slice::<TrackInfo>(&data.ok()?).ok())
+        .collect::<Vec<_>>();
+    Ok(Some(CachedCollection {
+        tracks,
+        total,
+        age: age_of(fetched_at),
+    }))
+}
 
-    let age = SystemTime::now()
+fn age_of(fetched_at: u64) -> Duration {
+    SystemTime::now()
         .duration_since(UNIX_EPOCH + Duration::from_secs(fetched_at))
-        .unwrap_or_default();
-    Ok(Some(CachedCollection { tracks, total, age }))
+        .unwrap_or_default()
 }
 
 fn write_collection(
@@ -182,25 +255,14 @@ fn write_collection(
     )?;
     {
         let mut upsert_track = tx.prepare_cached(
-            "INSERT INTO track (id, title, artists, album, duration, cover, hires)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
-             ON CONFLICT (id) DO UPDATE SET
-                 title = excluded.title, artists = excluded.artists, album = excluded.album,
-                 duration = excluded.duration, cover = excluded.cover, hires = excluded.hires",
+            "INSERT INTO track (id, data) VALUES (?1, ?2)
+             ON CONFLICT (id) DO UPDATE SET data = excluded.data",
         )?;
         let mut insert_position = tx.prepare_cached(
             "INSERT INTO collection_track (user_id, name, position, track_id) VALUES (?1, ?2, ?3, ?4)",
         )?;
         for (position, track) in tracks.iter().enumerate() {
-            upsert_track.execute(params![
-                track.id,
-                track.title,
-                track.artists,
-                track.album,
-                track.duration,
-                track.cover,
-                track.hires
-            ])?;
+            upsert_track.execute(params![track.id, serde_json::to_vec(track)?])?;
             insert_position.execute(params![user_id, name, position, track.id])?;
         }
     }
@@ -221,11 +283,11 @@ mod tests {
         TrackInfo {
             id,
             title: format!("Track {id}"),
-            artists: "Artist".into(),
             album: "Album".into(),
             duration: 180,
             cover: Some("ab-cd".into()),
             hires: id.is_multiple_of(2),
+            ..TrackInfo::default()
         }
     }
 
@@ -256,6 +318,16 @@ mod tests {
         let ids: Vec<_> = cached.tracks.iter().map(|t| t.id).collect();
         assert_eq!(ids, [2, 3]);
         assert!(cached.tracks[0].hires);
+        drop(db);
+        let rt = tokio::runtime::Builder::new_current_thread().build().unwrap();
+        rt.block_on(async {
+            cache.store_response(7, "pages/a".into(), b"x".to_vec()).await.unwrap();
+            let (data, _) = cache.response(7, "pages/a".into()).await.unwrap().unwrap();
+            assert_eq!(data, b"x");
+            cache.forget_responses(7, "pages/".into()).await.unwrap();
+            assert!(cache.response(7, "pages/a".into()).await.unwrap().is_none());
+        });
+        let mut db = cache.connection.lock().unwrap();
         assert!(
             read_collection(&mut db, 8, FAVORITE_TRACKS)
                 .unwrap()

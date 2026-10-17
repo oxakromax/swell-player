@@ -7,7 +7,7 @@ use gtk::glib;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 
-use crate::covers::CoverLoader;
+use crate::covers::{CoverLoader, Image};
 use crate::model::{TrackInfo, format_duration};
 
 /// Logical pixels; the 80 px download stays sharp on 1.5× screens.
@@ -109,7 +109,7 @@ impl TrackRow {
     pub fn bind(&self, track: &TrackInfo, position: u32, covers: &Rc<CoverLoader>) {
         let imp = self.imp();
         imp.title.set_label(&track.title);
-        imp.artists.set_label(&track.artists);
+        imp.artists.set_label(&track.artist_names());
         imp.album.set_label(&track.album);
         imp.hires.set_label(if track.hires { "HI-RES" } else { "" });
         imp.duration
@@ -118,7 +118,8 @@ impl TrackRow {
         imp.cover.set_icon_name(Some(COVER_PLACEHOLDER));
         let ticket = track.cover.as_deref().and_then(|id| {
             let row = self.downgrade();
-            covers.load(id, position, move |texture| {
+            let pixels = 48 * row_scale(self);
+            covers.load(&Image::Cover(id.to_owned()), pixels, position, move |texture| {
                 if let Some(row) = row.upgrade() {
                     row.imp().cover.set_paintable(Some(texture));
                 }
@@ -130,6 +131,10 @@ impl TrackRow {
     pub fn unbind(&self) {
         self.imp().cover_ticket.take();
     }
+}
+
+fn row_scale(widget: &impl IsA<gtk::Widget>) -> u32 {
+    widget.scale_factor().max(1) as u32
 }
 
 impl Default for TrackRow {

@@ -107,7 +107,7 @@ impl PlayerBar {
     /// A track was chosen and its stream is being looked up.
     pub fn show_loading(&self, track: &TrackInfo) {
         self.title.set_label(&track.title);
-        self.subtitle.set_label(&track.artists);
+        self.subtitle.set_label(&track.artist_names());
         self.progress
             .set_range(0.0, f64::from(track.duration.max(1)));
         self.progress.set_value(0.0);
@@ -118,7 +118,7 @@ impl PlayerBar {
 
     pub fn show_format(&self, track: &TrackInfo, format: &str) {
         self.subtitle
-            .set_label(&format!("{} · {format}", track.artists));
+            .set_label(&format!("{} · {format}", track.artist_names()));
     }
 
     pub fn show_error(self: &Rc<Self>, message: &str) {
