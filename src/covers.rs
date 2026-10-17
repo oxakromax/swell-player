@@ -324,6 +324,14 @@ impl CoverLoader {
     }
 
     /// Tells the pool which list position is in the middle of the viewport.
+    /// Drops every decoded texture and remembered miss (on sign-out).
+    pub fn clear_memory(&self) {
+        let mut memory = self.memory.borrow_mut();
+        memory.textures.clear();
+        memory.bytes = 0;
+        self.missing.borrow_mut().clear();
+    }
+
     pub fn set_focus(&self, position: u32) {
         self.queue.focus.store(position, Ordering::Relaxed);
     }

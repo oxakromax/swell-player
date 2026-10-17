@@ -375,6 +375,7 @@ impl Ui {
         self.end_session();
         // Nothing of this account may show in the next one.
         super::pages::search_data::forget_all();
+        self.covers.clear_memory();
         self.pending.borrow_mut().clear();
         let api = ctx.api.clone();
         let ui = self.clone();
