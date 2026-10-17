@@ -30,16 +30,20 @@
 //! the current track and position stay, the state goes to
 //! [`PlayState::Loading`] and loading is retried with backoff (1, 2, 4… 30 s,
 //! or as soon as GIO reports connectivity), with one
-//! "Connection lost — retrying" [`Event::Error`]. Only failures of the track
-//! itself count towards skipping it (after two attempts) and towards
-//! stopping (after [`MAX_FAILED_TRACKS`] tracks in a row).
+//! "Connection lost — retrying" [`Event::Error`]. Stream lookups that TIDAL
+//! answers with a server error (5xx/429) are retried like that only a few
+//! times ([`failure::MAX_SERVER_ERRORS`]), then the track counts as failed.
+//! Only failures of the track itself count towards skipping it (after two
+//! attempts) and towards stopping (after [`MAX_FAILED_TRACKS`] tracks in a
+//! row).
 //!
 //! Debugging: `SWELL_PLAY=<track id>[,<track id>…][@<seconds>]` plays those
 //! tracks at startup, starting at `seconds` (negative: from the end);
 //! `SWELL_PLAY=restore` restores the saved queue and plays it. Neither saves
 //! the session. `SWELL_DEBUG_STREAM_FAIL=<n>[@<skip>]` (see `api.rs`) and
-//! `SWELL_DEBUG_ENGINE_FAIL=<seconds>` (a dropped connection that many
-//! seconds into playback) simulate network failures.
+//! `SWELL_DEBUG_ENGINE_FAIL=<seconds>[@<status>]` (a dropped connection, or
+//! an HTTP `status` such as 403, that many seconds into the track) simulate
+//! network failures.
 
 use crate::i18n::{tr, trn};
 
@@ -70,7 +74,7 @@ use crate::tidal::pages::Target;
 
 pub use engine::Stream;
 use engine::{Engine, EngineEvent, NextStream};
-use failure::Failure;
+use failure::{Failure, HandoverBlame};
 #[allow(unused_imports)] // Public API for the UI.
 pub use format::{Codec, FormatDetails};
 use queue::Queue;
@@ -145,8 +149,14 @@ struct Prepared {
 
 impl Prepared {
     fn is_fresh(&self) -> bool {
-        self.at.elapsed() < PREPARED_MAX_AGE
+        is_fresh(self.at)
     }
+}
+
+/// Whether a stream resolved at `at` can still be played (its signed URLs
+/// have not expired).
+fn is_fresh(at: Instant) -> bool {
+    at.elapsed() < PREPARED_MAX_AGE
 }
 
 pub struct Playback {
@@ -177,6 +187,8 @@ pub struct Playback {
     resume_at: Cell<Option<f64>>,
     /// The stream of the current track.
     current_stream: RefCell<Option<Rc<Stream>>>,
+    /// When `current_stream` was resolved.
+    current_resolved: Cell<Option<Instant>>,
     /// The track the last load was for (to count failures per track).
     loaded_track: Cell<Option<u64>>,
     last_position: Cell<f64>,
@@ -185,6 +197,9 @@ pub struct Playback {
     healthy_at: Cell<f64>,
     /// Failed attempts at the current track.
     failures: Cell<u32>,
+    /// Stream lookups for the current track that TIDAL answered with a
+    /// server error, in a row.
+    server_errors: Cell<u32>,
     /// Tracks skipped in a row after failing.
     failed_tracks: Cell<u32>,
     log_output: Cell<bool>,
@@ -221,8 +236,8 @@ pub struct Playback {
     /// session files any more.
     saving_off: Arc<AtomicBool>,
     forgotten: Cell<bool>,
-    /// `SWELL_DEBUG_ENGINE_FAIL`: seconds into playback.
-    debug_engine_fail: Cell<Option<f64>>,
+    /// `SWELL_DEBUG_ENGINE_FAIL`: seconds into the track, HTTP status.
+    debug_engine_fail: Cell<Option<(f64, u32)>>,
     desktop: notify::Desktop,
     mpris: Option<mpris::Mpris>,
     save_pending: Cell<bool>,
@@ -273,11 +288,13 @@ impl Playback {
                 unloaded: Cell::new(false),
                 resume_at: Cell::new(None),
                 current_stream: RefCell::default(),
+                current_resolved: Cell::new(None),
                 loaded_track: Cell::new(None),
                 last_position: Cell::new(0.0),
                 engine_duration: Cell::new(None),
                 healthy_at: Cell::new(HEALTHY_AFTER),
                 failures: Cell::new(0),
+                server_errors: Cell::new(0),
                 failed_tracks: Cell::new(0),
                 log_output: Cell::new(false),
                 prepared: RefCell::default(),
@@ -302,7 +319,10 @@ impl Playback {
                 debug_engine_fail: Cell::new(
                     std::env::var("SWELL_DEBUG_ENGINE_FAIL")
                         .ok()
-                        .and_then(|s| s.parse().ok()),
+                        .and_then(|spec| {
+                            let (at, status) = spec.split_once('@').unwrap_or((&spec, "0"));
+                            Some((at.parse().ok()?, status.parse().ok()?))
+                        }),
                 ),
                 desktop: notify::Desktop::default(),
                 mpris: Some(mpris::Mpris::start(commands)),
@@ -416,6 +436,7 @@ impl Playback {
             if let Some(this) = weak.upgrade() {
                 this.save_session();
             }
+            rundir::remove_own();
         });
         self.desktop
             .set_playing(self.state.get() == PlayState::Playing);
@@ -583,12 +604,8 @@ impl Playback {
         if engine.handover_pending() {
             // The next track is already decoding behind the end of this
             // one: start this one over at the position instead.
-            if let Some(stream) = self.current_stream.borrow().clone() {
-                let gain = self.gain_for(&stream);
-                engine.load(&stream.uri, self.want_play.get(), Some(position), gain);
-                if let Some(this) = self.this() {
-                    this.refresh_next();
-                }
+            if let Some(this) = self.this() {
+                this.reload_current(position);
             }
         } else {
             engine.seek(position);
@@ -890,8 +907,11 @@ impl Playback {
         self.format.replace(None);
         self.details.replace(None);
         self.current_stream.replace(None);
+        self.current_resolved.set(None);
         self.desktop.clear();
         session::clear();
+        // Manifests (signed URLs) and covers of this session.
+        runtime::runtime().spawn_blocking(rundir::remove_own);
         self.emit(Event::Queue);
         self.emit(Event::Track(None));
         self.emit(Event::Format(None));
@@ -1026,6 +1046,7 @@ impl Playback {
         self.format.replace(None);
         self.details.replace(None);
         self.current_stream.replace(None);
+        self.current_resolved.set(None);
         self.emit(Event::Format(None));
     }
 
@@ -1146,15 +1167,37 @@ impl Playback {
     fn apply_output_device(self: &Rc<Self>) {
         let Some(engine) = &self.engine else { return };
         engine.set_output_device(self.output_device.borrow().clone());
-        if !self.loaded.get() {
+        if !self.loaded.get() || self.current_stream.borrow().is_none() {
             return;
         }
-        if let Some(stream) = self.current_stream.borrow().clone() {
-            let position = self.position().unwrap_or(self.last_position.get());
-            let gain = self.gain_for(&stream);
-            engine.load(&stream.uri, self.want_play.get(), Some(position), gain);
-            self.refresh_next();
+        let position = self.position().unwrap_or(self.last_position.get());
+        self.reload_current(position);
+    }
+
+    /// Starts the current track over at `position` (a new pipeline): with
+    /// its stream if that is still fresh, otherwise with a newly resolved
+    /// one (signed URLs expire).
+    fn reload_current(self: &Rc<Self>, position: f64) {
+        let Some(engine) = &self.engine else { return };
+        let current = self.current().map(|t| t.id);
+        let stream = self
+            .current_stream
+            .borrow()
+            .clone()
+            .filter(|s| Some(s.track_id) == current)
+            .filter(|_| self.current_resolved.get().is_some_and(is_fresh));
+        let Some(stream) = stream else {
+            log::info!("the current stream may have expired: resolving it again");
+            return self.load_current(self.want_play.get(), Some(position), false);
+        };
+        let gain = self.gain_for(&stream);
+        self.loaded.set(true);
+        self.last_position.set(position);
+        if self.want_play.get() {
+            self.set_state(PlayState::Loading);
         }
+        engine.load(&stream.uri, self.want_play.get(), Some(position), gain);
+        self.refresh_next();
     }
 
     fn quality(&self) -> crate::tidal::Quality {
@@ -1207,25 +1250,19 @@ impl Playback {
         self.prefetch_retry_at.set(None);
         self.prepare_generation
             .set(self.prepare_generation.get() + 1);
-        let handed_over = self.engine.as_ref().is_some_and(Engine::handover_pending);
-        if !handed_over {
+        // Withdrawn from the engine first: if the streaming thread took it
+        // already, it is what plays next and stays.
+        if self.engine.as_ref().is_none_or(|engine| engine.set_next(None)) {
             self.prepared.replace(None);
-            if let Some(engine) = &self.engine {
-                engine.set_next(None);
-            }
         }
     }
 
-    fn take_prepared(&self, track_id: u64) -> Option<Rc<Stream>> {
+    fn take_prepared(&self, track_id: u64) -> Option<Prepared> {
         let mut prepared = self.prepared.borrow_mut();
         let usable = prepared
             .as_ref()
             .is_some_and(|p| p.stream.track_id == track_id && p.is_fresh());
-        if usable {
-            prepared.take().map(|p| p.stream)
-        } else {
-            None
-        }
+        if usable { prepared.take() } else { None }
     }
 
     /// The track to prepare for a gapless switch, if any.
@@ -1239,19 +1276,37 @@ impl Playback {
 
     /// Keeps the stream handed to the engine for the gapless switch in line
     /// with the queue, and prepares one when it is time.
+    ///
+    /// Invariant: `prepared` holds whatever the engine may hand over (its
+    /// `next`) or has handed over. The engine's `next` is replaced in one
+    /// step that fails once `about-to-finish` took it, and only after that
+    /// step succeeded is a stale `prepared` dropped; so the stream about to
+    /// play is never dropped or replaced (which would restart that track
+    /// from the beginning).
     fn refresh_next(self: &Rc<Self>) {
         let Some(engine) = &self.engine else { return };
-        if engine.handover_pending() {
-            // Too late to change; `NextStarted` sorts out a mismatch.
-            return;
-        }
         let wanted = self.wanted_next();
-        let stale = self
+        let usable = self
             .prepared
             .borrow()
             .as_ref()
-            .is_some_and(|p| Some(p.stream.track_id) != wanted || !p.is_fresh());
-        if stale {
+            .is_some_and(|p| Some(p.stream.track_id) == wanted && p.is_fresh());
+        let next = self
+            .prepared
+            .borrow()
+            .as_ref()
+            .filter(|_| usable)
+            .map(|p| NextStream {
+                track_id: p.stream.track_id,
+                uri: p.stream.uri.clone(),
+                gain: self.gain_for(&p.stream),
+            });
+        if !engine.set_next(next) {
+            // Handed over already: too late to change; `NextStarted` sorts
+            // out a mismatch.
+            return;
+        }
+        if !usable {
             self.prepared.replace(None);
         }
         if self.preparing.get().is_some() && self.preparing.get() != wanted {
@@ -1259,12 +1314,6 @@ impl Playback {
             self.prepare_generation
                 .set(self.prepare_generation.get() + 1);
         }
-        let next = self.prepared.borrow().as_ref().map(|p| NextStream {
-            track_id: p.stream.track_id,
-            uri: p.stream.uri.clone(),
-            gain: self.gain_for(&p.stream),
-        });
-        engine.set_next(next);
         self.keep_manifests();
         self.maybe_prefetch();
     }
@@ -1285,6 +1334,10 @@ impl Playback {
         let Some(next_id) = self.wanted_next() else {
             return;
         };
+        // What plays next is decided (see `refresh_next`).
+        if self.engine.as_ref().is_some_and(Engine::handover_pending) {
+            return;
+        }
         let ready = self
             .prepared
             .borrow()
@@ -1322,6 +1375,9 @@ impl Playback {
                 return;
             }
             this.preparing.set(None);
+            if this.engine.as_ref().is_some_and(Engine::handover_pending) {
+                return;
+            }
             match result {
                 Ok(stream) => {
                     log::info!(
@@ -1372,6 +1428,7 @@ impl Playback {
         };
         if self.loaded_track.replace(Some(track.id)) != Some(track.id) {
             self.failures.set(0);
+            self.server_errors.set(0);
             self.net_strikes.set(0);
             self.prefetch_failed.set(None);
             self.prefetch_retry_at.set(None);
@@ -1400,8 +1457,8 @@ impl Playback {
             PlayState::Paused
         });
 
-        if let Some(stream) = self.take_prepared(track.id) {
-            return self.start_stream(stream, start);
+        if let Some(prepared) = self.take_prepared(track.id) {
+            return self.start_stream(prepared.stream, prepared.at, start);
         }
         self.keep_manifests();
         self.resolving.set(true);
@@ -1417,20 +1474,40 @@ impl Playback {
             }
             this.resolving.set(false);
             match stream {
-                Ok(stream) => this.start_stream(Rc::new(stream), this.load_start.get()),
+                Ok(stream) => {
+                    this.server_errors.set(0);
+                    this.start_stream(Rc::new(stream), Instant::now(), this.load_start.get());
+                }
                 Err(err) => {
                     let detail = failure::redact(&format!("{err:#}"));
-                    this.failed(failure::classify(&err), &track, &detail, Duration::from_secs(1));
+                    let classified = failure::classify(&err);
+                    let (kind, count) = failure::after_lookup(
+                        classified,
+                        failure::server_answered(&err),
+                        this.server_errors.get(),
+                    );
+                    this.server_errors.set(count);
+                    if kind != classified {
+                        // TIDAL answers, but only with errors: give up on it.
+                        log::warn!(
+                            "TIDAL keeps failing to give track {} ({detail}): skipping it",
+                            track.id
+                        );
+                        this.loaded.set(false);
+                        return this.skip_failed(&track);
+                    }
+                    this.failed(kind, &track, &detail, Duration::from_secs(1));
                 }
             }
         });
     }
 
-    fn start_stream(self: &Rc<Self>, stream: Rc<Stream>, start: Option<f64>) {
+    /// Plays `stream` (resolved at `resolved`) from `start`.
+    fn start_stream(self: &Rc<Self>, stream: Rc<Stream>, resolved: Instant, start: Option<f64>) {
         let Some(engine) = &self.engine else { return };
         log::info!("playing track {} as {}", stream.track_id, stream.format);
         let gain = self.gain_for(&stream);
-        self.set_current_stream(stream.clone(), gain);
+        self.set_current_stream(stream.clone(), resolved, gain);
         self.loaded.set(true);
         self.log_output.set(true);
         let start = start.filter(|s| *s > 0.0);
@@ -1440,7 +1517,7 @@ impl Playback {
         self.refresh_next();
     }
 
-    fn set_current_stream(&self, stream: Rc<Stream>, gain: Option<f64>) {
+    fn set_current_stream(&self, stream: Rc<Stream>, resolved: Instant, gain: Option<f64>) {
         let mut details = stream.details.clone();
         details.replay_gain_db = gain.map(format::to_db);
         self.details.replace(Some(details));
@@ -1448,6 +1525,7 @@ impl Playback {
         self.engine_duration.set(None);
         let format = stream.format.clone();
         self.current_stream.replace(Some(stream));
+        self.current_resolved.set(Some(resolved));
         self.emit(Event::Format(Some(format)));
     }
 
@@ -1609,13 +1687,13 @@ impl Playback {
             self.failed_tracks.set(0);
             self.net_strikes.set(0);
         }
-        if let Some(at) = self.debug_engine_fail.get()
+        if let Some((at, status)) = self.debug_engine_fail.get()
             && position >= at
             && let Some(engine) = &self.engine
         {
-            log::info!("SWELL_DEBUG_ENGINE_FAIL: dropping the connection at {position:.1} s");
+            log::info!("SWELL_DEBUG_ENGINE_FAIL: failing with HTTP {status} at {position:.1} s");
             self.debug_engine_fail.set(None);
-            engine.simulate_network_error();
+            engine.simulate_network_error(status);
         }
         self.maybe_prefetch();
         if self.position_saved_at.get().elapsed() >= POSITION_SAVE_INTERVAL {
@@ -1669,7 +1747,11 @@ impl Playback {
                 }
             }
             EngineEvent::NextStarted(track_id) => self.next_started(track_id),
-            EngineEvent::Error { message, kind } => self.engine_failed(&message, kind),
+            EngineEvent::Error {
+                message,
+                kind,
+                from_sink,
+            } => self.engine_failed(&message, kind, from_sink),
         }
     }
 
@@ -1683,7 +1765,10 @@ impl Playback {
 
     /// The gapless switch happened: the queue follows.
     fn next_started(self: &Rc<Self>, track_id: u64) {
-        let prepared = self.prepared.take();
+        let prepared = self
+            .prepared
+            .take()
+            .filter(|p| p.stream.track_id == track_id);
         let advanced = self.queue.borrow_mut().advance(false);
         self.emit(Event::Queue);
         let current = self.current();
@@ -1709,7 +1794,7 @@ impl Playback {
         self.log_output.set(true);
         self.announce(&track);
         let gain = self.gain_for(&prepared.stream);
-        self.set_current_stream(prepared.stream, gain);
+        self.set_current_stream(prepared.stream, prepared.at, gain);
         if self.sleep_timer() == Some(SleepTimer::EndOfTrack) {
             // Handed over before the timer was set: stop right here.
             self.sleep.replace(None);
@@ -1740,8 +1825,9 @@ impl Playback {
 
     /// A playback error. The network's fault: retry the same track at the
     /// same position until it works. The track's: reload once at the same
-    /// position (expired URLs), then skip.
-    fn engine_failed(self: &Rc<Self>, message: &str, kind: Failure) {
+    /// position (expired URLs), then skip. During the gapless handover, see
+    /// [`failure::blame_handover`].
+    fn engine_failed(self: &Rc<Self>, message: &str, kind: Failure, from_sink: bool) {
         let handed_over = self.engine.as_ref().is_some_and(Engine::handover_pending);
         self.loaded.set(false);
         let Some(track) = self.current() else {
@@ -1750,21 +1836,23 @@ impl Playback {
                 tr("Playback failed: {error}").replace("{error}", message),
             ));
         };
-        if handed_over {
+        if handed_over && failure::blame_handover(kind, from_sink) == HandoverBlame::Next {
             // The next track's stream failed (the end of this one was
             // already decoded): its prepared stream is to blame, likely
-            // expired. Move on and load that track afresh.
-            log::info!("the stream handed over after track {} failed: {message}", track.id);
-            self.prepared.replace(None);
-            let advanced = self.queue.borrow_mut().advance(false);
-            self.emit(Event::Queue);
-            if advanced {
-                self.load_current(self.want_play.get(), None, true);
-            } else {
-                self.finish();
+            // expired. Finish this track without it; the next one is
+            // loaded afresh when it ends.
+            let next = self.prepared.take().map(|p| p.stream.track_id);
+            log::info!(
+                "the stream handed over after track {} failed ({message}): finishing this one first",
+                track.id
+            );
+            if next.is_some() {
+                self.prefetch_failed.set(next);
             }
-            return;
+            return self.reload_current(self.last_position.get());
         }
+        // Otherwise (also during the handover: the network, the audio
+        // output) it is the current track's; the prepared next one stays.
         // The prepared stream may be just as stale.
         if self
             .prepared
@@ -1878,5 +1966,6 @@ impl Drop for Playback {
             timer.remove();
         }
         self.desktop.clear();
+        rundir::remove_own();
     }
 }

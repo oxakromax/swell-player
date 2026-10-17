@@ -254,8 +254,7 @@ async fn save_cover(cover: String) -> Result<std::path::PathBuf> {
         .error_for_status()?
         .bytes()
         .await?;
-    let dir = super::rundir::dir();
-    tokio::fs::create_dir_all(&dir).await?;
+    let dir = tokio::task::spawn_blocking(super::rundir::create).await??;
     // A new name per cover: the notification server may read it late.
     let path = dir.join(format!("cover-{}.jpg", cover.replace('/', "-")));
     tokio::fs::write(&path, &bytes).await?;

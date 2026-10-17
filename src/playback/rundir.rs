@@ -1,7 +1,9 @@
 //! Private files of this process: DASH manifests and notification covers go
-//! to `$XDG_RUNTIME_DIR/swell-player/<pid>/` (in memory, owner only), so
-//! two instances never prune each other's files. Directories left by
-//! processes that are gone are removed at startup.
+//! to `$XDG_RUNTIME_DIR/swell-player/<pid>/` (in memory, mode 0700; without
+//! a runtime directory, `~/.cache/swell-player-run/<pid>/`), so two
+//! instances never prune each other's files. The directory goes away on
+//! sign-out and when playback is dropped; ones left by processes that are
+//! gone are removed at startup.
 
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -14,12 +16,54 @@ use gtk::glib;
 const LEGACY_MAX_AGE: Duration = Duration::from_secs(10 * 60);
 
 fn base() -> PathBuf {
-    glib::user_runtime_dir().join("swell-player")
+    base_in(std::env::var_os("XDG_RUNTIME_DIR").map(PathBuf::from))
+}
+
+/// `$XDG_RUNTIME_DIR/swell-player`, or (without a usable runtime
+/// directory) a private directory in the user cache.
+fn base_in(runtime: Option<PathBuf>) -> PathBuf {
+    match runtime.filter(|dir| dir.is_absolute()) {
+        Some(dir) => dir.join("swell-player"),
+        None => glib::user_cache_dir().join("swell-player-run"),
+    }
 }
 
 /// This process's directory (not created).
 pub fn dir() -> PathBuf {
     base().join(std::process::id().to_string())
+}
+
+/// Creates this process's directory, and the base one, accessible to the
+/// owner only (mode 0700, also when they already existed). Blocking.
+pub fn create() -> std::io::Result<PathBuf> {
+    let dir = dir();
+    create_private(&base(), &dir)?;
+    Ok(dir)
+}
+
+/// Creates `dir` (inside `base`) with mode 0700 and makes both 0700.
+fn create_private(base: &Path, dir: &Path) -> std::io::Result<()> {
+    use std::os::unix::fs::{DirBuilderExt, PermissionsExt};
+    std::fs::DirBuilder::new()
+        .recursive(true)
+        .mode(0o700)
+        .create(dir)?;
+    for path in [base, dir] {
+        if std::fs::metadata(path)?.permissions().mode() & 0o777 != 0o700 {
+            std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o700))?;
+        }
+    }
+    Ok(())
+}
+
+/// Removes this process's directory and what is in it (blocking).
+pub fn remove_own() {
+    let dir = dir();
+    match std::fs::remove_dir_all(&dir) {
+        Ok(()) => log::debug!("removed {}", dir.display()),
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
+        Err(err) => log::debug!("could not remove {}: {err}", dir.display()),
+    }
 }
 
 /// A temporary name next to `path`, unique to this process and call, for
@@ -108,6 +152,35 @@ mod tests {
         assert!(name.starts_with(".queue.json."));
         assert!(name.ends_with(".part"));
         assert!(name.contains(&std::process::id().to_string()));
+    }
+
+    #[test]
+    fn falls_back_to_the_cache_without_a_runtime_dir() {
+        assert_eq!(
+            base_in(Some(PathBuf::from("/run/user/1000"))),
+            Path::new("/run/user/1000/swell-player")
+        );
+        let fallback = glib::user_cache_dir().join("swell-player-run");
+        assert_eq!(base_in(None), fallback);
+        assert_eq!(base_in(Some(PathBuf::new())), fallback);
+        assert_eq!(base_in(Some(PathBuf::from("relative"))), fallback);
+    }
+
+    #[test]
+    fn directories_are_private() {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = |path: &Path| std::fs::metadata(path).unwrap().permissions().mode() & 0o777;
+        let root = std::env::temp_dir().join(format!("swell-rundir-test-{}", std::process::id()));
+        let base = root.join("swell-player");
+        let dir = base.join("42");
+        create_private(&base, &dir).unwrap();
+        assert_eq!(mode(&base), 0o700);
+        assert_eq!(mode(&dir), 0o700);
+        // Left too open by an older build: tightened.
+        std::fs::set_permissions(&base, std::fs::Permissions::from_mode(0o755)).unwrap();
+        create_private(&base, &dir).unwrap();
+        assert_eq!(mode(&base), 0o700);
+        std::fs::remove_dir_all(&root).unwrap();
     }
 
     #[test]

@@ -119,8 +119,7 @@ pub fn keep_manifests(track_ids: &[u64]) {
 /// Manifests carry signed segment URLs, so they go to this process's
 /// private, in-memory runtime directory, one file per track.
 async fn write_manifest(track_id: u64, manifest: &[u8]) -> Result<PathBuf> {
-    let dir = super::rundir::dir();
-    tokio::fs::create_dir_all(&dir).await?;
+    let dir = tokio::task::spawn_blocking(super::rundir::create).await??;
     let path = dir.join(format!("{track_id}.mpd"));
     let partial = super::rundir::temp_path(&path);
     let written = match tokio::fs::write(&partial, manifest).await {
@@ -160,8 +159,13 @@ pub enum EngineEvent {
     Buffering,
     /// The end of the last stream (nothing was handed over).
     Finished,
-    /// Playback failed; `kind` says whether the network is to blame.
-    Error { message: String, kind: Failure },
+    /// Playback failed; `kind` says whether the network is to blame,
+    /// `from_sink` whether the audio output posted it.
+    Error {
+        message: String,
+        kind: Failure,
+        from_sink: bool,
+    },
     /// The track handed over with [`Engine::set_next`] started playing.
     NextStarted(u64),
 }
@@ -176,6 +180,11 @@ pub struct NextStream {
 }
 
 /// State shared with GStreamer's streaming threads.
+///
+/// Invariant: once `about-to-finish` took `next` (`handed_over` is set),
+/// the main thread can no longer change what plays next; [`Shared::offer`]
+/// refuses then, in the same critical section, so the caller keeps the
+/// stream it handed over (dropping it would restart the next track).
 #[derive(Default)]
 struct Shared {
     next: Option<NextStream>,
@@ -228,6 +237,32 @@ fn audio_sink_for(name: &str) -> Option<gst::Element> {
     device?.create_element(None).ok()
 }
 
+impl Shared {
+    /// Sets the stream for the next gapless switch, unless one was handed
+    /// over already (then nothing changes and this returns false).
+    fn offer(&mut self, next: Option<NextStream>) -> bool {
+        if self.handed_over.is_some() {
+            return false;
+        }
+        self.next = next;
+        true
+    }
+
+    /// `about-to-finish`: takes the waiting stream, if any.
+    fn hand_over(&mut self) -> Option<NextStream> {
+        let next = self.next.take()?;
+        self.handed_over = Some(next.track_id);
+        self.pending_gain = next.gain;
+        Some(next)
+    }
+
+    fn reset(&mut self) {
+        self.next = None;
+        self.handed_over = None;
+        self.pending_gain = None;
+    }
+}
+
 fn lock(shared: &Mutex<Shared>) -> std::sync::MutexGuard<'_, Shared> {
     shared.lock().unwrap_or_else(PoisonError::into_inner)
 }
@@ -250,13 +285,7 @@ impl Engine {
             move |values| {
                 let playbin = values[0].get::<gst::Element>().ok()?;
                 let shared = shared.upgrade()?;
-                let next = {
-                    let mut shared = lock(&shared);
-                    let next = shared.next.take()?;
-                    shared.handed_over = Some(next.track_id);
-                    shared.pending_gain = next.gain;
-                    next
-                };
+                let next = lock(&shared).hand_over()?;
                 if log::log_enabled!(log::Level::Debug) {
                     let left = playbin
                         .query_duration::<gst::ClockTime>()
@@ -299,12 +328,7 @@ impl Engine {
     /// any filter (bit-perfect).
     pub fn load(&self, uri: &str, play: bool, start: Option<f64>, gain: Option<f64>) {
         let _ = self.playbin.set_state(gst::State::Null);
-        {
-            let mut shared = lock(&self.shared);
-            shared.next = None;
-            shared.handed_over = None;
-            shared.pending_gain = None;
-        }
+        lock(&self.shared).reset();
         self.install_filter(gain);
         self.apply_output_device();
         self.playbin.set_property("uri", uri);
@@ -328,7 +352,9 @@ impl Engine {
     }
 
     /// Builds the audio sink for the wanted device. Only while the pipeline
-    /// is in `Null` (from `load`).
+    /// is in `Null` (from `load`). A device that is not there (yet) leaves
+    /// the default in place and is looked for again on the next load, so a
+    /// DAC plugged in later is picked up.
     fn apply_output_device(&self) {
         let wanted = self.local.output_wanted.borrow().clone();
         if *self.local.output_applied.borrow() == wanted {
@@ -341,8 +367,12 @@ impl Engine {
                 None
             }
         });
-        self.playbin.set_property("audio-sink", sink.as_ref());
-        self.local.output_applied.replace(wanted);
+        // Only what was built counts as applied.
+        let applied = if sink.is_some() { wanted } else { None };
+        if sink.is_some() || self.local.output_applied.borrow().is_some() {
+            self.playbin.set_property("audio-sink", sink.as_ref());
+        }
+        self.local.output_applied.replace(applied);
     }
 
     /// Puts a `volume` element in the pipeline for normalisation, or none.
@@ -383,10 +413,11 @@ impl Engine {
     }
 
     /// Debugging (`SWELL_DEBUG_ENGINE_FAIL`): posts the error an HTTP
-    /// source gives when the connection drops.
-    pub fn simulate_network_error(&self) {
+    /// source gives when the connection drops (`status` 0) or the server
+    /// answers `status`.
+    pub fn simulate_network_error(&self, status: u32) {
         let details = gst::Structure::builder("details")
-            .field("http-status-code", 0u32)
+            .field("http-status-code", status)
             .build();
         let message = gst::message::Error::builder(gst::ResourceError::Read, "Simulated connection loss")
             .debug("simulated, URL: https://example.invalid/segment.mp4?token=SECRET")
@@ -399,8 +430,12 @@ impl Engine {
     }
 
     /// The stream to switch to, gaplessly, when the current one ends.
-    pub fn set_next(&self, next: Option<NextStream>) {
-        lock(&self.shared).next = next;
+    /// Returns false, changing nothing, if `about-to-finish` already took
+    /// one (checked atomically with the change): the caller must then keep
+    /// the stream it handed over.
+    #[must_use]
+    pub fn set_next(&self, next: Option<NextStream>) -> bool {
+        lock(&self.shared).offer(next)
     }
 
     /// The next stream was handed over but has not started yet: the old one
@@ -426,10 +461,7 @@ impl Engine {
         self.local.target_playing.set(false);
         self.local.buffering.set(false);
         self.local.start_at.set(None);
-        let mut shared = lock(&self.shared);
-        shared.next = None;
-        shared.handed_over = None;
-        shared.pending_gain = None;
+        lock(&self.shared).reset();
     }
 
     fn set_state(&self, state: gst::State) {
@@ -590,12 +622,18 @@ fn handle_message(
             let _ = playbin.set_state(gst::State::Null);
             local.start_at.set(None);
             let error = err.error();
-            let factory = err
-                .src()
-                .and_then(|src| src.downcast_ref::<gst::Element>())
+            let element = err.src().and_then(|src| src.downcast_ref::<gst::Element>());
+            let factory = element
                 .and_then(gst::Element::factory)
                 .map(|factory| factory.name().to_string())
                 .unwrap_or_default();
+            let from_sink = element.is_some_and(|element| {
+                element.element_flags().contains(gst::ElementFlags::SINK)
+                    && !element.is::<gst::Bin>()
+            }) || error.kind::<gst::ResourceError>().is_some_and(|code| {
+                // Sinks report a device that is gone or busy this way.
+                matches!(code, gst::ResourceError::OpenWrite | gst::ResourceError::Write)
+            });
             let debug = err.debug().map(|d| failure::redact(&d)).unwrap_or_default();
             let resource_io = error.kind::<gst::ResourceError>().is_some_and(|code| {
                 matches!(
@@ -619,7 +657,11 @@ fn handle_message(
             let message = failure::redact(error.message());
             log::warn!("playback error ({kind:?}) from {factory}: {message}");
             log::debug!("playback error details: {debug} ({info:?})");
-            on_event(EngineEvent::Error { message, kind });
+            on_event(EngineEvent::Error {
+                message,
+                kind,
+                from_sink,
+            });
         }
         MessageView::StreamStart(_) => {
             if local.awaiting_first_start.replace(false) {
@@ -727,6 +769,34 @@ impl Drop for Engine {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn next(track_id: u64) -> NextStream {
+        NextStream {
+            track_id,
+            uri: format!("file:///{track_id}.mpd"),
+            gain: None,
+        }
+    }
+
+    /// The race between `about-to-finish` (streaming thread) and the main
+    /// thread replacing the next stream: once handed over, offers are
+    /// refused, so the stream that will play is never dropped or replaced.
+    #[test]
+    fn handed_over_stream_cannot_be_replaced() {
+        let mut shared = Shared::default();
+        assert!(shared.offer(Some(next(1))));
+        assert!(shared.offer(Some(next(2))));
+        assert_eq!(shared.hand_over().map(|n| n.track_id), Some(2));
+        assert_eq!(shared.handed_over, Some(2));
+        assert!(!shared.offer(Some(next(3))));
+        assert!(!shared.offer(None));
+        assert!(shared.next.is_none());
+        assert_eq!(shared.handed_over, Some(2));
+        // Nothing waits: a second about-to-finish takes nothing.
+        assert!(shared.hand_over().is_none());
+        shared.reset();
+        assert!(shared.offer(None));
+    }
 
     #[test]
     fn finds_dash_codecs() {
