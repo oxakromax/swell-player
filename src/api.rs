@@ -8,7 +8,9 @@ use std::time::Duration;
 
 use anyhow::Result;
 use futures_util::{StreamExt, stream};
-use tokio::sync::mpsc::UnboundedSender;
+use serde::de::DeserializeOwned;
+use serde_json::Value;
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
 use crate::cache::{Cache, CachedCollection};
 use crate::config;
@@ -338,6 +340,157 @@ impl Api {
         );
         Ok(page)
     }
+}
+
+impl Api {
+    /// Brings a list of favourite albums or artists up to date, like
+    /// [`Self::sync_favorite_tracks`] does for tracks, keeping the whole
+    /// list as one cached answer.
+    ///
+    /// Sends the cached list first ([`ListUpdate::Cached`]), then checks it
+    /// with one request: favourites come newest first, so if the first page
+    /// and the total still match, it is current. Otherwise the list is
+    /// fetched again, page by page ([`ListUpdate::Append`]) when nothing was
+    /// cached or at once ([`ListUpdate::Replace`]), and cached. Success
+    /// always ends with [`ListUpdate::Finished`].
+    pub fn sync_favorite_list<T>(
+        self: &Arc<Self>,
+        kind: tidal::Favorite,
+    ) -> UnboundedReceiver<Result<ListUpdate<T>>>
+    where
+        T: DeserializeOwned + Send + 'static,
+    {
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        let this = self.clone();
+        crate::runtime::runtime().spawn(async move {
+            if let Err(err) = this.sync_list(kind, &tx).await {
+                let _ = tx.send(Err(err));
+            }
+        });
+        rx
+    }
+
+    fn favorite_list_path(&self, kind: tidal::Favorite) -> String {
+        let plural = match kind {
+            tidal::Favorite::Track => "tracks",
+            tidal::Favorite::Album => "albums",
+            tidal::Favorite::Artist => "artists",
+            tidal::Favorite::Playlist => "playlists",
+        };
+        format!("users/{}/favorites/{plural}", self.user_id())
+    }
+
+    async fn sync_list<T: DeserializeOwned>(
+        &self,
+        kind: tidal::Favorite,
+        updates: &UnboundedSender<Result<ListUpdate<T>>>,
+    ) -> Result<()> {
+        let user_id = self.user_id();
+        let path = self.favorite_list_path(kind);
+        let key = format!("{}{path}?all", tidal::Base::V1.prefix());
+        let cache = self.cache().await;
+
+        let mut cached: Option<(Vec<Value>, usize, Duration)> = None;
+        if let Some(cache) = cache
+            && let Ok(Some((data, age))) = cache.response(user_id, key.clone()).await
+            && let Ok(value) = serde_json::from_slice::<Value>(&data)
+        {
+            let (items, total) = list_of(value);
+            let _ = updates.send(Ok(ListUpdate::Cached(parse_items(&items))));
+            cached = Some((items, total, age));
+        }
+
+        let (first, total) = list_of(self.favorite_list_page(&path, 0).await?);
+        if let Some((items, cached_total, age)) = &cached
+            && *age < FAVORITES_MAX_AGE
+            && *cached_total == total
+            && first.len() <= items.len()
+            && first.iter().zip(items).all(|(a, b)| item_id(a) == item_id(b))
+        {
+            let _ = updates.send(Ok(ListUpdate::Finished));
+            return Ok(());
+        }
+
+        let progressive = cached.is_none();
+        if progressive {
+            let _ = updates.send(Ok(ListUpdate::Append(parse_items(&first))));
+        }
+        let mut all = first;
+        let mut rest = stream::iter((FAVORITES_PAGE..total).step_by(FAVORITES_PAGE))
+            .map(|offset| self.favorite_list_page(&path, offset))
+            .buffered(FAVORITES_CONCURRENCY);
+        while let Some(page) = rest.next().await {
+            let (items, _) = list_of(page?);
+            if progressive {
+                let _ = updates.send(Ok(ListUpdate::Append(parse_items(&items))));
+            }
+            all.extend(items);
+        }
+        if !progressive {
+            let _ = updates.send(Ok(ListUpdate::Replace(parse_items(&all))));
+        }
+        let _ = updates.send(Ok(ListUpdate::Finished));
+
+        if let Some(cache) = cache
+            && !self.is_signed_out()
+        {
+            let data = serde_json::to_vec(&serde_json::json!({
+                "totalNumberOfItems": total,
+                "items": all,
+            }))?;
+            if let Err(err) = cache.store_response(user_id, key, data).await {
+                log::warn!("could not cache {path}: {err:#}");
+            }
+        }
+        Ok(())
+    }
+
+    async fn favorite_list_page(&self, path: &str, offset: usize) -> Result<Value> {
+        self.get(
+            tidal::Call::get(tidal::Base::V1, path)
+                .page(offset, FAVORITES_PAGE)
+                .query("order", "DATE")
+                .query("orderDirection", "DESC"),
+        )
+        .await
+    }
+}
+
+/// What [`Api::sync_favorite_list`] reports.
+pub enum ListUpdate<T> {
+    /// The list as cached last time, to show before TIDAL answers.
+    Cached(Vec<T>),
+    /// More items for the end of the list (nothing was cached).
+    Append(Vec<T>),
+    /// The cached list was stale: this is the whole current list.
+    Replace(Vec<T>),
+    /// The list on screen is now current.
+    Finished,
+}
+
+/// The wrapped items (`{"created", "item"}`) and total of a v1 page.
+fn list_of(mut value: Value) -> (Vec<Value>, usize) {
+    let total = value
+        .get("totalNumberOfItems")
+        .and_then(Value::as_u64)
+        .unwrap_or(0) as usize;
+    let items = match value.get_mut("items").map(Value::take) {
+        Some(Value::Array(items)) => items,
+        _ => Vec::new(),
+    };
+    (items, total)
+}
+
+fn item_id(wrapped: &Value) -> Option<&Value> {
+    wrapped.get("item")?.get("id")
+}
+
+/// The items the models accept (others are skipped).
+fn parse_items<T: DeserializeOwned>(items: &[Value]) -> Vec<T> {
+    items
+        .iter()
+        .filter_map(|wrapped| T::deserialize(wrapped.get("item")?).ok())
+        .collect()
 }
 
 /// TIDAL answers 50 favourites by default and accepts up to 100 per request.

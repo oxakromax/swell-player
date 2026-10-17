@@ -111,6 +111,24 @@ impl Cache {
             .await
     }
 
+    /// TIDAL's total for the cached favourite tracks (which may count
+    /// tracks TIDAL no longer lists), without reading the tracks.
+    pub async fn favorite_tracks_total(&self, user_id: u64) -> Result<Option<usize>> {
+        self.blocking(move |db| {
+            let total = db.query_row(
+                "SELECT total FROM collection WHERE user_id = ?1 AND name = ?2",
+                params![user_id, FAVORITE_TRACKS],
+                |row| row.get::<_, usize>(0),
+            );
+            match total {
+                Ok(total) => Ok(Some(total)),
+                Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+                Err(err) => Err(err.into()),
+            }
+        })
+        .await
+    }
+
     /// A cached API answer and its age.
     pub async fn response(&self, user_id: u64, key: String) -> Result<Option<(Vec<u8>, Duration)>> {
         self.blocking(move |db| {

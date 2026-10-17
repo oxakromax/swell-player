@@ -714,13 +714,9 @@ impl ItemMenu {
         );
         add("delete-playlist", None, |_, ctx, subject, _| {
             if let Subject::Playlist(playlist) = subject {
-                let weak = Rc::downgrade(ctx);
-                dialogs::playlist::delete_playlist(ctx, &playlist, move || {
-                    // Leave the deleted playlist's page if it is open.
-                    if let Some(ctx) = weak.upgrade() {
-                        ctx.navigate(Route::Home);
-                    }
-                });
+                // An open page of it leaves by itself when the library
+                // drops the playlist.
+                dialogs::playlist::delete_playlist(ctx, &playlist, || {});
             }
         });
         add(
