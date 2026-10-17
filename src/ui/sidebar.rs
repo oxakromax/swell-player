@@ -116,12 +116,36 @@ impl Sidebar {
         }
         let collection_store = gio::ListStore::new::<glib::BoxedAnyObject>();
         for (title, icon, route) in [
-            ("Tracks", "swell-heart-symbolic", Route::Collection(CollectionView::Tracks)),
-            ("Albums", "media-optical-symbolic", Route::Collection(CollectionView::Albums)),
-            ("Artists", "avatar-default-symbolic", Route::Collection(CollectionView::Artists)),
-            ("Playlists", "view-list-symbolic", Route::Collection(CollectionView::Playlists)),
-            ("Mixes & Radios", "swell-mix-symbolic", Route::Collection(CollectionView::Mixes)),
-            ("Recently Played", "document-open-recent-symbolic", Route::History),
+            (
+                "Tracks",
+                "swell-heart-symbolic",
+                Route::Collection(CollectionView::Tracks),
+            ),
+            (
+                "Albums",
+                "media-optical-symbolic",
+                Route::Collection(CollectionView::Albums),
+            ),
+            (
+                "Artists",
+                "avatar-default-symbolic",
+                Route::Collection(CollectionView::Artists),
+            ),
+            (
+                "Playlists",
+                "view-list-symbolic",
+                Route::Collection(CollectionView::Playlists),
+            ),
+            (
+                "Mixes & Radios",
+                "swell-mix-symbolic",
+                Route::Collection(CollectionView::Mixes),
+            ),
+            (
+                "Recently Played",
+                "document-open-recent-symbolic",
+                Route::History,
+            ),
         ] {
             collection_store.append(&Entry::Nav { title, icon, route }.object());
         }
@@ -202,7 +226,9 @@ impl Sidebar {
         let id = ctx.library.connect_changed({
             let sidebar = Rc::downgrade(&sidebar);
             move |change| {
-                let Some(sidebar) = sidebar.upgrade() else { return };
+                let Some(sidebar) = sidebar.upgrade() else {
+                    return;
+                };
                 match change {
                     Change::Playlists => sidebar.reload_playlists(),
                     Change::Loaded => sidebar.count_favorite_tracks(),
@@ -305,14 +331,18 @@ impl Sidebar {
     /// Asks TIDAL how many favourite tracks there are (the library knows
     /// the ids but does not expose them), then follows changes.
     fn count_favorite_tracks(self: &Rc<Self>) {
-        let Some(ctx) = self.ctx.upgrade() else { return };
+        let Some(ctx) = self.ctx.upgrade() else {
+            return;
+        };
         let generation = self.count_generation.get() + 1;
         self.count_generation.set(generation);
         let api = ctx.api.clone();
         let sidebar = Rc::downgrade(self);
         glib::spawn_future_local(async move {
             let ids = runtime::spawn(async move { api.favorite_ids().await }).await;
-            let Some(sidebar) = sidebar.upgrade() else { return };
+            let Some(sidebar) = sidebar.upgrade() else {
+                return;
+            };
             if sidebar.count_generation.get() != generation {
                 return;
             }
@@ -355,7 +385,13 @@ impl Sidebar {
 
     /// Opens the playlist menu of `row`'s playlist, at `point` (in the
     /// row's coordinates) or the whole row.
-    fn popup_menu(&self, row: &Row, list: &gtk::ListView, menu: &ItemMenu, point: Option<(f64, f64)>) {
+    fn popup_menu(
+        &self,
+        row: &Row,
+        list: &gtk::ListView,
+        menu: &ItemMenu,
+        point: Option<(f64, f64)>,
+    ) {
         let Some(Entry::Playlist { playlist, .. }) = row.entry.borrow().clone() else {
             return;
         };
@@ -378,7 +414,8 @@ impl Sidebar {
         let weak_list = list.downgrade();
         keys.connect_key_pressed(move |_, key, _, modifiers| {
             let menu_key = key == gtk::gdk::Key::Menu
-                || (key == gtk::gdk::Key::F10 && modifiers.contains(gtk::gdk::ModifierType::SHIFT_MASK));
+                || (key == gtk::gdk::Key::F10
+                    && modifiers.contains(gtk::gdk::ModifierType::SHIFT_MASK));
             let (Some(sidebar), Some(menu), Some(list)) =
                 (sidebar.upgrade(), menu.upgrade(), weak_list.upgrade())
             else {
@@ -412,7 +449,11 @@ impl Sidebar {
         let target = gtk::DropTarget::new(TrackDrag::static_type(), gtk::gdk::DragAction::COPY);
         let weak_row = Rc::downgrade(row);
         let own_playlist = move || match weak_row.upgrade()?.entry.borrow().as_ref() {
-            Some(Entry::Playlist { playlist, own: true, .. }) => Some(playlist.clone()),
+            Some(Entry::Playlist {
+                playlist,
+                own: true,
+                ..
+            }) => Some(playlist.clone()),
             _ => None,
         };
         target.connect_accept({
@@ -445,7 +486,13 @@ impl Sidebar {
             section => Some(section.to_owned()),
         };
         for i in 0..self.selection.n_items() {
-            let Some(key) = self.selection.item(i).as_ref().and_then(Entry::of).and_then(|e| e.key()) else {
+            let Some(key) = self
+                .selection
+                .item(i)
+                .as_ref()
+                .and_then(Entry::of)
+                .and_then(|e| e.key())
+            else {
                 continue;
             };
             if location.visible.as_ref() == Some(&key) && key.starts_with("playlist-") {
@@ -543,12 +590,19 @@ impl Sidebar {
             let right_click = gtk::GestureClick::builder().button(3).build();
             let long_press = gtk::GestureLongPress::builder().touch_only(true).build();
             {
-                let (weak_row, menu, list, sidebar) =
-                    (Rc::downgrade(&row), menu.clone(), list.clone(), sidebar.clone());
+                let (weak_row, menu, list, sidebar) = (
+                    Rc::downgrade(&row),
+                    menu.clone(),
+                    list.clone(),
+                    sidebar.clone(),
+                );
                 right_click.connect_pressed(move |gesture, _, x, y| {
-                    if let (Some(row), Some(menu), Some(list), Some(sidebar)) =
-                        (weak_row.upgrade(), menu.upgrade(), list.upgrade(), sidebar.upgrade())
-                        && matches!(*row.entry.borrow(), Some(Entry::Playlist { .. }))
+                    if let (Some(row), Some(menu), Some(list), Some(sidebar)) = (
+                        weak_row.upgrade(),
+                        menu.upgrade(),
+                        list.upgrade(),
+                        sidebar.upgrade(),
+                    ) && matches!(*row.entry.borrow(), Some(Entry::Playlist { .. }))
                     {
                         gesture.set_state(gtk::EventSequenceState::Claimed);
                         sidebar.popup_menu(&row, &list, &menu, Some((x, y)));
@@ -556,12 +610,19 @@ impl Sidebar {
                 });
             }
             {
-                let (weak_row, menu, list, sidebar) =
-                    (Rc::downgrade(&row), menu.clone(), list.clone(), sidebar.clone());
+                let (weak_row, menu, list, sidebar) = (
+                    Rc::downgrade(&row),
+                    menu.clone(),
+                    list.clone(),
+                    sidebar.clone(),
+                );
                 long_press.connect_pressed(move |gesture, x, y| {
-                    if let (Some(row), Some(menu), Some(list), Some(sidebar)) =
-                        (weak_row.upgrade(), menu.upgrade(), list.upgrade(), sidebar.upgrade())
-                        && matches!(*row.entry.borrow(), Some(Entry::Playlist { .. }))
+                    if let (Some(row), Some(menu), Some(list), Some(sidebar)) = (
+                        weak_row.upgrade(),
+                        menu.upgrade(),
+                        list.upgrade(),
+                        sidebar.upgrade(),
+                    ) && matches!(*row.entry.borrow(), Some(Entry::Playlist { .. }))
                     {
                         gesture.set_state(gtk::EventSequenceState::Claimed);
                         sidebar.popup_menu(&row, &list, &menu, Some((x, y)));
@@ -597,7 +658,11 @@ impl Sidebar {
                         if !was_selected.get() {
                             return;
                         }
-                        let entry = item.upgrade().and_then(|item| item.item()).as_ref().and_then(Entry::of);
+                        let entry = item
+                            .upgrade()
+                            .and_then(|item| item.item())
+                            .as_ref()
+                            .and_then(Entry::of);
                         if let (Some(sidebar), Some(entry)) = (sidebar.upgrade(), entry) {
                             sidebar.open(&entry);
                         }
@@ -650,11 +715,16 @@ impl Sidebar {
                 if let (Some(ctx), Some(image)) = (self.ctx.upgrade(), image) {
                     let pixels = (32 * row.root.scale_factor().max(1)) as u32;
                     let cover = row.cover.downgrade();
-                    let ticket = ctx.covers.load(&Image::Playlist(image.clone()), pixels, 0, move |texture| {
-                        if let Some(cover) = cover.upgrade() {
-                            cover.set_paintable(Some(texture));
-                        }
-                    });
+                    let ticket = ctx.covers.load(
+                        &Image::Playlist(image.clone()),
+                        pixels,
+                        0,
+                        move |texture| {
+                            if let Some(cover) = cover.upgrade() {
+                                cover.set_paintable(Some(texture));
+                            }
+                        },
+                    );
                     row.ticket.replace(ticket);
                 }
             }
@@ -703,7 +773,11 @@ impl Sidebar {
             header.connect_item_notify(move |header| {
                 let entry = header.item().as_ref().and_then(Entry::of);
                 let (title, show_add) = match entry {
-                    Some(Entry::Nav { route, .. }) if route.section().is_some() && !route.is_collection_root() => (None, false),
+                    Some(Entry::Nav { route, .. })
+                        if route.section().is_some() && !route.is_collection_root() =>
+                    {
+                        (None, false)
+                    }
                     Some(Entry::Nav { .. }) => (collection_header.then_some("COLLECTION"), false),
                     Some(Entry::Playlist { .. } | Entry::NewPlaylist) => (Some("PLAYLISTS"), true),
                     None => (None, false),

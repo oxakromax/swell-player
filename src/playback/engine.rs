@@ -524,7 +524,12 @@ fn handle_message(
             }
         }
         MessageView::AsyncDone(_) => {
-            log::trace!("async-done (start {:?}, seeking {}, buffering {})", local.start_at.get(), local.seeking_to_start.get(), local.buffering.get());
+            log::trace!(
+                "async-done (start {:?}, seeking {}, buffering {})",
+                local.start_at.get(),
+                local.seeking_to_start.get(),
+                local.buffering.get()
+            );
             if let Some(start) = local.start_at.take() {
                 local.seeking_to_start.set(true);
                 seek(playbin, start);
@@ -533,17 +538,19 @@ fn handle_message(
                 && !local.buffering.get()
             {
                 let _ = playbin.set_state(gst::State::Playing);
-            } else if local.target_playing.get()
-                && !local.buffering.get()
-                && is_playing(playbin)
-            {
+            } else if local.target_playing.get() && !local.buffering.get() && is_playing(playbin) {
                 // A flushing seek while playing: the pipeline recovered by
                 // itself, possibly without a state change to report.
                 on_event(EngineEvent::Playing);
             }
         }
         MessageView::StateChanged(change) if message.src() == Some(playbin.upcast_ref()) => {
-            log::trace!("state {:?} -> {:?} (pending {:?})", change.old(), change.current(), change.pending());
+            log::trace!(
+                "state {:?} -> {:?} (pending {:?})",
+                change.old(),
+                change.current(),
+                change.pending()
+            );
             match change.current() {
                 gst::State::Playing => on_event(EngineEvent::Playing),
                 gst::State::Paused if change.pending() == gst::State::VoidPending => {

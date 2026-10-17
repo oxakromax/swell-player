@@ -35,10 +35,10 @@ pub struct Ctx {
     pub toasts: adw::ToastOverlay,
     navigator: RefCell<Weak<Navigator>>,
     /// Asks the window to sign out (with an optional reason to show).
-    sign_out: RefCell<Option<Box<dyn Fn(Option<String>)>>>,
+    sign_out: RefCell<Option<SignOut>>,
     /// The open panel tab, `None` when closed. Set by the shell.
     panel: Cell<Option<PanelTab>>,
-    panel_handler: RefCell<Option<Box<dyn Fn(Option<PanelTab>)>>>,
+    panel_handler: RefCell<Option<PanelHandler>>,
     panel_listeners: RefCell<Vec<(u64, PanelListener)>>,
     next_listener: Cell<u64>,
     /// "You're offline" (docs/design.md §4.8); the shell shows it above
@@ -47,6 +47,8 @@ pub struct Ctx {
 }
 
 type PanelListener = Rc<dyn Fn(Option<PanelTab>)>;
+type PanelHandler = Box<dyn Fn(Option<PanelTab>)>;
+type SignOut = Box<dyn Fn(Option<String>)>;
 
 /// Whether `err` (anywhere in its chain) is a failure to reach the server:
 /// no connection, DNS, or a timeout.
@@ -55,20 +57,18 @@ pub fn is_connection_error(err: &anyhow::Error) -> bool {
         cause
             .downcast_ref::<reqwest::Error>()
             .is_some_and(|e| e.is_connect() || e.is_timeout())
-            || cause
-                .downcast_ref::<std::io::Error>()
-                .is_some_and(|e| {
-                    matches!(
-                        e.kind(),
-                        std::io::ErrorKind::ConnectionRefused
-                            | std::io::ErrorKind::ConnectionReset
-                            | std::io::ErrorKind::ConnectionAborted
-                            | std::io::ErrorKind::NotConnected
-                            | std::io::ErrorKind::TimedOut
-                            | std::io::ErrorKind::NetworkUnreachable
-                            | std::io::ErrorKind::HostUnreachable
-                    )
-                })
+            || cause.downcast_ref::<std::io::Error>().is_some_and(|e| {
+                matches!(
+                    e.kind(),
+                    std::io::ErrorKind::ConnectionRefused
+                        | std::io::ErrorKind::ConnectionReset
+                        | std::io::ErrorKind::ConnectionAborted
+                        | std::io::ErrorKind::NotConnected
+                        | std::io::ErrorKind::TimedOut
+                        | std::io::ErrorKind::NetworkUnreachable
+                        | std::io::ErrorKind::HostUnreachable
+                )
+            })
     })
 }
 
@@ -234,5 +234,30 @@ impl Ctx {
     pub fn copy(&self, text: &str, what: &str) {
         self.window.clipboard().set_text(text);
         self.toast(&format!("{what} copied"));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn connection_errors() {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        // Nothing listens on the discard port.
+        let err = runtime
+            .block_on(async {
+                reqwest::Client::new()
+                    .get("http://127.0.0.1:9/")
+                    .send()
+                    .await
+            })
+            .unwrap_err();
+        let err = anyhow::Error::new(err).context("loading the page");
+        assert!(is_connection_error(&err));
+        assert!(!is_connection_error(&anyhow::anyhow!("TIDAL error 404")));
     }
 }

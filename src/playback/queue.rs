@@ -491,9 +491,12 @@ impl Queue {
         } = snapshot;
         if order.iter().any(|&i| i >= context.len()) {
             // Not a snapshot of a consistent queue: requeue what it held.
-            let upcoming = up_next
-                .into_iter()
-                .chain(order.iter().skip(next).filter_map(|&i| context.get(i).cloned()));
+            let upcoming = up_next.into_iter().chain(
+                order
+                    .iter()
+                    .skip(next)
+                    .filter_map(|&i| context.get(i).cloned()),
+            );
             self.up_next.extend(upcoming);
             return;
         }

@@ -349,7 +349,8 @@ impl NowPlayingPanel {
         });
 
         let breakpoint = adw::Breakpoint::new(
-            adw::BreakpointCondition::parse(TABS_IN_HEADER_MIN).expect("valid breakpoint condition"),
+            adw::BreakpointCondition::parse(TABS_IN_HEADER_MIN)
+                .expect("valid breakpoint condition"),
         );
         let weak = Rc::downgrade(&panel);
         breakpoint.connect_apply({

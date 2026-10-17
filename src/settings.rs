@@ -178,7 +178,9 @@ impl Store {
     }
 
     pub fn disconnect(&self, id: u64) {
-        self.listeners.borrow_mut().retain(|(other, _)| *other != id);
+        self.listeners
+            .borrow_mut()
+            .retain(|(other, _)| *other != id);
     }
 }
 

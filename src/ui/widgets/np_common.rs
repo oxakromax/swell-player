@@ -13,10 +13,10 @@ use gtk::{gdk, gio, glib};
 
 use super::super::context::Ctx;
 use super::super::nav::Route;
+use super::quality_badge::{BadgeKind, QualityBadge};
 use crate::covers::{CoverLoader, Image, Ticket};
 use crate::library::{Change, Item, Library};
 use crate::model::TrackInfo;
-use super::quality_badge::{BadgeKind, QualityBadge};
 use crate::playback::format::khz;
 use crate::playback::{Event, FormatDetails, PlayState, Playback, SleepTimer};
 use crate::settings::{Normalization, QualityPreference};
@@ -595,7 +595,7 @@ impl FormatBadge {
         self.set_row(7, Some("System default"));
 
         let track_hires = ctx.playback.current().is_some_and(|t| t.hires);
-        let note = (track_hires && !details.is_hires()).then(|| match settings.quality {
+        let note = (track_hires && !details.is_hires()).then_some(match settings.quality {
             QualityPreference::Best => "Lossless delivered: this track has no Hi-Res master",
             _ => "Lossless delivered: Hi-Res is turned off in Preferences",
         });

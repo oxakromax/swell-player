@@ -102,10 +102,12 @@ mod imp {
     use gtk::prelude::*;
     use gtk::subclass::prelude::*;
 
+    type OnAllocate = Box<dyn Fn(i32)>;
+
     /// A single-child container that reports its width when allocated.
     #[derive(Default)]
     pub struct FitBin {
-        pub on_allocate: RefCell<Option<Box<dyn Fn(i32)>>>,
+        pub on_allocate: RefCell<Option<OnAllocate>>,
     }
 
     #[glib::object_subclass]
@@ -298,11 +300,13 @@ impl PageHeader {
         let without_label = natural(&self.actions);
         self.fit.update();
         // Without Copy link there is nothing more to give up.
-        self.fit.without_label_width.set(if self.fit.copy_link.borrow().is_some() {
-            without_label
-        } else {
-            0
-        });
+        self.fit
+            .without_label_width
+            .set(if self.fit.copy_link.borrow().is_some() {
+                without_label
+            } else {
+                0
+            });
     }
 
     fn add_line(&mut self, label: gtk::Label) {

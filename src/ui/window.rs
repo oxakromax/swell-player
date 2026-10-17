@@ -365,8 +365,11 @@ impl Ui {
         });
 
         let shell = Shell::new(&ctx);
-        self.window
-            .add_action(&gio::PropertyAction::new("show-sidebar", &shell.sidebar_split, "show-sidebar"));
+        self.window.add_action(&gio::PropertyAction::new(
+            "show-sidebar",
+            &shell.sidebar_split,
+            "show-sidebar",
+        ));
         for action in self.session_actions.borrow().iter() {
             action.set_enabled(true);
         }
@@ -444,8 +447,12 @@ impl Ui {
     /// signed out.
     fn install_actions(self: &Rc<Self>) {
         let string = Some(glib::VariantTy::STRING);
-        self.action("shortcuts", None, false, |ui, _| super::shortcuts::present(&ui.window));
-        self.action("about", None, false, |ui, _| super::dialogs::about::present(&ui.window));
+        self.action("shortcuts", None, false, |ui, _| {
+            super::shortcuts::present(&ui.window)
+        });
+        self.action("about", None, false, |ui, _| {
+            super::dialogs::about::present(&ui.window)
+        });
         self.action("close", None, false, |ui, _| ui.window.close());
         self.action("preferences", None, true, |ui, _| {
             if let Some(ctx) = ui.ctx() {
@@ -494,8 +501,12 @@ impl Ui {
             let playback = &ctx.playback;
             playback.set_volume((playback.volume() - VOLUME_STEP).max(0.0));
         });
-        self.playback_action("mute", |ctx| ctx.playback.set_muted(!ctx.playback.is_muted()));
-        self.playback_action("shuffle", |ctx| ctx.playback.set_shuffle(!ctx.playback.shuffle()));
+        self.playback_action("mute", |ctx| {
+            ctx.playback.set_muted(!ctx.playback.is_muted())
+        });
+        self.playback_action("shuffle", |ctx| {
+            ctx.playback.set_shuffle(!ctx.playback.shuffle())
+        });
         self.playback_action("repeat", |ctx| {
             ctx.playback.set_repeat(match ctx.playback.repeat() {
                 Repeat::Off => Repeat::All,
@@ -768,18 +779,35 @@ impl Shell {
             .build();
         // Only one breakpoint applies at a time (the last that matches), so
         // each repeats the setters of the wider ones.
-        let condition = |c: &str| adw::BreakpointCondition::parse(c).expect("valid breakpoint condition");
+        let condition =
+            |c: &str| adw::BreakpointCondition::parse(c).expect("valid breakpoint condition");
         let a = adw::Breakpoint::new(condition("max-width: 1180sp"));
         a.add_setters(&[(&panel_split, "collapsed", true.to_value())]);
         let b = adw::Breakpoint::new(condition("max-width: 900sp"));
         b.add_setters(&[
-            (panel_split.upcast_ref::<glib::Object>(), "collapsed", true.to_value()),
-            (sidebar_split.upcast_ref(), "min-sidebar-width", 180.0_f64.to_value()),
+            (
+                panel_split.upcast_ref::<glib::Object>(),
+                "collapsed",
+                true.to_value(),
+            ),
+            (
+                sidebar_split.upcast_ref(),
+                "min-sidebar-width",
+                180.0_f64.to_value(),
+            ),
         ]);
         let c = adw::Breakpoint::new(condition("max-width: 720sp"));
         c.add_setters(&[
-            (panel_split.upcast_ref::<glib::Object>(), "collapsed", true.to_value()),
-            (sidebar_split.upcast_ref(), "min-sidebar-width", 180.0_f64.to_value()),
+            (
+                panel_split.upcast_ref::<glib::Object>(),
+                "collapsed",
+                true.to_value(),
+            ),
+            (
+                sidebar_split.upcast_ref(),
+                "min-sidebar-width",
+                180.0_f64.to_value(),
+            ),
             (multi.upcast_ref(), "layout-name", "narrow".to_value()),
         ]);
         root.add_breakpoint(a);
@@ -870,7 +898,9 @@ impl Shell {
         if !super::debug::screenshot_mode() {
             let settings = Rc::downgrade(&ctx.settings);
             ctx.connect_panel_changed(move |tab| {
-                let Some(settings) = settings.upgrade() else { return };
+                let Some(settings) = settings.upgrade() else {
+                    return;
+                };
                 settings.update(|s| {
                     s.panel_open = tab.is_some();
                     if let Some(tab) = tab {
