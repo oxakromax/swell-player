@@ -2,6 +2,8 @@
 
 use std::collections::VecDeque;
 
+use serde::{Deserialize, Serialize};
+
 use crate::model::TrackInfo;
 use crate::settings::Repeat;
 
@@ -75,7 +77,10 @@ impl Queue {
 
     /// The whole context in play order (for saving the session).
     pub fn context_in_order(&self) -> Vec<TrackInfo> {
-        self.order.iter().map(|&i| self.context[i].clone()).collect()
+        self.order
+            .iter()
+            .map(|&i| self.context[i].clone())
+            .collect()
     }
 
     /// Replaces the context and makes `tracks[start]` current.
@@ -127,21 +132,40 @@ impl Queue {
     }
 
     /// Moves to the next track. `skip` is a user action (repeat-one does
-    /// not hold then). Returns false at the end of everything; the current
-    /// track then stays, so play starts it again.
+    /// not hold then). Unavailable tracks are passed over (and dropped).
+    /// Returns false at the end of everything; the current track then
+    /// stays, so play starts it again.
     pub fn advance(&mut self, skip: bool) -> bool {
-        if !skip && self.repeat == Repeat::One && self.current.is_some() {
+        let current_playable = self.current.as_ref().is_some_and(|c| c.track.available);
+        if !skip && self.repeat == Repeat::One && current_playable {
             return true;
         }
-        let has_next = !self.up_next.is_empty()
-            || self.next < self.order.len()
-            || (self.repeat != Repeat::Off && !self.order.is_empty());
-        if !has_next {
+        if !self.can_advance() {
             return false;
         }
-        if let Some(current) = self.current.take() {
+        if let Some(current) = self.current.take()
+            && current.track.available
+        {
             self.push_history(current);
         }
+        loop {
+            self.step();
+            if self.current.as_ref().is_some_and(|c| c.track.available) {
+                return true;
+            }
+        }
+    }
+
+    /// Whether [`Self::advance`] would find a playable track.
+    pub fn can_advance(&self) -> bool {
+        self.up_next.iter().any(|t| t.available)
+            || self.remaining_context().any(|t| t.available)
+            || (self.repeat != Repeat::Off && self.context_in_play_order().any(|t| t.available))
+    }
+
+    /// Makes the next track current, whatever it is. Only called when
+    /// [`Self::can_advance`] holds.
+    fn step(&mut self) {
         if let Some(track) = self.up_next.pop_front() {
             self.current = Some(Entry {
                 track,
@@ -153,16 +177,69 @@ impl Queue {
             // Repeat all (or one, when skipping): start the context over.
             if self.shuffle {
                 shuffle(&mut self.order);
+                for entry in &mut self.history {
+                    entry.context = None;
+                }
             }
             self.take_context(0);
         }
-        true
+    }
+
+    fn remaining_context(&self) -> impl Iterator<Item = &TrackInfo> {
+        self.order[self.next.min(self.order.len())..]
+            .iter()
+            .map(|&i| &self.context[i])
+    }
+
+    fn context_in_play_order(&self) -> impl Iterator<Item = &TrackInfo> {
+        self.order.iter().map(|&i| &self.context[i])
+    }
+
+    /// What will play when the current track ends by itself (repeat-one:
+    /// the same track), if that is known now. `None` at the end, and when
+    /// a shuffled context is about to start over (it is reshuffled then).
+    pub fn peek_next(&self) -> Option<&TrackInfo> {
+        if self.repeat == Repeat::One
+            && let Some(current) = self.current.as_ref().filter(|c| c.track.available)
+        {
+            return Some(&current.track);
+        }
+        self.up_next
+            .iter()
+            .chain(self.remaining_context())
+            .find(|t| t.available)
+            .or_else(|| {
+                if self.repeat == Repeat::Off || self.shuffle {
+                    None
+                } else {
+                    self.context_in_play_order().find(|t| t.available)
+                }
+            })
+    }
+
+    /// If the current track is unavailable, drops it and moves on to the
+    /// first playable one (or to nothing). Returns how many were dropped.
+    pub fn skip_unavailable(&mut self) -> usize {
+        let mut skipped = 0;
+        while self.current.as_ref().is_some_and(|c| !c.track.available) {
+            skipped += 1;
+            self.current = None;
+            if !self.can_advance() {
+                break;
+            }
+            self.step();
+        }
+        skipped
     }
 
     /// Goes back to the previously played track. False if there is none.
     pub fn go_back(&mut self) -> bool {
-        let Some(previous) = self.history.pop() else {
-            return false;
+        let previous = loop {
+            match self.history.pop() {
+                Some(entry) if entry.track.available => break entry,
+                Some(_) => {}
+                None => return false,
+            }
         };
         if let Some(current) = self.current.take() {
             match current.context {
@@ -323,6 +400,79 @@ impl Queue {
     }
 }
 
+/// The queue as saved between runs (see `session.rs`).
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct QueueSnapshot {
+    /// The context in its original order.
+    pub context: Vec<TrackInfo>,
+    /// Play order: indices into `context`.
+    pub order: Vec<usize>,
+    /// Index into `order` of the next context track.
+    pub next: usize,
+    pub current: Option<TrackInfo>,
+    /// Index into `order` of the current track, when it is from the context.
+    pub current_at: Option<usize>,
+    pub up_next: Vec<TrackInfo>,
+    pub shuffle: bool,
+    pub repeat: Repeat,
+}
+
+impl Queue {
+    pub fn snapshot(&self) -> QueueSnapshot {
+        QueueSnapshot {
+            context: self.context.clone(),
+            order: self.order.clone(),
+            next: self.next,
+            current: self.current.as_ref().map(|c| c.track.clone()),
+            current_at: self.current.as_ref().and_then(|c| c.context),
+            up_next: self.up_next.iter().cloned().collect(),
+            shuffle: self.shuffle,
+            repeat: self.repeat,
+        }
+    }
+
+    /// Rebuilds a saved queue, repairing anything inconsistent.
+    pub fn restore(snapshot: QueueSnapshot, source: Option<Source>) -> Self {
+        let QueueSnapshot {
+            context,
+            order,
+            next,
+            current,
+            current_at,
+            up_next,
+            shuffle,
+            repeat,
+        } = snapshot;
+        let valid = order.len() <= context.len() && order.iter().all(|&i| i < context.len());
+        let order = if valid {
+            order
+        } else {
+            (0..context.len()).collect()
+        };
+        let current_at = current_at.filter(|&at| {
+            order
+                .get(at)
+                .zip(current.as_ref())
+                .is_some_and(|(&i, current)| context[i].id == current.id)
+        });
+        Self {
+            next: next.min(order.len()),
+            current: current.map(|track| Entry {
+                track,
+                context: current_at,
+            }),
+            context,
+            order,
+            up_next: up_next.into(),
+            history: Vec::new(),
+            shuffle,
+            repeat,
+            source,
+        }
+    }
+}
+
 /// Fisher–Yates with a xorshift generator seeded from the OS.
 fn shuffle<T>(items: &mut [T]) {
     let mut seed = [0u8; 8];
@@ -342,12 +492,7 @@ mod tests {
     use super::*;
 
     fn tracks(n: u64) -> Vec<TrackInfo> {
-        (1..=n)
-            .map(|id| TrackInfo {
-                id,
-                ..TrackInfo::default()
-            })
-            .collect()
+        (1..=n).map(track).collect()
     }
 
     fn source() -> Source {
@@ -377,14 +522,8 @@ mod tests {
     fn up_next_plays_first_and_back_returns() {
         let mut q = Queue::default();
         q.set_context(tracks(3), 0, source());
-        q.add_to_queue(vec![TrackInfo {
-            id: 10,
-            ..TrackInfo::default()
-        }]);
-        q.play_next(vec![TrackInfo {
-            id: 9,
-            ..TrackInfo::default()
-        }]);
+        q.add_to_queue(vec![track(10)]);
+        q.play_next(vec![track(9)]);
         assert_eq!(ids(&q.upcoming()), [9, 10, 2, 3]);
         q.advance(true);
         assert_eq!(q.current().unwrap().id, 9);
@@ -420,10 +559,7 @@ mod tests {
     fn jump_remove_move_clear() {
         let mut q = Queue::default();
         q.set_context(tracks(5), 0, source());
-        q.add_to_queue(vec![TrackInfo {
-            id: 9,
-            ..TrackInfo::default()
-        }]);
+        q.add_to_queue(vec![track(9)]);
         assert_eq!(ids(&q.upcoming()), [9, 2, 3, 4, 5]);
         q.remove(2);
         assert_eq!(ids(&q.upcoming()), [9, 2, 4, 5]);
@@ -437,6 +573,106 @@ mod tests {
         assert_eq!(ids(&q.upcoming()), [4]);
         q.clear_upcoming();
         assert!(q.upcoming().is_empty());
+    }
+
+    fn unavailable(id: u64) -> TrackInfo {
+        TrackInfo {
+            id,
+            available: false,
+            ..TrackInfo::default()
+        }
+    }
+
+    fn track(id: u64) -> TrackInfo {
+        TrackInfo {
+            id,
+            available: true,
+            ..TrackInfo::default()
+        }
+    }
+
+    #[test]
+    fn unavailable_tracks_are_skipped() {
+        let mut list = tracks(5);
+        list[1].available = false;
+        list[2].available = false;
+        let mut q = Queue::default();
+        q.set_context(list, 0, source());
+        assert_eq!(q.peek_next().unwrap().id, 4);
+        assert!(q.advance(false));
+        assert_eq!(q.current().unwrap().id, 4);
+        assert!(q.go_back());
+        assert_eq!(q.current().unwrap().id, 1);
+
+        // Starting on an unavailable track moves to the first playable one.
+        let mut list = tracks(3);
+        list[0].available = false;
+        q.set_context(list, 0, source());
+        assert_eq!(q.skip_unavailable(), 1);
+        assert_eq!(q.current().unwrap().id, 2);
+
+        // Nothing playable ahead: the end.
+        q.add_to_queue(vec![unavailable(9)]);
+        assert!(q.advance(false));
+        assert_eq!(q.current().unwrap().id, 3);
+        assert!(!q.can_advance());
+        assert!(!q.advance(false));
+        assert_eq!(q.peek_next(), None);
+    }
+
+    #[test]
+    fn peek_matches_advance() {
+        let mut q = Queue::default();
+        q.set_context(tracks(3), 0, source());
+        q.play_next(vec![track(10)]);
+        assert_eq!(q.peek_next().unwrap().id, 10);
+        q.advance(false);
+        assert_eq!(q.peek_next().unwrap().id, 2);
+        q.set_repeat(Repeat::One);
+        assert_eq!(q.peek_next().unwrap().id, 10);
+        q.set_repeat(Repeat::All);
+        q.advance(false);
+        q.advance(false);
+        assert_eq!(q.current().unwrap().id, 3);
+        assert_eq!(q.peek_next().unwrap().id, 1);
+        assert!(q.advance(false));
+        assert_eq!(q.current().unwrap().id, 1);
+        // A shuffled context starting over is reshuffled: unknown.
+        q.set_shuffle(true);
+        q.set_repeat(Repeat::Off);
+        while q.advance(false) {}
+        q.set_repeat(Repeat::All);
+        assert_eq!(q.peek_next(), None);
+        assert!(q.can_advance());
+    }
+
+    #[test]
+    fn snapshot_round_trip() {
+        let mut q = Queue::default();
+        q.set_shuffle(true);
+        q.set_context(tracks(20), 4, source());
+        q.advance(false);
+        q.add_to_queue(vec![track(30)]);
+        q.set_repeat(Repeat::All);
+        let snapshot = q.snapshot();
+        let json = serde_json::to_string(&snapshot).unwrap();
+        let back: QueueSnapshot = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, snapshot);
+        let r = Queue::restore(back, Some(source()));
+        assert_eq!(r.current(), q.current());
+        assert_eq!(ids(&r.upcoming()), ids(&q.upcoming()));
+        assert!(r.shuffle());
+        assert_eq!(r.repeat(), Repeat::All);
+        assert_eq!(r.source(), Some(&source()));
+
+        // Corrupt indices are repaired instead of panicking.
+        let mut broken = q.snapshot();
+        broken.order = vec![99, 0];
+        broken.next = 50;
+        broken.current_at = Some(7);
+        let r = Queue::restore(broken, None);
+        assert_eq!(r.current().unwrap().id, q.current().unwrap().id);
+        assert_eq!(r.upcoming().len(), 1);
     }
 
     #[test]
