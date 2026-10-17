@@ -7,6 +7,11 @@ use std::time::Duration;
 
 use crate::tidal;
 
+/// Stream lookups that TIDAL answered with a server-side error (5xx/429,
+/// after the client's own retries) before the track is blamed instead. Only
+/// lookups that got no answer at all are retried without limit.
+pub const MAX_SERVER_ERRORS: u32 = 4;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Failure {
     /// No connection, a timeout or a server-side (5xx/429) error: retry the
@@ -36,6 +41,36 @@ pub fn classify(err: &anyhow::Error) -> Failure {
         }
     }
     Failure::Track
+}
+
+/// Whether the server answered (with an error status) rather than not at
+/// all (connect, timeout, DNS, offline).
+pub fn server_answered(err: &anyhow::Error) -> bool {
+    err.chain().any(|cause| {
+        cause
+            .downcast_ref::<reqwest::Error>()
+            .is_some_and(|err| err.status().is_some())
+            || matches!(
+                cause.downcast_ref::<tidal::Error>(),
+                Some(tidal::Error::Api { .. })
+            )
+    })
+}
+
+/// How to treat a failed stream lookup of `kind`, given the server errors
+/// already counted for this track: returns the failure to act on and the
+/// new count. A network-type failure the server answered counts; reaching
+/// [`MAX_SERVER_ERRORS`] makes it the track's failure.
+pub fn after_lookup(kind: Failure, answered: bool, server_errors: u32) -> (Failure, u32) {
+    if kind != Failure::Network || !answered {
+        return (kind, server_errors);
+    }
+    let count = server_errors + 1;
+    if count >= MAX_SERVER_ERRORS {
+        (Failure::Track, 0)
+    } else {
+        (Failure::Network, count)
+    }
 }
 
 fn by_status(status: u16) -> Failure {
@@ -70,6 +105,27 @@ pub fn classify_engine(error: &EngineError) -> Failure {
         None if error.download_error => Failure::Network,
         None if error.resource_io && error.from_http => Failure::Network,
         None => Failure::Track,
+    }
+}
+
+/// Which track an engine error is put down to while the next one is handed over for the
+/// gapless switch (the end of the current one decoded, the next one
+/// starting to load).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum HandoverBlame {
+    /// The current track's, as at any other time: the network (reload it at
+    /// its position, the prepared next track stays) or the audio output.
+    Current,
+    /// The handed-over stream's (likely expired): drop it, finish the
+    /// current track, then load the next one afresh.
+    Next,
+}
+
+/// See [`HandoverBlame`]. `from_sink`: the audio output posted the error.
+pub fn blame_handover(kind: Failure, from_sink: bool) -> HandoverBlame {
+    match kind {
+        Failure::Track if !from_sink => HandoverBlame::Next,
+        _ => HandoverBlame::Current,
     }
 }
 
@@ -174,6 +230,30 @@ mod tests {
     }
 
     #[test]
+    fn server_errors_are_capped() {
+        assert!(server_answered(&api(503, 0).context("resolving")));
+        assert!(!server_answered(&connect_error()));
+        assert!(!server_answered(&anyhow::anyhow!("bad manifest")));
+        // A server that keeps answering 5xx: retried, then the track fails.
+        let mut count = 0;
+        let mut kinds = Vec::new();
+        for _ in 0..MAX_SERVER_ERRORS {
+            let (kind, next) = after_lookup(Failure::Network, true, count);
+            kinds.push(kind);
+            count = next;
+        }
+        assert_eq!(kinds.last(), Some(&Failure::Track));
+        assert!(kinds[..kinds.len() - 1].iter().all(|k| *k == Failure::Network));
+        assert_eq!(count, 0);
+        // No answer at all: always retried, the count stays.
+        for _ in 0..20 {
+            assert_eq!(after_lookup(Failure::Network, false, 2), (Failure::Network, 2));
+        }
+        assert_eq!(after_lookup(Failure::Track, true, 1), (Failure::Track, 1));
+        assert_eq!(after_lookup(Failure::Session, true, 1), (Failure::Session, 1));
+    }
+
+    #[test]
     fn engine_errors() {
         let soup = |status| EngineError {
             resource_io: true,
@@ -200,6 +280,14 @@ mod tests {
         assert!(is_http_element("souphttpsrc"));
         assert!(is_http_element("dashdemux2"));
         assert!(!is_http_element("flacdec"));
+    }
+
+    #[test]
+    fn handover_errors() {
+        assert_eq!(blame_handover(Failure::Network, false), HandoverBlame::Current);
+        assert_eq!(blame_handover(Failure::Network, true), HandoverBlame::Current);
+        assert_eq!(blame_handover(Failure::Track, true), HandoverBlame::Current);
+        assert_eq!(blame_handover(Failure::Track, false), HandoverBlame::Next);
     }
 
     #[test]

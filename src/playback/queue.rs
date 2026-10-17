@@ -369,7 +369,13 @@ impl Queue {
 
     pub fn clear_upcoming(&mut self) {
         self.up_next.clear();
-        self.order.truncate(self.next.min(self.order.len()));
+        let next = self.next.min(self.order.len());
+        self.order.truncate(next);
+        // After repeat-all started the context over, history can point
+        // past the part kept.
+        for entry in &mut self.history {
+            entry.context = entry.context.filter(|&at| at < next);
+        }
     }
 
     /// Shuffling reorders what is left of the context; turning it off puts
@@ -481,16 +487,18 @@ impl Queue {
     /// Puts back what was upcoming when `snapshot` was taken (the undo of
     /// [`Queue::clear_upcoming`]): the context in its play order and the
     /// up-next list. The current track, the history, shuffle and repeat stay
-    /// as they are. When the current track changed since, its link to the
-    /// context is dropped (it plays on and the restored tracks follow it).
+    /// as they are. When the current track changed since, it plays on and
+    /// the restored tracks follow it; if it is one of them (playback moved
+    /// on to it, or it was queued again), it is taken out of what is
+    /// upcoming so it does not play twice.
     pub fn restore_upcoming(&mut self, snapshot: QueueSnapshot) {
         let QueueSnapshot {
             context,
-            order,
+            mut order,
             next,
             current,
             current_at,
-            up_next,
+            mut up_next,
             ..
         } = snapshot;
         if order.iter().any(|&i| i >= context.len()) {
@@ -507,15 +515,38 @@ impl Queue {
         let same_current = self.current.as_ref().map(|c| c.track.id) == current.map(|t| t.id);
         let context_changed = self.context.len() != context.len()
             || self.context.iter().zip(&context).any(|(a, b)| a.id != b.id);
-        if context_changed {
-            for entry in &mut self.history {
-                entry.context = None;
-            }
-        }
+        let mut next = next.min(order.len());
         if let Some(entry) = &mut self.current {
-            entry.context = if same_current { current_at } else { None };
+            entry.context = if same_current {
+                current_at
+            } else {
+                let id = entry.track.id;
+                if let Some(pos) = up_next.iter().position(|t| t.id == id) {
+                    up_next.remove(pos);
+                    None
+                } else if let Some(at) = (next..order.len()).find(|&at| context[order[at]].id == id)
+                {
+                    // Still upcoming there: move it to the played part.
+                    let i = order.remove(at);
+                    order.insert(next, i);
+                    next += 1;
+                    Some(next - 1)
+                } else {
+                    // Already played there: link it, so going back does
+                    // not queue it again.
+                    (0..next).rev().find(|&at| context[order[at]].id == id)
+                }
+            };
         }
-        self.next = next.min(order.len());
+        // History keeps its links only where the restored order agrees.
+        for entry in &mut self.history {
+            entry.context = entry.context.filter(|&at| {
+                !context_changed
+                    && at < next
+                    && order.get(at).is_some_and(|&i| context[i].id == entry.track.id)
+            });
+        }
+        self.next = next;
         self.context = context;
         self.order = order;
         self.up_next = up_next.into();
@@ -911,5 +942,55 @@ mod tests {
         q.advance(true);
         q.restore_upcoming(snapshot);
         assert_eq!(ids(&q.upcoming()), [2, 3, 4, 5]);
+    }
+
+    fn assert_unique(q: &Queue) {
+        let mut all = ids(&q.upcoming());
+        all.extend(q.current().map(|t| t.id));
+        let count = all.len();
+        all.sort_unstable();
+        all.dedup();
+        assert_eq!(all.len(), count, "{:?} + {:?}", q.current(), ids(&q.upcoming()));
+    }
+
+    #[test]
+    fn undo_clear_after_moving_on_to_a_cleared_track() {
+        let mut q = Queue::default();
+        q.set_context(tracks(5), 0, source());
+        let snapshot = q.snapshot();
+        q.clear_upcoming();
+        // The user queues one of the cleared tracks and plays it.
+        q.play_next(vec![track(2)]);
+        q.advance(true);
+        q.restore_upcoming(snapshot);
+        assert_eq!(q.current().unwrap().id, 2);
+        assert_eq!(ids(&q.upcoming()), [3, 4, 5]);
+        assert!(q.go_back());
+        assert_eq!(q.current().unwrap().id, 1);
+        assert_unique(&q);
+        assert_eq!(ids(&q.upcoming()), [2, 3, 4, 5]);
+    }
+
+    /// Found by fuzzing: undo after going back to an earlier track queued
+    /// that track again when going back once more.
+    #[test]
+    fn undo_clear_after_going_back_does_not_duplicate() {
+        let mut q = Queue::default();
+        q.set_context(tracks(5), 1, source());
+        q.move_item(2, 0);
+        q.jump_to(1);
+        assert_eq!(q.current().unwrap().id, 3);
+        let snapshot = q.snapshot();
+        q.clear_upcoming();
+        assert!(q.go_back());
+        q.remove(1);
+        q.advance(false);
+        assert_eq!(q.current().unwrap().id, 5);
+        q.restore_upcoming(snapshot);
+        assert_unique(&q);
+        q.clear_upcoming();
+        assert!(q.go_back());
+        assert_eq!(q.current().unwrap().id, 2);
+        assert_unique(&q);
     }
 }
