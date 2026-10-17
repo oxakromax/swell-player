@@ -1,4 +1,5 @@
 pub mod context;
+pub mod dialogs;
 mod debug;
 mod login;
 pub mod nav;

@@ -5,6 +5,7 @@ mod album;
 mod artist;
 mod collection;
 mod explore;
+mod history;
 mod home;
 mod mix;
 mod more;
@@ -12,8 +13,6 @@ mod playlist;
 mod search;
 
 use std::rc::Rc;
-
-use adw::prelude::*;
 
 use super::context::Ctx;
 use super::nav::Route;
@@ -33,6 +32,7 @@ pub fn build(ctx: &Rc<Ctx>, route: &Route) -> adw::NavigationPage {
         Route::TrackRadio(id) => mix::page(ctx, mix::Kind::TrackRadio(*id)),
         Route::ArtistRadio(id) => mix::page(ctx, mix::Kind::ArtistRadio(*id)),
         Route::More { title, more } => more::page(ctx, title.clone(), more.clone()),
+        Route::History => history::page(ctx),
     }
 }
 

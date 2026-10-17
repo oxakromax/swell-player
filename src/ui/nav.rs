@@ -43,6 +43,8 @@ pub enum Route {
     /// Everything in a section ("View all").
     More { title: String, more: More },
     AlbumCredits(u64),
+    /// Recently played.
+    History,
 }
 
 impl Route {
@@ -71,6 +73,7 @@ impl Route {
             Self::Page { path, .. } => format!("page-{path}"),
             Self::More { more, .. } => format!("more-{more:?}"),
             Self::AlbumCredits(id) => format!("credits-{id}"),
+            Self::History => "history".into(),
         }
     }
 
