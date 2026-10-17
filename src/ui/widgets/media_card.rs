@@ -120,10 +120,21 @@ impl ShownLoader {
             ];
             self.watch.borrow_mut().push((adjustment, ids));
         }
-        // Already laid out (shown again): decide now.
+        // Already laid out (shown again): decide now. Otherwise the first
+        // frame after mapping has the allocation, even when no adjustment
+        // changes afterwards (a page drawn from the cache in one go).
         let first = self.watch.borrow().first().map(|(a, _)| a.clone());
         if let Some(adjustment) = first {
             check(&adjustment);
+            // Ticks run before layout: wait for the first frame that has
+            // allocated the widget.
+            widget.add_tick_callback(move |widget, _| {
+                if widget.width() <= 0 {
+                    return glib::ControlFlow::Continue;
+                }
+                check(&adjustment);
+                glib::ControlFlow::Break
+            });
         }
     }
 
