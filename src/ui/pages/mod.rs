@@ -10,6 +10,7 @@ mod home;
 mod mix;
 mod more;
 mod playlist;
+mod playlist_data;
 mod search;
 
 use std::rc::Rc;
