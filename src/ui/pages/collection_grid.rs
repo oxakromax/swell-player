@@ -28,6 +28,7 @@ use super::collection::{
     SortOption, Template, count_label, empty_page, fold, follow_library, skeleton_cards,
 };
 use crate::api::{self, ListUpdate};
+use crate::i18n::{tr, trn};
 use crate::library::{self, Change};
 use crate::runtime;
 use crate::tidal::Favorite;
@@ -153,10 +154,15 @@ struct GridPage {
 
 pub(super) fn page(ctx: &Rc<Ctx>, view: CollectionView) -> adw::NavigationPage {
     let (name, title, placeholder, sorts) = match view {
-        CollectionView::Albums => ("albums", "Albums", "Filter albums", ALBUM_SORTS),
-        CollectionView::Artists => ("artists", "Artists", "Filter artists", ARTIST_SORTS),
-        CollectionView::Playlists => ("playlists", "Playlists", "Filter playlists", PLAYLIST_SORTS),
-        _ => ("mixes", "Mixes & Radios", "Filter mixes", MIX_SORTS),
+        CollectionView::Albums => ("albums", tr("Albums"), tr("Filter albums"), ALBUM_SORTS),
+        CollectionView::Artists => ("artists", tr("Artists"), tr("Filter artists"), ARTIST_SORTS),
+        CollectionView::Playlists => (
+            "playlists",
+            tr("Playlists"),
+            tr("Filter playlists"),
+            PLAYLIST_SORTS,
+        ),
+        _ => ("mixes", tr("Mixes & Radios"), tr("Filter mixes"), MIX_SORTS),
     };
 
     let store = gio::ListStore::new::<glib::BoxedAnyObject>();
@@ -288,19 +294,19 @@ fn empty_state(ctx: &Rc<Ctx>, view: CollectionView) -> adw::StatusPage {
     match view {
         CollectionView::Albums => empty_page(
             "media-optical-symbolic",
-            "No Favourite Albums",
-            "Tap the heart on any album to save it here.",
+            tr("No Favourite Albums"),
+            tr("Tap the heart on any album to save it here."),
             None,
         ),
         CollectionView::Artists => empty_page(
             "avatar-default-symbolic",
-            "No Followed Artists",
-            "Follow artists you like to find them here.",
+            tr("No Followed Artists"),
+            tr("Follow artists you like to find them here."),
             None,
         ),
         CollectionView::Playlists => {
             let button = gtk::Button::builder()
-                .label("New Playlist")
+                .label(tr("New Playlist"))
                 .css_classes(["suggested-action"])
                 .build();
             let weak = Rc::downgrade(ctx);
@@ -311,15 +317,15 @@ fn empty_state(ctx: &Rc<Ctx>, view: CollectionView) -> adw::StatusPage {
             });
             empty_page(
                 "view-list-symbolic",
-                "No Playlists",
-                "Create a playlist, or tap the heart on someone else's to save it here.",
+                tr("No Playlists"),
+                tr("Create a playlist, or tap the heart on someone else's to save it here."),
                 Some(&button),
             )
         }
         _ => empty_page(
             icon_name("swell-mix-symbolic", "media-playlist-shuffle-symbolic"),
-            "No Saved Mixes",
-            "Tap the heart on any mix or radio to save it here.",
+            tr("No Saved Mixes"),
+            tr("Tap the heart on any mix or radio to save it here."),
             None,
         ),
     }
@@ -330,7 +336,7 @@ impl GridPage {
         let new = gtk::Button::builder()
             .icon_name("list-add-symbolic")
             .build();
-        label_button(&new, "New Playlist");
+        label_button(&new, tr("New Playlist"));
         let weak = Rc::downgrade(ctx);
         new.connect_clicked(move |_| {
             if let Some(ctx) = weak.upgrade() {
@@ -341,9 +347,9 @@ impl GridPage {
 
         let toggles = adw::ToggleGroup::builder().homogeneous(true).build();
         for (name, label) in [
-            ("all", "All"),
-            ("mine", "Created by Me"),
-            ("favourited", "Favourited"),
+            ("all", tr("All")),
+            ("mine", tr("Created by Me")),
+            ("favourited", tr("Favourited")),
         ] {
             toggles.add(adw::Toggle::builder().name(name).label(label).build());
         }
@@ -472,7 +478,7 @@ impl GridPage {
             return;
         };
         if crate::tidal::is_auth_error(err) || self.drawn.get() {
-            ctx.report("Couldn't update your collection", err);
+            ctx.report(tr("Couldn't update your collection"), err);
             return;
         }
         let weak = Rc::downgrade(self);
@@ -545,12 +551,13 @@ impl GridPage {
         self.refresh_state();
     }
 
-    fn noun(&self) -> (&'static str, &'static str) {
+    /// "{n} albums" and the like, translated.
+    fn noun(&self) -> fn(u64) -> &'static str {
         match self.view {
-            CollectionView::Albums => ("album", "albums"),
-            CollectionView::Artists => ("artist", "artists"),
-            CollectionView::Playlists => ("playlist", "playlists"),
-            _ => ("mix", "mixes"),
+            CollectionView::Albums => |n| trn("{n} album", "{n} albums", n),
+            CollectionView::Artists => |n| trn("{n} artist", "{n} artists", n),
+            CollectionView::Playlists => |n| trn("{n} playlist", "{n} playlists", n),
+            _ => |n| trn("{n} mix", "{n} mixes", n),
         }
     }
 
@@ -562,10 +569,9 @@ impl GridPage {
         }
         self.drawn.set(true);
         let shown = self.store.n_items() as usize;
-        let (one, many) = self.noun();
         self.template
             .title
-            .set_subtitle(&count_label(shown, total, one, many));
+            .set_subtitle(&count_label(shown, total, self.noun()));
         self.template.show_items(shown, total);
     }
 
@@ -654,19 +660,19 @@ impl GridPage {
         }
         let weak = Rc::downgrade(&ctx);
         let item = item.clone();
-        let what = if matches!(item, library::Item::Artist(_)) {
-            "Unfollowed"
+        let message = if matches!(item, library::Item::Artist(_)) {
+            tr("Unfollowed {name}")
         } else {
-            "Removed from Favourites:"
+            tr("Removed from Favourites: {name}")
         };
         ctx.toast_with_undo(
-            &format!("{what} {}", glib::markup_escape_text(&card.name())),
+            &message.replace("{name}", &glib::markup_escape_text(&card.name())),
             move || {
                 if let Some(ctx) = weak.upgrade() {
                     let report = Rc::downgrade(&ctx);
                     ctx.library.set_favorite(item.clone(), true, move |result| {
                         if let (Err(err), Some(ctx)) = (result, report.upgrade()) {
-                            ctx.report("Couldn't undo that", &err);
+                            ctx.report(tr("Couldn't undo that"), &err);
                         }
                     });
                 }

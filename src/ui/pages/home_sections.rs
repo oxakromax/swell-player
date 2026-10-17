@@ -24,6 +24,7 @@ use super::super::widgets::skeleton;
 use super::super::widgets::status::PageStack;
 use super::super::widgets::track_list::compact_bin;
 
+use crate::i18n::tr;
 use crate::tidal::pages::{Item, Section, SectionKind};
 
 /// Widest the column of sections gets.
@@ -235,7 +236,7 @@ pub fn loading_more() -> gtk::Widget {
         .build();
     spinner
         .upcast_ref::<gtk::Widget>()
-        .update_property(&[gtk::accessible::Property::Label("Loading more")]);
+        .update_property(&[gtk::accessible::Property::Label(tr("Loading more"))]);
     spinner.upcast()
 }
 
@@ -253,7 +254,7 @@ pub fn paging_error(message: &str, retry: impl Fn() + 'static) -> gtk::Widget {
             .build(),
     );
     let button = gtk::Button::builder()
-        .label("Retry")
+        .label(tr("Retry"))
         .valign(gtk::Align::Center)
         .css_classes(["pill"])
         .build();
@@ -299,7 +300,7 @@ fn links_section(ctx: &Rc<Ctx>, section: &Section) -> gtk::Widget {
 
 fn view_all_button(ctx: &Rc<Ctx>, route: super::super::nav::Route) -> gtk::Button {
     let button = gtk::Button::builder()
-        .label("View All")
+        .label(tr("View All"))
         .valign(gtk::Align::Center)
         .css_classes(["flat"])
         .build();
@@ -521,7 +522,7 @@ fn skeleton_for(shape: Shape) -> gtk::Widget {
         .margin_top(12)
         .css_classes(["page-content"])
         .build();
-    page.update_property(&[gtk::accessible::Property::Label("Loading")]);
+    page.update_property(&[gtk::accessible::Property::Label(tr("Loading"))]);
     page.update_state(&[gtk::accessible::State::Busy(true)]);
     page.append(&bar(220, 32));
     match shape {

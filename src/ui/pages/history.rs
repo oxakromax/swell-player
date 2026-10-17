@@ -28,6 +28,7 @@ use super::super::widgets::section;
 use super::super::widgets::skeleton;
 use super::super::widgets::status::{describe_error, empty_status};
 use super::super::widgets::track_list::{Rows, TrackList, Variant, compact_bin};
+use crate::i18n::tr;
 use crate::model::TrackInfo;
 use crate::playback::{Event, PlayState, Source};
 use crate::tidal::pages::{self, Section};
@@ -102,10 +103,10 @@ enum Day {
 impl Day {
     fn title(self) -> &'static str {
         match self {
-            Self::Today => "Today",
-            Self::Yesterday => "Yesterday",
-            Self::ThisWeek => "This Week",
-            Self::Earlier => "Earlier",
+            Self::Today => tr("Today"),
+            Self::Yesterday => tr("Yesterday"),
+            Self::ThisWeek => tr("This Week"),
+            Self::Earlier => tr("Earlier"),
         }
     }
 }
@@ -127,11 +128,11 @@ fn when(now: &glib::DateTime, time: Option<i64>) -> (Day, Option<String>) {
         _ => Day::Earlier,
     };
     let note = if seconds < 60 {
-        "Just now".to_owned()
+        tr("Just now").to_owned()
     } else if seconds < 3600 {
-        format!("{} min ago", seconds / 60)
+        tr("{n} min ago").replace("{n}", &(seconds / 60).to_string())
     } else if days == 0 {
-        format!("{} h ago", seconds / 3600)
+        tr("{n} h ago").replace("{n}", &(seconds / 3600).to_string())
     } else {
         let format = match day {
             Day::Yesterday => "%H:%M",
@@ -176,7 +177,7 @@ struct HistoryPage {
 pub fn page(ctx: &Rc<Ctx>) -> adw::NavigationPage {
     let list = TrackList::new(ctx, Variant::Cover);
     list.set_source(Source {
-        title: "Recently Played".into(),
+        title: tr("Recently Played").into(),
         target: None,
     });
 
@@ -187,9 +188,9 @@ pub fn page(ctx: &Rc<Ctx>) -> adw::NavigationPage {
         .margin_bottom(6)
         .build();
     section::align_to_edge(&header, 0);
-    header.append(&title_row("This Session", None));
+    header.append(&title_row(tr("This Session"), None));
     let session_hint = gtk::Label::builder()
-        .label("Tracks you play in Swell appear here.")
+        .label(tr("Tracks you play in Swell appear here."))
         .xalign(0.0)
         .wrap(true)
         .css_classes(["dimmed"])
@@ -219,7 +220,10 @@ pub fn page(ctx: &Rc<Ctx>) -> adw::NavigationPage {
         .margin_top(30)
         .margin_bottom(36)
         .build();
-    let footer_title = title_row("On TIDAL", Some("What you played lately, on any device"));
+    let footer_title = title_row(
+        tr("On TIDAL"),
+        Some(tr("What you played lately, on any device")),
+    );
     footer_title.add_css_class("page-content");
     footer.append(&footer_title);
     footer.append(&remote);
@@ -232,20 +236,20 @@ pub fn page(ctx: &Rc<Ctx>) -> adw::NavigationPage {
     stack.add_named(
         &empty_status(
             "document-open-recent-symbolic",
-            "Nothing Played Yet",
-            "Music you play appears here.",
+            tr("Nothing Played Yet"),
+            tr("Music you play appears here."),
         ),
         Some("empty"),
     );
 
-    let title = adw::WindowTitle::new("Recently Played", "");
+    let title = adw::WindowTitle::new(tr("Recently Played"), "");
     let header_bar = adw::HeaderBar::builder().title_widget(&title).build();
     header_bar.pack_start(&sidebar::show_sidebar_button(&ctx.window));
     header_bar.pack_end(&sidebar::narrow_main_menu_button(&ctx.window));
     let toolbar = adw::ToolbarView::new();
     toolbar.add_top_bar(&header_bar);
     let page = adw::NavigationPage::builder()
-        .title("Recently Played")
+        .title(tr("Recently Played"))
         .child(&toolbar)
         .build();
 
@@ -387,7 +391,7 @@ impl HistoryPage {
             cards.append(MediaCard::new(&ctx, item, Some(&menu)).widget());
         }
         let shown: gtk::Widget = if section.items.is_empty() {
-            hint("Nothing yet.").upcast()
+            hint(tr("Nothing yet.")).upcast()
         } else {
             cards.upcast()
         };
@@ -401,14 +405,15 @@ impl HistoryPage {
             return;
         };
         if tidal::is_auth_error(err) {
-            ctx.report("Couldn't load what you played", err);
+            ctx.report(tr("Couldn't load what you played"), err);
         }
         let row = gtk::Box::builder().spacing(12).build();
-        let label = hint(&format!("Couldn't load this. {}", describe_error(err)));
+        let label =
+            hint(&tr("Couldn't load this. {reason}").replace("{reason}", &describe_error(err)));
         label.set_hexpand(true);
         row.append(&label);
         let retry = gtk::Button::builder()
-            .label("Retry")
+            .label(tr("Retry"))
             .valign(gtk::Align::Center)
             .build();
         let weak = Rc::downgrade(self);
@@ -457,15 +462,15 @@ mod tests {
         assert_eq!(when(&now, None), (Day::Earlier, None));
         assert_eq!(
             when(&now, Some(now.to_unix() - 30)).1.as_deref(),
-            Some("Just now")
+            Some(tr("Just now"))
         );
         assert_eq!(
             when(&now, at(17, 14, 55)),
-            (Day::Today, Some("5 min ago".into()))
+            (Day::Today, Some(tr("{n} min ago").replace("{n}", "5")))
         );
         assert_eq!(
             when(&now, at(17, 11, 30)),
-            (Day::Today, Some("3 h ago".into()))
+            (Day::Today, Some(tr("{n} h ago").replace("{n}", "3")))
         );
         assert_eq!(
             when(&now, at(16, 20, 5)),

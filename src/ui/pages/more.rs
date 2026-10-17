@@ -27,6 +27,7 @@ use super::super::widgets::section;
 use super::super::widgets::status::{PageStack, describe_error, empty_status};
 use super::super::widgets::track_list::{TrackList, Variant, compact_bin};
 use super::home_sections::{self, loading_more, paging_error};
+use crate::i18n::tr;
 use crate::model::TrackInfo;
 use crate::playback::Source;
 use crate::runtime;
@@ -136,7 +137,7 @@ pub fn page(ctx: &Rc<Ctx>, title: String, more: More) -> adw::NavigationPage {
         .build();
     spinner
         .upcast_ref::<gtk::Widget>()
-        .update_property(&[gtk::accessible::Property::Label("Loading")]);
+        .update_property(&[gtk::accessible::Property::Label(tr("Loading"))]);
     let stack = PageStack::new(&spinner);
 
     let window_title = adw::WindowTitle::new(&title, "");
@@ -146,7 +147,11 @@ pub fn page(ctx: &Rc<Ctx>, title: String, more: More) -> adw::NavigationPage {
     let toolbar = adw::ToolbarView::new();
     toolbar.add_top_bar(&header_bar);
     let page = adw::NavigationPage::builder()
-        .title(if title.is_empty() { "View All" } else { &title })
+        .title(if title.is_empty() {
+            tr("View All")
+        } else {
+            &title
+        })
         .child(&toolbar)
         .build();
 
@@ -281,7 +286,7 @@ impl MorePage {
             return;
         };
         if tidal::is_auth_error(err) {
-            ctx.report("Couldn't load the page", err);
+            ctx.report(tr("Couldn't load the page"), err);
         }
         if self.stack.is_showing_content() {
             return;
@@ -357,8 +362,8 @@ impl MorePage {
             self.body.replace(Body::Empty);
             self.stack.show_empty(
                 "folder-music-symbolic",
-                "Nothing Here Yet",
-                "TIDAL has nothing in this list for now.",
+                tr("Nothing Here Yet"),
+                tr("TIDAL has nothing in this list for now."),
             );
             return;
         }
@@ -501,8 +506,8 @@ impl MorePage {
         if column.first_child().is_none() {
             column.append(&empty_status(
                 "folder-music-symbolic",
-                "Nothing Here Yet",
-                "TIDAL has nothing on this page in your country.",
+                tr("Nothing Here Yet"),
+                tr("TIDAL has nothing on this page in your country."),
             ));
         }
         let clamp = adw::Clamp::builder()
@@ -598,12 +603,13 @@ impl MorePage {
                     if let Some(ctx) = state.ctx.upgrade()
                         && tidal::is_auth_error(&err)
                     {
-                        ctx.report("Couldn't load more", &err);
+                        ctx.report(tr("Couldn't load more"), &err);
                     }
                     log::warn!("paging {path}: {err:#}");
                     state.more_failed.set(true);
                     let weak = Rc::downgrade(&state);
-                    let message = format!("Couldn't load more. {}", describe_error(&err));
+                    let message = tr("Couldn't load more. {reason}")
+                        .replace("{reason}", &describe_error(&err));
                     state.set_footer(Some(&paging_error(&message, move || {
                         if let Some(state) = weak.upgrade() {
                             state.more_failed.set(false);

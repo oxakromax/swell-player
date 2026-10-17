@@ -15,6 +15,7 @@ use super::super::context::Ctx;
 use super::super::nav::Route;
 use super::super::widgets::status::{describe_error, empty_status};
 use super::home_sections::{self, Scaffold, Shape};
+use crate::i18n::tr;
 use crate::runtime;
 use crate::tidal::pages::{self, Feed};
 use crate::tidal::{self, Base};
@@ -35,7 +36,7 @@ struct HomePage {
 }
 
 pub fn page(ctx: &Rc<Ctx>) -> adw::NavigationPage {
-    let (view, page) = Scaffold::new(ctx, "Home", true, Shape::Feed);
+    let (view, page) = Scaffold::new(ctx, tr("Home"), true, Shape::Feed);
     view.heading.set_label(greeting());
     let state = Rc::new(HomePage {
         ctx: Rc::downgrade(ctx),
@@ -74,9 +75,9 @@ pub fn page(ctx: &Rc<Ctx>) -> adw::NavigationPage {
 fn greeting() -> &'static str {
     let hour = glib::DateTime::now_local().map_or(12, |now| now.hour());
     match hour {
-        5..=11 => "Good Morning",
-        12..=17 => "Good Afternoon",
-        _ => "Good Evening",
+        5..=11 => tr("Good Morning"),
+        12..=17 => tr("Good Afternoon"),
+        _ => tr("Good Evening"),
     }
 }
 
@@ -124,7 +125,7 @@ impl HomePage {
             return;
         };
         if tidal::is_auth_error(err) {
-            ctx.report("Couldn't load Home", err);
+            ctx.report(tr("Couldn't load Home"), err);
         }
         if self.view.stack.is_showing_content() {
             return;
@@ -152,11 +153,11 @@ impl HomePage {
         if !shown {
             let status = empty_status(
                 "user-home-symbolic",
-                "Nothing Here Yet",
-                "Play some music and TIDAL will suggest more here.",
+                tr("Nothing Here Yet"),
+                tr("Play some music and TIDAL will suggest more here."),
             );
             let button = gtk::Button::builder()
-                .label("Explore")
+                .label(tr("Explore"))
                 .halign(gtk::Align::Center)
                 .css_classes(["pill", "suggested-action"])
                 .build();
@@ -221,12 +222,13 @@ impl HomePage {
                 }
                 Err(err) => {
                     if tidal::is_auth_error(&err) {
-                        ctx.report("Couldn't load more of Home", &err);
+                        ctx.report(tr("Couldn't load more of Home"), &err);
                     }
                     log::warn!("home feed: {err:#}");
                     state.more_failed.set(true);
                     let weak = Rc::downgrade(&state);
-                    let message = format!("Couldn't load more. {}", describe_error(&err));
+                    let message = tr("Couldn't load more. {reason}")
+                        .replace("{reason}", &describe_error(&err));
                     state.view.set_footer(Some(&home_sections::paging_error(
                         &message,
                         move || {

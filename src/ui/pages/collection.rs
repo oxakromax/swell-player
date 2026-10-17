@@ -29,6 +29,7 @@ use super::super::widgets::status::PageStack;
 use super::super::widgets::track_list::{TrackList, Variant, compact_bin};
 use super::collection_grid;
 use crate::api::{CachedHead, FavoritesUpdate};
+use crate::i18n::{tr, trn};
 use crate::library::{Change, Item};
 use crate::model::TrackInfo;
 use crate::playback::Source;
@@ -44,8 +45,9 @@ pub fn page(ctx: &Rc<Ctx>, view: CollectionView) -> adw::NavigationPage {
 
 // ---- The shared template ----
 
-/// A sort order a view offers: id, label, and whether it starts
-/// descending when chosen (newest first, for dates).
+/// A sort order a view offers: id, label (untranslated: `tr` is applied
+/// where it is shown), and whether it starts descending when chosen
+/// (newest first, for dates).
 pub(super) type SortOption = (&'static str, &'static str, bool);
 
 thread_local! {
@@ -118,7 +120,7 @@ impl Template {
         filter.update_property(&[gtk::accessible::Property::Label(placeholder)]);
         let sort_button = gtk::MenuButton::builder()
             .always_show_arrow(true)
-            .tooltip_text("Sort")
+            .tooltip_text(tr("Sort"))
             .build();
         let row = gtk::Box::builder().spacing(6).build();
         row.append(&actions);
@@ -262,12 +264,12 @@ impl Template {
         let menu = gio::Menu::new();
         let keys = gio::Menu::new();
         for (id, label, _) in self.sorts {
-            keys.append(Some(label), Some(&format!("sort.by::{id}")));
+            keys.append(Some(tr(label)), Some(&format!("sort.by::{id}")));
         }
         menu.append_section(None, &keys);
         let orders = gio::Menu::new();
-        orders.append(Some("Ascending"), Some("sort.order::ascending"));
-        orders.append(Some("Descending"), Some("sort.order::descending"));
+        orders.append(Some(tr("Ascending")), Some("sort.order::ascending"));
+        orders.append(Some(tr("Descending")), Some("sort.order::descending"));
         menu.append_section(None, &orders);
         self.sort_button.set_menu_model(Some(&menu));
         self.update_sort_label();
@@ -283,17 +285,17 @@ impl Template {
     }
 
     fn update_sort_label(&self) {
-        let label = self.sorts[self.sort.get()].1;
+        let label = tr(self.sorts[self.sort.get()].1);
         self.sort_button.set_label(label);
-        let order = if self.descending.get() {
-            "descending"
+        let description = if self.descending.get() {
+            tr("Sort by {label}, descending")
         } else {
-            "ascending"
+            tr("Sort by {label}, ascending")
         };
         self.sort_button
-            .update_property(&[gtk::accessible::Property::Label(&format!(
-                "Sort by {label}, {order}"
-            ))]);
+            .update_property(&[gtk::accessible::Property::Label(
+                &description.replace("{label}", label),
+            )]);
     }
 
     fn changed(&self) {
@@ -397,8 +399,9 @@ impl Template {
         let name = if total == 0 {
             "empty"
         } else if shown == 0 {
-            self.no_matches
-                .set_title(&format!("No Matches for “{}”", self.filter.text().trim()));
+            self.no_matches.set_title(
+                &tr("No Matches for “{query}”").replace("{query}", self.filter.text().trim()),
+            );
             "no-matches"
         } else {
             "main"
@@ -430,18 +433,24 @@ pub(super) fn fold(text: &str) -> String {
 }
 
 /// "1,234 albums", "1 album", or "12 of 1,234 albums" while filtering.
-pub(super) fn count_label(shown: usize, total: usize, one: &str, many: &str) -> String {
+/// `noun` is the translated count with `{n}` for the number:
+/// `|n| trn("{n} album", "{n} albums", n)`.
+pub(super) fn count_label(
+    shown: usize,
+    total: usize,
+    noun: impl Fn(u64) -> &'static str,
+) -> String {
     if total == 0 {
         // The empty state says it.
-        String::new()
-    } else if shown == total {
-        format::count(total, one, many)
+        return String::new();
+    }
+    let count = noun(total as u64).replace("{n}", &format::group_digits(total));
+    if shown == total {
+        count
     } else {
-        format!(
-            "{} of {}",
-            format::group_digits(shown),
-            format::count(total, one, many)
-        )
+        tr("{shown} of {count}")
+            .replace("{shown}", &format::group_digits(shown))
+            .replace("{count}", &count)
     }
 }
 
@@ -471,7 +480,7 @@ pub(super) fn skeleton_rows() -> gtk::Widget {
         .orientation(gtk::Orientation::Vertical)
         .margin_top(6)
         .build();
-    rows.update_property(&[gtk::accessible::Property::Label("Loading")]);
+    rows.update_property(&[gtk::accessible::Property::Label(tr("Loading"))]);
     for _ in 0..14 {
         rows.append(&skeleton::row());
     }
@@ -495,7 +504,7 @@ pub(super) fn skeleton_cards(round: bool) -> gtk::Widget {
         .build();
     cards
         .upcast_ref::<gtk::Widget>()
-        .update_property(&[gtk::accessible::Property::Label("Loading")]);
+        .update_property(&[gtk::accessible::Property::Label(tr("Loading"))]);
     for _ in 0..18 {
         let card = skeleton::card(160);
         if round && let Some(cover) = card.first_child() {
@@ -630,7 +639,7 @@ struct TracksPage {
 
 fn source() -> Source {
     Source {
-        title: "Favourite Tracks".into(),
+        title: tr("Favourite Tracks").into(),
         target: Some(Target::Collection("tracks".into())),
     }
 }
@@ -639,7 +648,7 @@ fn tracks_page(ctx: &Rc<Ctx>) -> adw::NavigationPage {
     let list = TrackList::new(ctx, Variant::Cover);
     list.set_source(source());
     let explore = gtk::Button::builder()
-        .label("Explore")
+        .label(tr("Explore"))
         .css_classes(["suggested-action"])
         .build();
     let weak_ctx = Rc::downgrade(ctx);
@@ -650,15 +659,15 @@ fn tracks_page(ctx: &Rc<Ctx>) -> adw::NavigationPage {
     });
     let empty = empty_page(
         "swell-heart-symbolic",
-        "No Favourite Tracks",
-        "Tap the heart on any track to save it here.",
+        tr("No Favourite Tracks"),
+        tr("Tap the heart on any track to save it here."),
         Some(&explore),
     );
     let (template, page) = Template::new(
         ctx,
         "tracks",
-        "Tracks",
-        "Filter tracks",
+        tr("Tracks"),
+        tr("Filter tracks"),
         TRACK_SORTS,
         &skeleton_rows(),
         list.widget(),
@@ -668,8 +677,8 @@ fn tracks_page(ctx: &Rc<Ctx>) -> adw::NavigationPage {
         template.capture_keys_from(&view);
     }
 
-    let play = ToolButton::new("media-playback-start-symbolic", "Play", true);
-    let shuffle = ToolButton::new("media-playlist-shuffle-symbolic", "Shuffle", false);
+    let play = ToolButton::new("media-playback-start-symbolic", tr("Play"), true);
+    let shuffle = ToolButton::new("media-playlist-shuffle-symbolic", tr("Shuffle"), false);
     template.actions.append(&play.button);
     template.actions.append(&shuffle.button);
     template.actions.set_visible(true);
@@ -821,7 +830,7 @@ impl TracksPage {
             return;
         };
         if crate::tidal::is_auth_error(err) || self.drawn.get() {
-            ctx.report("Couldn't update your favourite tracks", err);
+            ctx.report(tr("Couldn't update your favourite tracks"), err);
             return;
         }
         let weak = Rc::downgrade(self);
@@ -902,7 +911,7 @@ impl TracksPage {
         let subtitle = if shown == all.len() {
             format::tracks_summary(shown, seconds)
         } else {
-            count_label(shown, all.len(), "track", "tracks")
+            count_label(shown, all.len(), |n| trn("{n} track", "{n} tracks", n))
         };
         self.template.title.set_subtitle(&subtitle);
         // The sidebar shows the length of this list (what TIDAL serves).
@@ -944,17 +953,15 @@ impl TracksPage {
         {
             let weak = Rc::downgrade(&ctx);
             ctx.toast_with_undo(
-                &format!(
-                    "Removed “{}” from Favourites",
-                    glib::markup_escape_text(&row.info.title)
-                ),
+                &tr("Removed “{title}” from Favourites")
+                    .replace("{title}", &glib::markup_escape_text(&row.info.title)),
                 move || {
                     if let Some(ctx) = weak.upgrade() {
                         let report = Rc::downgrade(&ctx);
                         ctx.library
                             .set_favorite(Item::Track(id), true, move |result| {
                                 if let (Err(err), Some(ctx)) = (result, report.upgrade()) {
-                                    ctx.report("Couldn't add the track back", &err);
+                                    ctx.report(tr("Couldn't add the track back"), &err);
                                 }
                             });
                     }
@@ -1051,7 +1058,12 @@ mod tests {
             fold("夜に駆ける"),
             glib::normalize("夜に駆ける", glib::NormalizeMode::All)
         );
-        assert_eq!(count_label(3, 1317, "track", "tracks"), "3 of 1,317 tracks");
-        assert_eq!(count_label(1, 1, "track", "tracks"), "1 track");
+        let tracks = |n| trn("{n} track", "{n} tracks", n);
+        assert_eq!(count_label(0, 0, tracks), "");
+        // The English source (tests may run in a translated locale).
+        if crate::i18n::ui_language().is_none() {
+            assert_eq!(count_label(3, 1317, tracks), "3 of 1,317 tracks");
+            assert_eq!(count_label(1, 1, tracks), "1 track");
+        }
     }
 }

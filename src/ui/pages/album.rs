@@ -24,6 +24,7 @@ use super::super::widgets::section::{self, section_widget};
 use super::super::widgets::skeleton;
 use super::super::widgets::status::PageStack;
 use super::super::widgets::track_list::{TrackList, Variant, compact_bin};
+use crate::i18n::tr;
 use crate::model::TrackInfo;
 use crate::playback::Source;
 use crate::runtime;
@@ -63,7 +64,7 @@ pub fn page(ctx: &Rc<Ctx>, id: u64) -> adw::NavigationPage {
     let toolbar = adw::ToolbarView::new();
     toolbar.add_top_bar(&header_bar);
     let page = adw::NavigationPage::builder()
-        .title("Album")
+        .title(tr("Album"))
         .child(&toolbar)
         .build();
 
@@ -160,7 +161,7 @@ impl AlbumPage {
             return;
         };
         if tidal::is_auth_error(err) {
-            ctx.report("Couldn't load the album", err);
+            ctx.report(tr("Couldn't load the album"), err);
         }
         if self.stack.is_showing_content() {
             return;
@@ -295,7 +296,7 @@ impl AlbumPage {
                     Ok(_) => return,
                     Err(err) => {
                         if let Some(ctx) = state.ctx.upgrade() {
-                            ctx.report("Couldn't load all the album's tracks", &err);
+                            ctx.report(tr("Couldn't load all the album's tracks"), &err);
                         }
                         return;
                     }
@@ -351,13 +352,13 @@ impl AlbumPage {
             .spacing(6)
             .build();
         if let Some(date) = album.release_date.as_deref().and_then(format_date) {
-            about.append(&caption(&format!("Released {date}")));
+            about.append(&caption(&tr("Released {date}").replace("{date}", &date)));
         }
         if let Some(copyright) = album.copyright.as_deref().filter(|c| !c.is_empty()) {
             about.append(&caption(copyright));
         }
         let credits = gtk::Button::builder()
-            .label("Credits")
+            .label(tr("Credits"))
             .halign(gtk::Align::Start)
             .margin_top(6)
             .css_classes(["pill"])
@@ -432,7 +433,7 @@ fn review_card(ctx: &Rc<Ctx>, album: &str, review: String) -> gtk::Widget {
         .build();
     inner.append(
         &gtk::Label::builder()
-            .label("Review")
+            .label(tr("Review"))
             .xalign(0.0)
             .css_classes(["heading"])
             .build(),
@@ -447,7 +448,7 @@ fn review_card(ctx: &Rc<Ctx>, album: &str, review: String) -> gtk::Widget {
             .build(),
     );
     let more = gtk::Button::builder()
-        .label("Read More")
+        .label(tr("Read More"))
         .halign(gtk::Align::Start)
         .css_classes(["flat"])
         .build();
@@ -455,7 +456,7 @@ fn review_card(ctx: &Rc<Ctx>, album: &str, review: String) -> gtk::Widget {
     let album = album.to_owned();
     more.connect_clicked(move |_| {
         if let Some(ctx) = weak.upgrade() {
-            dialogs::credits::show_text(&ctx, "Review", &album, &review);
+            dialogs::credits::show_text(&ctx, tr("Review"), &album, &review);
         }
     });
     inner.append(&more);
@@ -483,7 +484,7 @@ pub fn credits_page(ctx: &Rc<Ctx>, id: u64) -> adw::NavigationPage {
     toolbar.add_top_bar(&adw::HeaderBar::new());
     toolbar.set_content(Some(stack.widget()));
     let page = adw::NavigationPage::builder()
-        .title("Credits")
+        .title(tr("Credits"))
         .child(&toolbar)
         .build();
     load_credits(ctx, id, stack.clone());
@@ -504,8 +505,8 @@ fn load_credits(ctx: &Rc<Ctx>, id: u64, stack: Rc<PageStack>) {
         match result {
             Ok(credits) if credits.iter().all(|c| c.contributors.is_empty()) => stack.show_empty(
                 "avatar-default-symbolic",
-                "No Credits",
-                "TIDAL has no credits for this album.",
+                tr("No Credits"),
+                tr("TIDAL has no credits for this album."),
             ),
             Ok(credits) => {
                 stack.set_content(&dialogs::credits::credits_page(&ctx, &credits, || {}));
@@ -513,7 +514,7 @@ fn load_credits(ctx: &Rc<Ctx>, id: u64, stack: Rc<PageStack>) {
             }
             Err(err) => {
                 if tidal::is_auth_error(&err) {
-                    ctx.report("Couldn't load the credits", &err);
+                    ctx.report(tr("Couldn't load the credits"), &err);
                 }
                 let retry_ctx = Rc::downgrade(&ctx);
                 let retry_stack = Rc::downgrade(&stack);
