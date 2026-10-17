@@ -13,7 +13,8 @@
 //!   (before `SWELL_ROUTE` is opened).
 //! - `SWELL_DIALOG=preferences|shortcuts|about` opens that dialog.
 //! - `SWELL_ACTIONS=win.a,win.b('x'),...` activates those actions in turn,
-//!   one every 700 ms, once signed in (e.g. `win.section('search')`).
+//!   one every 700 ms, once signed in (e.g. `win.section('search')`,
+//!   `player.sleep('30')`).
 //! - `SWELL_LOGIN=1` shows the sign-in view (the stored session is kept).
 
 use std::time::Duration;
@@ -83,8 +84,12 @@ pub fn run_actions(window: &gtk::Widget) {
             };
             match gtk::gio::Action::parse_detailed_name(&detailed) {
                 Ok((name, target)) => {
-                    if let Err(err) = window.activate_action(&name, target.as_ref()) {
-                        log::warn!("SWELL_ACTIONS: {detailed}: {err}");
+                    // Groups inserted below the window (`player.*`) are
+                    // found from any widget under them.
+                    if window.activate_action(&name, target.as_ref()).is_err()
+                        && !activate_below(&window, &name, target.as_ref())
+                    {
+                        log::warn!("SWELL_ACTIONS: {detailed}: not found");
                     }
                 }
                 Err(err) => log::warn!("SWELL_ACTIONS: {detailed}: {err}"),
@@ -93,12 +98,29 @@ pub fn run_actions(window: &gtk::Widget) {
     }
 }
 
+/// Activates `name` from the first descendant of `widget` that can.
+fn activate_below(widget: &gtk::Widget, name: &str, target: Option<&glib::Variant>) -> bool {
+    let mut child = widget.first_child();
+    while let Some(current) = child {
+        if current.activate_action(name, target).is_ok() || activate_below(&current, name, target) {
+            return true;
+        }
+        child = current.next_sibling();
+    }
+    false
+}
+
 pub fn section() -> Option<String> {
     std::env::var("SWELL_SECTION").ok()
 }
 
 pub fn force_login() -> bool {
     std::env::var_os("SWELL_LOGIN").is_some()
+}
+
+/// Taking screenshots: the run must not change the user's settings.
+pub fn screenshot_mode() -> bool {
+    std::env::var_os("SWELL_SCREENSHOT").is_some()
 }
 
 /// The first `SWELL_SCREENSHOT_SIZES` size, so the window opens at it.
@@ -184,7 +206,10 @@ fn save(window: &gtk::Window, path: &str) {
     );
     paintable.snapshot(&snapshot, f64::from(width), f64::from(height));
     let Some(node) = snapshot.to_node() else {
-        return log::warn!("screenshot: nothing to render ({width}×{height}, mapped {})", content.is_mapped());
+        return log::warn!(
+            "screenshot: nothing to render ({width}×{height}, mapped {})",
+            content.is_mapped()
+        );
     };
     let Some(renderer) = window.native().and_then(|n| n.renderer()) else {
         return log::warn!("screenshot: no renderer");

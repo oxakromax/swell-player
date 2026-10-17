@@ -61,6 +61,10 @@ pub struct Settings {
     pub window_maximized: bool,
     /// Restore the last queue (paused) at startup.
     pub restore_session: bool,
+    /// The now-playing panel was open when last seen (wide layouts).
+    pub panel_open: bool,
+    /// Its last tab: "playing", "lyrics" or "queue".
+    pub panel_tab: String,
 }
 
 impl Default for Settings {
@@ -79,6 +83,8 @@ impl Default for Settings {
             window_height: 760,
             window_maximized: false,
             restore_session: true,
+            panel_open: false,
+            panel_tab: "playing".to_owned(),
         }
     }
 }
@@ -172,7 +178,9 @@ impl Store {
     }
 
     pub fn disconnect(&self, id: u64) {
-        self.listeners.borrow_mut().retain(|(other, _)| *other != id);
+        self.listeners
+            .borrow_mut()
+            .retain(|(other, _)| *other != id);
     }
 }
 
@@ -186,5 +194,7 @@ mod tests {
             serde_json::from_str(r#"{"volume":0.5,"something_new":1}"#).unwrap();
         assert_eq!(settings.volume, 0.5);
         assert!(settings.gapless);
+        assert!(!settings.panel_open);
+        assert_eq!(settings.panel_tab, "playing");
     }
 }

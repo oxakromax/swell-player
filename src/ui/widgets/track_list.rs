@@ -137,7 +137,10 @@ impl TrackList {
         let current = ctx.playback.current().map(|t| t.id);
         let shared = RowShared::new(ctx, variant);
         shared.playing.set(current);
-        shared.paused.set(ctx.playback.state() == PlayState::Paused);
+        shared.paused.set(!matches!(
+            ctx.playback.state(),
+            PlayState::Playing | PlayState::Loading
+        ));
 
         let inner = Rc::new(Inner {
             ctx: Rc::downgrade(ctx),
@@ -794,7 +797,10 @@ impl Inner {
             };
             match event {
                 Event::Track(track) => inner.shared.playing.set(track.as_ref().map(|t| t.id)),
-                Event::State(state) => inner.shared.paused.set(*state == PlayState::Paused),
+                Event::State(state) => inner
+                    .shared
+                    .paused
+                    .set(!matches!(state, PlayState::Playing | PlayState::Loading)),
                 _ => return,
             }
             for row in inner.bound.borrow().iter() {

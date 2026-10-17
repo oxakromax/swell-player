@@ -25,7 +25,7 @@ use crate::api::{self, Api};
 use crate::covers::CoverLoader;
 use crate::library::{Item, Library};
 use crate::model::TrackInfo;
-use crate::playback::{Playback, Source};
+use crate::playback::{Event, Playback, Source};
 use crate::settings::Repeat;
 use crate::tidal::pages::Target;
 use crate::{config, runtime, session, settings};
@@ -365,8 +365,11 @@ impl Ui {
         });
 
         let shell = Shell::new(&ctx);
-        self.window
-            .add_action(&gio::PropertyAction::new("show-sidebar", &shell.sidebar_split, "show-sidebar"));
+        self.window.add_action(&gio::PropertyAction::new(
+            "show-sidebar",
+            &shell.sidebar_split,
+            "show-sidebar",
+        ));
         for action in self.session_actions.borrow().iter() {
             action.set_enabled(true);
         }
@@ -390,6 +393,8 @@ impl Ui {
         }
         if let Some(tab) = super::debug::panel() {
             ctx.show_panel(Some(tab));
+        } else if !super::debug::screenshot_mode() {
+            shell.restore_panel_state(&self.settings.get());
         }
         super::debug::open_dialog(self.window.upcast_ref());
         super::debug::run_actions(self.window.upcast_ref());
@@ -403,11 +408,21 @@ impl Ui {
             self.open_target(target);
         }
 
+        // A stream resolved: TIDAL is reachable.
+        ctx.playback.subscribe({
+            let ctx = Rc::downgrade(&ctx);
+            move |event| {
+                if let (Event::Format(Some(_)), Some(ctx)) = (event, ctx.upgrade()) {
+                    ctx.network_ok();
+                }
+            }
+        });
         glib::spawn_future_local({
             let ctx = ctx.clone();
             async move {
-                if let Err(err) = library.load().await {
-                    ctx.report("Could not load your library", &err);
+                match library.load().await {
+                    Ok(()) => ctx.network_ok(),
+                    Err(err) => ctx.report("Could not load your library", &err),
                 }
             }
         });
@@ -432,8 +447,12 @@ impl Ui {
     /// signed out.
     fn install_actions(self: &Rc<Self>) {
         let string = Some(glib::VariantTy::STRING);
-        self.action("shortcuts", None, false, |ui, _| super::shortcuts::present(&ui.window));
-        self.action("about", None, false, |ui, _| super::dialogs::about::present(&ui.window));
+        self.action("shortcuts", None, false, |ui, _| {
+            super::shortcuts::present(&ui.window)
+        });
+        self.action("about", None, false, |ui, _| {
+            super::dialogs::about::present(&ui.window)
+        });
         self.action("close", None, false, |ui, _| ui.window.close());
         self.action("preferences", None, true, |ui, _| {
             if let Some(ctx) = ui.ctx() {
@@ -462,11 +481,8 @@ impl Ui {
             }
         });
         self.action("panel", string, true, |ui, param| {
-            let tab = match param.and_then(|p| p.str()) {
-                Some("playing") => PanelTab::Playing,
-                Some("lyrics") => PanelTab::Lyrics,
-                Some("queue") => PanelTab::Queue,
-                _ => return,
+            let Some(tab) = param.and_then(|p| p.str()).and_then(tab_from_name) else {
+                return;
             };
             if let Some(ctx) = ui.ctx() {
                 ctx.toggle_panel(tab);
@@ -485,8 +501,12 @@ impl Ui {
             let playback = &ctx.playback;
             playback.set_volume((playback.volume() - VOLUME_STEP).max(0.0));
         });
-        self.playback_action("mute", |ctx| ctx.playback.set_muted(!ctx.playback.is_muted()));
-        self.playback_action("shuffle", |ctx| ctx.playback.set_shuffle(!ctx.playback.shuffle()));
+        self.playback_action("mute", |ctx| {
+            ctx.playback.set_muted(!ctx.playback.is_muted())
+        });
+        self.playback_action("shuffle", |ctx| {
+            ctx.playback.set_shuffle(!ctx.playback.shuffle())
+        });
         self.playback_action("repeat", |ctx| {
             ctx.playback.set_repeat(match ctx.playback.repeat() {
                 Repeat::Off => Repeat::All,
@@ -651,6 +671,7 @@ fn play_track(ctx: &Rc<Ctx>, id: u64) {
 
 /// The signed-in UI (§2.1).
 struct Shell {
+    this: Weak<Self>,
     ctx: Weak<Ctx>,
     /// Holds the breakpoints; the "main" page of the root stack.
     root: adw::BreakpointBin,
@@ -688,6 +709,7 @@ impl Shell {
         // [content]: the toast overlay wraps the content only, so toasts
         // never cover the player.
         let content = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        content.append(&ctx.offline_banner);
         ctx.toasts.set_child(Some(navigator.sections()));
         ctx.toasts.set_vexpand(true);
         content.append(&ctx.toasts);
@@ -757,25 +779,43 @@ impl Shell {
             .build();
         // Only one breakpoint applies at a time (the last that matches), so
         // each repeats the setters of the wider ones.
-        let condition = |c: &str| adw::BreakpointCondition::parse(c).expect("valid breakpoint condition");
+        let condition =
+            |c: &str| adw::BreakpointCondition::parse(c).expect("valid breakpoint condition");
         let a = adw::Breakpoint::new(condition("max-width: 1180sp"));
         a.add_setters(&[(&panel_split, "collapsed", true.to_value())]);
         let b = adw::Breakpoint::new(condition("max-width: 900sp"));
         b.add_setters(&[
-            (panel_split.upcast_ref::<glib::Object>(), "collapsed", true.to_value()),
-            (sidebar_split.upcast_ref(), "min-sidebar-width", 180.0_f64.to_value()),
+            (
+                panel_split.upcast_ref::<glib::Object>(),
+                "collapsed",
+                true.to_value(),
+            ),
+            (
+                sidebar_split.upcast_ref(),
+                "min-sidebar-width",
+                180.0_f64.to_value(),
+            ),
         ]);
         let c = adw::Breakpoint::new(condition("max-width: 720sp"));
         c.add_setters(&[
-            (panel_split.upcast_ref::<glib::Object>(), "collapsed", true.to_value()),
-            (sidebar_split.upcast_ref(), "min-sidebar-width", 180.0_f64.to_value()),
+            (
+                panel_split.upcast_ref::<glib::Object>(),
+                "collapsed",
+                true.to_value(),
+            ),
+            (
+                sidebar_split.upcast_ref(),
+                "min-sidebar-width",
+                180.0_f64.to_value(),
+            ),
             (multi.upcast_ref(), "layout-name", "narrow".to_value()),
         ]);
         root.add_breakpoint(a);
         root.add_breakpoint(b.clone());
         root.add_breakpoint(c.clone());
 
-        let shell = Rc::new(Self {
+        let shell = Rc::new_cyclic(|this| Self {
+            this: this.clone(),
             ctx: Rc::downgrade(ctx),
             root,
             navigator,
@@ -853,6 +893,22 @@ impl Shell {
                 }
             }
         });
+        // Remember the panel for the next start (not while debugging, so
+        // screenshots do not change the user's settings).
+        if !super::debug::screenshot_mode() {
+            let settings = Rc::downgrade(&ctx.settings);
+            ctx.connect_panel_changed(move |tab| {
+                let Some(settings) = settings.upgrade() else {
+                    return;
+                };
+                settings.update(|s| {
+                    s.panel_open = tab.is_some();
+                    if let Some(tab) = tab {
+                        s.panel_tab = tab_name(tab).to_owned();
+                    }
+                });
+            });
+        }
         shell.sheet.connect_open_notify({
             let shell = Rc::downgrade(&shell);
             move |sheet| {
@@ -883,7 +939,35 @@ impl Shell {
         }
     }
 
+    /// Reopens the panel as it was last time, in the wide layouts (a
+    /// bottom sheet that opens by itself would cover the window).
+    fn restore_panel_state(&self, settings: &settings::Settings) {
+        if !settings.panel_open || self.multi.layout_name().as_deref() == Some("narrow") {
+            return;
+        }
+        if let (Some(ctx), Some(tab)) = (self.ctx.upgrade(), tab_from_name(&settings.panel_tab)) {
+            ctx.show_panel(Some(tab));
+        }
+    }
+
     fn show_panel(&self, tab: Option<PanelTab>) {
+        // libadwaita animates the reveal by the sidebar's last width, which
+        // is 0 before the split view was first allocated: the animation
+        // then runs on NaN ("attempt to allocate AdwBin widget with width
+        // -2147482624"). Wait for a first allocation.
+        if tab.is_some() && !self.narrow.get() && self.panel_split.width() == 0 {
+            let this = self.this.clone();
+            self.panel_split.add_tick_callback(move |split, _| {
+                if split.width() == 0 {
+                    return glib::ControlFlow::Continue;
+                }
+                if let Some(shell) = this.upgrade() {
+                    shell.show_panel(tab);
+                }
+                glib::ControlFlow::Break
+            });
+            return;
+        }
         if let Some(tab) = tab {
             self.panel.show_tab(tab);
         }
@@ -920,11 +1004,17 @@ impl Shell {
         }
         self.navigator.set_narrow(narrow);
         self.panel.set_narrow(narrow);
-        let open = self.ctx.upgrade().and_then(|ctx| ctx.panel()).is_some();
+        let tab = self.ctx.upgrade().and_then(|ctx| ctx.panel());
         self.updating_panel.set(true);
-        self.panel_split.set_show_sidebar(open && !narrow);
-        self.sheet.set_open(open && narrow);
+        self.sheet.set_open(tab.is_some() && narrow);
+        if narrow || self.panel_split.width() > 0 {
+            self.panel_split.set_show_sidebar(tab.is_some() && !narrow);
+        }
         self.updating_panel.set(false);
+        if !narrow && tab.is_some() && self.panel_split.width() == 0 {
+            // First time in the wide layout: reveal once allocated.
+            self.show_panel(tab);
+        }
     }
 
     /// Ctrl+F: the Search section at its root, with the focus in its
@@ -941,6 +1031,23 @@ impl Shell {
                 entry.grab_focus();
             }
         });
+    }
+}
+
+fn tab_name(tab: PanelTab) -> &'static str {
+    match tab {
+        PanelTab::Playing => "playing",
+        PanelTab::Lyrics => "lyrics",
+        PanelTab::Queue => "queue",
+    }
+}
+
+fn tab_from_name(name: &str) -> Option<PanelTab> {
+    match name {
+        "playing" => Some(PanelTab::Playing),
+        "lyrics" => Some(PanelTab::Lyrics),
+        "queue" => Some(PanelTab::Queue),
+        _ => None,
     }
 }
 

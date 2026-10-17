@@ -10,12 +10,17 @@
 //!
 //! Wide: artwork beside the text. Compact (narrow page): stacked and
 //! centred, smaller artwork, `title-2`.
+//!
+//! The action row stays on one line: when the text column gets too slim
+//! for it, Shuffle loses its label, then Copy link goes (the menu has it);
+//! only then does it wrap, the icon buttons moving down together.
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
+use adw::prelude::*;
 use gtk::glib;
-use gtk::prelude::*;
+use gtk::subclass::prelude::*;
 
 use super::heart_button::HeartButton;
 use super::media_card::Cover;
@@ -49,6 +54,116 @@ impl Art {
     }
 }
 
+/// How much the action row has to give up to stay on one line.
+struct ActionFit {
+    /// The page is compact (narrow layout).
+    compact: Cell<bool>,
+    /// Natural width of the whole row, and of the row without Shuffle's
+    /// label (0 until measured).
+    full_width: Cell<i32>,
+    without_label_width: Cell<i32>,
+    /// The text column is too slim for Shuffle's label.
+    tight: Cell<bool>,
+    /// ...and for the Copy link button.
+    tighter: Cell<bool>,
+    shuffle_content: adw::ButtonContent,
+    /// Hidden when compact or tighter (the menu has "Copy Link" too).
+    copy_link: RefCell<Option<gtk::Button>>,
+}
+
+impl ActionFit {
+    /// The row got `width` px.
+    fn allocated(&self, width: i32) {
+        if self.full_width.get() == 0 {
+            return;
+        }
+        let tight = width < self.full_width.get();
+        let tighter = width < self.without_label_width.get();
+        if self.tight.replace(tight) != tight || self.tighter.replace(tighter) != tighter {
+            self.update();
+        }
+    }
+
+    fn update(&self) {
+        let compact = self.compact.get();
+        let label = !(compact || self.tight.get());
+        self.shuffle_content
+            .set_label(if label { "Shuffle" } else { "" });
+        if let Some(copy) = self.copy_link.borrow().as_ref() {
+            copy.set_visible(!(compact || self.tighter.get()));
+        }
+    }
+}
+
+mod imp {
+    use std::cell::RefCell;
+
+    use gtk::glib;
+    use gtk::prelude::*;
+    use gtk::subclass::prelude::*;
+
+    type OnAllocate = Box<dyn Fn(i32)>;
+
+    /// A single-child container that reports its width when allocated.
+    #[derive(Default)]
+    pub struct FitBin {
+        pub on_allocate: RefCell<Option<OnAllocate>>,
+    }
+
+    #[glib::object_subclass]
+    impl ObjectSubclass for FitBin {
+        const NAME: &'static str = "SwellFitBin";
+        type Type = super::FitBin;
+        type ParentType = gtk::Widget;
+    }
+
+    impl ObjectImpl for FitBin {
+        fn dispose(&self) {
+            while let Some(child) = self.obj().first_child() {
+                child.unparent();
+            }
+        }
+    }
+
+    impl WidgetImpl for FitBin {
+        fn request_mode(&self) -> gtk::SizeRequestMode {
+            gtk::SizeRequestMode::HeightForWidth
+        }
+
+        fn measure(&self, orientation: gtk::Orientation, for_size: i32) -> (i32, i32, i32, i32) {
+            match self.obj().first_child() {
+                Some(child) => child.measure(orientation, for_size),
+                None => (0, 0, -1, -1),
+            }
+        }
+
+        fn size_allocate(&self, width: i32, height: i32, baseline: i32) {
+            if let Some(on_allocate) = self.on_allocate.borrow().as_ref() {
+                on_allocate(width);
+            }
+            if let Some(child) = self.obj().first_child() {
+                child.allocate(width, height, baseline, None);
+            }
+        }
+    }
+}
+
+glib::wrapper! {
+    /// A single-child container that reports its width when allocated.
+    pub struct FitBin(ObjectSubclass<imp::FitBin>)
+        @extends gtk::Widget,
+        @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget;
+}
+
+impl FitBin {
+    fn new(child: &impl IsA<gtk::Widget>, on_allocate: impl Fn(i32) + 'static) -> Self {
+        let bin: Self = glib::Object::new();
+        child.set_parent(&bin);
+        bin.imp().on_allocate.replace(Some(Box::new(on_allocate)));
+        bin
+    }
+}
+
 pub struct PageHeader {
     widget: gtk::Box,
     art: Art,
@@ -57,11 +172,13 @@ pub struct PageHeader {
     title: gtk::Label,
     badges: gtk::Box,
     actions: adw::WrapBox,
+    /// The icon buttons after Play and Shuffle: they wrap as one.
+    extras: gtk::Box,
+    /// Holds the action row and fits it to one line.
+    actions_bin: FitBin,
     play: gtk::Button,
     shuffle: gtk::Button,
-    shuffle_content: adw::ButtonContent,
-    /// Hidden when compact (the menu has "Copy Link" too).
-    copy_link: RefCell<Option<gtk::Button>>,
+    fit: Rc<ActionFit>,
     menu: Rc<ItemMenu>,
 }
 
@@ -129,6 +246,25 @@ impl PageHeader {
         shuffle.update_property(&[gtk::accessible::Property::Label("Shuffle")]);
         actions.append(&play);
         actions.append(&shuffle);
+        let extras = gtk::Box::builder().spacing(12).build();
+        actions.append(&extras);
+        let fit = Rc::new(ActionFit {
+            compact: Cell::new(false),
+            full_width: Cell::new(0),
+            without_label_width: Cell::new(0),
+            tight: Cell::new(false),
+            tighter: Cell::new(false),
+            shuffle_content,
+            copy_link: RefCell::default(),
+        });
+        let actions_bin = FitBin::new(&actions, {
+            let fit = Rc::downgrade(&fit);
+            move |width| {
+                if let Some(fit) = fit.upgrade() {
+                    fit.allocated(width);
+                }
+            }
+        });
 
         let menu = ItemMenu::new(ctx, &widget);
         Self {
@@ -139,10 +275,11 @@ impl PageHeader {
             title,
             badges,
             actions,
+            extras,
+            actions_bin,
             play,
             shuffle,
-            shuffle_content,
-            copy_link: RefCell::default(),
+            fit,
             menu,
         }
     }
@@ -151,7 +288,25 @@ impl PageHeader {
     /// so far.
     fn finish(&self) {
         self.text.append(&self.badges);
-        self.text.append(&self.actions);
+        self.text.append(&self.actions_bin);
+    }
+
+    /// Once the row is complete: the widths where it stops fitting, with
+    /// and without Shuffle's label.
+    fn fit_actions(&self) {
+        let natural = |widget: &adw::WrapBox| widget.measure(gtk::Orientation::Horizontal, -1).1;
+        self.fit.full_width.set(natural(&self.actions));
+        self.fit.shuffle_content.set_label("");
+        let without_label = natural(&self.actions);
+        self.fit.update();
+        // Without Copy link there is nothing more to give up.
+        self.fit
+            .without_label_width
+            .set(if self.fit.copy_link.borrow().is_some() {
+                without_label
+            } else {
+                0
+            });
     }
 
     fn add_line(&mut self, label: gtk::Label) {
@@ -182,7 +337,7 @@ impl PageHeader {
     fn add_heart(&self, ctx: &Rc<Ctx>, subject: &Subject) {
         let heart = HeartButton::new(ctx);
         heart.set_item(Some(subject.favorite_item()));
-        self.actions.append(heart.widget());
+        self.extras.append(heart.widget());
     }
 
     fn add_copy_link(&self, ctx: &Rc<Ctx>, url: String) {
@@ -198,8 +353,8 @@ impl PageHeader {
                 ctx.copy(&url, "Link");
             }
         });
-        self.actions.append(&button);
-        self.copy_link.replace(Some(button));
+        self.extras.append(&button);
+        self.fit.copy_link.replace(Some(button));
     }
 
     fn add_more(&self, subject: Subject) {
@@ -215,7 +370,7 @@ impl PageHeader {
                 menu.popup_at(subject.clone(), button);
             }
         });
-        self.actions.append(&button);
+        self.extras.append(&button);
     }
 
     /// Album: cover, ALBUM/EP/SINGLE, title, artist links, year · tracks,
@@ -263,6 +418,7 @@ impl PageHeader {
         header.add_heart(ctx, &subject);
         header.add_copy_link(ctx, subject.share_url());
         header.add_more(subject);
+        header.fit_actions();
         header
     }
 
@@ -326,11 +482,12 @@ impl PageHeader {
                     dialogs::playlist::edit_playlist(&ctx, &playlist);
                 }
             });
-            header.actions.append(&edit);
+            header.extras.append(&edit);
         } else {
             header.add_heart(ctx, &subject);
         }
         header.add_more(subject);
+        header.fit_actions();
         header
     }
 
@@ -348,7 +505,7 @@ impl PageHeader {
         let subject = Subject::Artist(Rc::new(artist.clone()));
         let follow = HeartButton::follow(ctx);
         follow.set_item(Some(subject.favorite_item()));
-        header.actions.append(follow.widget());
+        header.extras.append(follow.widget());
         let radio = gtk::Button::builder()
             .icon_name(super::icon_name(
                 "swell-radio-symbolic",
@@ -365,8 +522,9 @@ impl PageHeader {
                 ctx.navigate(Route::ArtistRadio(id));
             }
         });
-        header.actions.append(&radio);
+        header.extras.append(&radio);
         header.add_more(subject);
+        header.fit_actions();
         header
     }
 
@@ -387,6 +545,7 @@ impl PageHeader {
         header.add_heart(ctx, &subject);
         header.add_copy_link(ctx, subject.share_url());
         header.add_more(subject);
+        header.fit_actions();
         header
     }
 
@@ -446,9 +605,10 @@ impl PageHeader {
             self.title.add_css_class("title-1");
         }
         self.badges.set_halign(align);
-        self.actions.set_halign(align);
+        self.actions_bin.set_halign(align);
         self.actions.set_align(xalign);
         self.actions.set_child_spacing(if compact { 6 } else { 12 });
+        self.extras.set_spacing(if compact { 6 } else { 12 });
         // Details are a label or a box of labels and buttons.
         let mut detail = self.badges.prev_sibling();
         while let Some(widget) = detail.filter(|w| {
@@ -477,11 +637,8 @@ impl PageHeader {
             detail = widget.prev_sibling();
         }
         // Narrow: "(▶ Play) (⤮) ♥ ⋯".
-        self.shuffle_content
-            .set_label(if compact { "" } else { "Shuffle" });
-        if let Some(copy) = self.copy_link.borrow().as_ref() {
-            copy.set_visible(!compact);
-        }
+        self.fit.compact.set(compact);
+        self.fit.update();
     }
 }
 

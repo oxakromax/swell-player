@@ -473,6 +473,51 @@ impl Queue {
     }
 }
 
+impl Queue {
+    /// Puts back what was upcoming when `snapshot` was taken (the undo of
+    /// [`Queue::clear_upcoming`]): the context in its play order and the
+    /// up-next list. The current track, the history, shuffle and repeat stay
+    /// as they are. When the current track changed since, its link to the
+    /// context is dropped (it plays on and the restored tracks follow it).
+    pub fn restore_upcoming(&mut self, snapshot: QueueSnapshot) {
+        let QueueSnapshot {
+            context,
+            order,
+            next,
+            current,
+            current_at,
+            up_next,
+            ..
+        } = snapshot;
+        if order.iter().any(|&i| i >= context.len()) {
+            // Not a snapshot of a consistent queue: requeue what it held.
+            let upcoming = up_next.into_iter().chain(
+                order
+                    .iter()
+                    .skip(next)
+                    .filter_map(|&i| context.get(i).cloned()),
+            );
+            self.up_next.extend(upcoming);
+            return;
+        }
+        let same_current = self.current.as_ref().map(|c| c.track.id) == current.map(|t| t.id);
+        let context_changed = self.context.len() != context.len()
+            || self.context.iter().zip(&context).any(|(a, b)| a.id != b.id);
+        if context_changed {
+            for entry in &mut self.history {
+                entry.context = None;
+            }
+        }
+        if let Some(entry) = &mut self.current {
+            entry.context = if same_current { current_at } else { None };
+        }
+        self.next = next.min(order.len());
+        self.context = context;
+        self.order = order;
+        self.up_next = up_next.into();
+    }
+}
+
 /// Fisher–Yates with a xorshift generator seeded from the OS.
 fn shuffle<T>(items: &mut [T]) {
     let mut seed = [0u8; 8];
@@ -673,6 +718,32 @@ mod tests {
         let r = Queue::restore(broken, None);
         assert_eq!(r.current().unwrap().id, q.current().unwrap().id);
         assert_eq!(r.upcoming().len(), 1);
+    }
+
+    #[test]
+    fn clear_then_restore_upcoming() {
+        let mut q = Queue::default();
+        q.set_shuffle(true);
+        q.set_context(tracks(10), 2, source());
+        q.advance(false);
+        q.add_to_queue(vec![track(20), track(21)]);
+        let before = ids(&q.upcoming());
+        let snapshot = q.snapshot();
+        q.clear_upcoming();
+        assert!(q.upcoming().is_empty());
+        q.restore_upcoming(snapshot);
+        assert_eq!(ids(&q.upcoming()), before);
+        assert_eq!(q.up_next_len(), 2);
+        // The context order is back, not re-added as up next.
+        q.advance(true);
+        q.advance(true);
+        assert_eq!(q.up_next_len(), 0);
+        assert_eq!(ids(&q.upcoming()), before[2..]);
+        // Going back still finds the context positions.
+        assert!(q.go_back());
+        assert!(q.go_back());
+        assert!(q.go_back());
+        assert_eq!(ids(&q.upcoming()).len(), before.len() + 1);
     }
 
     #[test]

@@ -13,11 +13,15 @@ use gtk::{gdk, gio, glib};
 
 use super::super::context::Ctx;
 use super::super::nav::Route;
+use super::quality_badge::{BadgeKind, QualityBadge};
 use crate::covers::{CoverLoader, Image, Ticket};
 use crate::library::{Change, Item, Library};
 use crate::model::TrackInfo;
-use crate::playback::{Event, PlayState, Playback};
+use crate::playback::format::khz;
+use crate::playback::{Event, FormatDetails, PlayState, Playback, SleepTimer};
 use crate::settings::{Normalization, QualityPreference};
+use crate::tidal::Quality;
+use crate::ui::dialogs;
 
 /// A playback subscription, removed when dropped.
 pub(super) struct Subscription {
@@ -229,6 +233,10 @@ pub(super) mod icons {
         icon(&["swell-heart-filled-symbolic", "starred-symbolic"])
     }
 
+    pub fn timer() -> &'static str {
+        icon(&["swell-timer-symbolic", "alarm-symbolic"])
+    }
+
     pub fn drag_handle() -> &'static str {
         icon(&["list-drag-handle-symbolic", "drag-handle-symbolic"])
     }
@@ -360,145 +368,114 @@ fn link_route(uri: &str) -> Option<Route> {
 
 /// The explicit badge (§4.5).
 pub(super) fn explicit_badge() -> gtk::Label {
-    let badge = gtk::Label::builder()
-        .label("E")
-        .valign(gtk::Align::Center)
-        .css_classes(["badge", "explicit"])
-        .tooltip_text("Explicit")
-        .build();
-    badge.update_property(&[gtk::accessible::Property::Label("Explicit")]);
-    badge
+    QualityBadge::new(BadgeKind::Explicit)
 }
 
-/// The available-quality badge: HI-RES or LOSSLESS (§4.5). A private copy
-/// until the shared `QualityBadge` lands.
-pub(super) fn quality_badge() -> gtk::Label {
-    gtk::Label::builder()
-        .valign(gtk::Align::Center)
-        .css_classes(["badge"])
-        .build()
+/// The available quality of the track: HI-RES or LOSSLESS (§4.5), one of
+/// two shared badges shown at a time.
+pub(super) struct TrackQuality {
+    pub widget: gtk::Box,
+    hires: gtk::Label,
+    lossless: gtk::Label,
 }
 
-pub(super) fn set_quality_badge(badge: &gtk::Label, hires: bool) {
-    let (text, name) = if hires {
-        ("HI-RES", "Hi-Res Lossless")
-    } else {
-        ("LOSSLESS", "Lossless")
-    };
-    badge.set_label(text);
-    badge.set_tooltip_text(Some(name));
-    badge.update_property(&[gtk::accessible::Property::Label(name)]);
-    if hires {
-        badge.add_css_class("hires");
-    } else {
-        badge.remove_css_class("hires");
-    }
-}
-
-/// The delivered format, parsed from `Playback::format()` ("24-bit/96 kHz
-/// FLAC", "AAC 320 kbit/s").
-#[derive(Clone, Debug, PartialEq)]
-pub(super) struct Format {
-    pub codec: String,
-    pub bits: Option<u32>,
-    /// "96", "44.1".
-    pub khz: Option<String>,
-    pub bitrate: Option<String>,
-}
-
-impl Format {
-    pub fn parse(text: &str) -> Self {
-        if let Some((bits, rest)) = text.split_once("-bit/") {
-            let mut words = rest.split_whitespace();
-            let khz = words.next().map(str::to_owned);
-            let codec = rest
-                .split_whitespace()
-                .last()
-                .filter(|w| *w != "kHz")
-                .unwrap_or("FLAC")
-                .to_owned();
-            return Self {
-                codec,
-                bits: bits.trim().parse().ok(),
-                khz,
-                bitrate: None,
-            };
-        }
-        let mut words = text.split_whitespace();
-        let codec = words.next().unwrap_or("").to_owned();
-        let bitrate = words.next().map(str::to_owned);
+impl TrackQuality {
+    pub fn new() -> Self {
+        let hires = QualityBadge::new(BadgeKind::HiRes);
+        let lossless = QualityBadge::new(BadgeKind::Lossless);
+        let widget = gtk::Box::builder().valign(gtk::Align::Center).build();
+        widget.append(&hires);
+        widget.append(&lossless);
         Self {
-            codec,
-            bits: None,
-            khz: None,
-            bitrate,
+            widget,
+            hires,
+            lossless,
         }
     }
 
-    pub fn hires(&self) -> bool {
-        self.bits.is_some_and(|bits| bits >= 24)
+    pub fn set(&self, hires: bool) {
+        self.hires.set_visible(hires);
+        self.lossless.set_visible(!hires);
     }
+}
 
-    pub fn lossless(&self) -> bool {
-        self.bits.is_some() || self.codec.eq_ignore_ascii_case("flac")
+/// "Hi-Res Lossless", "Lossless", "High"...
+fn quality_name(details: &FormatDetails) -> &'static str {
+    match details.quality {
+        Some(Quality::HiResLossless) => "Hi-Res Lossless",
+        Some(Quality::Lossless) => "Lossless",
+        Some(Quality::High) => "High",
+        Some(Quality::Low) => "Low",
+        None if details.is_hires() => "Hi-Res Lossless",
+        None if details.is_lossless() => "Lossless",
+        None => "Lossy",
     }
+}
 
-    /// "FLAC 24/96", "AAC 320".
-    pub fn short(&self) -> String {
-        match (&self.bits, &self.khz, &self.bitrate) {
-            (Some(bits), Some(khz), _) => format!("{} {bits}/{khz}", self.codec),
-            (_, _, Some(rate)) => format!("{} {rate}", self.codec),
-            _ => self.codec.clone(),
-        }
+/// The badge text in compact layouts: "HI-RES", "LOSSLESS" or the codec.
+fn compact_label(details: &FormatDetails) -> String {
+    if details.is_hires() {
+        "HI-RES".into()
+    } else if details.is_lossless() {
+        "LOSSLESS".into()
+    } else {
+        details.codec.name().to_uppercase()
     }
+}
 
-    /// "HI-RES", "LOSSLESS" or the codec.
-    pub fn compact(&self) -> String {
-        if self.hires() {
-            "HI-RES".into()
-        } else if self.lossless() {
-            "LOSSLESS".into()
-        } else {
-            self.codec.to_uppercase()
-        }
+/// Why the output is not bit-perfect, if it is not: the samples reach the
+/// sound server untouched only without normalisation, at full volume and
+/// unmuted.
+fn alterations(details: &FormatDetails, volume: f64, muted: bool) -> Vec<String> {
+    let mut reasons = Vec::new();
+    if details.replay_gain_db.is_some() {
+        reasons.push("normalisation is on".to_owned());
     }
+    if muted {
+        reasons.push("muted".to_owned());
+    } else if volume < 0.999 {
+        reasons.push(format!("volume at {:.0} %", volume * 100.0));
+    }
+    if !details.is_lossless() {
+        reasons.push("lossy stream".to_owned());
+    }
+    reasons
+}
 
-    pub fn quality(&self) -> &'static str {
-        if self.hires() {
-            "Hi-Res Lossless"
-        } else if self.lossless() {
-            "Lossless"
-        } else {
-            "High"
-        }
-    }
-
-    /// "24-bit · 96 kHz" or "320 kbit/s".
-    pub fn delivered(&self) -> String {
-        match (&self.bits, &self.khz) {
-            (Some(bits), Some(khz)) => format!("{bits}-bit · {khz} kHz"),
-            _ => self
-                .bitrate
-                .as_ref()
-                .map(|rate| format!("{rate} kbit/s"))
-                .unwrap_or_else(|| "—".into()),
-        }
-    }
+/// "−3.2 dB" with a real minus sign.
+fn decibels(db: f64) -> String {
+    let text = format!("{db:+.1} dB");
+    text.replace('-', "−")
 }
 
 /// The delivered-format badge: a flat menu button ("FLAC 24/96") whose
-/// popover lists the details (§4.5).
+/// popover lists codec, bit depth, sample rate, bitrate, the TIDAL tier,
+/// the ReplayGain applied and whether the output is bit-perfect (§4.5).
+/// Follows playback by itself.
 pub(super) struct FormatBadge {
     pub widget: gtk::MenuButton,
+    ctx: Weak<Ctx>,
     label: gtk::Label,
-    values: [gtk::Label; 5],
+    /// Key and value label per row, in [`FormatBadge::ROWS`] order.
+    rows: Vec<(gtk::Label, gtk::Label)>,
     note: gtk::Label,
     compact: Cell<bool>,
-    format: RefCell<Option<Format>>,
+    _events: Subscription,
 }
 
 impl FormatBadge {
-    pub fn new() -> Self {
+    const ROWS: [&'static str; 8] = [
+        "Quality",
+        "Codec",
+        "Bit depth",
+        "Sample rate",
+        "Bitrate",
+        "ReplayGain",
+        "Output",
+        "Output device",
+    ];
+
+    pub fn new(ctx: &Rc<Ctx>) -> Rc<Self> {
         let label = gtk::Label::builder()
             .css_classes(["badge", "numeric"])
             .build();
@@ -518,31 +495,27 @@ impl FormatBadge {
             .margin_start(6)
             .margin_end(6)
             .build();
-        let values: [gtk::Label; 5] = std::array::from_fn(|_| {
-            gtk::Label::builder()
-                .xalign(0.0)
-                .selectable(true)
-                .css_classes(["numeric"])
-                .build()
-        });
-        for (row, name) in [
-            "Quality",
-            "Codec",
-            "Delivered",
-            "Output device",
-            "Normalisation",
-        ]
-        .into_iter()
-        .enumerate()
-        {
-            let key = gtk::Label::builder()
-                .label(name)
-                .xalign(0.0)
-                .css_classes(["dimmed"])
-                .build();
-            grid.attach(&key, 0, row as i32, 1, 1);
-            grid.attach(&values[row], 1, row as i32, 1, 1);
-        }
+        let rows: Vec<(gtk::Label, gtk::Label)> = Self::ROWS
+            .iter()
+            .enumerate()
+            .map(|(row, name)| {
+                let key = gtk::Label::builder()
+                    .label(*name)
+                    .xalign(0.0)
+                    .css_classes(["dimmed"])
+                    .build();
+                let value = gtk::Label::builder()
+                    .xalign(0.0)
+                    .wrap(true)
+                    .max_width_chars(28)
+                    .selectable(true)
+                    .css_classes(["numeric"])
+                    .build();
+                grid.attach(&key, 0, row as i32, 1, 1);
+                grid.attach(&value, 1, row as i32, 1, 1);
+                (key, value)
+            })
+            .collect();
         let note = gtk::Label::builder()
             .xalign(0.0)
             .wrap(true)
@@ -550,76 +523,103 @@ impl FormatBadge {
             .css_classes(["caption", "dimmed"])
             .visible(false)
             .build();
-        grid.attach(&note, 0, 5, 2, 1);
+        grid.attach(&note, 0, Self::ROWS.len() as i32, 2, 1);
         let popover = gtk::Popover::builder().child(&grid).build();
         widget.set_popover(Some(&popover));
-        Self {
+        let badge = Rc::new_cyclic(|weak: &Weak<Self>| Self {
             widget,
+            ctx: Rc::downgrade(ctx),
             label,
-            values,
+            rows,
             note,
             compact: Cell::new(false),
-            format: RefCell::default(),
-        }
+            _events: subscribe(&ctx.playback, weak, |badge, event| {
+                if matches!(event, Event::Track(_) | Event::Format(_) | Event::Options) {
+                    badge.refresh();
+                }
+            }),
+        });
+        badge.refresh();
+        badge
     }
 
     pub fn set_compact(&self, compact: bool) {
         self.compact.set(compact);
-        self.refresh_label();
+        self.refresh();
     }
 
-    /// Shows `format` (hidden with `None`). `track` and `ctx` explain a
-    /// delivered quality below what the track offers.
-    pub fn set(&self, ctx: &Ctx, track: Option<&TrackInfo>, format: Option<&str>) {
-        let Some(text) = format else {
-            self.format.replace(None);
+    fn set_row(&self, row: usize, value: Option<&str>) {
+        let (key, label) = &self.rows[row];
+        key.set_visible(value.is_some());
+        label.set_visible(value.is_some());
+        label.set_label(value.unwrap_or_default());
+    }
+
+    /// Shows what plays now; hidden until its stream is resolved.
+    fn refresh(&self) {
+        let Some(ctx) = self.ctx.upgrade() else {
+            return;
+        };
+        let details = ctx.playback.format_details();
+        let Some(details) = details.filter(|_| ctx.playback.current().is_some()) else {
             self.widget.set_visible(false);
             return;
         };
-        let format = Format::parse(text);
         let settings = ctx.settings.get();
-        self.values[0].set_label(format.quality());
-        self.values[1].set_label(&format.codec);
-        self.values[2].set_label(&format.delivered());
-        self.values[3].set_label("System default");
-        self.values[4].set_label(match settings.normalization {
-            Normalization::Off => "Off",
-            Normalization::Track => "Track",
-            Normalization::Album => "Album",
-        });
-        let note = match track {
-            Some(track) if track.hires && !format.hires() => Some(match settings.quality {
-                QualityPreference::Best => "Lossless delivered: this track has no Hi-Res master",
-                _ => "Lossless delivered: Hi-Res is turned off in Preferences",
-            }),
-            _ => None,
+        let alterations = alterations(&details, settings.volume, settings.muted);
+        let output = if alterations.is_empty() {
+            "Bit-perfect".to_owned()
+        } else {
+            format!("Not bit-perfect: {}", alterations.join(", "))
         };
+        let replay_gain = details.replay_gain_db.map(|db| {
+            let mode = match settings.normalization {
+                Normalization::Album => "album",
+                _ => "track",
+            };
+            format!("{} ({mode})", decibels(db))
+        });
+        self.set_row(0, Some(quality_name(&details)));
+        self.set_row(1, Some(details.codec.name()));
+        self.set_row(2, details.bit_depth.map(|b| format!("{b}-bit")).as_deref());
+        self.set_row(
+            3,
+            details
+                .sample_rate
+                .map(|r| format!("{} kHz", khz(r)))
+                .as_deref(),
+        );
+        self.set_row(4, details.bitrate.map(|b| format!("{b} kbit/s")).as_deref());
+        self.set_row(5, Some(replay_gain.as_deref().unwrap_or("Off")));
+        self.set_row(6, Some(&output));
+        self.set_row(7, Some("System default"));
+
+        let track_hires = ctx.playback.current().is_some_and(|t| t.hires);
+        let note = (track_hires && !details.is_hires()).then_some(match settings.quality {
+            QualityPreference::Best => "Lossless delivered: this track has no Hi-Res master",
+            _ => "Lossless delivered: Hi-Res is turned off in Preferences",
+        });
         self.note.set_label(note.unwrap_or_default());
         self.note.set_visible(note.is_some());
-        if format.hires() {
+
+        if details.is_hires() {
             self.label.add_css_class("hires");
         } else {
             self.label.remove_css_class("hires");
         }
+        self.label.set_label(&if self.compact.get() {
+            compact_label(&details)
+        } else {
+            details.short()
+        });
+        let spoken = format!(
+            "Audio format: {}, {}. {output}",
+            quality_name(&details),
+            details.describe()
+        );
         self.widget
-            .update_property(&[gtk::accessible::Property::Label(&format!(
-                "Audio format: {}, {}",
-                format.quality(),
-                format.delivered()
-            ))]);
-        self.format.replace(Some(format));
-        self.refresh_label();
+            .update_property(&[gtk::accessible::Property::Label(&spoken)]);
         self.widget.set_visible(true);
-    }
-
-    fn refresh_label(&self) {
-        if let Some(format) = self.format.borrow().as_ref() {
-            self.label.set_label(&if self.compact.get() {
-                format.compact()
-            } else {
-                format.short()
-            });
-        }
     }
 }
 
@@ -714,50 +714,133 @@ impl Heart {
     }
 }
 
-/// Actions on the current track ("player.*"): go to album/artist, track
-/// radio, copy link.
-fn track_actions(ctx: &Rc<Ctx>) -> gio::SimpleActionGroup {
-    let group = gio::SimpleActionGroup::new();
-    let add = |name: &str, run: fn(&Ctx, &TrackInfo)| {
-        let action = gio::SimpleAction::new(name, None);
-        let ctx = Rc::downgrade(ctx);
-        action.connect_activate(move |_, _| {
-            if let Some(ctx) = ctx.upgrade()
-                && let Some(track) = ctx.playback.current()
-            {
-                run(&ctx, &track);
-            }
-        });
-        group.add_action(&action);
-    };
-    add("album", |ctx, track| {
-        if track.album_id != 0 {
-            ctx.navigate(Route::Album(track.album_id));
-        }
-    });
-    add("artist", |ctx, track| {
-        if let Some(artist) = track.main_artist() {
-            ctx.navigate(Route::Artist(artist.id));
-        }
-    });
-    add("radio", |ctx, track| {
-        ctx.navigate(Route::TrackRadio(track.id))
-    });
-    add("copy-link", |ctx, track| {
-        ctx.copy(&track.share_url(), "Link")
-    });
-    group
+/// The sleep timer choices (§4.9): action target and menu label.
+const SLEEP_CHOICES: [(&str, &str); 6] = [
+    ("off", "Off"),
+    ("15", "15 Minutes"),
+    ("30", "30 Minutes"),
+    ("45", "45 Minutes"),
+    ("60", "60 Minutes"),
+    ("end", "End of Track"),
+];
+
+/// The `player.sleep` state for a timer.
+fn sleep_target(timer: Option<SleepTimer>) -> String {
+    match timer {
+        None => "off".into(),
+        Some(SleepTimer::EndOfTrack) => "end".into(),
+        Some(SleepTimer::After(duration)) => (duration.as_secs() / 60).to_string(),
+    }
 }
 
-/// The "⋯" menu button for the current track.
-pub(super) fn track_menu_button(ctx: &Rc<Ctx>) -> gtk::MenuButton {
+fn sleep_timer_of(target: &str) -> Option<SleepTimer> {
+    match target {
+        "end" => Some(SleepTimer::EndOfTrack),
+        minutes => minutes
+            .parse::<u64>()
+            .ok()
+            .filter(|m| *m > 0)
+            .map(|m| SleepTimer::After(Duration::from_secs(m * 60))),
+    }
+}
+
+/// The "Sleep Timer" choices, as radio items of `player.sleep`.
+fn sleep_menu() -> gio::Menu {
     let menu = gio::Menu::new();
+    for (target, label) in SLEEP_CHOICES {
+        let item = gio::MenuItem::new(Some(label), None);
+        item.set_action_and_target_value(Some("player.sleep"), Some(&target.to_variant()));
+        menu.append_item(&item);
+    }
+    menu
+}
+
+/// Actions on the current track and the player ("player.*"): go to
+/// album/artist, track radio, add to playlist, copy link and the sleep
+/// timer. Insert [`PlayerActions::group`] on a widget that contains the
+/// player's menus.
+pub(super) struct PlayerActions {
+    pub group: gio::SimpleActionGroup,
+    _events: Subscription,
+}
+
+impl PlayerActions {
+    pub fn new(ctx: &Rc<Ctx>) -> Rc<Self> {
+        let group = gio::SimpleActionGroup::new();
+        let add = |name: &str, run: fn(&Rc<Ctx>, &TrackInfo)| {
+            let action = gio::SimpleAction::new(name, None);
+            let ctx = Rc::downgrade(ctx);
+            action.connect_activate(move |_, _| {
+                if let Some(ctx) = ctx.upgrade()
+                    && let Some(track) = ctx.playback.current()
+                {
+                    run(&ctx, &track);
+                }
+            });
+            group.add_action(&action);
+        };
+        add("album", |ctx, track| {
+            if track.album_id != 0 {
+                ctx.navigate(Route::Album(track.album_id));
+            }
+        });
+        add("artist", |ctx, track| {
+            if let Some(artist) = track.main_artist() {
+                ctx.navigate(Route::Artist(artist.id));
+            }
+        });
+        add("radio", |ctx, track| {
+            ctx.navigate(Route::TrackRadio(track.id))
+        });
+        add("add-to-playlist", |ctx, track| {
+            dialogs::playlist::choose_playlist(ctx, vec![track.id]);
+        });
+        add("copy-link", |ctx, track| {
+            ctx.copy(&track.share_url(), "Link")
+        });
+
+        let sleep = gio::SimpleAction::new_stateful(
+            "sleep",
+            Some(glib::VariantTy::STRING),
+            &sleep_target(ctx.playback.sleep_timer()).to_variant(),
+        );
+        sleep.connect_activate({
+            let playback = Rc::downgrade(&ctx.playback);
+            move |_, target| {
+                if let (Some(playback), Some(target)) =
+                    (playback.upgrade(), target.and_then(|t| t.str()))
+                {
+                    playback.set_sleep_timer(sleep_timer_of(target));
+                }
+            }
+        });
+        group.add_action(&sleep);
+        let playback = Rc::downgrade(&ctx.playback);
+        Rc::new_cyclic(|weak: &Weak<Self>| Self {
+            group,
+            _events: subscribe(&ctx.playback, weak, move |_, event| {
+                if let (Event::SleepTimer, Some(playback)) = (event, playback.upgrade()) {
+                    sleep.set_state(&sleep_target(playback.sleep_timer()).to_variant());
+                }
+            }),
+        })
+    }
+}
+
+/// The "⋯" menu of the player (§4.9): sleep timer, go to album/artist,
+/// track radio, add to playlist, copy link. Uses [`PlayerActions`].
+pub(super) fn track_menu_button() -> gtk::MenuButton {
+    let menu = gio::Menu::new();
+    let timer = gio::Menu::new();
+    timer.append_submenu(Some("Sleep Timer"), &sleep_menu());
+    menu.append_section(None, &timer);
     let navigate = gio::Menu::new();
     navigate.append(Some("Go to Album"), Some("player.album"));
     navigate.append(Some("Go to Artist"), Some("player.artist"));
     navigate.append(Some("Track Radio"), Some("player.radio"));
     menu.append_section(None, &navigate);
     let share = gio::Menu::new();
+    share.append(Some("Add to Playlist…"), Some("player.add-to-playlist"));
     share.append(Some("Copy Link"), Some("player.copy-link"));
     menu.append_section(None, &share);
     let button = gtk::MenuButton::builder()
@@ -767,8 +850,75 @@ pub(super) fn track_menu_button(ctx: &Rc<Ctx>) -> gtk::MenuButton {
         .css_classes(["flat", "circular"])
         .tooltip_text("More")
         .build();
-    button.insert_action_group("player", Some(&track_actions(ctx)));
+    button.update_property(&[gtk::accessible::Property::Label("More")]);
     button
+}
+
+/// While the sleep timer runs: its icon and the minutes left ("23 min"),
+/// a button that opens the timer choices (§4.9). Uses [`PlayerActions`].
+pub(super) struct SleepIndicator {
+    pub widget: gtk::MenuButton,
+    playback: Rc<Playback>,
+    label: gtk::Label,
+    _events: Subscription,
+}
+
+impl SleepIndicator {
+    pub fn new(playback: &Rc<Playback>) -> Rc<Self> {
+        let label = gtk::Label::builder().css_classes(["numeric"]).build();
+        let content = gtk::Box::builder().spacing(6).build();
+        content.append(&gtk::Image::from_icon_name(icons::timer()));
+        content.append(&label);
+        let widget = gtk::MenuButton::builder()
+            .child(&content)
+            .menu_model(&sleep_menu())
+            .valign(gtk::Align::Center)
+            .css_classes(["flat"])
+            .visible(false)
+            .build();
+        let indicator = Rc::new_cyclic(|weak: &Weak<Self>| Self {
+            widget,
+            playback: playback.clone(),
+            label,
+            _events: subscribe(playback, weak, |indicator, event| {
+                if matches!(event, Event::SleepTimer | Event::Track(_)) {
+                    indicator.refresh();
+                }
+            }),
+        });
+        indicator.refresh();
+        indicator
+    }
+
+    fn refresh(&self) {
+        let timer = self.playback.sleep_timer();
+        self.widget.set_visible(timer.is_some());
+        let (text, tooltip) = match timer {
+            None => return,
+            Some(SleepTimer::EndOfTrack) => (
+                String::new(),
+                "Sleep timer: stops at the end of this track".to_owned(),
+            ),
+            Some(SleepTimer::After(_)) => {
+                let minutes = self
+                    .playback
+                    .sleep_timer_remaining()
+                    .map_or(0, |left| left.as_secs().div_ceil(60));
+                (
+                    format!("{minutes} min"),
+                    format!(
+                        "Sleep timer: stops in {minutes} {}",
+                        if minutes == 1 { "minute" } else { "minutes" }
+                    ),
+                )
+            }
+        };
+        self.label.set_label(&text);
+        self.label.set_visible(!text.is_empty());
+        self.widget.set_tooltip_text(Some(&tooltip));
+        self.widget
+            .update_property(&[gtk::accessible::Property::Label(&tooltip)]);
+    }
 }
 
 /// "2 minutes 1 second", for screen readers.
@@ -793,18 +943,52 @@ mod tests {
     use super::*;
 
     #[test]
-    fn formats() {
-        let hires = Format::parse("24-bit/96 kHz FLAC");
-        assert_eq!(hires.short(), "FLAC 24/96");
-        assert_eq!(hires.compact(), "HI-RES");
-        assert_eq!(hires.delivered(), "24-bit · 96 kHz");
-        let cd = Format::parse("16-bit/44.1 kHz FLAC");
-        assert_eq!(cd.short(), "FLAC 16/44.1");
-        assert_eq!(cd.compact(), "LOSSLESS");
-        let aac = Format::parse("AAC 320 kbit/s");
-        assert_eq!(aac.short(), "AAC 320");
-        assert_eq!(aac.compact(), "AAC");
-        assert_eq!(aac.quality(), "High");
+    fn format_details() {
+        use crate::playback::Codec;
+        let mut details = FormatDetails {
+            codec: Codec::Flac,
+            bit_depth: Some(24),
+            sample_rate: Some(96_000),
+            bitrate: None,
+            quality: Some(Quality::HiResLossless),
+            audio_mode: None,
+            replay_gain_db: None,
+        };
+        assert_eq!(details.short(), "FLAC 24/96");
+        assert_eq!(compact_label(&details), "HI-RES");
+        assert_eq!(quality_name(&details), "Hi-Res Lossless");
+        assert!(alterations(&details, 1.0, false).is_empty());
+        assert_eq!(alterations(&details, 0.8, false), ["volume at 80 %"]);
+        details.replay_gain_db = Some(-3.21);
+        assert_eq!(
+            alterations(&details, 1.0, true),
+            ["normalisation is on", "muted"]
+        );
+        assert_eq!(decibels(-3.21), "−3.2 dB");
+        let aac = FormatDetails {
+            codec: Codec::Aac,
+            bit_depth: None,
+            sample_rate: Some(44_100),
+            bitrate: Some(320),
+            quality: Some(Quality::High),
+            audio_mode: None,
+            replay_gain_db: None,
+        };
+        assert_eq!(compact_label(&aac), "AAC");
+        assert_eq!(alterations(&aac, 1.0, false), ["lossy stream"]);
+    }
+
+    #[test]
+    fn sleep_targets() {
+        assert_eq!(sleep_target(None), "off");
+        assert_eq!(sleep_timer_of("off"), None);
+        assert_eq!(sleep_timer_of("end"), Some(SleepTimer::EndOfTrack));
+        let half_hour = sleep_timer_of("30");
+        assert_eq!(
+            half_hour,
+            Some(SleepTimer::After(Duration::from_secs(1800)))
+        );
+        assert_eq!(sleep_target(half_hour), "30");
     }
 
     #[test]

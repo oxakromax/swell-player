@@ -5,6 +5,10 @@
 //! inside the panel goes through `ctx.show_panel` so the shell (and the
 //! player bar toggles) stay in step.
 //!
+//! The tab switcher sits in the header bar when it fits next to the window
+//! buttons; in a slim side panel it gets a row of its own below them, so
+//! the tab names are never cut.
+//!
 //! The shell keeps the returned `Rc` as long as the widget is shown.
 
 use std::cell::{Cell, RefCell};
@@ -16,8 +20,9 @@ use super::super::context::{Ctx, PanelTab};
 use super::super::nav::Route;
 use super::lyrics_view::LyricsView;
 use super::np_common::{
-    self, Cover, FormatBadge, Heart, Subscription, album_markup, artists_markup, device_pixels,
-    explicit_badge, icons, link_label, quality_badge, set_quality_badge, subscribe,
+    Cover, FormatBadge, Heart, PlayerActions, SleepIndicator, Subscription, TrackQuality,
+    album_markup, artists_markup, device_pixels, explicit_badge, icons, link_label, subscribe,
+    track_menu_button,
 };
 use super::np_controls::{SeekBar, Transport, Volume};
 use super::queue_view::QueueView;
@@ -26,6 +31,8 @@ use crate::playback::Event;
 
 /// Largest cover size (logical pixels).
 const COVER_MAX: i32 = 480;
+/// Below this panel width the tabs get their own row.
+const TABS_IN_HEADER_MIN: &str = "max-width: 400sp";
 
 fn tab_name(tab: PanelTab) -> &'static str {
     match tab {
@@ -44,13 +51,28 @@ fn tab_from_name(name: &str) -> Option<PanelTab> {
     }
 }
 
+fn switcher(stack: &adw::ViewStack) -> adw::InlineViewSwitcher {
+    adw::InlineViewSwitcher::builder()
+        .stack(stack)
+        .display_mode(adw::InlineViewSwitcherDisplayMode::Labels)
+        .build()
+}
+
 pub struct NowPlayingPanel {
     pub widget: gtk::Widget,
     ctx: Weak<Ctx>,
     stack: adw::ViewStack,
+    toolbar: adw::ToolbarView,
     header: adw::HeaderBar,
+    /// The switcher in the header bar, and the one in its own row.
+    header_switcher: adw::InlineViewSwitcher,
+    tabs_row: gtk::Box,
+    /// The panel is too slim for the tabs beside the window buttons.
+    slim: Cell<bool>,
+    narrow: Cell<bool>,
     close: gtk::Button,
     playing: gtk::Stack,
+    playing_scroll: gtk::ScrolledWindow,
     picture: gtk::Picture,
     picture_ticket: RefCell<Option<Ticket>>,
     picture_cover: RefCell<Option<String>>,
@@ -58,13 +80,17 @@ pub struct NowPlayingPanel {
     explicit: gtk::Label,
     artists: gtk::Label,
     album: gtk::Label,
-    quality: gtk::Label,
-    format: FormatBadge,
+    quality: TrackQuality,
+    _format: Rc<FormatBadge>,
+    _sleep: Rc<SleepIndicator>,
+    _actions: Rc<PlayerActions>,
     controls: gtk::Box,
     transport: Rc<Transport>,
     _seek: Rc<SeekBar>,
     volume: Rc<Volume>,
     heart: Rc<Heart>,
+    radio: gtk::Button,
+    more: gtk::MenuButton,
     up_next: gtk::Box,
     up_next_cover: Cover,
     up_next_label: gtk::Label,
@@ -90,6 +116,7 @@ impl NowPlayingPanel {
             .icon_name(icons::track())
             .pixel_size(96)
             .css_classes(["dimmed"])
+            .accessible_role(gtk::AccessibleRole::Presentation)
             .build();
         let cover_overlay = gtk::Overlay::builder().child(&placeholder).build();
         cover_overlay.add_overlay(&picture);
@@ -107,6 +134,7 @@ impl NowPlayingPanel {
             .ellipsize(gtk::pango::EllipsizeMode::End)
             .hexpand(true)
             .css_classes(["title-2"])
+            .accessible_role(gtk::AccessibleRole::Heading)
             .build();
         let explicit = explicit_badge();
         explicit.set_valign(gtk::Align::Start);
@@ -116,11 +144,13 @@ impl NowPlayingPanel {
         title_row.append(&explicit);
         let artists = link_label(ctx, &["title-4"]);
         let album = link_label(ctx, &["dimmed"]);
-        let quality = quality_badge();
-        let format = FormatBadge::new();
+        let quality = TrackQuality::new();
+        let format = FormatBadge::new(ctx);
+        let sleep = SleepIndicator::new(playback);
         let badges = gtk::Box::builder().spacing(6).build();
-        badges.append(&quality);
+        badges.append(&quality.widget);
         badges.append(&format.widget);
+        badges.append(&sleep.widget);
 
         // Narrow only: seek and transport.
         let seek = SeekBar::new(playback);
@@ -144,13 +174,11 @@ impl NowPlayingPanel {
             .css_classes(["flat"])
             .tooltip_text("Track Radio")
             .build();
+        radio.update_property(&[gtk::accessible::Property::Label("Track Radio")]);
         let volume = Volume::new(playback);
         volume.set_compact(true);
         volume.widget.set_visible(false);
-        let more = np_common::track_menu_button(ctx);
-        for button in [heart.button.upcast_ref::<gtk::Widget>(), more.upcast_ref()] {
-            button.set_size_request(36, 36);
-        }
+        let more = track_menu_button();
         let actions = gtk::Box::builder()
             .spacing(12)
             .halign(gtk::Align::Center)
@@ -226,13 +254,11 @@ impl NowPlayingPanel {
                 .build(),
             Some("empty"),
         );
-        playing.add_named(
-            &gtk::ScrolledWindow::builder()
-                .hscrollbar_policy(gtk::PolicyType::Never)
-                .child(&clamp)
-                .build(),
-            Some("track"),
-        );
+        let playing_scroll = gtk::ScrolledWindow::builder()
+            .hscrollbar_policy(gtk::PolicyType::Never)
+            .child(&clamp)
+            .build();
+        playing.add_named(&playing_scroll, Some("track"));
 
         // ---- Tabs ----
         let lyrics = LyricsView::new(ctx);
@@ -241,31 +267,56 @@ impl NowPlayingPanel {
         stack.add_titled_with_icon(&playing, Some("playing"), "Playing", icons::track());
         stack.add_titled_with_icon(&lyrics.widget, Some("lyrics"), "Lyrics", icons::lyrics());
         stack.add_titled_with_icon(&queue.widget, Some("queue"), "Queue", icons::queue());
-        let switcher = adw::InlineViewSwitcher::builder()
-            .stack(&stack)
-            .display_mode(adw::InlineViewSwitcherDisplayMode::Labels)
-            .build();
+        let header_switcher = switcher(&stack);
         let close = gtk::Button::builder()
             .icon_name("go-down-symbolic")
             .tooltip_text("Close")
             .visible(false)
             .build();
         close.update_property(&[gtk::accessible::Property::Label("Close")]);
-        let header = adw::HeaderBar::builder().title_widget(&switcher).build();
+        let header = adw::HeaderBar::builder()
+            .title_widget(&header_switcher)
+            .build();
         header.pack_end(&close);
+        let tabs_row = gtk::Box::builder()
+            .halign(gtk::Align::Center)
+            .margin_start(12)
+            .margin_end(12)
+            .margin_bottom(6)
+            .visible(false)
+            .build();
+        tabs_row.append(&switcher(&stack));
         let toolbar = adw::ToolbarView::builder()
             .content(&stack)
             .css_classes(["now-playing"])
             .build();
         toolbar.add_top_bar(&header);
+        toolbar.add_top_bar(&tabs_row);
+        toolbar
+            .upcast_ref::<gtk::Widget>()
+            .update_property(&[gtk::accessible::Property::Label("Now Playing")]);
+
+        let root = adw::BreakpointBin::builder()
+            .width_request(280)
+            .height_request(200)
+            .child(&toolbar)
+            .build();
+        let player_actions = PlayerActions::new(ctx);
+        root.insert_action_group("player", Some(&player_actions.group));
 
         let panel = Rc::new_cyclic(|weak: &Weak<Self>| Self {
-            widget: toolbar.upcast(),
+            widget: root.clone().upcast(),
             ctx: Rc::downgrade(ctx),
             stack,
+            toolbar,
             header,
+            header_switcher,
+            tabs_row,
+            slim: Cell::new(false),
+            narrow: Cell::new(false),
             close,
             playing,
+            playing_scroll,
             picture,
             picture_ticket: RefCell::default(),
             picture_cover: RefCell::default(),
@@ -274,12 +325,16 @@ impl NowPlayingPanel {
             artists,
             album,
             quality,
-            format,
+            _format: format,
+            _sleep: sleep,
+            _actions: player_actions,
             controls,
             transport,
             _seek: seek,
             volume,
             heart,
+            radio,
+            more,
             up_next,
             up_next_cover,
             up_next_label,
@@ -287,14 +342,37 @@ impl NowPlayingPanel {
             _queue: queue,
             syncing: Cell::new(false),
             _events: subscribe(playback, weak, |panel, event| match event {
-                Event::Track(_) => panel.show_track(None),
-                Event::Format(format) => panel.show_track(format.as_deref()),
+                Event::Track(_) => panel.show_track(),
                 Event::Queue => panel.show_up_next(),
                 _ => {}
             }),
         });
 
+        let breakpoint = adw::Breakpoint::new(
+            adw::BreakpointCondition::parse(TABS_IN_HEADER_MIN)
+                .expect("valid breakpoint condition"),
+        );
         let weak = Rc::downgrade(&panel);
+        breakpoint.connect_apply({
+            let weak = weak.clone();
+            move |_| {
+                if let Some(panel) = weak.upgrade() {
+                    panel.slim.set(true);
+                    panel.place_switcher();
+                }
+            }
+        });
+        breakpoint.connect_unapply({
+            let weak = weak.clone();
+            move |_| {
+                if let Some(panel) = weak.upgrade() {
+                    panel.slim.set(false);
+                    panel.place_switcher();
+                }
+            }
+        });
+        root.add_breakpoint(breakpoint);
+
         panel.stack.connect_visible_child_name_notify({
             let weak = weak.clone();
             move |stack| {
@@ -321,7 +399,7 @@ impl NowPlayingPanel {
                 }
             }
         });
-        radio.connect_clicked({
+        panel.radio.connect_clicked({
             let weak = weak.clone();
             move |_| {
                 if let Some(ctx) = weak.upgrade().and_then(|panel| panel.ctx.upgrade())
@@ -338,7 +416,8 @@ impl NowPlayingPanel {
                 _ => panel.show_tab(PanelTab::Queue),
             }
         });
-        panel.show_track(ctx.playback.format().as_deref());
+        panel.set_button_sizes(36);
+        panel.show_track();
         panel
     }
 
@@ -350,27 +429,53 @@ impl NowPlayingPanel {
     }
 
     /// Narrow layout (bottom sheet): transport and volume inside the
-    /// Playing tab, a close button, no window buttons.
+    /// Playing tab, a close button, no window buttons, room for the
+    /// sheet's drag handle, and as tall as the Playing tab needs.
     pub fn set_narrow(&self, narrow: bool) {
+        self.narrow.set(narrow);
         self.controls.set_visible(narrow);
         self.volume.widget.set_visible(narrow);
         self.transport.set_large(narrow);
         self.close.set_visible(narrow);
         self.header.set_show_start_title_buttons(!narrow);
         self.header.set_show_end_title_buttons(!narrow);
+        if narrow {
+            self.toolbar.add_css_class("in-sheet");
+        } else {
+            self.toolbar.remove_css_class("in-sheet");
+        }
+        // The sheet follows its content's natural height.
+        self.playing_scroll.set_propagate_natural_height(narrow);
         self.lyrics.set_narrow(narrow);
-        let size = if narrow { 44 } else { 36 };
-        self.heart.button.set_size_request(size, size);
+        self.set_button_sizes(if narrow { 44 } else { 36 });
+        self.place_switcher();
     }
 
-    fn show_track(&self, format: Option<&str>) {
+    /// The tabs go in the header bar unless the panel is too slim to fit
+    /// them beside the window buttons (the sheet has none).
+    fn place_switcher(&self) {
+        let in_header = self.narrow.get() || !self.slim.get();
+        self.header_switcher.set_visible(in_header);
+        self.tabs_row.set_visible(!in_header);
+    }
+
+    fn set_button_sizes(&self, size: i32) {
+        for button in [
+            self.heart.button.upcast_ref::<gtk::Widget>(),
+            self.more.upcast_ref(),
+        ] {
+            button.set_size_request(size, size);
+        }
+        self.radio.set_height_request(size);
+    }
+
+    fn show_track(&self) {
         let Some(ctx) = self.ctx.upgrade() else {
             return;
         };
         let Some(track) = ctx.playback.current() else {
             self.playing.set_visible_child_name("empty");
             self.heart.set_track(None);
-            self.format.set(&ctx, None, None);
             self.set_picture(&ctx, None);
             self.show_up_next();
             return;
@@ -383,8 +488,7 @@ impl NowPlayingPanel {
         self.artists.set_markup(&artists_markup(&track));
         self.album.set_markup(&album_markup(&track, &track.album));
         self.album.set_visible(!track.album.is_empty());
-        set_quality_badge(&self.quality, track.hires);
-        self.format.set(&ctx, Some(&track), format);
+        self.quality.set(track.hires);
         self.heart.set_track(Some(track.id));
         self.show_up_next();
     }

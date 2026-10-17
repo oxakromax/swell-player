@@ -12,8 +12,8 @@ use adw::prelude::*;
 
 use super::super::context::{Ctx, PanelTab};
 use super::np_common::{
-    self, Cover, FormatBadge, Heart, Subscription, album_markup, artists_markup, explicit_badge,
-    icons, link_label, subscribe,
+    Cover, FormatBadge, Heart, PlayerActions, SleepIndicator, Subscription, album_markup,
+    artists_markup, explicit_badge, icons, link_label, subscribe, track_menu_button,
 };
 use super::np_controls::{SeekBar, Transport, Volume};
 use crate::playback::Event;
@@ -30,7 +30,9 @@ pub struct PlayerBar {
     heart: Rc<Heart>,
     _transport: Rc<Transport>,
     _seek: Rc<SeekBar>,
-    format: FormatBadge,
+    format: Rc<FormatBadge>,
+    _sleep: Rc<SleepIndicator>,
+    _actions: Rc<PlayerActions>,
     lyrics: gtk::ToggleButton,
     queue: gtk::ToggleButton,
     volume: Rc<Volume>,
@@ -89,8 +91,9 @@ impl PlayerBar {
             .margin_end(12)
             .build();
 
-        // End: format, lyrics, queue, volume, more.
-        let format = FormatBadge::new();
+        // End: format, sleep timer, lyrics, queue, volume, more.
+        let format = FormatBadge::new(ctx);
+        let sleep = SleepIndicator::new(playback);
         let panel_toggle = |icon: &str, tooltip: &str| {
             let button = gtk::ToggleButton::builder()
                 .icon_name(icon)
@@ -104,12 +107,13 @@ impl PlayerBar {
         let lyrics = panel_toggle(icons::lyrics(), "Lyrics");
         let queue = panel_toggle(icons::queue(), "Queue");
         let volume = Volume::new(playback);
-        let more = np_common::track_menu_button(ctx);
+        let more = track_menu_button();
         let end = gtk::Box::builder()
             .spacing(6)
             .valign(gtk::Align::Center)
             .build();
         end.append(&format.widget);
+        end.append(&sleep.widget);
         end.append(&lyrics);
         end.append(&queue);
         end.append(&volume.widget);
@@ -128,6 +132,8 @@ impl PlayerBar {
             .visible(false)
             .build();
         bar_box.update_property(&[gtk::accessible::Property::Label("Player")]);
+        let actions = PlayerActions::new(ctx);
+        bar_box.insert_action_group("player", Some(&actions.group));
 
         let bar = Rc::new_cyclic(|weak: &Weak<Self>| Self {
             widget: bar_box.upcast(),
@@ -140,16 +146,16 @@ impl PlayerBar {
             _transport: transport,
             _seek: seek,
             format,
+            _sleep: sleep,
+            _actions: actions,
             lyrics,
             queue,
             volume,
             syncing: Cell::new(false),
-            _events: subscribe(playback, weak, |bar, event| match event {
-                // The previous track's format stays until the new stream
-                // is resolved; hide it meanwhile.
-                Event::Track(_) => bar.show_track(None),
-                Event::Format(format) => bar.show_track(format.as_deref()),
-                _ => {}
+            _events: subscribe(playback, weak, |bar, event| {
+                if let Event::Track(_) = event {
+                    bar.show_track();
+                }
             }),
         });
 
@@ -186,7 +192,7 @@ impl PlayerBar {
             }
         });
         bar.sync_panel(ctx.panel());
-        bar.show_track(ctx.playback.format().as_deref());
+        bar.show_track();
         bar
     }
 
@@ -203,7 +209,7 @@ impl PlayerBar {
         self.syncing.set(false);
     }
 
-    fn show_track(&self, format: Option<&str>) {
+    fn show_track(&self) {
         let Some(ctx) = self.ctx.upgrade() else {
             return;
         };
@@ -211,7 +217,6 @@ impl PlayerBar {
         self.widget.set_visible(track.is_some());
         let Some(track) = track else {
             self.heart.set_track(None);
-            self.format.set(&ctx, None, None);
             return;
         };
         self.cover.set(&ctx.covers, track.cover.as_deref());
@@ -221,7 +226,6 @@ impl PlayerBar {
         self.artists.set_markup(&artists_markup(&track));
         self.artists.set_tooltip_text(Some(&track.artist_names()));
         self.heart.set_track(Some(track.id));
-        self.format.set(&ctx, Some(&track), format);
         self.widget
             .update_property(&[gtk::accessible::Property::Description(&format!(
                 "{} by {}",

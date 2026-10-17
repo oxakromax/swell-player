@@ -366,6 +366,14 @@ impl Engine {
         self.playbin.set_property("mute", muted);
     }
 
+    /// Audio is flowing: the pipeline settled in `Playing` and is not
+    /// waiting for data.
+    pub fn is_playing(&self) -> bool {
+        !self.local.buffering.get()
+            && self.local.start_at.get().is_none()
+            && is_playing(&self.playbin)
+    }
+
     /// Seconds.
     pub fn position(&self) -> Option<f64> {
         if let Some(start) = self.local.start_at.get() {
@@ -416,6 +424,12 @@ impl Engine {
         }
         None
     }
+}
+
+/// Settled in `Playing` (no state change pending).
+fn is_playing(playbin: &gst::Element) -> bool {
+    let (_, current, pending) = playbin.state(gst::ClockTime::ZERO);
+    current == gst::State::Playing && pending == gst::State::VoidPending
 }
 
 fn seek(playbin: &gst::Element, position: f64) {
@@ -510,6 +524,12 @@ fn handle_message(
             }
         }
         MessageView::AsyncDone(_) => {
+            log::trace!(
+                "async-done (start {:?}, seeking {}, buffering {})",
+                local.start_at.get(),
+                local.seeking_to_start.get(),
+                local.buffering.get()
+            );
             if let Some(start) = local.start_at.take() {
                 local.seeking_to_start.set(true);
                 seek(playbin, start);
@@ -518,9 +538,19 @@ fn handle_message(
                 && !local.buffering.get()
             {
                 let _ = playbin.set_state(gst::State::Playing);
+            } else if local.target_playing.get() && !local.buffering.get() && is_playing(playbin) {
+                // A flushing seek while playing: the pipeline recovered by
+                // itself, possibly without a state change to report.
+                on_event(EngineEvent::Playing);
             }
         }
         MessageView::StateChanged(change) if message.src() == Some(playbin.upcast_ref()) => {
+            log::trace!(
+                "state {:?} -> {:?} (pending {:?})",
+                change.old(),
+                change.current(),
+                change.pending()
+            );
             match change.current() {
                 gst::State::Playing => on_event(EngineEvent::Playing),
                 gst::State::Paused if change.pending() == gst::State::VoidPending => {
@@ -535,6 +565,7 @@ fn handle_message(
         }
         MessageView::Buffering(buffering) => {
             let percent = buffering.percent();
+            log::trace!("buffering {percent} %");
             if percent < 100 {
                 // A handed-over stream fills up while the end of the
                 // current one still plays from the queues: pausing now
@@ -544,10 +575,11 @@ fn handle_message(
                 }
                 if !local.buffering.replace(true) {
                     log::debug!("buffering ({percent} %)");
+                    // Paused stays paused: only a wanted playback waits.
                     if local.target_playing.get() {
                         let _ = playbin.set_state(gst::State::Paused);
+                        on_event(EngineEvent::Buffering);
                     }
-                    on_event(EngineEvent::Buffering);
                 }
             } else if local.buffering.replace(false) {
                 log::debug!("buffering done");
@@ -555,10 +587,11 @@ fn handle_message(
                 if !local.target_playing.get() {
                     on_event(EngineEvent::Paused);
                 } else if !starting {
-                    if playbin.current_state() == gst::State::Playing {
+                    // Always ask: the pipeline may still be on its way to
+                    // the pause asked for when buffering began.
+                    let _ = playbin.set_state(gst::State::Playing);
+                    if is_playing(playbin) {
                         on_event(EngineEvent::Playing);
-                    } else {
-                        let _ = playbin.set_state(gst::State::Playing);
                     }
                 }
             }
