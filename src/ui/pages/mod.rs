@@ -4,6 +4,7 @@
 mod album;
 mod artist;
 mod collection;
+mod collection_grid;
 mod explore;
 mod history;
 mod home;
