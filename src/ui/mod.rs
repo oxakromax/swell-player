@@ -1,4 +1,5 @@
 pub mod context;
+mod debug;
 mod login;
 pub mod nav;
 mod pages;

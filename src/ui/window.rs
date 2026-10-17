@@ -51,6 +51,7 @@ pub fn build(app: &adw::Application) {
     stack.add_named(&spinner, Some("loading"));
     window.set_content(Some(&stack));
     window.present();
+    super::debug::schedule_screenshot(window.upcast_ref());
 
     let http = api::http_client();
     api::preconnect(&http);
@@ -198,6 +199,12 @@ impl Ui {
         let shell = build_shell(&ctx, &toasts);
         self.session.replace(Some(ctx.clone()));
         self.set_page("main", &shell);
+        if let Some(route) = super::debug::route() {
+            ctx.navigate(route);
+        }
+        if let Some(tab) = super::debug::panel() {
+            ctx.show_panel(Some(tab));
+        }
         if let Some(login) = self.stack.child_by_name("login") {
             self.stack.remove(&login);
         }

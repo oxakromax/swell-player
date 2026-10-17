@@ -27,8 +27,14 @@ fn main() -> glib::ExitCode {
         return glib::ExitCode::FAILURE;
     }
 
+    let mut flags = gtk::gio::ApplicationFlags::empty();
+    if std::env::var_os("SWELL_SCREENSHOT").is_some() {
+        // Screenshot runs (ui/debug.rs) may run beside a normal instance.
+        flags |= gtk::gio::ApplicationFlags::NON_UNIQUE;
+    }
     let app = adw::Application::builder()
         .application_id(config::APP_ID)
+        .flags(flags)
         .build();
     app.connect_activate(ui::window::build);
     // Quit cleanly (stopping playback, flushing the cache) on SIGTERM/SIGINT.
