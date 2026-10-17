@@ -16,7 +16,7 @@
 //! asks for it on `about-to-finish` (a streaming thread, so it only takes a
 //! lock), and the switch is reported when the new stream actually starts.
 
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex, PoisonError};
@@ -199,6 +199,10 @@ struct Local {
     seeking_to_start: Cell<bool>,
     /// The first stream of a load has not started yet.
     awaiting_first_start: Cell<bool>,
+    /// The output device asked for (display name), `None` = system default.
+    output_wanted: RefCell<Option<String>>,
+    /// The device the pipeline was last built with.
+    output_applied: RefCell<Option<String>>,
 }
 
 /// `playbin3`, audio only. Events arrive on the main thread.
@@ -207,6 +211,21 @@ pub struct Engine {
     shared: Arc<Mutex<Shared>>,
     local: Rc<Local>,
     _bus_watch: gst::bus::BusWatchGuard,
+}
+
+/// A sink element for the `Audio/Sink` device called `name`.
+fn audio_sink_for(name: &str) -> Option<gst::Element> {
+    let monitor = gst::DeviceMonitor::new();
+    monitor.add_filter(Some("Audio/Sink"), None);
+    if monitor.start().is_err() {
+        return None;
+    }
+    let device = monitor
+        .devices()
+        .into_iter()
+        .find(|device| device.display_name() == name);
+    monitor.stop();
+    device?.create_element(None).ok()
 }
 
 fn lock(shared: &Mutex<Shared>) -> std::sync::MutexGuard<'_, Shared> {
@@ -287,6 +306,7 @@ impl Engine {
             shared.pending_gain = None;
         }
         self.install_filter(gain);
+        self.apply_output_device();
         self.playbin.set_property("uri", uri);
         let start = start.filter(|s| *s > 0.5);
         self.local.target_playing.set(play);
@@ -299,6 +319,30 @@ impl Engine {
         } else {
             gst::State::Paused
         });
+    }
+
+    /// Chooses the output device for the next load (display name of a
+    /// GStreamer `Audio/Sink` device; `None` = the system default).
+    pub fn set_output_device(&self, name: Option<String>) {
+        self.local.output_wanted.replace(name);
+    }
+
+    /// Builds the audio sink for the wanted device. Only while the pipeline
+    /// is in `Null` (from `load`).
+    fn apply_output_device(&self) {
+        let wanted = self.local.output_wanted.borrow().clone();
+        if *self.local.output_applied.borrow() == wanted {
+            return;
+        }
+        let sink = wanted.as_deref().and_then(|name| match audio_sink_for(name) {
+            Some(sink) => Some(sink),
+            None => {
+                log::warn!("output device “{name}” not found; using the default");
+                None
+            }
+        });
+        self.playbin.set_property("audio-sink", sink.as_ref());
+        self.local.output_applied.replace(wanted);
     }
 
     /// Puts a `volume` element in the pipeline for normalisation, or none.

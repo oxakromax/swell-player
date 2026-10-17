@@ -226,6 +226,8 @@ pub struct Playback {
     mpris: Option<mpris::Mpris>,
     save_pending: Cell<bool>,
     position_saved_at: Cell<Instant>,
+    /// Output device from the settings (display name).
+    output_device: RefCell<Option<String>>,
     settings_listener: Cell<Option<u64>>,
     tick: RefCell<Option<glib::SourceId>>,
 }
@@ -306,10 +308,14 @@ impl Playback {
                 save_pending: Cell::new(false),
                 position_saved_at: Cell::new(Instant::now()),
                 settings_listener: Cell::new(None),
+                output_device: RefCell::new(current.output_device.clone()),
                 tick: RefCell::default(),
             }
         });
         this.apply_volume();
+        if let Some(engine) = &this.engine {
+            engine.set_output_device(this.output_device.borrow().clone());
+        }
 
         let weak = Rc::downgrade(&this);
         let listener = settings.connect_changed(move |settings| {
@@ -1126,6 +1132,26 @@ impl Playback {
             self.refresh_next();
         }
         if self.gapless.replace(settings.gapless) != settings.gapless {
+            self.refresh_next();
+        }
+        if *self.output_device.borrow() != settings.output_device {
+            self.output_device.replace(settings.output_device.clone());
+            self.apply_output_device();
+        }
+    }
+
+    /// Moves playback to the chosen output: the pipeline is rebuilt at the
+    /// same position.
+    fn apply_output_device(self: &Rc<Self>) {
+        let Some(engine) = &self.engine else { return };
+        engine.set_output_device(self.output_device.borrow().clone());
+        if !self.loaded.get() {
+            return;
+        }
+        if let Some(stream) = self.current_stream.borrow().clone() {
+            let position = self.position().unwrap_or(self.last_position.get());
+            let gain = self.gain_for(&stream);
+            engine.load(&stream.uri, self.want_play.get(), Some(position), gain);
             self.refresh_next();
         }
     }
