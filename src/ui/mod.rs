@@ -2,6 +2,7 @@ pub mod context;
 pub mod dialogs;
 mod debug;
 mod login;
+pub mod menus;
 pub mod nav;
 mod pages;
 mod shortcuts;

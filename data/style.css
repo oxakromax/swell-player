@@ -80,3 +80,21 @@ window.narrow .page-content  { margin-left: 12px; margin-right: 12px; }
 listview.navigation-sidebar > header { margin: 0; padding: 0; min-height: 0; border: none; }
 .sidebar-header              { margin: 18px 12px 6px 14px; min-height: 24px; }
 .sidebar-header button       { min-width: 24px; min-height: 24px; padding: 0; }
+
+/* Playing row: the play icon replaces the track number */
+.track-row.playing .track-number  { opacity: 0; }
+.track-row.playing .row-play-icon { opacity: 1; color: var(--accent-color); }
+
+/* Media cards */
+.cover-placeholder  { background-color: color-mix(in srgb, currentColor 10%, transparent); }
+.media-card-button  { padding: 6px; border-radius: 12px; }
+.media-card-play    { opacity: 0; transition: opacity 150ms ease-out; }
+.media-card:hover .media-card-play,
+.media-card:focus-within .media-card-play { opacity: 1; }
+
+/* Category chips (genres, moods) */
+.chip { border-radius: 9999px; padding: 6px 14px; }
+
+/* Links in the now-playing panel read as text until hovered */
+.np-link link       { color: inherit; text-decoration: none; }
+.np-link link:hover { text-decoration: underline; }

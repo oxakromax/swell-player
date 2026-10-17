@@ -187,7 +187,6 @@ impl PlayerBar {
         });
         bar.sync_panel(ctx.panel());
         bar.show_track(ctx.playback.format().as_deref());
-        super::np_debug::start(ctx, &bar);
         bar
     }
 
