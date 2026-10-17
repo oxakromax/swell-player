@@ -114,7 +114,7 @@ impl Template {
         let spacer = gtk::Box::builder().hexpand(true).build();
         let filter = gtk::SearchEntry::builder()
             .placeholder_text(placeholder)
-            .width_chars(28)
+            .width_chars(18)
             .search_delay(60)
             .build();
         filter.update_property(&[gtk::accessible::Property::Label(placeholder)]);
@@ -328,7 +328,7 @@ impl Template {
     fn set_compact(&self, compact: bool) {
         self.compact.set(compact);
         self.filter.set_hexpand(compact);
-        self.filter.set_width_chars(if compact { 8 } else { 28 });
+        self.filter.set_width_chars(if compact { 8 } else { 18 });
         self.spacer.set_visible(!compact);
         self.place_actions();
         let hook = self.on_compact.borrow().clone();

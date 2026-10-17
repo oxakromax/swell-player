@@ -29,6 +29,10 @@ struct Catalogue {
 }
 
 fn language() -> Option<&'static str> {
+    // Tests check the English strings whatever the machine's locale is.
+    if cfg!(test) {
+        return None;
+    }
     static LANGUAGE: OnceLock<Option<&'static str>> = OnceLock::new();
     *LANGUAGE.get_or_init(|| {
         let wanted = ["LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG"]
@@ -260,6 +264,72 @@ msgstr "Di \"hola\""
         );
         assert_eq!(catalogue.singular.get("Say \"hi\""), Some(&"Di \"hola\""));
         assert!(!catalogue.singular.contains_key(""));
+    }
+
+    /// The Rust string literal starting at `text` (just after its opening
+    /// quote), unescaped, with `\` line continuations removed.
+    fn literal(text: &str) -> Option<String> {
+        let mut out = String::new();
+        let mut chars = text.chars().peekable();
+        while let Some(c) = chars.next() {
+            match c {
+                '"' => return Some(out),
+                '\\' => match chars.next()? {
+                    'n' => out.push('\n'),
+                    't' => out.push('\t'),
+                    '\n' => {
+                        while chars.peek().is_some_and(|c| c.is_whitespace()) {
+                            chars.next();
+                        }
+                    }
+                    other => out.push(other),
+                },
+                c => out.push(c),
+            }
+        }
+        None
+    }
+
+    /// Every `tr("…")`, `trn("…", "…"` and `n_("…")` literal in the
+    /// sources has a Spanish translation.
+    #[test]
+    fn every_string_is_translated() {
+        let catalogue = parse(CATALOGUES[0].1);
+        let mut missing = Vec::new();
+        let mut stack = vec![std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src")];
+        while let Some(dir) = stack.pop() {
+            for entry in std::fs::read_dir(&dir).unwrap().flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    stack.push(path);
+                    continue;
+                }
+                if path.extension().is_none_or(|e| e != "rs") || path.ends_with("i18n.rs") {
+                    continue;
+                }
+                let source = std::fs::read_to_string(&path).unwrap();
+                for marker in ["tr(\"", "trn(\"", "n_(\""] {
+                    for (at, _) in source.match_indices(marker) {
+                        // Skip identifiers that merely end in the marker.
+                        let before = source[..at].chars().next_back();
+                        if before.is_some_and(|c| c.is_alphanumeric() || c == '_') {
+                            continue;
+                        }
+                        let rest = &source[at + marker.len()..];
+                        let Some(id) = literal(rest) else { continue };
+                        let found = if marker == "trn(\"" {
+                            catalogue.plural.contains_key(id.as_str())
+                        } else {
+                            catalogue.singular.contains_key(id.as_str())
+                        };
+                        if !found {
+                            missing.push(format!("{}: {id:?}", path.display()));
+                        }
+                    }
+                }
+            }
+        }
+        assert!(missing.is_empty(), "untranslated strings:\n{}", missing.join("\n"));
     }
 
     #[test]
