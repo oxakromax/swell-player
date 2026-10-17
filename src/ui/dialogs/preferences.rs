@@ -1,1 +1,482 @@
-//! PROVISIONAL stub; see docs/design.md.
+//! The Preferences dialog (docs/design.md §3.14), bound to the settings
+//! store: changes apply (and save) as they are made.
+
+use std::path::{Path, PathBuf};
+use std::rc::Rc;
+use std::time::Duration;
+
+use adw::prelude::*;
+use gtk::glib;
+
+use super::super::context::Ctx;
+use crate::runtime;
+use crate::session::LoginFlow;
+use crate::settings::{Normalization, QualityPreference, Settings};
+
+pub fn present(ctx: &Rc<Ctx>) {
+    let dialog = adw::PreferencesDialog::builder()
+        .search_enabled(true)
+        .build();
+    dialog.add(&playback_page(ctx));
+    dialog.add(&general_page(ctx));
+    dialog.add(&storage_page(ctx, &dialog));
+    dialog.add(&blocked_page(ctx, &dialog));
+    dialog.add(&account_page(ctx, &dialog));
+    dialog.present(Some(&ctx.window));
+}
+
+fn playback_page(ctx: &Rc<Ctx>) -> adw::PreferencesPage {
+    let current = ctx.settings.get();
+
+    // Only the qualities this sign-in can stream are offered.
+    let hires = ctx.api.flow == LoginFlow::Pkce;
+    let mut qualities = Vec::new();
+    if hires {
+        qualities.push(("Hi-Res Lossless", QualityPreference::Best));
+    }
+    qualities.extend([
+        ("Lossless", QualityPreference::Lossless),
+        ("High", QualityPreference::High),
+        ("Low", QualityPreference::Low),
+    ]);
+    let selected = match current.quality {
+        QualityPreference::Best => 0,
+        quality => qualities.iter().position(|(_, q)| *q == quality).unwrap_or(0),
+    };
+    let quality = combo_row(
+        "Streaming Quality",
+        &qualities.iter().map(|(label, _)| *label).collect::<Vec<_>>(),
+        selected,
+    );
+    if !hires {
+        quality.set_subtitle("Hi-Res Lossless requires browser sign-in");
+    }
+    connect_combo(ctx, &quality, move |s, index| {
+        s.quality = qualities[index].1;
+    });
+    let quality_group = adw::PreferencesGroup::builder().title("Quality").build();
+    quality_group.add(&quality);
+
+    let normalizations = [Normalization::Off, Normalization::Track, Normalization::Album];
+    let normalization = combo_row(
+        "Volume Normalisation",
+        &["Off", "Track", "Album"],
+        normalizations
+            .iter()
+            .position(|n| *n == current.normalization)
+            .unwrap_or(0),
+    );
+    normalization.set_subtitle("Off keeps the output bit-perfect");
+    connect_combo(ctx, &normalization, move |s, index| {
+        s.normalization = normalizations[index];
+    });
+    let gapless = switch_row(
+        ctx,
+        "Gapless Playback",
+        None,
+        current.gapless,
+        |s, on| s.gapless = on,
+    );
+    let processing = adw::PreferencesGroup::builder().title("Processing").build();
+    processing.add(&normalization);
+    processing.add(&gapless);
+
+    let page = adw::PreferencesPage::builder()
+        .title("Playback")
+        .icon_name("media-playback-start-symbolic")
+        .build();
+    page.add(&quality_group);
+    page.add(&processing);
+    page
+}
+
+fn general_page(ctx: &Rc<Ctx>) -> adw::PreferencesPage {
+    let current = ctx.settings.get();
+    let group = adw::PreferencesGroup::new();
+    group.add(&switch_row(
+        ctx,
+        "Run in Background",
+        Some("Keep playing when the window is closed"),
+        current.background,
+        |s, on| s.background = on,
+    ));
+    group.add(&switch_row(
+        ctx,
+        "Track Change Notifications",
+        Some("When the window is not focused"),
+        current.notifications,
+        |s, on| s.notifications = on,
+    ));
+    group.add(&switch_row(
+        ctx,
+        "Restore Queue on Start",
+        None,
+        current.restore_session,
+        |s, on| s.restore_session = on,
+    ));
+    let page = adw::PreferencesPage::builder()
+        .title("General")
+        .icon_name("preferences-system-symbolic")
+        .build();
+    page.add(&group);
+    page
+}
+
+fn cache_dir() -> PathBuf {
+    glib::user_cache_dir().join("swell-player")
+}
+
+fn storage_page(ctx: &Rc<Ctx>, dialog: &adw::PreferencesDialog) -> adw::PreferencesPage {
+    let group = adw::PreferencesGroup::builder()
+        .title("Cache")
+        .description("Downloaded artwork and saved answers from TIDAL, so pages open instantly and work offline.")
+        .build();
+    let covers = cache_row(
+        dialog,
+        "Cover Cache",
+        "Clear the Cover Cache?",
+        "Artwork is downloaded again as you browse.",
+        || vec![cache_dir().join("covers")],
+        {
+            move || async move {
+                let dir = cache_dir().join("covers");
+                runtime::spawn(async move {
+                    tokio::task::spawn_blocking(move || match std::fs::remove_dir_all(&dir) {
+                        Err(err) if err.kind() != std::io::ErrorKind::NotFound => Err(err.into()),
+                        _ => Ok(()),
+                    })
+                    .await?
+                })
+                .await
+            }
+        },
+    );
+    let api = ctx.api.clone();
+    let library = cache_row(
+        dialog,
+        "Library Cache",
+        "Clear the Library Cache?",
+        "Pages are loaded again from TIDAL. Your collection is not affected.",
+        || {
+            let dir = cache_dir();
+            ["library.sqlite3", "library.sqlite3-wal", "library.sqlite3-shm"]
+                .iter()
+                .map(|name| dir.join(name))
+                .collect()
+        },
+        move || {
+            let api = api.clone();
+            async move {
+                runtime::spawn(async move {
+                    match api.cache().await {
+                        Some(cache) => cache.prune(Duration::ZERO).await,
+                        None => Ok(()),
+                    }
+                })
+                .await
+            }
+        },
+    );
+    group.add(&covers);
+    group.add(&library);
+    let page = adw::PreferencesPage::builder()
+        .title("Storage")
+        .icon_name("drive-harddisk-symbolic")
+        .build();
+    page.add(&group);
+    page
+}
+
+/// A row showing the size of `paths` with a "Clear" button that asks
+/// first, runs `clear` and shows the new size.
+fn cache_row<F, Fut>(
+    dialog: &adw::PreferencesDialog,
+    title: &str,
+    question: &str,
+    consequence: &str,
+    paths: fn() -> Vec<PathBuf>,
+    clear: F,
+) -> adw::ActionRow
+where
+    F: Fn() -> Fut + 'static,
+    Fut: std::future::Future<Output = anyhow::Result<()>> + 'static,
+{
+    let row = adw::ActionRow::builder()
+        .title(title)
+        .subtitle("Calculating…")
+        .build();
+    let button = gtk::Button::builder()
+        .label("_Clear")
+        .use_underline(true)
+        .valign(gtk::Align::Center)
+        .css_classes(["flat"])
+        .build();
+    row.add_suffix(&button);
+    let refresh = Rc::new({
+        let row = row.downgrade();
+        move || {
+            let row = row.clone();
+            glib::spawn_future_local(async move {
+                let size = runtime::spawn(async move {
+                    Ok(tokio::task::spawn_blocking(move || paths().iter().map(|p| size_of(p)).sum::<u64>()).await?)
+                })
+                .await
+                .unwrap_or(0);
+                if let Some(row) = row.upgrade() {
+                    row.set_subtitle(&glib::format_size(size));
+                }
+            });
+        }
+    });
+    refresh();
+    let clear = Rc::new(clear);
+    let question = question.to_owned();
+    let consequence = consequence.to_owned();
+    let title = title.to_owned();
+    button.connect_clicked({
+        let dialog = dialog.downgrade();
+        move |button| {
+            let Some(dialog) = dialog.upgrade() else {
+                return;
+            };
+            let alert = adw::AlertDialog::builder()
+                .heading(&question)
+                .body(&consequence)
+                .close_response("cancel")
+                .default_response("cancel")
+                .build();
+            alert.add_responses(&[("cancel", "_Cancel"), ("clear", "_Clear")]);
+            alert.set_response_appearance("clear", adw::ResponseAppearance::Destructive);
+            let clear = clear.clone();
+            let refresh = refresh.clone();
+            let title = title.clone();
+            let weak = dialog.downgrade();
+            let button = button.downgrade();
+            alert.connect_response(Some("clear"), move |_, _| {
+                let clear = clear.clone();
+                let refresh = refresh.clone();
+                let title = title.clone();
+                let weak = weak.clone();
+                let button = button.clone();
+                glib::spawn_future_local(async move {
+                    if let Some(button) = button.upgrade() {
+                        button.set_sensitive(false);
+                    }
+                    let result = clear().await;
+                    if let Some(button) = button.upgrade() {
+                        button.set_sensitive(true);
+                    }
+                    refresh();
+                    let message = match result {
+                        Ok(()) => format!("{title} cleared"),
+                        Err(err) => {
+                            log::warn!("could not clear the {title}: {err:#}");
+                            format!("Couldn’t clear the {title}")
+                        }
+                    };
+                    if let Some(dialog) = weak.upgrade() {
+                        dialog.add_toast(adw::Toast::new(&message));
+                    }
+                });
+            });
+            alert.present(Some(&dialog));
+        }
+    });
+    row
+}
+
+/// Bytes used by a file or a whole directory tree.
+fn size_of(path: &Path) -> u64 {
+    let Ok(metadata) = std::fs::symlink_metadata(path) else {
+        return 0;
+    };
+    if !metadata.is_dir() {
+        return metadata.len();
+    }
+    std::fs::read_dir(path)
+        .map(|entries| entries.flatten().map(|entry| size_of(&entry.path())).sum())
+        .unwrap_or(0)
+}
+
+fn blocked_page(ctx: &Rc<Ctx>, dialog: &adw::PreferencesDialog) -> adw::PreferencesPage {
+    let group = adw::PreferencesGroup::builder()
+        .title("Blocked Artists")
+        .description("Loading…")
+        .build();
+    let page = adw::PreferencesPage::builder()
+        .title("Blocked")
+        .icon_name("action-unavailable-symbolic")
+        .build();
+    page.add(&group);
+
+    let api = ctx.api.clone();
+    let group_ref = group.downgrade();
+    let dialog = dialog.downgrade();
+    let ctx = Rc::downgrade(ctx);
+    let task = glib::spawn_future_local(async move {
+        let result = runtime::spawn(async move { api.blocked_artists().await }).await;
+        let Some(group) = group_ref.upgrade() else {
+            return;
+        };
+        let artists = match result {
+            Ok(page) => page.items,
+            Err(err) => {
+                log::warn!("could not load blocked artists: {err:#}");
+                group.set_description(Some("Couldn’t load blocked artists."));
+                return;
+            }
+        };
+        group.set_description(artists.is_empty().then_some("Nothing blocked"));
+        for artist in artists {
+            let row = adw::ActionRow::builder().title(&artist.name).build();
+            row.add_prefix(&adw::Avatar::new(32, Some(&artist.name), true));
+            let unblock = gtk::Button::builder()
+                .label("Unblock")
+                .valign(gtk::Align::Center)
+                .css_classes(["flat"])
+                .build();
+            row.add_suffix(&unblock);
+            group.add(&row);
+            let id = artist.id;
+            let name = artist.name.clone();
+            let ctx = ctx.clone();
+            let dialog = dialog.clone();
+            let group = group.downgrade();
+            let row = row.downgrade();
+            unblock.connect_clicked(move |button| {
+                let Some(api) = ctx.upgrade().map(|ctx| ctx.api.clone()) else {
+                    return;
+                };
+                button.set_sensitive(false);
+                let button = button.downgrade();
+                let row = row.clone();
+                let ctx = ctx.clone();
+                let dialog = dialog.clone();
+                let group = group.clone();
+                let name = name.clone();
+                glib::spawn_future_local(async move {
+                    match runtime::spawn(async move { api.set_artist_blocked(id, false).await }).await {
+                        Ok(()) => {
+                            if let (Some(group), Some(row)) = (group.upgrade(), row.upgrade()) {
+                                group.remove(&row);
+                            }
+                            if let Some(dialog) = dialog.upgrade() {
+                                dialog.add_toast(adw::Toast::new(&format!("Unblocked {name}")));
+                            }
+                        }
+                        Err(err) => {
+                            if let Some(button) = button.upgrade() {
+                                button.set_sensitive(true);
+                            }
+                            if let Some(ctx) = ctx.upgrade() {
+                                ctx.report("Couldn’t unblock the artist", &err);
+                            }
+                        }
+                    }
+                });
+            });
+        }
+    });
+    page.connect_destroy(move |_| task.abort());
+    page
+}
+
+fn account_page(ctx: &Rc<Ctx>, dialog: &adw::PreferencesDialog) -> adw::PreferencesPage {
+    let (method, quality) = match ctx.api.flow {
+        LoginFlow::Pkce => ("Signed in with the browser", "Up to Hi-Res Lossless"),
+        LoginFlow::DeviceCode => ("Signed in with a device code", "Up to Lossless (16-bit/44.1 kHz)"),
+    };
+    let avatar = adw::Avatar::builder()
+        .size(64)
+        .icon_name("avatar-default-symbolic")
+        .build();
+    let title = gtk::Label::builder()
+        .label(method)
+        .css_classes(["title-4"])
+        .wrap(true)
+        .build();
+    let subtitle = gtk::Label::builder()
+        .label(quality)
+        .css_classes(["dimmed"])
+        .wrap(true)
+        .build();
+    let header = gtk::Box::builder()
+        .orientation(gtk::Orientation::Vertical)
+        .spacing(6)
+        .build();
+    header.append(&avatar);
+    header.append(&title);
+    header.append(&subtitle);
+    let header_group = adw::PreferencesGroup::new();
+    header_group.add(&header);
+
+    let sign_out = adw::ButtonRow::builder()
+        .title("Sign _Out…")
+        .use_underline(true)
+        .css_classes(["destructive-action"])
+        .build();
+    sign_out.connect_activated({
+        let dialog = dialog.downgrade();
+        let window = ctx.window.downgrade();
+        move |_| {
+            if let Some(dialog) = dialog.upgrade() {
+                dialog.close();
+            }
+            if let Some(window) = window.upgrade() {
+                let _ = WidgetExt::activate_action(&window, "win.sign-out", None);
+            }
+        }
+    });
+    let group = adw::PreferencesGroup::new();
+    group.add(&sign_out);
+
+    let page = adw::PreferencesPage::builder()
+        .title("Account")
+        .icon_name("avatar-default-symbolic")
+        .build();
+    page.add(&header_group);
+    page.add(&group);
+    page
+}
+
+fn combo_row(title: &str, labels: &[&str], selected: usize) -> adw::ComboRow {
+    adw::ComboRow::builder()
+        .title(title)
+        .model(&gtk::StringList::new(labels))
+        .selected(selected as u32)
+        .build()
+}
+
+fn connect_combo(
+    ctx: &Rc<Ctx>,
+    row: &adw::ComboRow,
+    apply: impl Fn(&mut Settings, usize) + 'static,
+) {
+    let settings = ctx.settings.clone();
+    row.connect_selected_notify(move |row| {
+        let index = row.selected() as usize;
+        settings.update(|s| apply(s, index));
+    });
+}
+
+fn switch_row(
+    ctx: &Rc<Ctx>,
+    title: &str,
+    subtitle: Option<&str>,
+    active: bool,
+    apply: impl Fn(&mut Settings, bool) + 'static,
+) -> adw::SwitchRow {
+    let row = adw::SwitchRow::builder()
+        .title(title)
+        .active(active)
+        .build();
+    if let Some(subtitle) = subtitle {
+        row.set_subtitle(subtitle);
+    }
+    let settings = ctx.settings.clone();
+    row.connect_active_notify(move |row| {
+        let active = row.is_active();
+        settings.update(|s| apply(s, active));
+    });
+    row
+}

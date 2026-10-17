@@ -130,6 +130,8 @@ impl Ctx {
             .title(message)
             .button_label("Undo")
             .build();
+        // Also reachable with Ctrl+Z after the toast is gone.
+        let undo = super::window::remember_undo(undo);
         toast.connect_button_clicked(move |_| undo());
         self.toasts.add_toast(toast);
     }

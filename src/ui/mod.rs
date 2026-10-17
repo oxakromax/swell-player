@@ -4,5 +4,7 @@ mod debug;
 mod login;
 pub mod nav;
 mod pages;
+mod shortcuts;
+pub mod sidebar;
 pub mod widgets;
 pub mod window;
