@@ -13,6 +13,7 @@ anyhow = "1.0.104"
 base64 = "0.23.1"
 env_logger = { version = "0.11.11", default-features = false, features = ["auto-color"] }
 futures-util = { version = "0.3.34", default-features = false, features = ["std"] }
+glib-unix = "0.22.8"
 gst = { version = "0.25.4", package = "gstreamer" }
 gtk = { version = "0.11.5", package = "gtk4", features = ["v4_18"] }
 log = "0.4.34"

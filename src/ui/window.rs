@@ -16,7 +16,7 @@ use crate::cache::{Cache, CachedCollection};
 use crate::covers::CoverLoader;
 use crate::model::TrackInfo;
 use crate::player::{Event, Player, State};
-use crate::{config, runtime, session};
+use crate::{bench, config, runtime, session};
 
 pub fn build(app: &adw::Application) {
     // Launching Swell again only raises the running window.
@@ -78,6 +78,11 @@ pub fn build(app: &adw::Application) {
         playback,
         play_request: Cell::new(0),
         library_task: RefCell::default(),
+    });
+    // Everything else holds the UI weakly; the window keeps it alive.
+    ui.window.connect_destroy({
+        let ui = RefCell::new(Some(ui.clone()));
+        move |_| drop(ui.take())
     });
     glib::spawn_future_local(async move {
         let stored = runtime::spawn(session::load()).await;
@@ -252,10 +257,12 @@ impl Ui {
             .await
             .unwrap_or((None, None));
         let head = cached.as_ref().map(CachedHead::of);
+        let loaded = Rc::new(Cell::new(false));
         if let Some(cached) = cached {
             list.append(cached.tracks);
             self.title.set_subtitle(&format!("{} tracks", list.len()));
             crate::timing::mark_after_next_frame(&list.widget, "cached favourites on screen");
+            self.start_bench_autoscroll(&api, &list, &loaded);
         }
 
         let (updates_tx, mut updates) = tokio::sync::mpsc::unbounded_channel();
@@ -274,10 +281,14 @@ impl Ui {
                             &list.widget,
                             "first favourites on screen",
                         );
+                        self.start_bench_autoscroll(&api, &list, &loaded);
                     }
                 }
                 Ok(FavoritesUpdate::Replace(tracks)) => list.replace(tracks),
-                Ok(FavoritesUpdate::Finished) => finished = true,
+                Ok(FavoritesUpdate::Finished) => {
+                    finished = true;
+                    loaded.set(true);
+                }
                 Err(err) if api::is_auth_error(&err) => {
                     log::warn!("the session is no longer valid: {err:#}");
                     self.sign_out(
@@ -300,10 +311,35 @@ impl Ui {
         }
         crate::timing::mark("favourites up to date");
 
-        if std::env::var_os("SWELL_BENCH_PLAY").is_some()
-            && let Some(track) = list.first_where(|track| track.hires)
-        {
-            self.play(api, track);
+        if bench::play_enabled() && !bench::autoscroll_enabled() {
+            self.play_first_hires(&api, &list);
+        }
+    }
+
+    fn start_bench_autoscroll(
+        self: &Rc<Self>,
+        api: &Arc<Api>,
+        list: &Rc<TrackList>,
+        loaded: &Rc<Cell<bool>>,
+    ) {
+        if !bench::autoscroll_enabled() {
+            return;
+        }
+        let ui = Rc::downgrade(self);
+        let api = api.clone();
+        let target = list.clone();
+        bench::autoscroll(&list.widget, loaded.clone(), move || {
+            if bench::play_enabled()
+                && let Some(ui) = ui.upgrade()
+            {
+                ui.play_first_hires(&api, &target);
+            }
+        });
+    }
+
+    fn play_first_hires(self: &Rc<Self>, api: &Arc<Api>, list: &TrackList) {
+        if let Some(track) = list.first_where(|track| track.hires) {
+            self.play(api.clone(), track);
         }
     }
 }

@@ -1,16 +1,35 @@
 //! Startup milestones, logged at `info` level (`RUST_LOG=swell_player=info`)
-//! as milliseconds since the process started. Used for the benchmarks in the
-//! README.
+//! as milliseconds since the process started (not since `main`, so dynamic
+//! linking and library constructors count too). Used for the benchmarks in
+//! the README.
 
 use std::sync::OnceLock;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use gtk::prelude::*;
 
 static START: OnceLock<Instant> = OnceLock::new();
 
 pub fn start() {
-    START.get_or_init(Instant::now);
+    START.get_or_init(|| {
+        let now = Instant::now();
+        since_process_start()
+            .and_then(|elapsed| now.checked_sub(elapsed))
+            .unwrap_or(now)
+    });
+}
+
+/// Time since the kernel started this process: system uptime minus the
+/// process start time from `/proc/self/stat` (in USER_HZ ticks, which the
+/// Linux ABI fixes at 100 per second). 10 ms resolution.
+fn since_process_start() -> Option<Duration> {
+    let stat = std::fs::read_to_string("/proc/self/stat").ok()?;
+    // Fields after the parenthesised command name; starttime is field 22.
+    let after_comm = &stat[stat.rfind(')')? + 2..];
+    let start_ticks: f64 = after_comm.split(' ').nth(19)?.parse().ok()?;
+    let uptime = std::fs::read_to_string("/proc/uptime").ok()?;
+    let uptime: f64 = uptime.split(' ').next()?.parse().ok()?;
+    Duration::try_from_secs_f64(uptime - start_ticks / 100.0).ok()
 }
 
 pub fn mark(what: &str) {
