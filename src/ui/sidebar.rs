@@ -5,7 +5,10 @@
 //! Collection sub-views and the user's playlists, flattened into one
 //! virtualised model with a header per store. The sidebar's selection
 //! follows the current location; the row of whatever is playing shows a
-//! speaker.
+//! speaker; Tracks shows how many favourite tracks there are.
+//!
+//! Playlist rows open the playlist menu (right click, long press, Menu or
+//! Shift+F10), and the user's own playlists accept dropped tracks.
 
 use std::cell::{Cell, RefCell};
 use std::rc::{Rc, Weak};
@@ -14,10 +17,14 @@ use adw::prelude::*;
 use gtk::{gio, glib};
 
 use super::context::Ctx;
+use super::dialogs;
+use super::menus::{ItemMenu, Subject};
 use super::nav::{CollectionView, Location, Navigator, Route};
+use super::widgets::track_row::TrackDrag;
 use crate::covers::{Image, Ticket};
-use crate::library::Change;
+use crate::library::{Change, Item};
 use crate::playback::Event;
+use crate::runtime;
 use crate::tidal::models::Playlist;
 
 /// What a sidebar row stands for.
@@ -34,6 +41,9 @@ enum Entry {
         image: Option<String>,
         /// The creator, for playlists the user does not own.
         owner: Option<String>,
+        playlist: Rc<Playlist>,
+        /// The user's own: accepts dropped tracks.
+        own: bool,
     },
     /// Shown instead of the playlists while there are none.
     NewPlaylist,
@@ -64,9 +74,12 @@ struct Row {
     icon: gtk::Image,
     cover: gtk::Image,
     label: gtk::Label,
+    /// The favourite count on Tracks.
+    count: gtk::Label,
     speaker: gtk::Image,
     root: gtk::Box,
     key: RefCell<Option<String>>,
+    entry: RefCell<Option<Entry>>,
     ticket: RefCell<Option<Ticket>>,
 }
 
@@ -85,6 +98,10 @@ pub struct Sidebar {
     syncing: Cell<bool>,
     library_listener: Cell<u64>,
     playback_subscriber: Cell<u64>,
+    /// Number of favourite tracks, once known.
+    favorite_tracks: Cell<Option<usize>>,
+    /// Bumped per count request, so a late answer is dropped.
+    count_generation: Cell<u64>,
 }
 
 impl Sidebar {
@@ -140,15 +157,19 @@ impl Sidebar {
             syncing: Cell::new(false),
             library_listener: Cell::new(0),
             playback_subscriber: Cell::new(0),
+            favorite_tracks: Cell::new(None),
+            count_generation: Cell::new(0),
         });
 
         let list = gtk::ListView::builder()
             .model(&sidebar.selection)
-            .factory(&sidebar.row_factory(false))
             .header_factory(&sidebar.header_factory(true))
             .css_classes(["navigation-sidebar"])
             .build();
         list.update_property(&[gtk::accessible::Property::Label("Sidebar")]);
+        let menu = ItemMenu::new(ctx, &list);
+        list.set_factory(Some(&sidebar.row_factory(false, &list, &menu)));
+        sidebar.add_menu_keys(&list, &menu);
         let scrolled = gtk::ScrolledWindow::builder()
             .hscrollbar_policy(gtk::PolicyType::Never)
             .child(&list)
@@ -181,8 +202,21 @@ impl Sidebar {
         let id = ctx.library.connect_changed({
             let sidebar = Rc::downgrade(&sidebar);
             move |change| {
-                if let (Some(sidebar), Change::Playlists) = (sidebar.upgrade(), change) {
-                    sidebar.reload_playlists();
+                let Some(sidebar) = sidebar.upgrade() else { return };
+                match change {
+                    Change::Playlists => sidebar.reload_playlists(),
+                    Change::Loaded => sidebar.count_favorite_tracks(),
+                    Change::Favorite(Item::Track(_), favorite) => {
+                        if let Some(count) = sidebar.favorite_tracks.get() {
+                            let count = if *favorite {
+                                count + 1
+                            } else {
+                                count.saturating_sub(1)
+                            };
+                            sidebar.set_favorite_tracks(Some(count));
+                        }
+                    }
+                    _ => {}
                 }
             }
         });
@@ -209,12 +243,16 @@ impl Sidebar {
         let model = gtk::NoSelection::new(Some(gtk::FlattenListModel::new(Some(sections))));
         let list = gtk::ListView::builder()
             .model(&model)
-            .factory(&self.row_factory(true))
             .header_factory(&self.header_factory(false))
             .single_click_activate(true)
             .css_classes(["navigation-sidebar", "collection-index"])
             .build();
         list.update_property(&[gtk::accessible::Property::Label("Collection")]);
+        if let Some(ctx) = self.ctx.upgrade() {
+            let menu = ItemMenu::new(&ctx, &list);
+            list.set_factory(Some(&self.row_factory(true, &list, &menu)));
+            self.add_menu_keys(&list, &menu);
+        }
         list.connect_activate({
             let sidebar = Rc::downgrade(self);
             move |list, position| {
@@ -257,11 +295,144 @@ impl Sidebar {
             }
             Entry::NewPlaylist => {
                 if let Some(ctx) = self.ctx.upgrade() {
-                    new_playlist(&ctx);
+                    dialogs::playlist::new_playlist(&ctx, Vec::new());
                 }
                 self.select(&navigator.location());
             }
         }
+    }
+
+    /// Asks TIDAL how many favourite tracks there are (the library knows
+    /// the ids but does not expose them), then follows changes.
+    fn count_favorite_tracks(self: &Rc<Self>) {
+        let Some(ctx) = self.ctx.upgrade() else { return };
+        let generation = self.count_generation.get() + 1;
+        self.count_generation.set(generation);
+        let api = ctx.api.clone();
+        let sidebar = Rc::downgrade(self);
+        glib::spawn_future_local(async move {
+            let ids = runtime::spawn(async move { api.favorite_ids().await }).await;
+            let Some(sidebar) = sidebar.upgrade() else { return };
+            if sidebar.count_generation.get() != generation {
+                return;
+            }
+            match ids {
+                Ok(ids) => {
+                    if let Some(ctx) = sidebar.ctx.upgrade() {
+                        ctx.network_ok();
+                    }
+                    sidebar.set_favorite_tracks(Some(ids.track.len()));
+                }
+                Err(err) => log::debug!("could not count favourite tracks: {err:#}"),
+            }
+        });
+    }
+
+    fn set_favorite_tracks(&self, count: Option<usize>) {
+        self.favorite_tracks.set(count);
+        self.rows.borrow_mut().retain(|row| row.strong_count() > 0);
+        for row in self.rows.borrow().iter().filter_map(Weak::upgrade) {
+            self.show_count(&row);
+        }
+    }
+
+    fn show_count(&self, row: &Row) {
+        let tracks = matches!(
+            row.entry.borrow().as_ref(),
+            Some(Entry::Nav {
+                route: Route::Collection(CollectionView::Tracks),
+                ..
+            })
+        );
+        match self.favorite_tracks.get().filter(|_| tracks) {
+            Some(count) => {
+                row.count.set_label(&count.to_string());
+                row.count.set_visible(true);
+            }
+            None => row.count.set_visible(false),
+        }
+    }
+
+    /// Opens the playlist menu of `row`'s playlist, at `point` (in the
+    /// row's coordinates) or the whole row.
+    fn popup_menu(&self, row: &Row, list: &gtk::ListView, menu: &ItemMenu, point: Option<(f64, f64)>) {
+        let Some(Entry::Playlist { playlist, .. }) = row.entry.borrow().clone() else {
+            return;
+        };
+        let subject = Subject::Playlist(playlist);
+        let point = point.and_then(|(x, y)| {
+            row.root
+                .compute_point(list, &gtk::graphene::Point::new(x as f32, y as f32))
+        });
+        match point {
+            Some(point) => menu.popup_at_point(subject, f64::from(point.x()), f64::from(point.y())),
+            None => menu.popup_at(subject, &row.root),
+        }
+    }
+
+    /// Menu and Shift+F10 on the focused playlist row.
+    fn add_menu_keys(self: &Rc<Self>, list: &gtk::ListView, menu: &Rc<ItemMenu>) {
+        let keys = gtk::EventControllerKey::new();
+        let sidebar = Rc::downgrade(self);
+        let menu = Rc::downgrade(menu);
+        let weak_list = list.downgrade();
+        keys.connect_key_pressed(move |_, key, _, modifiers| {
+            let menu_key = key == gtk::gdk::Key::Menu
+                || (key == gtk::gdk::Key::F10 && modifiers.contains(gtk::gdk::ModifierType::SHIFT_MASK));
+            let (Some(sidebar), Some(menu), Some(list)) =
+                (sidebar.upgrade(), menu.upgrade(), weak_list.upgrade())
+            else {
+                return glib::Propagation::Proceed;
+            };
+            if !menu_key {
+                return glib::Propagation::Proceed;
+            }
+            let focused = list.focus_child().and_then(|item| item.first_child());
+            let row = focused.and_then(|root| {
+                sidebar
+                    .rows
+                    .borrow()
+                    .iter()
+                    .filter_map(Weak::upgrade)
+                    .find(|row| row.root.upcast_ref::<gtk::Widget>() == &root)
+            });
+            match row {
+                Some(row) if matches!(*row.entry.borrow(), Some(Entry::Playlist { .. })) => {
+                    sidebar.popup_menu(&row, &list, &menu, None);
+                    glib::Propagation::Stop
+                }
+                _ => glib::Propagation::Proceed,
+            }
+        });
+        list.add_controller(keys);
+    }
+
+    /// Lets `row` take dropped tracks while it shows an own playlist.
+    fn add_drop_target(self: &Rc<Self>, row: &Rc<Row>) {
+        let target = gtk::DropTarget::new(TrackDrag::static_type(), gtk::gdk::DragAction::COPY);
+        let weak_row = Rc::downgrade(row);
+        let own_playlist = move || match weak_row.upgrade()?.entry.borrow().as_ref() {
+            Some(Entry::Playlist { playlist, own: true, .. }) => Some(playlist.clone()),
+            _ => None,
+        };
+        target.connect_accept({
+            let own_playlist = own_playlist.clone();
+            move |_, _| own_playlist().is_some()
+        });
+        let sidebar = Rc::downgrade(self);
+        target.connect_drop(move |_, value, _, _| {
+            let (Some(sidebar), Some(playlist), Ok(drag)) =
+                (sidebar.upgrade(), own_playlist(), value.get::<TrackDrag>())
+            else {
+                return false;
+            };
+            let Some(ctx) = sidebar.ctx.upgrade() else {
+                return false;
+            };
+            dialogs::playlist::add_to_playlist(&ctx, &playlist, drag.track_ids);
+            true
+        });
+        row.root.add_controller(target);
     }
 
     /// Selects the row of `location`: the open playlist if it has a row,
@@ -347,9 +518,16 @@ impl Sidebar {
         row.speaker.set_visible(playing);
     }
 
-    fn row_factory(self: &Rc<Self>, index: bool) -> gtk::SignalListItemFactory {
+    fn row_factory(
+        self: &Rc<Self>,
+        index: bool,
+        list: &gtk::ListView,
+        menu: &Rc<ItemMenu>,
+    ) -> gtk::SignalListItemFactory {
         let factory = gtk::SignalListItemFactory::new();
         let sidebar = Rc::downgrade(self);
+        let menu = Rc::downgrade(menu);
+        let list = list.downgrade();
         factory.connect_setup(move |_, item| {
             let Some(item) = item.downcast_ref::<gtk::ListItem>() else {
                 return;
@@ -360,6 +538,38 @@ impl Sidebar {
             let row = Rc::new(Row::new());
             this.rows.borrow_mut().push(Rc::downgrade(&row));
             item.set_child(Some(&row.root));
+            this.add_drop_target(&row);
+            // The playlist menu: right click, long press (touch).
+            let right_click = gtk::GestureClick::builder().button(3).build();
+            let long_press = gtk::GestureLongPress::builder().touch_only(true).build();
+            {
+                let (weak_row, menu, list, sidebar) =
+                    (Rc::downgrade(&row), menu.clone(), list.clone(), sidebar.clone());
+                right_click.connect_pressed(move |gesture, _, x, y| {
+                    if let (Some(row), Some(menu), Some(list), Some(sidebar)) =
+                        (weak_row.upgrade(), menu.upgrade(), list.upgrade(), sidebar.upgrade())
+                        && matches!(*row.entry.borrow(), Some(Entry::Playlist { .. }))
+                    {
+                        gesture.set_state(gtk::EventSequenceState::Claimed);
+                        sidebar.popup_menu(&row, &list, &menu, Some((x, y)));
+                    }
+                });
+            }
+            {
+                let (weak_row, menu, list, sidebar) =
+                    (Rc::downgrade(&row), menu.clone(), list.clone(), sidebar.clone());
+                long_press.connect_pressed(move |gesture, x, y| {
+                    if let (Some(row), Some(menu), Some(list), Some(sidebar)) =
+                        (weak_row.upgrade(), menu.upgrade(), list.upgrade(), sidebar.upgrade())
+                        && matches!(*row.entry.borrow(), Some(Entry::Playlist { .. }))
+                    {
+                        gesture.set_state(gtk::EventSequenceState::Claimed);
+                        sidebar.popup_menu(&row, &list, &menu, Some((x, y)));
+                    }
+                });
+            }
+            row.root.add_controller(right_click);
+            row.root.add_controller(long_press);
             item.connect_item_notify({
                 let row = row.clone();
                 let sidebar = sidebar.clone();
@@ -404,8 +614,10 @@ impl Sidebar {
         row.cover.set_paintable(None::<&gtk::gdk::Paintable>);
         row.root.set_tooltip_text(None);
         row.root.remove_css_class("playlist");
+        row.entry.replace(entry.clone());
         let Some(entry) = entry else {
             row.key.replace(None);
+            self.show_count(row);
             return;
         };
         row.key.replace(entry.key());
@@ -448,6 +660,7 @@ impl Sidebar {
             }
         }
         self.show_speaker(row);
+        self.show_count(row);
     }
 
     /// Section headers: none above the navigation rows, "Collection"
@@ -471,11 +684,12 @@ impl Sidebar {
                 .css_classes(["flat", "circular"])
                 .visible(false)
                 .build();
+            add.update_property(&[gtk::accessible::Property::Label("New Playlist")]);
             add.connect_clicked({
                 let ctx = ctx.clone();
                 move |_| {
                     if let Some(ctx) = ctx.upgrade() {
-                        new_playlist(&ctx);
+                        dialogs::playlist::new_playlist(&ctx, Vec::new());
                     }
                 }
             });
@@ -527,6 +741,10 @@ impl Row {
             .hexpand(true)
             .ellipsize(gtk::pango::EllipsizeMode::End)
             .build();
+        let count = gtk::Label::builder()
+            .css_classes(["numeric", "dimmed"])
+            .visible(false)
+            .build();
         let speaker = gtk::Image::builder()
             .icon_name("audio-volume-high-symbolic")
             .tooltip_text("Playing")
@@ -540,21 +758,25 @@ impl Row {
         root.append(&icon);
         root.append(&cover);
         root.append(&label);
+        root.append(&count);
         root.append(&speaker);
         Self {
             icon,
             cover,
             label,
+            count,
             speaker,
             root,
             key: RefCell::default(),
+            entry: RefCell::default(),
             ticket: RefCell::default(),
         }
     }
 }
 
 fn playlist_entry(ctx: &Ctx, playlist: &Playlist) -> Entry {
-    let owner = (!ctx.library.is_own_playlist(playlist))
+    let own = ctx.library.is_own_playlist(playlist);
+    let owner = (!own)
         .then(|| playlist.creator.name.clone())
         .flatten()
         .filter(|name| !name.is_empty());
@@ -566,13 +788,9 @@ fn playlist_entry(ctx: &Ctx, playlist: &Playlist) -> Entry {
             .clone()
             .or_else(|| playlist.image.clone()),
         owner,
+        playlist: Rc::new(playlist.clone()),
+        own,
     }
-}
-
-/// Starts creating a playlist.
-fn new_playlist(ctx: &Ctx) {
-    // The playlist dialog (ui/dialogs/playlist.rs) is not built yet.
-    ctx.toast("Creating playlists is coming soon");
 }
 
 /// The main menu (docs/design.md §2.3).
