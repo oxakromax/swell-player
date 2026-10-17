@@ -129,3 +129,6 @@ button.follow.pill:checked:active { background-color: color-mix(in srgb, current
 button.heart.flat:checked            { background-color: transparent; }
 button.heart.flat:checked:hover      { background-color: color-mix(in srgb, currentColor 7%, transparent); }
 button.heart.flat:checked:active     { background-color: color-mix(in srgb, currentColor 16%, transparent); }
+
+/* Full-page track lists align with the page's content edge */
+listview.track-list > row { margin-left: 0; margin-right: 0; padding-left: 0; padding-right: 0; }

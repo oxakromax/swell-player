@@ -19,7 +19,7 @@ pub mod track_list;
 pub mod track_row;
 
 use gtk::prelude::*;
-use gtk::gdk;
+use gtk::{gdk, glib};
 
 /// `preferred` if the icon theme has it, `fallback` otherwise. The `swell-*`
 /// icons (docs/design.md §1.9) come from the app's resources; until they are
@@ -48,26 +48,32 @@ pub fn label_button(button: &impl IsA<gtk::Widget>, label: &str) {
         .update_property(&[gtk::accessible::Property::Label(label)]);
 }
 
-/// Calls `f(narrow)` now (once `widget` is in a window) and whenever the
-/// window gains or loses the `narrow` class (breakpoint C).
+/// Calls `f(narrow)` once `widget` is in a window and whenever the window
+/// gains or loses the `narrow` class (breakpoint C).
 pub fn follow_narrow(widget: &impl IsA<gtk::Widget>, f: impl Fn(bool) + 'static) {
+    type Watch = Option<(glib::WeakRef<gtk::Window>, glib::SignalHandlerId)>;
     let f = std::rc::Rc::new(f);
-    widget.connect_realize(move |widget| {
-        let Some(window) = widget.root().and_downcast::<gtk::Window>() else {
-            return;
-        };
-        f(window.has_css_class("narrow"));
-        let f = f.clone();
-        let handler = window.connect_css_classes_notify(move |window| {
+    let watch: std::rc::Rc<std::cell::RefCell<Watch>> = std::rc::Rc::default();
+    widget.connect_realize({
+        let watch = watch.clone();
+        move |widget| {
+            let Some(window) = widget.root().and_downcast::<gtk::Window>() else {
+                return;
+            };
             f(window.has_css_class("narrow"));
-        });
-        // Disconnect when the widget goes away, not the window.
-        let window = window.downgrade();
-        let handler = std::cell::RefCell::new(Some(handler));
-        widget.connect_unrealize(move |_| {
-            if let (Some(window), Some(handler)) = (window.upgrade(), handler.take()) {
-                window.disconnect(handler);
-            }
-        });
+            let f = f.clone();
+            let handler = window.connect_css_classes_notify(move |window| {
+                f(window.has_css_class("narrow"));
+            });
+            watch.replace(Some((window.downgrade(), handler)));
+        }
+    });
+    // Disconnect when the widget leaves the window, not the window's life.
+    widget.connect_unrealize(move |_| {
+        if let Some((window, handler)) = watch.take()
+            && let Some(window) = window.upgrade()
+        {
+            window.disconnect(handler);
+        }
     });
 }

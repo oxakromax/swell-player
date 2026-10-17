@@ -105,16 +105,6 @@ pub fn format_duration(seconds: u64) -> String {
     }
 }
 
-/// "1 h 5 min" / "42 min", for album and playlist totals.
-pub fn format_total(seconds: u64) -> String {
-    let (h, m) = (seconds / 3600, (seconds / 60) % 60);
-    match (h, m) {
-        (0, m) => format!("{} min", m.max(1)),
-        (h, 0) => format!("{h} h"),
-        (h, m) => format!("{h} h {m} min"),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -124,8 +114,6 @@ mod tests {
         assert_eq!(format_duration(0), "0:00");
         assert_eq!(format_duration(65), "1:05");
         assert_eq!(format_duration(3725), "1:02:05");
-        assert_eq!(format_total(30), "1 min");
-        assert_eq!(format_total(3900), "1 h 5 min");
     }
 
     #[test]

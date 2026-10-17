@@ -179,11 +179,6 @@ pub fn not_found_status() -> adw::StatusPage {
         .build()
 }
 
-/// "Couldn't Load This Page" with a Retry button (also F5).
-pub fn error_status(description: &str, retry: impl Fn() + 'static) -> adw::StatusPage {
-    retry_status(Failure::Other, description, retry)
-}
-
 fn retry_status(
     failure: Failure,
     description: &str,
