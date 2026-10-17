@@ -17,7 +17,7 @@
 
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::atomic::{AtomicU32, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
@@ -60,6 +60,16 @@ impl Image {
         }
     }
 
+    /// Whether this names an image TIDAL serves. Ids become file names in
+    /// the disk cache and URLs are fetched, so anything unexpected from the
+    /// API (a `../` in an id, a foreign host) is refused.
+    fn is_valid(&self) -> bool {
+        match self {
+            Self::Cover(id) | Self::Artist(id) | Self::Playlist(id) => is_image_id(id),
+            Self::Url(url) => is_tidal_image_url(url),
+        }
+    }
+
     /// The smallest served size at least `pixels` wide.
     fn size_for(&self, pixels: u32) -> u32 {
         let sizes = self.sizes();
@@ -99,6 +109,47 @@ impl Image {
             }
         }
     }
+}
+
+/// `^[0-9a-fA-F-]{8,64}$`: TIDAL's image ids are UUIDs.
+fn is_image_id(id: &str) -> bool {
+    (8..=64).contains(&id.len()) && id.bytes().all(|b| b.is_ascii_hexdigit() || b == b'-')
+}
+
+/// An https URL on one of TIDAL's hosts (`images.tidal.com` for mixes,
+/// `resources.tidal.com`...).
+fn is_tidal_image_url(url: &str) -> bool {
+    let Ok(url) = url::Url::parse(url) else {
+        return false;
+    };
+    let Some(host) = url.host_str() else {
+        return false;
+    };
+    url.scheme() == "https"
+        && url.port().is_none()
+        && ["tidal.com", "tidalhifi.com"]
+            .iter()
+            .any(|domain| host == *domain || host.strip_suffix(domain).is_some_and(|sub| sub.ends_with('.')))
+}
+
+/// Bumped when the disk cache is deleted: downloads that started before
+/// are not written into the new one.
+static DISK_EPOCH: AtomicU64 = AtomicU64::new(0);
+
+fn disk_dir() -> PathBuf {
+    glib::user_cache_dir().join("swell-player").join("covers")
+}
+
+/// Deletes the downloaded artwork (on sign-out). Downloads in flight are
+/// not stored. Call from the tokio runtime.
+pub async fn forget_disk_cache() -> Result<()> {
+    DISK_EPOCH.fetch_add(1, Ordering::SeqCst);
+    let dir = disk_dir();
+    tokio::task::spawn_blocking(move || match std::fs::remove_dir_all(&dir) {
+        Err(err) if err.kind() != std::io::ErrorKind::NotFound => Err(err.into()),
+        _ => Ok(()),
+    })
+    .await?
 }
 
 /// One cover being fetched, shared by the queue and the rows waiting for it.
@@ -201,10 +252,7 @@ pub struct CoverLoader {
 impl CoverLoader {
     pub fn new(http: reqwest::Client) -> Rc<Self> {
         let queue = Arc::new(Queue::default());
-        let dir: Arc<Path> = glib::user_cache_dir()
-            .join("swell-player")
-            .join("covers")
-            .into();
+        let dir: Arc<Path> = disk_dir().into();
         for _ in 0..WORKERS {
             runtime::runtime().spawn(worker(queue.clone(), http.clone(), dir.clone()));
         }
@@ -237,6 +285,10 @@ impl CoverLoader {
         position: u32,
         done: impl FnOnce(&gdk::Texture) + 'static,
     ) -> Option<Ticket> {
+        if !image.is_valid() {
+            log::debug!("ignoring an unexpected image reference: {image:?}");
+            return None;
+        }
         let size = image.size_for(pixels);
         let file = image.file_name(size);
         let id = file.as_str();
@@ -351,6 +403,7 @@ async fn worker(queue: Arc<Queue>, http: reqwest::Client, dir: Arc<Path>) {
 async fn fetch(http: &reqwest::Client, dir: &Path, url: &str, file: &str) -> Outcome {
     let id = file;
     let path = dir.join(file);
+    let epoch = DISK_EPOCH.load(Ordering::SeqCst);
     if let Ok(bytes) = tokio::fs::read(&path).await {
         match decode(bytes) {
             Ok((texture, _)) => return Outcome::Ready(texture),
@@ -374,6 +427,9 @@ async fn fetch(http: &reqwest::Client, dir: &Path, url: &str, file: &str) -> Out
     // Only images that decode are cached.
     match decode(bytes) {
         Ok((texture, bytes)) => {
+            if DISK_EPOCH.load(Ordering::SeqCst) != epoch {
+                return Outcome::Ready(texture);
+            }
             if let Err(err) = store(&path, &bytes).await {
                 log::debug!("could not cache cover {id}: {err:#}");
             }
@@ -420,4 +476,37 @@ async fn store(path: &Path, bytes: &[u8]) -> Result<()> {
         return Err(err.into());
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn only_tidal_images_are_loaded() {
+        assert!(Image::Cover("a1b2c3d4-e5f6-4789-abcd-ef0123456789".into()).is_valid());
+        assert!(Image::Artist("ABCDEF12".into()).is_valid());
+        for id in ["", "../../etc", "abc", "a1b2c3d4/../x", "a1b2c3d4-e5f6.jpg", &"a".repeat(65)] {
+            assert!(!Image::Playlist(id.into()).is_valid(), "{id}");
+        }
+        for url in [
+            "https://images.tidal.com/im/im?w=640&h=640&uuid=x",
+            "https://resources.tidal.com/images/ab/cd/550x400.jpg",
+            "https://tidal.com/x.jpg",
+            "https://images.tidalhifi.com/x.jpg",
+        ] {
+            assert!(Image::Url(url.into()).is_valid(), "{url}");
+        }
+        for url in [
+            "http://images.tidal.com/x.jpg",
+            "https://eviltidal.com/x.jpg",
+            "https://tidal.com.example.org/x.jpg",
+            "https://images.tidal.com:8443/x.jpg",
+            "file:///etc/passwd",
+            "https://example.com/?h=images.tidal.com",
+            "not a url",
+        ] {
+            assert!(!Image::Url(url.into()).is_valid(), "{url}");
+        }
+    }
 }

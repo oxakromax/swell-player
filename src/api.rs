@@ -75,16 +75,14 @@ impl Deref for Api {
 
 impl Api {
     /// A client for a session; refreshed tokens are written back to the
-    /// keyring unless the user has signed out meanwhile.
+    /// keyring unless the user has signed out meanwhile (the client awaits
+    /// the save under its refresh lock, which sign-out also takes).
     pub fn restore(stored: StoredSession, http: reqwest::Client) -> Arc<Self> {
         let flow = stored.flow;
-        let client = Client::new(http, flow, stored.authz, move |authz: &Authz| {
-            let authz = authz.clone();
-            tokio::spawn(async move {
-                if let Err(err) = session::save(&StoredSession { flow, authz }).await {
-                    log::warn!("could not store refreshed tokens: {err:#}");
-                }
-            });
+        let client = Client::new(http, flow, stored.authz, move |authz: Authz| async move {
+            if let Err(err) = session::save(&StoredSession { flow, authz }).await {
+                log::warn!("could not store refreshed tokens: {err:#}");
+            }
         });
         Arc::new(Self {
             client,
@@ -105,6 +103,18 @@ impl Api {
             .as_ref()
     }
 
+    /// The cache key of the answer to `base`/`path`. Answers depend on the
+    /// country and language, so both are part of the key; they go last so
+    /// that [`Self::invalidate`] by path prefix still matches.
+    pub fn cache_key(&self, base: tidal::Base, path: &str) -> String {
+        format!(
+            "{}{path}|{}|{}",
+            base.prefix(),
+            self.country_code(),
+            self.locale()
+        )
+    }
+
     /// Stale-while-revalidate GET: sends the cached answer (if any) parsed
     /// with `parse`, then, unless it is younger than `fresh_for`, fetches,
     /// stores and sends the fresh one — but only if it differs. An error is
@@ -119,7 +129,7 @@ impl Api {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let this = self.clone();
         crate::runtime::runtime().spawn(async move {
-            let key = format!("{}{path}", base.prefix());
+            let key = this.cache_key(base, &path);
             let user_id = this.user_id();
             let cached = match this.cache().await {
                 Some(cache) => cache.response(user_id, key.clone()).await.ok().flatten(),
@@ -171,7 +181,8 @@ impl Api {
         rx
     }
 
-    /// Forgets cached answers under `prefix` (e.g. after editing a playlist).
+    /// Forgets cached answers under `prefix` (e.g. after editing a playlist),
+    /// whatever their country and language.
     pub async fn invalidate(&self, base: tidal::Base, prefix: &str) {
         if let Some(cache) = self.cache().await {
             let _ = cache
@@ -236,16 +247,31 @@ impl Api {
     }
 
     /// Removes the tokens from the keyring, then (best effort) the user's
-    /// cached library. Running work must be stopped first.
+    /// cached library and the downloaded artwork. Running work must be
+    /// stopped first; anything still in flight can no longer write.
     pub async fn sign_out(&self) -> Result<()> {
-        self.mark_signed_out();
-        session::clear().await?;
+        let cleared = {
+            // Waits for a refresh in flight to save its tokens, so they are
+            // gone for good once cleared.
+            let _refresh = self.client.begin_sign_out().await;
+            session::clear().await
+        };
         let user_id = self.user_id();
-        let forget = async { Cache::open().await?.forget_user(user_id).await };
+        // The same connection as every writer of this session: writes that
+        // got in first are deleted, later ones are refused.
+        let forget = async {
+            match self.cache().await {
+                Some(cache) => cache.forget_user(user_id).await,
+                None => Cache::open().await?.forget_user(user_id).await,
+            }
+        };
         if let Err(err) = forget.await {
             log::warn!("could not clear the library cache: {err:#}");
         }
-        Ok(())
+        if let Err(err) = crate::covers::forget_disk_cache().await {
+            log::warn!("could not clear the cover cache: {err:#}");
+        }
+        cleared
     }
 
     /// Brings the favourite tracks up to date and reports to `updates`.
@@ -419,7 +445,7 @@ impl Api {
     ) -> Result<()> {
         let user_id = self.user_id();
         let path = self.favorite_list_path(kind);
-        let key = format!("{}{path}?all", tidal::Base::V1.prefix());
+        let key = self.cache_key(tidal::Base::V1, &format!("{path}?all"));
         let cache = self.cache().await;
 
         let mut cached: Option<(Vec<Value>, usize, Duration)> = None;
