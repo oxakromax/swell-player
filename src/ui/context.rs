@@ -13,6 +13,7 @@ use adw::prelude::*;
 use super::nav::{Navigator, Route};
 use crate::api::Api;
 use crate::covers::CoverLoader;
+use crate::i18n::tr;
 use crate::library::Library;
 use crate::playback::Playback;
 use crate::settings;
@@ -101,7 +102,7 @@ impl Ctx {
             panel_listeners: RefCell::default(),
             next_listener: Cell::new(1),
             offline_banner: adw::Banner::builder()
-                .title("You’re offline — showing saved data")
+                .title(tr("You’re offline — showing saved data"))
                 .revealed(false)
                 .build(),
             favorite_track_count: Cell::new(None),
@@ -234,7 +235,7 @@ impl Ctx {
     pub fn toast_with_undo(&self, message: &str, undo: impl Fn() + 'static) {
         let toast = adw::Toast::builder()
             .title(message)
-            .button_label("Undo")
+            .button_label(tr("Undo"))
             .build();
         // Also reachable with Ctrl+Z after the toast is gone.
         let undo = super::window::remember_undo(undo);
@@ -248,7 +249,7 @@ impl Ctx {
         if crate::tidal::is_auth_error(err) {
             if let Some(sign_out) = self.sign_out.borrow().as_ref() {
                 sign_out(Some(
-                    "Your TIDAL session has expired. Please sign in again.".into(),
+                    tr("Your TIDAL session has expired. Please sign in again.").into(),
                 ));
             }
             return;
@@ -260,10 +261,11 @@ impl Ctx {
         self.toast(message);
     }
 
-    /// Copies `text` to the clipboard and says so.
-    pub fn copy(&self, text: &str, what: &str) {
+    /// Copies `text` to the clipboard and says so with `message` ("Link
+    /// copied").
+    pub fn copy(&self, text: &str, message: &str) {
         self.window.clipboard().set_text(text);
-        self.toast(&format!("{what} copied"));
+        self.toast(message);
     }
 }
 

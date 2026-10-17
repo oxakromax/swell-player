@@ -11,6 +11,7 @@ use std::rc::Rc;
 use adw::prelude::*;
 
 use super::media_card::MediaCard;
+use crate::i18n::tr;
 use crate::tidal::pages::Item;
 use crate::ui::context::Ctx;
 use crate::ui::menus::ItemMenu;
@@ -44,15 +45,15 @@ impl CarouselSection {
             .valign(gtk::Align::Center)
             .css_classes(["circular", "flat"])
             .build();
-        super::label_button(&back, "Scroll Back");
+        super::label_button(&back, tr("Scroll Back"));
         let forward = gtk::Button::builder()
             .icon_name("go-next-symbolic")
             .valign(gtk::Align::Center)
             .css_classes(["circular", "flat"])
             .build();
-        super::label_button(&forward, "Scroll Forward");
+        super::label_button(&forward, tr("Scroll Forward"));
         let view_all = gtk::Button::builder()
-            .label("View All")
+            .label(tr("View All"))
             .valign(gtk::Align::Center)
             .visible(false)
             .css_classes(["flat"])

@@ -28,6 +28,7 @@ use gtk::{gdk, gio, glib};
 
 use super::track_row::{RowShared, TrackEntry, TrackRow};
 pub use super::track_row::{TRACK_URI_MIME, Variant};
+use crate::i18n::tr;
 use crate::library::{Change, Item};
 use crate::model::TrackInfo;
 use crate::playback::{Event, PlayState, Source};
@@ -122,7 +123,7 @@ impl TrackList {
             .factory(&factory)
             .tab_behavior(gtk::ListTabBehavior::Item)
             .build();
-        view.update_property(&[gtk::accessible::Property::Label("Tracks")]);
+        view.update_property(&[gtk::accessible::Property::Label(tr("Tracks"))]);
 
         let widget: gtk::Widget = if scrolled {
             view.add_css_class("navigation-sidebar");
@@ -350,7 +351,10 @@ impl TrackList {
                 {
                     rows.push((track, None));
                 }
-                _ => sections.push((group.then(|| format!("Disc {volume}")), vec![(track, None)])),
+                _ => sections.push((
+                    group.then(|| tr("Disc {n}").replace("{n}", &volume.to_string())),
+                    vec![(track, None)],
+                )),
             }
         }
         self.inner.fill(sections);
@@ -388,10 +392,9 @@ impl TrackList {
         let mut objects = Vec::with_capacity(tracks.len());
         for track in tracks {
             if group && volume != Some(track.volume_number) {
-                objects.push(glib::BoxedAnyObject::new(Entry::Heading(format!(
-                    "Disc {}",
-                    track.volume_number
-                ))));
+                objects.push(glib::BoxedAnyObject::new(Entry::Heading(
+                    tr("Disc {n}").replace("{n}", &track.volume_number.to_string()),
+                )));
             }
             volume = Some(track.volume_number);
             objects.push(glib::BoxedAnyObject::new(Entry::Track(Rc::new(
@@ -619,8 +622,10 @@ impl Inner {
                 objects.push(same.unwrap_or_else(|| {
                     let mut entry = TrackEntry::new(track);
                     if let Some(note) = &note {
-                        entry.accessible.push_str(", played ");
-                        entry.accessible.push_str(note);
+                        entry.accessible.push_str(", ");
+                        entry
+                            .accessible
+                            .push_str(&tr("played {when}").replace("{when}", note));
                     }
                     entry.note = note;
                     glib::BoxedAnyObject::new(Entry::Track(Rc::new(entry)))

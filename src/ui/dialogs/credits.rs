@@ -6,6 +6,7 @@ use std::rc::Rc;
 use adw::prelude::*;
 use gtk::glib;
 
+use crate::i18n::tr;
 use crate::model::TrackInfo;
 use crate::runtime;
 use crate::tidal::models::Credit;
@@ -22,7 +23,7 @@ pub fn show(ctx: &Rc<Ctx>, track: &TrackInfo) {
         .valign(gtk::Align::Center)
         .build();
     stack.add_named(&spinner, Some("loading"));
-    let dialog = dialog("Credits", &track.title, &stack);
+    let dialog = dialog(tr("Credits"), &track.title, &stack);
     dialog.present(Some(&ctx.window));
 
     let id = track.id;
@@ -46,17 +47,17 @@ pub fn show(ctx: &Rc<Ctx>, track: &TrackInfo) {
             }
             Ok(_) => super::super::widgets::status::empty_status(
                 "avatar-default-symbolic",
-                "No Credits",
-                "TIDAL has no credits for this track.",
+                tr("No Credits"),
+                tr("TIDAL has no credits for this track."),
             )
             .upcast(),
             Err(err) => {
                 if crate::tidal::is_auth_error(&err) {
-                    ctx.report("Couldn't load the credits", &err);
+                    ctx.report(tr("Couldn't load the credits"), &err);
                 }
                 super::super::widgets::status::empty_status(
                     "network-error-symbolic",
-                    "Couldn't Load the Credits",
+                    tr("Couldn't Load the Credits"),
                     &super::super::widgets::status::describe_error(&err),
                 )
                 .upcast()

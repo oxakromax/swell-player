@@ -23,6 +23,7 @@ use super::widgets::now_playing::NowPlayingPanel;
 use super::widgets::player_bar::PlayerBar;
 use crate::api::{self, Api};
 use crate::covers::CoverLoader;
+use crate::i18n::tr;
 use crate::library::{Item, Library};
 use crate::model::TrackInfo;
 use crate::playback::{Event, Playback, Source};
@@ -384,7 +385,7 @@ impl Ui {
                 Ok(()) => reason,
                 Err(err) => {
                     log::warn!("could not remove the session from the keyring: {err:#}");
-                    Some("Couldn't remove your session from the keyring.".to_owned())
+                    Some(tr("Couldn't remove your session from the keyring.").to_owned())
                 }
             };
             ui.show_login(error);
@@ -394,12 +395,12 @@ impl Ui {
     /// Asks before signing out (§4.13: irreversible, no undo).
     fn confirm_sign_out(self: &Rc<Self>) {
         let dialog = adw::AlertDialog::builder()
-            .heading("Sign Out?")
-            .body("You will need to sign in again to listen. Your library cached on this computer is deleted.")
+            .heading(tr("Sign Out?"))
+            .body(tr("You will need to sign in again to listen. Your library cached on this computer is deleted."))
             .close_response("cancel")
             .default_response("cancel")
             .build();
-        dialog.add_responses(&[("cancel", "_Cancel"), ("sign-out", "_Sign Out")]);
+        dialog.add_responses(&[("cancel", tr("_Cancel")), ("sign-out", tr("_Sign Out"))]);
         dialog.set_response_appearance("sign-out", adw::ResponseAppearance::Destructive);
         let ui = Rc::downgrade(self);
         dialog.connect_response(Some("sign-out"), move |_, _| {
@@ -499,7 +500,7 @@ impl Ui {
                 };
                 match result {
                     Ok(()) => ctx.network_ok(),
-                    Err(err) => ctx.report("Couldn't load your library", &err),
+                    Err(err) => ctx.report(tr("Couldn't load your library"), &err),
                 }
             }
         });
@@ -725,7 +726,7 @@ fn toggle_favorite_current(ctx: &Rc<Ctx>) {
     let weak = Rc::downgrade(ctx);
     ctx.library.set_favorite(item, favorite, move |result| {
         if let (Err(err), Some(ctx)) = (result, weak.upgrade()) {
-            ctx.report("Couldn't update favourites", &err);
+            ctx.report(tr("Couldn't update favourites"), &err);
         }
     });
 }
@@ -751,7 +752,7 @@ fn play_track(ctx: &Rc<Ctx>, id: u64) {
                     },
                 );
             }
-            Err(err) => ctx.report("Couldn't open the track", &err),
+            Err(err) => ctx.report(tr("Couldn't open the track"), &err),
         }
     });
 }
@@ -786,7 +787,9 @@ impl Shell {
             let sidebar = Rc::downgrade(&sidebar);
             move || match sidebar.upgrade() {
                 Some(sidebar) => sidebar.index_page(),
-                None => adw::NavigationPage::builder().title("Collection").build(),
+                None => adw::NavigationPage::builder()
+                    .title(tr("Collection"))
+                    .build(),
             }
         });
         let panel = NowPlayingPanel::new(ctx);
@@ -813,7 +816,7 @@ impl Shell {
             .build();
         let sidebar_split = adw::OverlaySplitView::builder()
             .sidebar_position(gtk::PackType::Start)
-            .min_sidebar_width(200.0)
+            .min_sidebar_width(sidebar_min_width(200.0))
             .max_sidebar_width(280.0)
             .sidebar_width_fraction(0.2)
             .sidebar(&sidebar.widget)
@@ -876,7 +879,7 @@ impl Shell {
         let slim_sidebar = (
             sidebar_split.upcast_ref::<glib::Object>(),
             "min-sidebar-width",
-            180.0_f64.to_value(),
+            sidebar_min_width(180.0).to_value(),
         );
         let narrow_layout = (
             multi.upcast_ref::<glib::Object>(),
@@ -1202,6 +1205,15 @@ impl Shell {
             }
         });
     }
+}
+
+/// `base`, or more when the longest sidebar row ("Recently Played") needs
+/// it in the UI language: its label plus the icon, spacing and padding
+/// around it.
+fn sidebar_min_width(base: f64) -> f64 {
+    let label = gtk::Label::new(Some(tr("Recently Played")));
+    let (_, natural, _, _) = label.measure(gtk::Orientation::Horizontal, -1);
+    base.max(f64::from(natural + 64))
 }
 
 fn tab_name(tab: PanelTab) -> &'static str {

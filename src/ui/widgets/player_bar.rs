@@ -16,6 +16,7 @@ use super::np_common::{
     artists_markup, explicit_badge, icons, link_label, subscribe, track_menu_button,
 };
 use super::np_controls::{SeekBar, Transport, Volume};
+use crate::i18n::tr;
 use crate::playback::Event;
 
 const COVER_SIZE: i32 = 56;
@@ -50,9 +51,9 @@ impl PlayerBar {
             .child(&cover.image)
             .valign(gtk::Align::Center)
             .css_classes(["flat", "player-cover"])
-            .tooltip_text("Show Now Playing")
+            .tooltip_text(tr("Show Now Playing"))
             .build();
-        cover_button.update_property(&[gtk::accessible::Property::Label("Show Now Playing")]);
+        cover_button.update_property(&[gtk::accessible::Property::Label(tr("Show Now Playing"))]);
         let title = link_label(ctx, &["heading"]);
         let explicit = explicit_badge();
         let title_row = gtk::Box::builder().spacing(6).build();
@@ -105,8 +106,8 @@ impl PlayerBar {
             button.update_property(&[gtk::accessible::Property::Label(tooltip)]);
             button
         };
-        let lyrics = panel_toggle(icons::lyrics(), "Lyrics");
-        let queue = panel_toggle(icons::queue(), "Queue");
+        let lyrics = panel_toggle(icons::lyrics(), tr("Lyrics"));
+        let queue = panel_toggle(icons::queue(), tr("Queue"));
         let volume = Volume::new(playback);
         let more = track_menu_button();
         let end = gtk::Box::builder()
@@ -132,7 +133,7 @@ impl PlayerBar {
             .css_classes(["player-bar"])
             .visible(false)
             .build();
-        bar_box.update_property(&[gtk::accessible::Property::Label("Player")]);
+        bar_box.update_property(&[gtk::accessible::Property::Label(tr("Player"))]);
         let actions = PlayerActions::new(ctx);
         bar_box.insert_action_group("player", Some(&actions.group));
 
@@ -228,10 +229,10 @@ impl PlayerBar {
         self.artists.set_tooltip_text(Some(&track.artist_names()));
         self.heart.set_track(Some(track.id));
         self.widget
-            .update_property(&[gtk::accessible::Property::Description(&format!(
-                "{} by {}",
-                track.title,
-                track.artist_names()
-            ))]);
+            .update_property(&[gtk::accessible::Property::Description(
+                &tr("{title} by {artists}")
+                    .replace("{title}", &track.title)
+                    .replace("{artists}", &track.artist_names()),
+            )]);
     }
 }

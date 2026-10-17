@@ -9,6 +9,7 @@ use adw::prelude::*;
 use gtk::{gdk, glib};
 
 use super::np_common::{Subscription, Ticker, spoken_duration, subscribe};
+use crate::i18n::tr;
 use crate::model::format_duration;
 use crate::playback::{Event, PlayState, Playback};
 use crate::settings::Repeat;
@@ -48,11 +49,11 @@ impl PlayButton {
             .child(&stack)
             .valign(gtk::Align::Center)
             .halign(gtk::Align::Center)
-            .tooltip_text("Play")
+            .tooltip_text(tr("Play"))
             .css_classes(classes.to_vec())
             .sensitive(false)
             .build();
-        button.update_property(&[gtk::accessible::Property::Label("Play")]);
+        button.update_property(&[gtk::accessible::Property::Label(tr("Play"))]);
         let weak = Rc::downgrade(playback);
         button.connect_clicked(move |_| {
             if let Some(playback) = weak.upgrade() {
@@ -80,9 +81,9 @@ impl PlayButton {
         self.generation.set(self.generation.get().wrapping_add(1));
         let busy = matches!(state, PlayState::Playing | PlayState::Loading);
         let (icon, label) = if busy {
-            ("media-playback-pause-symbolic", "Pause")
+            ("media-playback-pause-symbolic", tr("Pause"))
         } else {
-            ("media-playback-start-symbolic", "Play")
+            ("media-playback-start-symbolic", tr("Play"))
         };
         self.image.set_icon_name(Some(icon));
         self.button.set_tooltip_text(Some(label));
@@ -99,7 +100,7 @@ impl PlayButton {
                 }
                 if let (Some(stack), Some(button)) = (stack.upgrade(), button.upgrade()) {
                     stack.set_visible_child_name("spinner");
-                    button.update_property(&[gtk::accessible::Property::Label("Loading")]);
+                    button.update_property(&[gtk::accessible::Property::Label(tr("Loading"))]);
                 }
             });
         } else {
@@ -143,12 +144,12 @@ impl Transport {
             button.update_property(&[gtk::accessible::Property::Label(tooltip)]);
             button
         };
-        let shuffle = toggle("media-playlist-shuffle-symbolic", "Shuffle");
-        let previous = button("media-skip-backward-symbolic", "Previous Track");
+        let shuffle = toggle("media-playlist-shuffle-symbolic", tr("Shuffle"));
+        let previous = button("media-skip-backward-symbolic", tr("Previous Track"));
         let play = PlayButton::new(playback, &["circular", "suggested-action"]);
-        let next = button("media-skip-forward-symbolic", "Next Track");
-        let repeat = toggle("media-playlist-repeat-symbolic", "Repeat: Off");
-        repeat.update_property(&[gtk::accessible::Property::Label("Repeat")]);
+        let next = button("media-skip-forward-symbolic", tr("Next Track"));
+        let repeat = toggle("media-playlist-repeat-symbolic", tr("Repeat: Off"));
+        repeat.update_property(&[gtk::accessible::Property::Label(tr("Repeat"))]);
 
         let widget = gtk::Box::builder()
             .spacing(12)
@@ -234,9 +235,9 @@ impl Transport {
                 };
                 let restart = transport.playback.position().is_some_and(|p| p > 3.0);
                 tooltip.set_text(Some(if restart {
-                    "Restart Track"
+                    tr("Restart Track")
                 } else {
-                    "Previous Track"
+                    tr("Previous Track")
                 }));
                 true
             });
@@ -276,9 +277,9 @@ impl Transport {
         self.repeat.set_active(repeat != Repeat::Off);
         self.syncing.set(false);
         let (icon, tooltip) = match repeat {
-            Repeat::Off => ("media-playlist-repeat-symbolic", "Repeat: Off"),
-            Repeat::All => ("media-playlist-repeat-symbolic", "Repeat: All"),
-            Repeat::One => ("media-playlist-repeat-song-symbolic", "Repeat: One"),
+            Repeat::Off => ("media-playlist-repeat-symbolic", tr("Repeat: Off")),
+            Repeat::All => ("media-playlist-repeat-symbolic", tr("Repeat: All")),
+            Repeat::One => ("media-playlist-repeat-song-symbolic", tr("Repeat: One")),
         };
         self.repeat.set_icon_name(icon);
         self.repeat.set_tooltip_text(Some(tooltip));
@@ -325,7 +326,7 @@ impl SeekBar {
             .hexpand(true)
             .sensitive(false)
             .build();
-        scale.update_property(&[gtk::accessible::Property::Label("Seek")]);
+        scale.update_property(&[gtk::accessible::Property::Label(tr("Seek"))]);
         let widget = gtk::Box::builder().spacing(6).hexpand(true).build();
         widget.append(&position);
         widget.append(&scale);
@@ -449,11 +450,11 @@ impl SeekBar {
         self.position.set_label(&format_duration(position));
         self.duration.set_label(&format_duration(duration));
         self.scale
-            .update_property(&[gtk::accessible::Property::ValueText(&format!(
-                "{} of {}",
-                spoken_duration(position),
-                spoken_duration(duration)
-            ))]);
+            .update_property(&[gtk::accessible::Property::ValueText(
+                &tr("{position} of {duration}")
+                    .replace("{position}", &spoken_duration(position))
+                    .replace("{duration}", &spoken_duration(duration)),
+            )]);
     }
 }
 
@@ -481,14 +482,14 @@ impl Volume {
         scale.set_width_request(100);
         scale.set_draw_value(false);
         scale.set_valign(gtk::Align::Center);
-        scale.update_property(&[gtk::accessible::Property::Label("Volume")]);
+        scale.update_property(&[gtk::accessible::Property::Label(tr("Volume"))]);
 
         let popover_scale =
             gtk::Scale::with_range(gtk::Orientation::Vertical, 0.0, 1.0, VOLUME_STEP);
         popover_scale.set_inverted(true);
         popover_scale.set_draw_value(false);
         popover_scale.set_height_request(140);
-        popover_scale.update_property(&[gtk::accessible::Property::Label("Volume")]);
+        popover_scale.update_property(&[gtk::accessible::Property::Label(tr("Volume"))]);
         let popover_mute = gtk::Button::builder()
             .icon_name("audio-volume-high-symbolic")
             .css_classes(["flat", "circular"])
@@ -503,11 +504,11 @@ impl Volume {
             .icon_name("audio-volume-high-symbolic")
             .valign(gtk::Align::Center)
             .css_classes(["flat", "circular"])
-            .tooltip_text("Volume")
+            .tooltip_text(tr("Volume"))
             .popover(&gtk::Popover::builder().child(&popover_box).build())
             .visible(false)
             .build();
-        menu.update_property(&[gtk::accessible::Property::Label("Volume")]);
+        menu.update_property(&[gtk::accessible::Property::Label(tr("Volume"))]);
 
         let widget = gtk::Box::builder()
             .spacing(0)
@@ -599,7 +600,7 @@ impl Volume {
         } else {
             "audio-volume-high-symbolic"
         };
-        let action = if muted { "Unmute" } else { "Mute" };
+        let action = if muted { tr("Unmute") } else { tr("Mute") };
         for button in [&self.mute, &self.popover_mute] {
             button.set_icon_name(icon);
             button.set_tooltip_text(Some(action));
@@ -607,7 +608,7 @@ impl Volume {
         }
         self.menu.set_icon_name(icon);
         let text = if muted {
-            "Muted".to_owned()
+            tr("Muted").to_owned()
         } else {
             format!("{} %", (volume * 100.0).round())
         };

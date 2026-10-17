@@ -6,6 +6,8 @@
 
 use gtk::prelude::*;
 
+use crate::i18n::tr;
+
 /// Lets the `.skeleton` parts inside `widget` pulse only while it is
 /// mapped (the `skeleton-live` class), so placeholders left in a stack
 /// under the content cost nothing.
@@ -104,7 +106,7 @@ pub fn page(cover: i32, round: bool, rows: usize, cards: bool) -> gtk::Widget {
         .margin_start(24)
         .margin_end(24)
         .build();
-    page.update_property(&[gtk::accessible::Property::Label("Loading")]);
+    page.update_property(&[gtk::accessible::Property::Label(tr("Loading"))]);
     page.update_state(&[gtk::accessible::State::Busy(true)]);
     page.append(&header(cover, round));
     let list = gtk::Box::new(gtk::Orientation::Vertical, 0);

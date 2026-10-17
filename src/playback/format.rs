@@ -2,6 +2,7 @@
 //! data for the quality popover, plus the ReplayGain and quality arithmetic.
 //! Pure functions, unit-tested.
 
+use crate::i18n::tr;
 use crate::settings::{Normalization, QualityPreference};
 use crate::tidal::Quality;
 use crate::tidal::models::PlaybackInfo;
@@ -26,7 +27,7 @@ impl Codec {
             Self::Aac => "AAC",
             Self::Eac3 => "E-AC-3",
             Self::Ac4 => "AC-4",
-            Self::Unknown => "Unknown",
+            Self::Unknown => tr("Unknown"),
         }
     }
 
@@ -118,9 +119,10 @@ impl FormatDetails {
     pub fn describe(&self) -> String {
         match self.codec {
             Codec::Flac | Codec::Mqa => match (self.bit_depth, self.sample_rate) {
-                (Some(bits), Some(rate)) => {
-                    format!("{bits}-bit/{} kHz {}", khz(rate), self.codec.name())
-                }
+                (Some(bits), Some(rate)) => tr("{bits}-bit/{rate} kHz {codec}")
+                    .replace("{bits}", &bits.to_string())
+                    .replace("{rate}", &khz(rate))
+                    .replace("{codec}", self.codec.name()),
                 _ if self.quality == Some(Quality::HiResLossless) => {
                     format!("Hi-Res {}", self.codec.name())
                 }
@@ -131,7 +133,7 @@ impl FormatDetails {
                 None => "AAC".to_owned(),
             },
             Codec::Eac3 | Codec::Ac4 => format!("Dolby Atmos ({})", self.codec.name()),
-            Codec::Unknown => "Unknown format".to_owned(),
+            Codec::Unknown => tr("Unknown format").to_owned(),
         }
     }
 
@@ -263,6 +265,10 @@ mod tests {
 
     #[test]
     fn describes_formats() {
+        if crate::i18n::ui_language().is_some() {
+            // Checks the English texts.
+            return;
+        }
         let hires = FormatDetails::new(
             &info("HI_RES_LOSSLESS", Some(24), Some(96_000)),
             Some("flac"),

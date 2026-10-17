@@ -15,6 +15,7 @@ use super::super::context::Ctx;
 use super::super::nav::Route;
 use super::quality_badge::{BadgeKind, QualityBadge};
 use crate::covers::{CoverLoader, Image, Ticket};
+use crate::i18n::{tr, trn};
 use crate::library::{Change, Item, Library};
 use crate::model::TrackInfo;
 use crate::playback::format::khz;
@@ -403,13 +404,13 @@ impl TrackQuality {
 /// "Hi-Res Lossless", "Lossless", "High"...
 fn quality_name(details: &FormatDetails) -> &'static str {
     match details.quality {
-        Some(Quality::HiResLossless) => "Hi-Res Lossless",
-        Some(Quality::Lossless) => "Lossless",
-        Some(Quality::High) => "High",
-        Some(Quality::Low) => "Low",
-        None if details.is_hires() => "Hi-Res Lossless",
-        None if details.is_lossless() => "Lossless",
-        None => "Lossy",
+        Some(Quality::HiResLossless) => tr("Hi-Res Lossless"),
+        Some(Quality::Lossless) => tr("Lossless"),
+        Some(Quality::High) => tr("High"),
+        Some(Quality::Low) => tr("Low"),
+        None if details.is_hires() => tr("Hi-Res Lossless"),
+        None if details.is_lossless() => tr("Lossless"),
+        None => tr("Lossy"),
     }
 }
 
@@ -430,15 +431,17 @@ fn compact_label(details: &FormatDetails) -> String {
 fn alterations(details: &FormatDetails, volume: f64, muted: bool) -> Vec<String> {
     let mut reasons = Vec::new();
     if details.replay_gain_db.is_some() {
-        reasons.push("normalisation is on".to_owned());
+        reasons.push(tr("normalisation is on").to_owned());
     }
     if muted {
-        reasons.push("muted".to_owned());
+        reasons.push(tr("muted").to_owned());
     } else if volume < 0.999 {
-        reasons.push(format!("volume at {:.0} %", volume * 100.0));
+        reasons.push(
+            tr("volume at {percent} %").replace("{percent}", &format!("{:.0}", volume * 100.0)),
+        );
     }
     if !details.is_lossless() {
-        reasons.push("lossy stream".to_owned());
+        reasons.push(tr("lossy stream").to_owned());
     }
     reasons
 }
@@ -457,7 +460,7 @@ pub(super) struct FormatBadge {
     pub widget: gtk::MenuButton,
     ctx: Weak<Ctx>,
     label: gtk::Label,
-    /// Key and value label per row, in [`FormatBadge::ROWS`] order.
+    /// Key and value label per row, in [`FormatBadge::row_names`] order.
     rows: Vec<(gtk::Label, gtk::Label)>,
     note: gtk::Label,
     compact: Cell<bool>,
@@ -467,16 +470,20 @@ pub(super) struct FormatBadge {
 }
 
 impl FormatBadge {
-    const ROWS: [&'static str; 8] = [
-        "Quality",
-        "Codec",
-        "Bit depth",
-        "Sample rate",
-        "Bitrate",
-        "ReplayGain",
-        "Output",
-        "Output device",
-    ];
+    const ROWS: usize = 8;
+
+    fn row_names() -> [&'static str; Self::ROWS] {
+        [
+            tr("Quality"),
+            tr("Codec"),
+            tr("Bit depth"),
+            tr("Sample rate"),
+            tr("Bitrate"),
+            tr("ReplayGain"),
+            tr("Output"),
+            tr("Output device"),
+        ]
+    }
 
     pub fn new(ctx: &Rc<Ctx>) -> Rc<Self> {
         let label = gtk::Label::builder()
@@ -486,7 +493,7 @@ impl FormatBadge {
             .child(&label)
             .valign(gtk::Align::Center)
             .css_classes(["flat", "format-badge"])
-            .tooltip_text("Audio Format")
+            .tooltip_text(tr("Audio Format"))
             .visible(false)
             .build();
 
@@ -498,7 +505,7 @@ impl FormatBadge {
             .margin_start(6)
             .margin_end(6)
             .build();
-        let rows: Vec<(gtk::Label, gtk::Label)> = Self::ROWS
+        let rows: Vec<(gtk::Label, gtk::Label)> = Self::row_names()
             .iter()
             .enumerate()
             .map(|(row, name)| {
@@ -526,7 +533,7 @@ impl FormatBadge {
             .css_classes(["caption", "dimmed"])
             .visible(false)
             .build();
-        grid.attach(&note, 0, Self::ROWS.len() as i32, 2, 1);
+        grid.attach(&note, 0, Self::ROWS as i32, 2, 1);
         let popover = gtk::Popover::builder().child(&grid).build();
         widget.set_popover(Some(&popover));
         let badge = Rc::new_cyclic(|weak: &Weak<Self>| Self {
@@ -572,20 +579,26 @@ impl FormatBadge {
         let settings = ctx.settings.get();
         let alterations = alterations(&details, settings.volume, settings.muted);
         let output = if alterations.is_empty() {
-            "Bit-perfect".to_owned()
+            tr("Bit-perfect").to_owned()
         } else {
-            format!("Not bit-perfect: {}", alterations.join(", "))
+            tr("Not bit-perfect: {reasons}").replace("{reasons}", &alterations.join(", "))
         };
         let replay_gain = details.replay_gain_db.map(|db| {
-            let mode = match settings.normalization {
-                Normalization::Album => "album",
-                _ => "track",
+            let text = match settings.normalization {
+                Normalization::Album => tr("{gain} (album)"),
+                _ => tr("{gain} (track)"),
             };
-            format!("{} ({mode})", decibels(db))
+            text.replace("{gain}", &decibels(db))
         });
         self.set_row(0, Some(quality_name(&details)));
         self.set_row(1, Some(details.codec.name()));
-        self.set_row(2, details.bit_depth.map(|b| format!("{b}-bit")).as_deref());
+        self.set_row(
+            2,
+            details
+                .bit_depth
+                .map(|b| tr("{n}-bit").replace("{n}", &b.to_string()))
+                .as_deref(),
+        );
         self.set_row(
             3,
             details
@@ -594,7 +607,7 @@ impl FormatBadge {
                 .as_deref(),
         );
         self.set_row(4, details.bitrate.map(|b| format!("{b} kbit/s")).as_deref());
-        self.set_row(5, Some(replay_gain.as_deref().unwrap_or("Off")));
+        self.set_row(5, Some(replay_gain.as_deref().unwrap_or(tr("Off"))));
         self.set_row(6, Some(&output));
         self.set_row(
             7,
@@ -602,14 +615,14 @@ impl FormatBadge {
                 settings
                     .output_device
                     .as_ref()
-                    .map_or("System default", String::as_str),
+                    .map_or(tr("System default"), String::as_str),
             ),
         );
 
         let track_hires = ctx.playback.current().is_some_and(|t| t.hires);
         let note = (track_hires && !details.is_hires()).then_some(match settings.quality {
-            QualityPreference::Best => "Lossless delivered: this track has no Hi-Res master",
-            _ => "Lossless delivered: Hi-Res is turned off in Preferences",
+            QualityPreference::Best => tr("Lossless delivered: this track has no Hi-Res master"),
+            _ => tr("Lossless delivered: Hi-Res is turned off in Preferences"),
         });
         self.note.set_label(note.unwrap_or_default());
         self.note.set_visible(note.is_some());
@@ -624,11 +637,10 @@ impl FormatBadge {
         } else {
             details.short()
         });
-        let spoken = format!(
-            "Audio format: {}, {}. {output}",
-            quality_name(&details),
-            details.describe()
-        );
+        let spoken = tr("Audio format: {quality}, {format}. {output}")
+            .replace("{quality}", quality_name(&details))
+            .replace("{format}", &details.describe())
+            .replace("{output}", &output);
         self.widget
             .update_property(&[gtk::accessible::Property::Label(&spoken)]);
         self.widget.set_visible(true);
@@ -663,12 +675,12 @@ impl FormatBadge {
             self.widget.set_visible(false);
             return;
         };
-        for row in 1..Self::ROWS.len() {
+        for row in 1..Self::ROWS {
             self.set_row(row, None);
         }
         self.set_row(0, Some(kind.description()));
         self.note
-            .set_label("The exact format shows once the track starts playing.");
+            .set_label(tr("The exact format shows once the track starts playing."));
         self.note.set_visible(true);
         if hires {
             self.label.add_css_class("hires");
@@ -678,10 +690,9 @@ impl FormatBadge {
         self.label
             .set_label(if hires { "HI-RES" } else { "LOSSLESS" });
         self.widget
-            .update_property(&[gtk::accessible::Property::Label(&format!(
-                "Audio quality: {}",
-                kind.description()
-            ))]);
+            .update_property(&[gtk::accessible::Property::Label(
+                &tr("Audio quality: {quality}").replace("{quality}", kind.description()),
+            )]);
         self.widget.set_visible(true);
     }
 
@@ -711,10 +722,10 @@ impl Heart {
             .icon_name(icons.0)
             .valign(gtk::Align::Center)
             .css_classes(["circular", "flat", "heart"])
-            .tooltip_text("Add to Favourites")
+            .tooltip_text(tr("Add to Favourites"))
             .sensitive(false)
             .build();
-        button.update_property(&[gtk::accessible::Property::Label("Favourite")]);
+        button.update_property(&[gtk::accessible::Property::Label(tr("Favourite"))]);
         let library = ctx.library.clone();
         let heart = Rc::new_cyclic(|weak: &Weak<Self>| {
             let weak = weak.clone();
@@ -751,7 +762,7 @@ impl Heart {
                     .library
                     .set_favorite(Item::Track(id), button.is_active(), move |result| {
                         if let (Err(err), Some(ctx)) = (result, ctx.upgrade()) {
-                            ctx.report("Couldn't update favourites", &err);
+                            ctx.report(tr("Couldn't update favourites"), &err);
                         }
                     });
                 heart.sync();
@@ -777,22 +788,24 @@ impl Heart {
         self.button
             .set_icon_name(if favorite { self.icons.1 } else { self.icons.0 });
         self.button.set_tooltip_text(Some(if favorite {
-            "Remove from Favourites"
+            tr("Remove from Favourites")
         } else {
-            "Add to Favourites"
+            tr("Add to Favourites")
         }));
     }
 }
 
 /// The sleep timer choices (§4.9): action target and menu label.
-const SLEEP_CHOICES: [(&str, &str); 6] = [
-    ("off", "Off"),
-    ("15", "15 Minutes"),
-    ("30", "30 Minutes"),
-    ("45", "45 Minutes"),
-    ("60", "60 Minutes"),
-    ("end", "End of Track"),
-];
+fn sleep_choices() -> [(&'static str, &'static str); 6] {
+    [
+        ("off", tr("Off")),
+        ("15", tr("15 Minutes")),
+        ("30", tr("30 Minutes")),
+        ("45", tr("45 Minutes")),
+        ("60", tr("60 Minutes")),
+        ("end", tr("End of Track")),
+    ]
+}
 
 /// The `player.sleep` state for a timer.
 fn sleep_target(timer: Option<SleepTimer>) -> String {
@@ -817,7 +830,7 @@ fn sleep_timer_of(target: &str) -> Option<SleepTimer> {
 /// The "Sleep Timer" choices, as radio items of `player.sleep`.
 fn sleep_menu() -> gio::Menu {
     let menu = gio::Menu::new();
-    for (target, label) in SLEEP_CHOICES {
+    for (target, label) in sleep_choices() {
         let item = gio::MenuItem::new(Some(label), None);
         item.set_action_and_target_value(Some("player.sleep"), Some(&target.to_variant()));
         menu.append_item(&item);
@@ -866,7 +879,7 @@ impl PlayerActions {
             dialogs::playlist::choose_playlist(ctx, vec![track.id]);
         });
         add("copy-link", |ctx, track| {
-            ctx.copy(&track.share_url(), "Link")
+            ctx.copy(&track.share_url(), tr("Link copied"))
         });
 
         let sleep = gio::SimpleAction::new_stateful(
@@ -902,25 +915,25 @@ impl PlayerActions {
 pub(super) fn track_menu_button() -> gtk::MenuButton {
     let menu = gio::Menu::new();
     let timer = gio::Menu::new();
-    timer.append_submenu(Some("Sleep Timer"), &sleep_menu());
+    timer.append_submenu(Some(tr("Sleep Timer")), &sleep_menu());
     menu.append_section(None, &timer);
     let navigate = gio::Menu::new();
-    navigate.append(Some("Go to Album"), Some("player.album"));
-    navigate.append(Some("Go to Artist"), Some("player.artist"));
-    navigate.append(Some("Track Radio"), Some("player.radio"));
+    navigate.append(Some(tr("Go to Album")), Some("player.album"));
+    navigate.append(Some(tr("Go to Artist")), Some("player.artist"));
+    navigate.append(Some(tr("Track Radio")), Some("player.radio"));
     menu.append_section(None, &navigate);
     let share = gio::Menu::new();
-    share.append(Some("Add to Playlist…"), Some("player.add-to-playlist"));
-    share.append(Some("Copy Link"), Some("player.copy-link"));
+    share.append(Some(tr("Add to Playlist…")), Some("player.add-to-playlist"));
+    share.append(Some(tr("Copy Link")), Some("player.copy-link"));
     menu.append_section(None, &share);
     let button = gtk::MenuButton::builder()
         .icon_name("view-more-symbolic")
         .menu_model(&menu)
         .valign(gtk::Align::Center)
         .css_classes(["flat", "circular"])
-        .tooltip_text("More")
+        .tooltip_text(tr("More"))
         .build();
-    button.update_property(&[gtk::accessible::Property::Label("More")]);
+    button.update_property(&[gtk::accessible::Property::Label(tr("More"))]);
     button
 }
 
@@ -967,7 +980,7 @@ impl SleepIndicator {
             None => return,
             Some(SleepTimer::EndOfTrack) => (
                 String::new(),
-                "Sleep timer: stops at the end of this track".to_owned(),
+                tr("Sleep timer: stops at the end of this track").to_owned(),
             ),
             Some(SleepTimer::After(_)) => {
                 let minutes = self
@@ -975,11 +988,13 @@ impl SleepIndicator {
                     .sleep_timer_remaining()
                     .map_or(0, |left| left.as_secs().div_ceil(60));
                 (
-                    format!("{minutes} min"),
-                    format!(
-                        "Sleep timer: stops in {minutes} {}",
-                        if minutes == 1 { "minute" } else { "minutes" }
-                    ),
+                    tr("{n} min").replace("{n}", &minutes.to_string()),
+                    trn(
+                        "Sleep timer: stops in {n} minute",
+                        "Sleep timer: stops in {n} minutes",
+                        minutes,
+                    )
+                    .replace("{n}", &minutes.to_string()),
                 )
             }
         };
@@ -994,16 +1009,18 @@ impl SleepIndicator {
 /// "2 minutes 1 second", for screen readers.
 pub(super) fn spoken_duration(seconds: u64) -> String {
     let (h, m, s) = (seconds / 3600, seconds / 60 % 60, seconds % 60);
-    let unit = |n: u64, one: &str, many: &str| format!("{n} {}", if n == 1 { one } else { many });
+    let unit = |n: u64, one: &'static str, many: &'static str| {
+        trn(one, many, n).replace("{n}", &n.to_string())
+    };
     let mut parts = Vec::new();
     if h > 0 {
-        parts.push(unit(h, "hour", "hours"));
+        parts.push(unit(h, "{n} hour", "{n} hours"));
     }
     if m > 0 {
-        parts.push(unit(m, "minute", "minutes"));
+        parts.push(unit(m, "{n} minute", "{n} minutes"));
     }
     if s > 0 || parts.is_empty() {
-        parts.push(unit(s, "second", "seconds"));
+        parts.push(unit(s, "{n} second", "{n} seconds"));
     }
     parts.join(" ")
 }
@@ -1015,6 +1032,10 @@ mod tests {
     #[test]
     fn format_details() {
         use crate::playback::Codec;
+        if crate::i18n::ui_language().is_some() {
+            // Checks the English texts.
+            return;
+        }
         let mut details = FormatDetails {
             codec: Codec::Flac,
             bit_depth: Some(24),
@@ -1063,6 +1084,9 @@ mod tests {
 
     #[test]
     fn spoken() {
+        if crate::i18n::ui_language().is_some() {
+            return;
+        }
         assert_eq!(spoken_duration(121), "2 minutes 1 second");
         assert_eq!(spoken_duration(0), "0 seconds");
         assert_eq!(spoken_duration(3600), "1 hour");

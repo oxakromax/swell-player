@@ -13,6 +13,7 @@ use std::rc::{Rc, Weak};
 use gtk::glib;
 use gtk::prelude::*;
 
+use crate::i18n::tr;
 use crate::library::{Change, Item};
 use crate::ui::context::Ctx;
 
@@ -72,7 +73,7 @@ impl HeartButton {
                 button.add_css_class("heart");
                 button.add_css_class("circular");
                 button.add_css_class("flat");
-                button.update_property(&[gtk::accessible::Property::Label("Favourite")]);
+                button.update_property(&[gtk::accessible::Property::Label(tr("Favourite"))]);
                 None
             }
             Style::Follow => {
@@ -169,25 +170,25 @@ impl Inner {
                 };
                 button.set_icon_name(icon);
                 button.set_tooltip_text(Some(if favorite {
-                    "Remove from Favourites"
+                    tr("Remove from Favourites")
                 } else {
-                    "Add to Favourites"
+                    tr("Add to Favourites")
                 }));
             }
             Style::Follow => {
                 if let Some(content) = &self.content {
                     if favorite {
                         content.set_icon_name("object-select-symbolic");
-                        content.set_label("Following");
+                        content.set_label(tr("Following"));
                     } else {
                         content.set_icon_name("list-add-symbolic");
-                        content.set_label("Follow");
+                        content.set_label(tr("Follow"));
                     }
                 }
                 button.set_tooltip_text(Some(if favorite {
-                    "Unfollow"
+                    tr("Unfollow")
                 } else {
-                    "Follow this artist"
+                    tr("Follow this artist")
                 }));
             }
         }
@@ -211,7 +212,7 @@ impl Inner {
         ctx.library.set_favorite(item, favorite, move |result| {
             if let Err(err) = result {
                 if let Some(ctx) = report.upgrade() {
-                    ctx.report("Couldn't update favourites", &err);
+                    ctx.report(tr("Couldn't update favourites"), &err);
                 }
                 if let Some(inner) = weak.upgrade() {
                     inner.sync();

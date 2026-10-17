@@ -11,6 +11,7 @@ use gtk::{gio, glib};
 
 use crate::api::Api;
 use crate::config;
+use crate::i18n::tr;
 use crate::runtime;
 use crate::tidal::Pkce;
 
@@ -25,8 +26,8 @@ pub fn page(
     let view = adw::NavigationView::new();
 
     // ---- Choice ----
-    let browser_button = pill_button("Sign In with Browser", true);
-    let device_button = pill_button("Use a Device Code", false);
+    let browser_button = pill_button(tr("Sign In with Browser"), true);
+    let device_button = pill_button(tr("Use a Device Code"), false);
     let choice_error = error_label();
     if let Some(error) = error {
         choice_error.set_label(&error);
@@ -38,27 +39,30 @@ pub fn page(
         .build();
     choices.append(&method(
         &browser_button,
-        "Hi-Res Lossless, up to 24-bit/192 kHz",
+        tr("Hi-Res Lossless, up to 24-bit/192 kHz"),
     ));
-    choices.append(&method(&device_button, "Lossless, up to 16-bit/44.1 kHz"));
+    choices.append(&method(
+        &device_button,
+        tr("Lossless, up to 16-bit/44.1 kHz"),
+    ));
     choices.append(&choice_error);
     let choice = status_page(
         config::APP_ID,
-        "Welcome to Swell",
-        "Sign in with your TIDAL account.",
+        tr("Welcome to Swell"),
+        tr("Sign in with your TIDAL account."),
         &choices,
     );
     choice.add_css_class("login");
-    view.add(&nav_page("Sign In", "choice", &choice));
+    view.add(&nav_page(tr("Sign In"), "choice", &choice));
 
     // ---- Browser ----
     let steps = gtk::Label::builder()
-        .label("1. Sign in on the TIDAL page that opened in your browser.\n2. TIDAL then shows a page that says “Oops”.\n3. Copy that page’s address and paste it here.")
+        .label(tr("1. Sign in on the TIDAL page that opened in your browser.\n2. TIDAL then shows a page that says “Oops”.\n3. Copy that page’s address and paste it here."))
         .wrap(true)
         .xalign(0.0)
         .build();
     let redirect_entry = adw::EntryRow::builder()
-        .title("Paste the address of the “Oops” page")
+        .title(tr("Paste the address of the “Oops” page"))
         .input_purpose(gtk::InputPurpose::Url)
         .build();
     let entry_list = gtk::ListBox::builder()
@@ -66,9 +70,9 @@ pub fn page(
         .css_classes(["boxed-list"])
         .build();
     entry_list.append(&redirect_entry);
-    let continue_button = pill_button("Continue", true);
+    let continue_button = pill_button(tr("Continue"), true);
     continue_button.set_sensitive(false);
-    let reopen_button = pill_button("Open Browser Again", false);
+    let reopen_button = pill_button(tr("Open Browser Again"), false);
     let browser_error = error_label();
     let browser_box = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
@@ -81,11 +85,11 @@ pub fn page(
     browser_box.append(&browser_error);
     let browser = status_page(
         "web-browser-symbolic",
-        "Sign In with Browser",
-        "Your browser opens TIDAL’s sign-in page.",
+        tr("Sign In with Browser"),
+        tr("Your browser opens TIDAL’s sign-in page."),
         &browser_box,
     );
-    let browser_page = nav_page("Browser", "browser", &browser);
+    let browser_page = nav_page(tr("Browser"), "browser", &browser);
     view.add(&browser_page);
 
     // ---- Device code ----
@@ -95,11 +99,11 @@ pub fn page(
         .build();
     let copy_button = gtk::Button::builder()
         .icon_name("edit-copy-symbolic")
-        .tooltip_text("Copy Code")
+        .tooltip_text(tr("Copy Code"))
         .valign(gtk::Align::Center)
         .css_classes(["flat", "circular"])
         .build();
-    copy_button.update_property(&[gtk::accessible::Property::Label("Copy Code")]);
+    copy_button.update_property(&[gtk::accessible::Property::Label(tr("Copy Code"))]);
     let code_row = gtk::Box::builder()
         .spacing(6)
         .halign(gtk::Align::Center)
@@ -112,9 +116,9 @@ pub fn page(
         .halign(gtk::Align::Center)
         .build();
     device_wait.append(&adw::Spinner::new());
-    device_wait.append(&gtk::Label::new(Some("Waiting for approval…")));
+    device_wait.append(&gtk::Label::new(Some(tr("Waiting for approval…"))));
     let device_error = error_label();
-    let new_code_button = pill_button("Get a New Code", true);
+    let new_code_button = pill_button(tr("Get a New Code"), true);
     new_code_button.set_visible(false);
     let device_box = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
@@ -131,11 +135,11 @@ pub fn page(
     }
     let device = status_page(
         "phone-symbolic",
-        "Use a Device Code",
-        "Open link.tidal.com on any device and enter this code.",
+        tr("Use a Device Code"),
+        tr("Open link.tidal.com on any device and enter this code."),
         &device_box,
     );
-    let device_page = nav_page("Device Code", "device", &device);
+    let device_page = nav_page(tr("Device Code"), "device", &device);
     view.add(&device_page);
 
     // ---- Signing in ----
@@ -157,9 +161,11 @@ pub fn page(
                         done.set(false);
                         log::warn!("could not save the session in the keyring: {err:#}");
                         show_error(
-                            "Couldn't save the session in the keyring. Make sure a keyring \
-                             service (GNOME Keyring, KWallet) is running."
-                                .to_owned(),
+                            tr(
+                                "Couldn't save the session in the keyring. Make sure a keyring \
+                                service (GNOME Keyring, KWallet) is running.",
+                            )
+                            .to_owned(),
                         );
                     }
                 }
@@ -189,7 +195,7 @@ pub fn page(
                     Err(err) => {
                         log::warn!("could not start the browser sign-in: {err:#}");
                         return show_error(
-                            "Couldn't start the sign-in. Please try again.".to_owned(),
+                            tr("Couldn't start the sign-in. Please try again.").to_owned(),
                         );
                     }
                 },
@@ -198,9 +204,11 @@ pub fn page(
                 let show_error = show_error.clone();
                 move |result| {
                     if let Err(err) = result {
-                        show_error(format!(
-                            "Couldn't open the browser ({err}). Open this address yourself:\n{url}"
-                        ));
+                        show_error(
+                            tr("Couldn't open the browser ({error}). Open this address yourself:\n{url}")
+                                .replace("{error}", &err.to_string())
+                                .replace("{url}", &url),
+                        );
                     }
                 }
             });
@@ -252,10 +260,10 @@ pub fn page(
                     Ok(api) => signed_in(api, show_error),
                     Err(err) => {
                         log::warn!("browser sign-in failed: {err:#}");
-                        show_error(format!(
-                            "Sign-in failed. {}",
-                            super::widgets::status::describe_error(&err)
-                        ));
+                        show_error(
+                            tr("Sign-in failed. {error}")
+                                .replace("{error}", &super::widgets::status::describe_error(&err)),
+                        );
                         button.set_sensitive(true);
                     }
                 }
@@ -307,10 +315,12 @@ pub fn page(
                         Ok(device) => device,
                         Err(err) => {
                             log::warn!("could not get a device code: {err:#}");
-                            show_error(format!(
-                                "Couldn't get a code. {}",
-                                super::widgets::status::describe_error(&err)
-                            ));
+                            show_error(
+                                tr("Couldn't get a code. {error}").replace(
+                                    "{error}",
+                                    &super::widgets::status::describe_error(&err),
+                                ),
+                            );
                             device_wait.set_visible(false);
                             new_code_button.set_visible(true);
                             return;
@@ -325,7 +335,7 @@ pub fn page(
                     Ok(api) => signed_in(api, show_error),
                     Err(err) => {
                         log::warn!("device sign-in failed: {err:#}");
-                        show_error("This code expired or was not approved.".to_owned());
+                        show_error(tr("This code expired or was not approved.").to_owned());
                         device_wait.set_visible(false);
                         new_code_button.set_visible(true);
                     }

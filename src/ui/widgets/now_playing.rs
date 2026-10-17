@@ -27,6 +27,7 @@ use super::np_common::{
 use super::np_controls::{SeekBar, Transport, Volume};
 use super::queue_view::QueueView;
 use crate::covers::{Image, Ticket};
+use crate::i18n::tr;
 use crate::playback::Event;
 
 /// Largest cover size (logical pixels).
@@ -168,15 +169,15 @@ impl NowPlayingPanel {
         let heart = Heart::new(ctx);
         let radio_content = adw::ButtonContent::builder()
             .icon_name(icons::radio())
-            .label("Radio")
+            .label(tr("Radio"))
             .build();
         let radio = gtk::Button::builder()
             .child(&radio_content)
             .valign(gtk::Align::Center)
             .css_classes(["flat"])
-            .tooltip_text("Track Radio")
+            .tooltip_text(tr("Track Radio"))
             .build();
-        radio.update_property(&[gtk::accessible::Property::Label("Track Radio")]);
+        radio.update_property(&[gtk::accessible::Property::Label(tr("Track Radio"))]);
         let volume = Volume::new(playback);
         volume.set_compact(true);
         volume.widget.set_visible(false);
@@ -204,7 +205,7 @@ impl NowPlayingPanel {
         let up_next_button = gtk::Button::builder()
             .child(&up_next_row)
             .css_classes(["flat"])
-            .tooltip_text("Show Queue")
+            .tooltip_text(tr("Show Queue"))
             .build();
         let up_next = gtk::Box::builder()
             .orientation(gtk::Orientation::Vertical)
@@ -212,7 +213,7 @@ impl NowPlayingPanel {
             .build();
         up_next.append(
             &gtk::Label::builder()
-                .label("UP NEXT")
+                .label(tr("UP NEXT"))
                 .xalign(0.0)
                 .css_classes(["caption-heading", "dimmed"])
                 .build(),
@@ -250,8 +251,8 @@ impl NowPlayingPanel {
         playing.add_named(
             &adw::StatusPage::builder()
                 .icon_name(icons::track())
-                .title("Nothing Playing")
-                .description("Pick something from your collection.")
+                .title(tr("Nothing Playing"))
+                .description(tr("Pick something from your collection."))
                 .css_classes(["compact"])
                 .build(),
             Some("empty"),
@@ -266,16 +267,21 @@ impl NowPlayingPanel {
         let lyrics = LyricsView::new(ctx);
         let queue = QueueView::new(ctx);
         let stack = adw::ViewStack::new();
-        stack.add_titled_with_icon(&playing, Some("playing"), "Playing", icons::track());
-        stack.add_titled_with_icon(&lyrics.widget, Some("lyrics"), "Lyrics", icons::lyrics());
-        stack.add_titled_with_icon(&queue.widget, Some("queue"), "Queue", icons::queue());
+        stack.add_titled_with_icon(&playing, Some("playing"), tr("Playing"), icons::track());
+        stack.add_titled_with_icon(
+            &lyrics.widget,
+            Some("lyrics"),
+            tr("Lyrics"),
+            icons::lyrics(),
+        );
+        stack.add_titled_with_icon(&queue.widget, Some("queue"), tr("Queue"), icons::queue());
         let header_switcher = switcher(&stack);
         let close = gtk::Button::builder()
             .icon_name("go-down-symbolic")
-            .tooltip_text("Close")
+            .tooltip_text(tr("Close"))
             .visible(false)
             .build();
-        close.update_property(&[gtk::accessible::Property::Label("Close")]);
+        close.update_property(&[gtk::accessible::Property::Label(tr("Close"))]);
         let header = adw::HeaderBar::builder()
             .title_widget(&header_switcher)
             .build();
@@ -296,7 +302,7 @@ impl NowPlayingPanel {
         toolbar.add_top_bar(&tabs_row);
         toolbar
             .upcast_ref::<gtk::Widget>()
-            .update_property(&[gtk::accessible::Property::Label("Now Playing")]);
+            .update_property(&[gtk::accessible::Property::Label(tr("Now Playing"))]);
 
         let root = adw::BreakpointBin::builder()
             .width_request(280)

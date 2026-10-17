@@ -3,6 +3,7 @@
 
 use gtk::prelude::*;
 
+use crate::i18n::tr;
 use crate::tidal::models::{Album, MediaMetadata};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -24,9 +25,9 @@ impl BadgeKind {
     /// Tooltip and accessible name.
     pub fn description(self) -> &'static str {
         match self {
-            Self::HiRes => "Hi-Res Lossless",
-            Self::Lossless => "Lossless",
-            Self::Explicit => "Explicit",
+            Self::HiRes => tr("Hi-Res Lossless"),
+            Self::Lossless => tr("Lossless"),
+            Self::Explicit => tr("Explicit"),
         }
     }
 

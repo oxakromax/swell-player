@@ -22,6 +22,7 @@ use super::menus::{ItemMenu, Subject};
 use super::nav::{CollectionView, Location, Navigator, Route};
 use super::widgets::track_row::TrackDrag;
 use crate::covers::{Image, Ticket};
+use crate::i18n::tr;
 use crate::library::{Change, Item};
 use crate::playback::Event;
 use crate::runtime;
@@ -108,41 +109,41 @@ impl Sidebar {
     pub fn new(ctx: &Rc<Ctx>, navigator: &Rc<Navigator>) -> Rc<Self> {
         let nav_store = gio::ListStore::new::<glib::BoxedAnyObject>();
         for (title, icon, route) in [
-            ("Home", "user-home-symbolic", Route::Home),
-            ("Explore", "swell-explore-symbolic", Route::Explore),
-            ("Search", "system-search-symbolic", Route::Search(None)),
+            (tr("Home"), "user-home-symbolic", Route::Home),
+            (tr("Explore"), "swell-explore-symbolic", Route::Explore),
+            (tr("Search"), "system-search-symbolic", Route::Search(None)),
         ] {
             nav_store.append(&Entry::Nav { title, icon, route }.object());
         }
         let collection_store = gio::ListStore::new::<glib::BoxedAnyObject>();
         for (title, icon, route) in [
             (
-                "Tracks",
+                tr("Tracks"),
                 "swell-heart-symbolic",
                 Route::Collection(CollectionView::Tracks),
             ),
             (
-                "Albums",
+                tr("Albums"),
                 "media-optical-symbolic",
                 Route::Collection(CollectionView::Albums),
             ),
             (
-                "Artists",
+                tr("Artists"),
                 "avatar-default-symbolic",
                 Route::Collection(CollectionView::Artists),
             ),
             (
-                "Playlists",
+                tr("Playlists"),
                 "view-list-symbolic",
                 Route::Collection(CollectionView::Playlists),
             ),
             (
-                "Mixes & Radios",
+                tr("Mixes & Radios"),
                 "swell-mix-symbolic",
                 Route::Collection(CollectionView::Mixes),
             ),
             (
-                "Recently Played",
+                tr("Recently Played"),
                 "document-open-recent-symbolic",
                 Route::History,
             ),
@@ -190,7 +191,7 @@ impl Sidebar {
             .header_factory(&sidebar.header_factory(true))
             .css_classes(["navigation-sidebar"])
             .build();
-        list.update_property(&[gtk::accessible::Property::Label("Sidebar")]);
+        list.update_property(&[gtk::accessible::Property::Label(tr("Sidebar"))]);
         let menu = ItemMenu::new(ctx, &list);
         list.set_factory(Some(&sidebar.row_factory(false, &list, &menu)));
         sidebar.add_menu_keys(&list, &menu);
@@ -284,7 +285,7 @@ impl Sidebar {
             .single_click_activate(true)
             .css_classes(["navigation-sidebar", "collection-index"])
             .build();
-        list.update_property(&[gtk::accessible::Property::Label("Collection")]);
+        list.update_property(&[gtk::accessible::Property::Label(tr("Collection"))]);
         if let Some(ctx) = self.ctx.upgrade() {
             let menu = ItemMenu::new(&ctx, &list);
             list.set_factory(Some(&self.row_factory(true, &list, &menu)));
@@ -313,7 +314,7 @@ impl Sidebar {
         toolbar.add_top_bar(&header);
         toolbar.set_content(Some(&scrolled));
         adw::NavigationPage::builder()
-            .title("Collection")
+            .title(tr("Collection"))
             .child(&toolbar)
             .build()
     }
@@ -722,7 +723,7 @@ impl Sidebar {
                 row.icon.set_icon_name(Some("list-add-symbolic"));
                 row.icon.set_visible(true);
                 row.cover.set_visible(false);
-                row.label.set_label("New Playlist");
+                row.label.set_label(tr("New Playlist"));
             }
             Entry::Playlist {
                 title,
@@ -735,7 +736,8 @@ impl Sidebar {
                 row.cover.set_visible(true);
                 row.label.set_label(title);
                 if let Some(owner) = owner {
-                    row.root.set_tooltip_text(Some(&format!("by {owner}")));
+                    row.root
+                        .set_tooltip_text(Some(&tr("by {name}").replace("{name}", owner)));
                 }
                 if let (Some(ctx), Some(image)) = (self.ctx.upgrade(), image) {
                     let pixels = (32 * row.root.scale_factor().max(1)) as u32;
@@ -774,12 +776,12 @@ impl Sidebar {
                 .build();
             let add = gtk::Button::builder()
                 .icon_name("list-add-symbolic")
-                .tooltip_text("New Playlist")
+                .tooltip_text(tr("New Playlist"))
                 .valign(gtk::Align::Center)
                 .css_classes(["flat", "circular"])
                 .visible(false)
                 .build();
-            add.update_property(&[gtk::accessible::Property::Label("New Playlist")]);
+            add.update_property(&[gtk::accessible::Property::Label(tr("New Playlist"))]);
             add.connect_clicked({
                 let ctx = ctx.clone();
                 move |_| {
@@ -803,8 +805,10 @@ impl Sidebar {
                     {
                         (None, false)
                     }
-                    Some(Entry::Nav { .. }) => (collection_header.then_some("COLLECTION"), false),
-                    Some(Entry::Playlist { .. } | Entry::NewPlaylist) => (Some("PLAYLISTS"), true),
+                    Some(Entry::Nav { .. }) => (collection_header.then(|| tr("COLLECTION")), false),
+                    Some(Entry::Playlist { .. } | Entry::NewPlaylist) => {
+                        (Some(tr("PLAYLISTS")), true)
+                    }
                     None => (None, false),
                 };
                 content.set_visible(title.is_some());
@@ -846,10 +850,10 @@ impl Row {
             .build();
         let speaker = gtk::Image::builder()
             .icon_name("audio-volume-high-symbolic")
-            .tooltip_text("Playing")
+            .tooltip_text(tr("Playing"))
             .visible(false)
             .build();
-        speaker.update_property(&[gtk::accessible::Property::Label("Playing")]);
+        speaker.update_property(&[gtk::accessible::Property::Label(tr("Playing"))]);
         let root = gtk::Box::builder()
             .spacing(12)
             .css_classes(["sidebar-row"])
@@ -896,15 +900,15 @@ fn playlist_entry(ctx: &Ctx, playlist: &Playlist) -> Entry {
 pub fn main_menu() -> gio::Menu {
     let menu = gio::Menu::new();
     let general = gio::Menu::new();
-    general.append(Some("_Preferences"), Some("win.preferences"));
-    general.append(Some("_Keyboard Shortcuts"), Some("win.shortcuts"));
-    general.append(Some("_About Swell"), Some("win.about"));
+    general.append(Some(tr("_Preferences")), Some("win.preferences"));
+    general.append(Some(tr("_Keyboard Shortcuts")), Some("win.shortcuts"));
+    general.append(Some(tr("_About Swell")), Some("win.about"));
     menu.append_section(None, &general);
     let account = gio::Menu::new();
-    account.append(Some("_Sign Out…"), Some("win.sign-out"));
+    account.append(Some(tr("_Sign Out…")), Some("win.sign-out"));
     menu.append_section(None, &account);
     let quit = gio::Menu::new();
-    quit.append(Some("_Quit"), Some("app.quit"));
+    quit.append(Some(tr("_Quit")), Some("app.quit"));
     menu.append_section(None, &quit);
     menu
 }
@@ -915,11 +919,11 @@ pub fn main_menu() -> gio::Menu {
 pub fn main_menu_button() -> gtk::MenuButton {
     let button = gtk::MenuButton::builder()
         .icon_name("open-menu-symbolic")
-        .tooltip_text("Main Menu")
+        .tooltip_text(tr("Main Menu"))
         .menu_model(&main_menu())
         .primary(true)
         .build();
-    button.update_property(&[gtk::accessible::Property::Label("Main Menu")]);
+    button.update_property(&[gtk::accessible::Property::Label(tr("Main Menu"))]);
     button
 }
 
@@ -936,10 +940,10 @@ pub fn narrow_main_menu_button(window: &adw::ApplicationWindow) -> gtk::MenuButt
 pub fn show_sidebar_button(window: &adw::ApplicationWindow) -> gtk::Button {
     let button = gtk::Button::builder()
         .icon_name("sidebar-show-symbolic")
-        .tooltip_text("Show Sidebar")
+        .tooltip_text(tr("Show Sidebar"))
         .action_name("win.show-sidebar")
         .build();
-    button.update_property(&[gtk::accessible::Property::Label("Show Sidebar")]);
+    button.update_property(&[gtk::accessible::Property::Label(tr("Show Sidebar"))]);
     let hidden = |window: &adw::ApplicationWindow| {
         let shown = window
             .lookup_action("show-sidebar")

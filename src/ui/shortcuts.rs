@@ -4,6 +4,8 @@
 
 use adw::prelude::*;
 
+use crate::i18n::tr;
+
 /// An item: from an action (`win.…`/`app.…`) with an accelerator, from a
 /// window action bound by the key controller ([`super::window::key_accel`]),
 /// or a literal accelerator.
@@ -13,66 +15,72 @@ enum Item {
     Keys(&'static str, &'static str),
 }
 
+/// Marks a constant for translation; [`tr`] translates it where it is
+/// shown.
+const fn n_(text: &'static str) -> &'static str {
+    text
+}
+
 const SECTIONS: &[(&str, &[Item])] = &[
     (
-        "General",
+        n_("General"),
         &[
-            Item::Action("Focus Search", "win.search"),
-            Item::Action("Preferences", "win.preferences"),
-            Item::Action("Keyboard Shortcuts", "win.shortcuts"),
-            Item::Key("Undo", "undo"),
-            Item::Keys("Reload Page", "F5"),
-            Item::Action("Close Window", "win.close"),
-            Item::Action("Quit", "app.quit"),
+            Item::Action(n_("Focus Search"), "win.search"),
+            Item::Action(n_("Preferences"), "win.preferences"),
+            Item::Action(n_("Keyboard Shortcuts"), "win.shortcuts"),
+            Item::Key(n_("Undo"), "undo"),
+            Item::Keys(n_("Reload Page"), "F5"),
+            Item::Action(n_("Close Window"), "win.close"),
+            Item::Action(n_("Quit"), "app.quit"),
         ],
     ),
     (
-        "Navigation",
+        n_("Navigation"),
         &[
-            Item::Action("Go to Home", "win.section('home')"),
-            Item::Action("Go to Explore", "win.section('explore')"),
-            Item::Action("Go to Search", "win.section('search')"),
-            Item::Action("Go to Collection", "win.section('collection')"),
-            Item::Action("Back", "win.back"),
-            Item::Action("Show Sidebar", "win.show-sidebar"),
-            Item::Keys("Next Region", "F6"),
-            Item::Keys("Previous Region", "<Shift>F6"),
-            Item::Keys("Close Panel or Popover", "Escape"),
+            Item::Action(n_("Go to Home"), "win.section('home')"),
+            Item::Action(n_("Go to Explore"), "win.section('explore')"),
+            Item::Action(n_("Go to Search"), "win.section('search')"),
+            Item::Action(n_("Go to Collection"), "win.section('collection')"),
+            Item::Action(n_("Back"), "win.back"),
+            Item::Action(n_("Show Sidebar"), "win.show-sidebar"),
+            Item::Keys(n_("Next Region"), "F6"),
+            Item::Keys(n_("Previous Region"), "<Shift>F6"),
+            Item::Keys(n_("Close Panel or Popover"), "Escape"),
         ],
     ),
     (
-        "Now Playing",
+        n_("Now Playing"),
         &[
-            Item::Action("Now Playing", "win.panel('playing')"),
-            Item::Action("Lyrics", "win.panel('lyrics')"),
-            Item::Action("Queue", "win.panel('queue')"),
+            Item::Action(n_("Now Playing"), "win.panel('playing')"),
+            Item::Action(n_("Lyrics"), "win.panel('lyrics')"),
+            Item::Action(n_("Queue"), "win.panel('queue')"),
         ],
     ),
     (
-        "Playback",
+        n_("Playback"),
         &[
-            Item::Key("Play/Pause", "play-pause"),
-            Item::Action("Play/Pause Anywhere", "win.play-pause"),
-            Item::Key("Next Track", "next"),
-            Item::Key("Previous Track", "previous"),
-            Item::Key("Seek Forward 10 Seconds", "seek-forward"),
-            Item::Key("Seek Backward 10 Seconds", "seek-backward"),
-            Item::Key("Volume Up", "volume-up"),
-            Item::Key("Volume Down", "volume-down"),
-            Item::Key("Mute", "mute"),
-            Item::Key("Shuffle", "shuffle"),
-            Item::Key("Repeat", "repeat"),
-            Item::Key("Toggle Favourite", "favorite"),
+            Item::Key(n_("Play/Pause"), "play-pause"),
+            Item::Action(n_("Play/Pause Anywhere"), "win.play-pause"),
+            Item::Key(n_("Next Track"), "next"),
+            Item::Key(n_("Previous Track"), "previous"),
+            Item::Key(n_("Seek Forward 10 Seconds"), "seek-forward"),
+            Item::Key(n_("Seek Backward 10 Seconds"), "seek-backward"),
+            Item::Key(n_("Volume Up"), "volume-up"),
+            Item::Key(n_("Volume Down"), "volume-down"),
+            Item::Key(n_("Mute"), "mute"),
+            Item::Key(n_("Shuffle"), "shuffle"),
+            Item::Key(n_("Repeat"), "repeat"),
+            Item::Key(n_("Toggle Favourite"), "favorite"),
         ],
     ),
     (
-        "Lists",
+        n_("Lists"),
         &[
-            Item::Keys("Play or Open", "Return"),
-            Item::Keys("Context Menu", "<Shift>F10 Menu"),
-            Item::Keys("Remove", "Delete"),
-            Item::Keys("Move Up", "<Alt>Up"),
-            Item::Keys("Move Down", "<Alt>Down"),
+            Item::Keys(n_("Play or Open"), "Return"),
+            Item::Keys(n_("Context Menu"), "<Shift>F10 Menu"),
+            Item::Keys(n_("Remove"), "Delete"),
+            Item::Keys(n_("Move Up"), "<Alt>Up"),
+            Item::Keys(n_("Move Down"), "<Alt>Down"),
         ],
     ),
 ];
@@ -80,15 +88,15 @@ const SECTIONS: &[(&str, &[Item])] = &[
 pub fn present(window: &adw::ApplicationWindow) {
     let dialog = adw::ShortcutsDialog::new();
     for (title, items) in SECTIONS {
-        let section = adw::ShortcutsSection::new(Some(title));
+        let section = adw::ShortcutsSection::new(Some(tr(title)));
         for item in *items {
             let item = match item {
-                Item::Action(title, action) => adw::ShortcutsItem::from_action(title, action),
+                Item::Action(title, action) => adw::ShortcutsItem::from_action(tr(title), action),
                 Item::Key(title, action) => match super::window::key_accel(action) {
-                    Some(accel) => adw::ShortcutsItem::new(title, &accel),
+                    Some(accel) => adw::ShortcutsItem::new(tr(title), &accel),
                     None => continue,
                 },
-                Item::Keys(title, keys) => adw::ShortcutsItem::new(title, keys),
+                Item::Keys(title, keys) => adw::ShortcutsItem::new(tr(title), keys),
             };
             section.add(item);
         }

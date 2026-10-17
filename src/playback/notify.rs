@@ -11,6 +11,7 @@ use adw::prelude::*;
 use anyhow::Result;
 use gtk::{gio, glib};
 
+use crate::i18n::tr;
 use crate::model::TrackInfo;
 use crate::runtime;
 
@@ -29,7 +30,10 @@ pub struct Desktop {
     sleep_lock: Rc<SleepLock>,
 }
 
-const REASON: &str = "Playing music";
+/// Why Swell keeps the system awake (shown by the desktop).
+fn reason() -> &'static str {
+    tr("Playing music")
+}
 
 /// A logind "sleep" inhibitor, held as a file descriptor while wanted.
 #[derive(Default)]
@@ -80,7 +84,7 @@ async fn logind_inhibit() -> Result<zbus::zvariant::OwnedFd> {
             "/org/freedesktop/login1",
             Some("org.freedesktop.login1.Manager"),
             "Inhibit",
-            &("sleep", crate::config::APP_NAME, REASON, "block"),
+            &("sleep", crate::config::APP_NAME, reason(), "block"),
         )
         .await?;
     Ok(reply.body().deserialize()?)
@@ -164,7 +168,7 @@ impl Desktop {
                 let cookie = app.inhibit(
                     window.as_ref(),
                     gtk::ApplicationInhibitFlags::SUSPEND,
-                    Some(REASON),
+                    Some(reason()),
                 );
                 if cookie != 0 {
                     self.inhibit_cookie.set(Some(cookie));
@@ -193,7 +197,9 @@ impl Desktop {
         let notification = gio::Notification::new(&track.title);
         let mut body = track.artist_names();
         if !track.album.is_empty() {
-            body = format!("{body} — {}", track.album);
+            body = tr("{artists} — {album}")
+                .replace("{artists}", &body)
+                .replace("{album}", &track.album);
         }
         notification.set_body(Some(&body));
         notification.set_priority(gio::NotificationPriority::Low);

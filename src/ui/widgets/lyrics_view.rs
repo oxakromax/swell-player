@@ -19,6 +19,7 @@ use gtk::glib;
 use super::super::context::Ctx;
 use super::np_common::{Subscription, Ticker, icons, subscribe};
 use crate::api::Api;
+use crate::i18n::tr;
 use crate::playback::{Event, Playback};
 use crate::runtime;
 use crate::tidal::models::Lyrics;
@@ -154,7 +155,7 @@ impl LyricsView {
         stack.add_named(
             &adw::StatusPage::builder()
                 .icon_name(icons::track())
-                .title("Nothing Playing")
+                .title(tr("Nothing Playing"))
                 .css_classes(["compact"])
                 .build(),
             Some("empty"),
@@ -171,20 +172,20 @@ impl LyricsView {
         stack.add_named(
             &adw::StatusPage::builder()
                 .icon_name(lyrics_icon)
-                .title("No Lyrics for This Track")
+                .title(tr("No Lyrics for This Track"))
                 .css_classes(["compact"])
                 .build(),
             Some("none"),
         );
         let retry = gtk::Button::builder()
-            .label("Retry")
+            .label(tr("Retry"))
             .halign(gtk::Align::Center)
             .css_classes(["pill"])
             .build();
         stack.add_named(
             &adw::StatusPage::builder()
                 .icon_name("network-offline-symbolic")
-                .title("Couldn't Load Lyrics")
+                .title(tr("Couldn't Load Lyrics"))
                 .child(&retry)
                 .css_classes(["compact"])
                 .build(),
@@ -196,7 +197,7 @@ impl LyricsView {
             .selection_mode(gtk::SelectionMode::None)
             .css_classes(["navigation-sidebar", "lyrics"])
             .build();
-        list.update_property(&[gtk::accessible::Property::Label("Lyrics")]);
+        list.update_property(&[gtk::accessible::Property::Label(tr("Lyrics"))]);
         let synced_credit = credit_label();
         let content = gtk::Box::builder()
             .orientation(gtk::Orientation::Vertical)
@@ -212,7 +213,7 @@ impl LyricsView {
             .vexpand(true)
             .build();
         let back = gtk::Button::builder()
-            .label("Back to Current Line")
+            .label(tr("Back to Current Line"))
             .halign(gtk::Align::Center)
             .valign(gtk::Align::End)
             .margin_bottom(18)
@@ -435,7 +436,7 @@ impl LyricsView {
                     if crate::tidal::is_auth_error(&err)
                         && let Some(ctx) = view.ctx.upgrade()
                     {
-                        ctx.report("Couldn't load lyrics", &err);
+                        ctx.report(tr("Couldn't load lyrics"), &err);
                     }
                     log::warn!("lyrics of track {id}: {err:#}");
                     if view.shown.get() == Some(id) {
@@ -690,7 +691,7 @@ fn credit_label() -> gtk::Label {
 fn set_credit(label: &gtk::Label, provider: Option<&str>) {
     match provider {
         Some(provider) => {
-            label.set_label(&format!("Lyrics provided by {provider}"));
+            label.set_label(&tr("Lyrics provided by {provider}").replace("{provider}", provider));
             label.set_visible(true);
         }
         None => label.set_visible(false),

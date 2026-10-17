@@ -16,6 +16,7 @@ use gtk::prelude::*;
 use super::carousel::{CarouselSection, title_row};
 use super::media_card::{self, attach_menu};
 use super::track_list::{TrackList, Variant};
+use crate::i18n::tr;
 use crate::model::TrackInfo;
 use crate::playback::Source;
 use crate::tidal::pages::{Item, Section, SectionKind, Target};
@@ -120,7 +121,7 @@ pub fn tracks_section(ctx: &Rc<Ctx>, section: &Section, limit: usize) -> gtk::Wi
     let header = title_row(&section.title, section.subtitle.as_deref());
     if let Some(route) = route.filter(|_| section.total > shown.min(tracks.len())) {
         let button = gtk::Button::builder()
-            .label("View All")
+            .label(tr("View All"))
             .valign(gtk::Align::Center)
             .css_classes(["flat"])
             .build();
