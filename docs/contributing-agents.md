@@ -75,3 +75,55 @@ message ending in:
 
 Report: what you built, files touched, anything left undone or needing an
 API you did not own, and known issues.
+
+## What already exists (phase A, merged)
+- Shell (`ui/window.rs`, `ui/nav.rs`, `ui/sidebar.rs`): per-section
+  navigation stacks; `ctx.navigate(route)`. Section root pages should put
+  `sidebar::show_sidebar_button(&ctx.window)` at the start and
+  `sidebar::narrow_main_menu_button(&ctx.window)` at the end of their header
+  bar. Ctrl+F focuses the first `gtk::SearchEntry` of the Search page.
+  `ctx.toast_with_undo` supports Ctrl+Z. Window gets class `narrow` at
+  ≤ 720sp.
+- Widget kit (`ui/widgets/`):
+  - `TrackList` (`track_list`): `new(ctx, Variant::{Cover,Numbered,Queue})`
+    (own ScrolledWindow) / `embedded(ctx, variant)`; `widget()`, `view()`,
+    `scrolled()`, `downgrade()`; `set_header/set_footer(Option<&W>)` (header
+    scrolls with the list), `set_tracks/replace/append/insert/remove/
+    move_track`, `len`, `track(i)`, `tracks()`; `set_source(Source)`,
+    `set_album_artists`, `set_group_discs`, `set_compact`,
+    `follow_page_compact()`, `scroll_to_top()`; hooks
+    `connect_activated(Fn(usize))` (replaces default play),
+    `set_remove_handler(Fn(usize))` ("Remove from This Playlist"),
+    `set_reorderable(Fn(from,to))` (row already moved; move back on
+    failure), `connect_near_end(Fn())` (paging); `compact_bin(child,
+    Fn(bool)) -> adw::BreakpointBin` (one per page).
+  - Drag and drop: `track_row::TrackDrag { track_ids, origin }`.
+  - Sections: `section::section_widget(ctx, &Section) -> gtk::Widget`,
+    `activate_item(ctx, &Item)`, `activate_target`, `tracks_section`,
+    `short_track_list`, `view_all_route`.
+  - `MediaCard::new(ctx, &Item, Option<&Rc<ItemMenu>>).widget()`,
+    `media_card::{cover, Cover, avatar, attach_menu}`,
+    `CarouselSection::new(ctx, title, subtitle, &[Item])` +
+    `connect_view_all`; `PageHeader::{album, playlist, artist, mix}` +
+    `connect_play/connect_shuffle/set_playable/set_compact/add_detail`;
+    `QualityBadge::new(BadgeKind)`; `HeartButton::{new, follow, unlistened}`;
+    `skeleton::{row, card, header, page}`; `status::{PageStack,
+    error_status, empty_status, describe_error}`.
+  - Grids of cards: `gtk::GridView` with CSS class `media-grid`.
+- Menus (`ui/menus.rs`): `Subject::{Track{track,index}, Album, Artist,
+  Playlist, Mix}`, `Subject::from_item`, `ItemMenu::new(ctx, parent)` +
+  `popup/popup_at/popup_at_point/set_remove_handler/set_move_handler`;
+  `play(ctx, &Subject, PlayMode)`, `play_tracks(ctx, tracks, start, source,
+  strict)`, `shuffle_tracks`, `enqueue`, `TrackQuery::fetch`,
+  `toast_with_action`, `play_track_id`.
+- Dialogs: `dialogs::playlist::{add_to_playlist, choose_playlist,
+  new_playlist(ctx, ids), edit_playlist(ctx, &Playlist), set_public,
+  delete_playlist(ctx, &Playlist, on_deleted)}`;
+  `dialogs::credits::{show, credits_page, show_text}`.
+- Playback: see `src/playback/mod.rs` (format_details, sleep timer,
+  save/restore session, MPRIS). `SWELL_PLAY=<id>[@secs]` plays at startup.
+- Album and Artist pages (`ui/pages/{album,artist}.rs`) are the reference
+  for how a page loads (`api.load_cached`), shows skeletons/errors and
+  uses the kit. Copy their structure.
+- More debug variables: `SWELL_SECTION`, `SWELL_DIALOG`, `SWELL_ACTIONS`,
+  `SWELL_LOGIN=1`, route `history` (see `ui/debug.rs`).
