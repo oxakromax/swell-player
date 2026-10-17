@@ -1,201 +1,233 @@
-//! The bar at the bottom of the window: play/pause, the current track and a
-//! progress bar you can drag to seek.
+//! The player bar at the bottom of the wide and regular layouts
+//! (docs/design.md §4.9): the current track, transport and seek in the
+//! centre, format, panel toggles, volume and a menu at the end.
+//!
+//! Hidden until something is playing. The shell keeps the returned `Rc`
+//! as long as the widget is shown; dropping it disconnects everything.
 
-use std::cell::RefCell;
-use std::rc::Rc;
-use std::time::Duration;
+use std::cell::Cell;
+use std::rc::{Rc, Weak};
 
-use gtk::glib;
-use gtk::prelude::*;
+use adw::prelude::*;
 
-use crate::model::{TrackInfo, format_duration};
-use crate::playback::{Event, PlayState, Playback};
+use super::super::context::{Ctx, PanelTab};
+use super::np_common::{
+    self, Cover, FormatBadge, Heart, Subscription, album_markup, artists_markup, explicit_badge,
+    icons, link_label, subscribe,
+};
+use super::np_controls::{SeekBar, Transport, Volume};
+use crate::playback::Event;
 
-/// How often the position is refreshed while playing.
-const TICK: Duration = Duration::from_millis(500);
+const COVER_SIZE: i32 = 56;
 
 pub struct PlayerBar {
-    pub widget: gtk::Box,
-    player: Rc<Playback>,
-    play: gtk::Button,
+    pub widget: gtk::Widget,
+    ctx: Weak<Ctx>,
+    cover: Cover,
     title: gtk::Label,
-    subtitle: gtk::Label,
-    position: gtk::Label,
-    duration: gtk::Label,
-    progress: gtk::Scale,
-    tick: RefCell<Option<glib::SourceId>>,
+    explicit: gtk::Label,
+    artists: gtk::Label,
+    heart: Rc<Heart>,
+    _transport: Rc<Transport>,
+    _seek: Rc<SeekBar>,
+    format: FormatBadge,
+    lyrics: gtk::ToggleButton,
+    queue: gtk::ToggleButton,
+    volume: Rc<Volume>,
+    syncing: Cell<bool>,
+    _events: Subscription,
 }
 
 impl PlayerBar {
-    pub fn new(player: Rc<Playback>) -> Rc<Self> {
-        let play = gtk::Button::builder()
-            .icon_name("media-playback-start-symbolic")
-            .tooltip_text("Play")
-            .valign(gtk::Align::Center)
-            .sensitive(false)
-            .css_classes(["circular", "suggested-action"])
-            .build();
+    pub fn new(ctx: &Rc<Ctx>) -> Rc<Self> {
+        let playback = &ctx.playback;
 
-        let title = ellipsized_label();
-        title.add_css_class("heading");
-        let subtitle = ellipsized_label();
-        subtitle.add_css_class("dim-label");
-        subtitle.add_css_class("caption");
+        // Start: cover, title and artists, heart.
+        let cover = Cover::new(COVER_SIZE);
+        let cover_button = gtk::Button::builder()
+            .child(&cover.image)
+            .valign(gtk::Align::Center)
+            .css_classes(["flat", "player-cover"])
+            .tooltip_text("Show Now Playing")
+            .build();
+        cover_button.update_property(&[gtk::accessible::Property::Label("Show Now Playing")]);
+        let title = link_label(ctx, &["heading"]);
+        let explicit = explicit_badge();
+        let title_row = gtk::Box::builder().spacing(6).build();
+        title_row.append(&title);
+        title_row.append(&explicit);
+        let artists = link_label(ctx, &["dimmed"]);
         let text = gtk::Box::builder()
             .orientation(gtk::Orientation::Vertical)
             .valign(gtk::Align::Center)
-            .width_request(260)
-            .build();
-        text.append(&title);
-        text.append(&subtitle);
-
-        let position = time_label();
-        let duration = time_label();
-        let progress = gtk::Scale::builder()
-            .orientation(gtk::Orientation::Horizontal)
             .hexpand(true)
-            .sensitive(false)
+            .build();
+        text.append(&title_row);
+        text.append(&artists);
+        let heart = Heart::new(ctx);
+        let start = gtk::Box::builder().spacing(12).width_request(240).build();
+        start.append(&cover_button);
+        start.append(&text);
+        start.append(&heart.button);
+
+        // Centre: transport over the seek bar.
+        let transport = Transport::new(playback);
+        let seek = SeekBar::new(playback);
+        let center_box = gtk::Box::builder()
+            .orientation(gtk::Orientation::Vertical)
+            .valign(gtk::Align::Center)
+            .width_request(320)
+            .build();
+        center_box.append(&transport.widget);
+        center_box.append(&seek.widget);
+        let center = adw::Clamp::builder()
+            .maximum_size(640)
+            .tightening_threshold(640)
+            .child(&center_box)
+            .hexpand(true)
+            .margin_start(12)
+            .margin_end(12)
             .build();
 
-        let widget = gtk::Box::builder()
-            .spacing(12)
+        // End: format, lyrics, queue, volume, more.
+        let format = FormatBadge::new();
+        let panel_toggle = |icon: &str, tooltip: &str| {
+            let button = gtk::ToggleButton::builder()
+                .icon_name(icon)
+                .valign(gtk::Align::Center)
+                .tooltip_text(tooltip)
+                .css_classes(["flat", "circular"])
+                .build();
+            button.update_property(&[gtk::accessible::Property::Label(tooltip)]);
+            button
+        };
+        let lyrics = panel_toggle(icons::lyrics(), "Lyrics");
+        let queue = panel_toggle(icons::queue(), "Queue");
+        let volume = Volume::new(playback);
+        let more = np_common::track_menu_button(ctx);
+        let end = gtk::Box::builder()
+            .spacing(6)
+            .valign(gtk::Align::Center)
+            .build();
+        end.append(&format.widget);
+        end.append(&lyrics);
+        end.append(&queue);
+        end.append(&volume.widget);
+        end.append(&more);
+
+        let bar_box = gtk::CenterBox::builder()
+            .start_widget(&start)
+            .center_widget(&center)
+            .end_widget(&end)
+            .height_request(78)
             .margin_top(6)
             .margin_bottom(6)
             .margin_start(12)
             .margin_end(12)
+            .css_classes(["player-bar"])
+            .visible(false)
             .build();
-        widget.append(&play);
-        widget.append(&text);
-        widget.append(&position);
-        widget.append(&progress);
-        widget.append(&duration);
+        bar_box.update_property(&[gtk::accessible::Property::Label("Player")]);
 
-        let bar = Rc::new(Self {
-            widget,
-            player,
-            play,
+        let bar = Rc::new_cyclic(|weak: &Weak<Self>| Self {
+            widget: bar_box.upcast(),
+            ctx: Rc::downgrade(ctx),
+            cover,
             title,
-            subtitle,
-            position,
-            duration,
-            progress,
-            tick: RefCell::default(),
+            explicit,
+            artists,
+            heart,
+            _transport: transport,
+            _seek: seek,
+            format,
+            lyrics,
+            queue,
+            volume,
+            syncing: Cell::new(false),
+            _events: subscribe(playback, weak, |bar, event| match event {
+                // The previous track's format stays until the new stream
+                // is resolved; hide it meanwhile.
+                Event::Track(_) => bar.show_track(None),
+                Event::Format(format) => bar.show_track(format.as_deref()),
+                _ => {}
+            }),
         });
 
-        bar.player.subscribe({
-            let bar = Rc::downgrade(&bar);
-            move |event| {
-                let Some(bar) = bar.upgrade() else { return };
-                match event {
-                    Event::Track(Some(track)) => bar.show_loading(track),
-                    Event::Track(None) => bar.set_state(PlayState::Stopped),
-                    Event::State(state) => bar.set_state(*state),
-                    Event::Format(Some(format)) => {
-                        if let Some(track) = bar.player.current() {
-                            bar.show_format(&track, format);
-                        }
-                    }
-                    Event::Error(message) => bar.show_error(message),
-                    _ => {}
-                }
-            }
-        });
-        bar.play.connect_clicked({
-            let bar = Rc::downgrade(&bar);
+        let weak = Rc::downgrade(&bar);
+        cover_button.connect_clicked({
+            let weak = weak.clone();
             move |_| {
-                if let Some(bar) = bar.upgrade() {
-                    bar.player.toggle();
+                if let Some(ctx) = weak.upgrade().and_then(|bar| bar.ctx.upgrade()) {
+                    ctx.toggle_panel(PanelTab::Playing);
                 }
             }
         });
-        // `change-value` only fires on user input, not when the tick moves it.
-        bar.progress.connect_change_value({
-            let bar = Rc::downgrade(&bar);
-            move |_, _, seconds| {
-                if let Some(bar) = bar.upgrade() {
-                    bar.player.seek(seconds.max(0.0));
+        for (button, tab) in [
+            (&bar.lyrics, PanelTab::Lyrics),
+            (&bar.queue, PanelTab::Queue),
+        ] {
+            let weak = weak.clone();
+            button.connect_clicked(move |_| {
+                let Some(bar) = weak.upgrade() else { return };
+                if bar.syncing.get() {
+                    return;
                 }
-                glib::Propagation::Proceed
+                if let Some(ctx) = bar.ctx.upgrade() {
+                    ctx.toggle_panel(tab);
+                    // Reflect what the shell actually did (also when the
+                    // shell has no panel and ignored the request).
+                    bar.sync_panel(ctx.panel());
+                }
+            });
+        }
+        ctx.connect_panel_changed(move |tab| {
+            if let Some(bar) = weak.upgrade() {
+                bar.sync_panel(tab);
             }
         });
+        bar.sync_panel(ctx.panel());
+        bar.show_track(ctx.playback.format().as_deref());
+        super::np_debug::start(ctx, &bar);
         bar
     }
 
-    /// A track was chosen and its stream is being looked up.
-    pub fn show_loading(&self, track: &TrackInfo) {
-        self.widget.set_visible(true);
-        self.title.set_label(&track.title);
-        self.subtitle.set_label(&track.artist_names());
-        self.progress
-            .set_range(0.0, f64::from(track.duration.max(1)));
-        self.progress.set_value(0.0);
-        self.position.set_label(&format_duration(0));
-        self.duration
-            .set_label(&format_duration(track.duration.into()));
+    /// Breakpoint B: volume in a popover, short format badge.
+    pub fn set_compact(&self, compact: bool) {
+        self.volume.set_compact(compact);
+        self.format.set_compact(compact);
     }
 
-    pub fn show_format(&self, track: &TrackInfo, format: &str) {
-        self.subtitle
-            .set_label(&format!("{} · {format}", track.artist_names()));
+    fn sync_panel(&self, tab: Option<PanelTab>) {
+        self.syncing.set(true);
+        self.lyrics.set_active(tab == Some(PanelTab::Lyrics));
+        self.queue.set_active(tab == Some(PanelTab::Queue));
+        self.syncing.set(false);
     }
 
-    pub fn show_error(self: &Rc<Self>, message: &str) {
-        self.subtitle.set_label(message);
-    }
-
-    pub fn set_state(self: &Rc<Self>, state: PlayState) {
-        self.widget.set_visible(true);
-        let playing = matches!(state, PlayState::Playing | PlayState::Loading);
-        let (icon, tooltip) = if playing {
-            ("media-playback-pause-symbolic", "Pause")
-        } else {
-            ("media-playback-start-symbolic", "Play")
+    fn show_track(&self, format: Option<&str>) {
+        let Some(ctx) = self.ctx.upgrade() else {
+            return;
         };
-        self.play.set_icon_name(icon);
-        self.play.set_tooltip_text(Some(tooltip));
-        self.play.set_sensitive(self.player.current().is_some());
-        self.progress.set_sensitive(state != PlayState::Stopped);
-
-        if state == PlayState::Playing {
-            self.update_position();
-            if self.tick.borrow().is_none() {
-                let bar = Rc::downgrade(self);
-                let id = glib::timeout_add_local(TICK, move || match bar.upgrade() {
-                    Some(bar) => {
-                        bar.update_position();
-                        glib::ControlFlow::Continue
-                    }
-                    None => glib::ControlFlow::Break,
-                });
-                self.tick.replace(Some(id));
-            }
-        } else if let Some(id) = self.tick.take() {
-            id.remove();
-        }
+        let track = ctx.playback.current();
+        self.widget.set_visible(track.is_some());
+        let Some(track) = track else {
+            self.heart.set_track(None);
+            self.format.set(&ctx, None, None);
+            return;
+        };
+        self.cover.set(&ctx.covers, track.cover.as_deref());
+        self.title.set_markup(&album_markup(&track, &track.title));
+        self.title.set_tooltip_text(Some(&track.title));
+        self.explicit.set_visible(track.explicit);
+        self.artists.set_markup(&artists_markup(&track));
+        self.artists.set_tooltip_text(Some(&track.artist_names()));
+        self.heart.set_track(Some(track.id));
+        self.format.set(&ctx, Some(&track), format);
+        self.widget
+            .update_property(&[gtk::accessible::Property::Description(&format!(
+                "{} by {}",
+                track.title,
+                track.artist_names()
+            ))]);
     }
-
-    fn update_position(&self) {
-        if let Some(duration) = self.player.duration() {
-            self.progress.set_range(0.0, duration.max(1.0));
-            self.duration.set_label(&format_duration(duration as u64));
-        }
-        if let Some(position) = self.player.position() {
-            self.progress.set_value(position);
-            self.position.set_label(&format_duration(position as u64));
-        }
-    }
-}
-
-fn ellipsized_label() -> gtk::Label {
-    gtk::Label::builder()
-        .xalign(0.0)
-        .ellipsize(gtk::pango::EllipsizeMode::End)
-        .single_line_mode(true)
-        .build()
-}
-
-fn time_label() -> gtk::Label {
-    gtk::Label::builder()
-        .css_classes(["numeric", "dim-label"])
-        .build()
 }

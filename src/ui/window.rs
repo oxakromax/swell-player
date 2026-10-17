@@ -251,7 +251,7 @@ fn build_shell(ctx: &Rc<Ctx>, toasts: &adw::ToastOverlay) -> gtk::Widget {
         .build();
     sections.append(&menu_button);
 
-    let player_bar = PlayerBar::new(ctx.playback.clone());
+    let player_bar = PlayerBar::new(ctx);
     let root = gtk::Box::new(gtk::Orientation::Vertical, 0);
     root.append(&sections);
     toasts.set_vexpand(true);
