@@ -56,8 +56,10 @@ type Hook = RefCell<Option<Rc<dyn Fn()>>>;
 type CompactHook = RefCell<Option<Rc<dyn Fn(bool)>>>;
 
 /// Header bar, toolbar (own buttons · filter · sort) and the page states.
+/// The page's state keeps it and the page owns that state, so it refers to
+/// the page weakly.
 pub(super) struct Template {
-    pub page: adw::NavigationPage,
+    page: glib::WeakRef<adw::NavigationPage>,
     pub title: adw::WindowTitle,
     pub header_bar: adw::HeaderBar,
     /// The start of the toolbar, for the view's own buttons.
@@ -71,6 +73,8 @@ pub(super) struct Template {
     wrap_actions: Cell<bool>,
     spacer: gtk::Box,
     sort_button: gtk::MenuButton,
+    /// The filter words last applied.
+    last_query: RefCell<Vec<String>>,
     content: gtk::Stack,
     no_matches: adw::StatusPage,
     name: &'static str,
@@ -83,9 +87,9 @@ pub(super) struct Template {
 }
 
 impl Template {
-    /// `main` is the list or grid (in its scrolled window); `name` keys the
-    /// remembered sort order. Set the empty state with
-    /// [`Template::set_empty`].
+    /// The template and its page. `main` is the list or grid (in its
+    /// scrolled window); `name` keys the remembered sort order. Set the
+    /// empty state with [`Template::set_empty`].
     pub fn new(
         ctx: &Rc<Ctx>,
         name: &'static str,
@@ -94,7 +98,7 @@ impl Template {
         sorts: &'static [SortOption],
         skeleton: &impl IsA<gtk::Widget>,
         main: &impl IsA<gtk::Widget>,
-    ) -> Rc<Self> {
+    ) -> (Rc<Self>, adw::NavigationPage) {
         let window = &ctx.window;
         let title_widget = adw::WindowTitle::new(title, "");
         let header_bar = adw::HeaderBar::builder()
@@ -155,7 +159,7 @@ impl Template {
             .with(|s| s.borrow().get(name).copied())
             .unwrap_or((0, sorts[0].2));
         let this = Rc::new(Self {
-            page,
+            page: page.downgrade(),
             title: title_widget,
             header_bar,
             actions,
@@ -167,6 +171,7 @@ impl Template {
             wrap_actions: Cell::new(false),
             spacer,
             sort_button,
+            last_query: RefCell::default(),
             content,
             no_matches,
             name,
@@ -184,17 +189,31 @@ impl Template {
                 this.set_compact(compact);
             }
         });
-        this.page.set_child(Some(&bin));
+        page.set_child(Some(&bin));
 
         let weak = Rc::downgrade(&this);
         this.filter.connect_search_changed(move |_| {
             if let Some(this) = weak.upgrade() {
-                this.changed();
+                this.filter_changed();
             }
         });
         this.filter.connect_stop_search(|entry| entry.set_text(""));
         this.install_sort_menu();
-        this
+        (this, page)
+    }
+
+    /// Whether the page is on screen.
+    pub fn is_mapped(&self) -> bool {
+        self.page.upgrade().is_some_and(|page| page.is_mapped())
+    }
+
+    /// The filter's text changed; `search-changed` also fires with nothing
+    /// typed (when the entry is set up), which changes nothing.
+    fn filter_changed(&self) {
+        let query = self.query();
+        if self.last_query.replace(query.clone()) != query {
+            self.changed();
+        }
     }
 
     fn install_sort_menu(self: &Rc<Self>) {
@@ -645,7 +664,7 @@ fn tracks_page(ctx: &Rc<Ctx>) -> adw::NavigationPage {
         "Tap the heart on any track to save it here.",
         Some(&explore),
     );
-    let template = Template::new(
+    let (template, page) = Template::new(
         ctx,
         "tracks",
         "Tracks",
@@ -706,7 +725,7 @@ fn tracks_page(ctx: &Rc<Ctx>) -> adw::NavigationPage {
         }
     });
     let weak = Rc::downgrade(&state);
-    follow_library(ctx, &template.page, move |change| {
+    follow_library(ctx, &page, move |change| {
         let Some(state) = weak.upgrade() else {
             return;
         };
@@ -717,14 +736,13 @@ fn tracks_page(ctx: &Rc<Ctx>) -> adw::NavigationPage {
         }
     });
     let first_map = Cell::new(true);
-    template.page.connect_map(move |_| {
+    page.connect_map(move |_| {
         if first_map.replace(false) {
             crate::timing::mark("tracks page mapped");
         }
     });
 
     state.load();
-    let page = template.page.clone();
     let owned = RefCell::new(Some(state));
     page.connect_destroy(move |_| {
         if let Some(state) = owned.take()
@@ -928,7 +946,7 @@ impl TracksPage {
         self.refresh_state();
         self.save(-1);
         if let Some(ctx) = self.ctx.upgrade()
-            && self.template.page.is_mapped()
+            && self.template.is_mapped()
         {
             let weak = Rc::downgrade(&ctx);
             ctx.toast_with_undo(

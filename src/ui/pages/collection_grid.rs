@@ -181,7 +181,7 @@ pub(super) fn page(ctx: &Rc<Ctx>, view: CollectionView) -> adw::NavigationPage {
         .build();
     watch_covers(ctx, &scrolled, &store);
 
-    let template = Template::new(
+    let (template, page) = Template::new(
         ctx,
         name,
         title,
@@ -215,14 +215,13 @@ pub(super) fn page(ctx: &Rc<Ctx>, view: CollectionView) -> adw::NavigationPage {
         }
     });
     let weak = Rc::downgrade(&state);
-    follow_library(ctx, &template.page, move |change| {
+    follow_library(ctx, &page, move |change| {
         if let Some(state) = weak.upgrade() {
             state.library_changed(change);
         }
     });
 
     state.load();
-    let page = template.page.clone();
     let owned = RefCell::new(Some(state));
     page.connect_destroy(move |_| {
         if let Some(state) = owned.take()
@@ -649,7 +648,7 @@ impl GridPage {
         let Some(ctx) = self.ctx.upgrade() else {
             return;
         };
-        if !self.template.page.is_mapped() {
+        if !self.template.is_mapped() {
             return;
         }
         let weak = Rc::downgrade(&ctx);

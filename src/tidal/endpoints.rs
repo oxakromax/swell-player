@@ -315,7 +315,10 @@ impl Client {
         Ok(())
     }
 
-    /// Appends tracks; duplicates are skipped.
+    /// Appends tracks; duplicates are skipped. An append names no item, so
+    /// it cannot land on the wrong one: it uses the playlist's ETag of the
+    /// moment (TIDAL refuses edits without one). Edits by index take the
+    /// ETag of the items they were computed from instead.
     pub async fn add_to_playlist(&self, uuid: &str, track_ids: &[u64]) -> Result<()> {
         let (_, etag) = self.playlist(uuid).await?;
         let ids = join(track_ids);
@@ -329,30 +332,38 @@ impl Client {
         Ok(())
     }
 
-    /// Removes the items at `indices` (positions in the playlist).
-    pub async fn remove_from_playlist(&self, uuid: &str, indices: &[usize]) -> Result<()> {
-        let (_, etag) = self.playlist(uuid).await?;
-        let mut call = Call::delete(
+    /// Removes the items at `indices` (positions in the playlist). `etag`
+    /// is the playlist's ETag when the items were loaded: if the playlist
+    /// changed since, TIDAL refuses with 412 (sub-status 7002) instead of
+    /// removing whatever is at those positions now. Returns the new ETag.
+    pub async fn remove_from_playlist(
+        &self,
+        uuid: &str,
+        indices: &[usize],
+        etag: &str,
+    ) -> Result<Option<String>> {
+        let call = Call::delete(
             Base::V1,
             format!("playlists/{uuid}/items/{}", join(indices)),
-        );
-        if let Some(etag) = etag {
-            call = call.header("If-None-Match", etag);
-        }
-        self.write(call).await?;
-        Ok(())
+        )
+        .header("If-None-Match", etag);
+        Ok(self.write(call).await?.etag())
     }
 
-    /// Moves the item at `from` so it ends up at `to`.
-    pub async fn move_in_playlist(&self, uuid: &str, from: usize, to: usize) -> Result<()> {
-        let (_, etag) = self.playlist(uuid).await?;
-        let mut call =
-            Call::post(Base::V1, format!("playlists/{uuid}/items/{from}")).form("toIndex", to);
-        if let Some(etag) = etag {
-            call = call.header("If-None-Match", etag);
-        }
-        self.write(call).await?;
-        Ok(())
+    /// Moves the item at `from` so it ends up at `to`, if the playlist is
+    /// still the version `etag` names (see
+    /// [`Client::remove_from_playlist`]). Returns the new ETag.
+    pub async fn move_in_playlist(
+        &self,
+        uuid: &str,
+        from: usize,
+        to: usize,
+        etag: &str,
+    ) -> Result<Option<String>> {
+        let call = Call::post(Base::V1, format!("playlists/{uuid}/items/{from}"))
+            .form("toIndex", to)
+            .header("If-None-Match", etag);
+        Ok(self.write(call).await?.etag())
     }
 
     /// Playlists the user created and the ones they favourited.

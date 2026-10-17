@@ -37,11 +37,10 @@ pub fn page(ctx: &Rc<Ctx>, page: Option<(String, String)>) -> adw::NavigationPag
     let root = page.is_none();
     let (path, title) = page.unwrap_or_else(|| (EXPLORE_PATH.into(), "Explore".into()));
     let shape = if root { Shape::Chips } else { Shape::Carousels };
-    let view = Scaffold::new(ctx, &title, root, shape);
+    let (view, page) = Scaffold::new(ctx, &title, root, shape);
     if title.is_empty() {
-        view.page.set_title("Explore");
+        page.set_title("Explore");
     }
-    let page = view.page.clone();
     let state = Rc::new(EditorialPage {
         ctx: Rc::downgrade(ctx),
         path,

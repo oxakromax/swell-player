@@ -5,13 +5,13 @@
 //! and screen readers see two controls): the flat card button that opens the
 //! item, and a round play button over the cover's corner that plays it.
 
-use std::cell::RefCell;
-use std::rc::Rc;
+use std::cell::{Cell, RefCell};
+use std::rc::{Rc, Weak};
 
 use gtk::prelude::*;
 use gtk::{gdk, glib};
 
-use crate::covers::{Image, Ticket};
+use crate::covers::{CoverLoader, Image, Ticket};
 use crate::tidal::pages::{Item, Target};
 use crate::ui::context::Ctx;
 use crate::ui::menus::{self, ItemMenu, PlayMode, Subject};
@@ -64,36 +64,138 @@ fn placeholder_icon(item: &Item) -> &'static str {
     }
 }
 
-/// Loads `image` into `set` once `widget` is first mapped; the request is
-/// cancelled if the widget goes away first.
-fn load_when_mapped(
+/// CSS class of the scrolled window of a carousel: covers inside it load
+/// only when their card is near the visible part.
+pub const CAROUSEL_SCROLLER: &str = "carousel-scroller";
+
+/// The download of one image for one widget (see [`load_when_shown`]).
+struct ShownLoader {
+    covers: Weak<CoverLoader>,
+    image: Image,
+    size: i32,
+    set: Box<dyn Fn(&gdk::Texture)>,
+    loaded: Cell<bool>,
+    ticket: RefCell<Option<Ticket>>,
+    /// The carousel's scroll position, watched until the card comes near.
+    watch: RefCell<Option<(gtk::Adjustment, [glib::SignalHandlerId; 2])>>,
+}
+
+impl ShownLoader {
+    fn mapped(self: &Rc<Self>, widget: &gtk::Widget) {
+        if self.loaded.get() {
+            return;
+        }
+        let scroller = widget
+            .ancestor(gtk::ScrolledWindow::static_type())
+            .and_downcast::<gtk::ScrolledWindow>()
+            .filter(|scrolled| scrolled.has_css_class(CAROUSEL_SCROLLER));
+        let Some(scroller) = scroller else {
+            return self.request(widget);
+        };
+        let adjustment = scroller.hadjustment();
+        let check = {
+            let this = Rc::downgrade(self);
+            let widget = widget.downgrade();
+            let scroller = scroller.downgrade();
+            move |_: &gtk::Adjustment| {
+                if let (Some(this), Some(widget), Some(scroller)) =
+                    (this.upgrade(), widget.upgrade(), scroller.upgrade())
+                    && near(&widget, &scroller)
+                {
+                    this.unwatch();
+                    this.request(&widget);
+                }
+            }
+        };
+        let ids = [
+            adjustment.connect_value_changed(check.clone()),
+            adjustment.connect_changed(check.clone()),
+        ];
+        self.unwatch();
+        self.watch.replace(Some((adjustment.clone(), ids)));
+        // Already laid out (shown again): decide now.
+        check(&adjustment);
+    }
+
+    fn request(self: &Rc<Self>, widget: &gtk::Widget) {
+        if self.loaded.get() || self.ticket.borrow().is_some() {
+            return;
+        }
+        let Some(covers) = self.covers.upgrade() else {
+            return;
+        };
+        let pixels = super::device_pixels(widget, self.size);
+        let this = Rc::downgrade(self);
+        let ticket = covers.load(&self.image, pixels, 0, move |texture| {
+            if let Some(this) = this.upgrade() {
+                this.loaded.set(true);
+                (this.set)(texture);
+            }
+        });
+        if !self.loaded.get() {
+            self.ticket.replace(ticket);
+        }
+    }
+
+    /// Hidden (another page on top, or the card scrolled away with its
+    /// page): stop downloading for it; mapping it again asks again.
+    fn unmapped(&self) {
+        self.unwatch();
+        self.ticket.take();
+    }
+
+    fn unwatch(&self) {
+        if let Some((adjustment, ids)) = self.watch.take() {
+            for id in ids {
+                adjustment.disconnect(id);
+            }
+        }
+    }
+}
+
+/// Whether `widget` is within a page of the visible part of `scroller`.
+fn near(widget: &gtk::Widget, scroller: &gtk::ScrolledWindow) -> bool {
+    let page = f64::from(scroller.width());
+    if page <= 0.0 || widget.width() <= 0 {
+        return false;
+    }
+    let Some(point) = widget.compute_point(scroller, &gtk::graphene::Point::new(0.0, 0.0)) else {
+        return false;
+    };
+    let x = f64::from(point.x());
+    x + f64::from(widget.width()) >= -page && x <= 2.0 * page
+}
+
+/// Loads `image` into `set` while `widget` is mapped (inside a carousel:
+/// once its card is near the visible part). Unmapping cancels a download
+/// in progress; once loaded, the image stays.
+pub fn load_when_shown(
     ctx: &Rc<Ctx>,
     widget: &impl IsA<gtk::Widget>,
     image: Image,
     size: i32,
     set: impl Fn(&gdk::Texture) + 'static,
 ) {
-    let ticket: Rc<RefCell<Option<Ticket>>> = Rc::default();
-    let covers = Rc::downgrade(&ctx.covers);
-    let set = Rc::new(set);
-    let handler = Rc::new(RefCell::new(None::<glib::SignalHandlerId>));
-    let id = widget.connect_map({
-        let ticket = ticket.clone();
-        let handler = handler.clone();
-        move |widget| {
-            if let Some(id) = handler.borrow_mut().take() {
-                widget.disconnect(id);
-            }
-            let Some(covers) = covers.upgrade() else {
-                return;
-            };
-            let set = set.clone();
-            let pixels = super::device_pixels(widget, size);
-            ticket.replace(covers.load(&image, pixels, 0, move |texture| set(texture)));
-        }
+    let loader = Rc::new(ShownLoader {
+        covers: Rc::downgrade(&ctx.covers),
+        image,
+        size,
+        set: Box::new(set),
+        loaded: Cell::new(false),
+        ticket: RefCell::default(),
+        watch: RefCell::default(),
     });
-    handler.replace(Some(id));
-    widget.connect_destroy(move |_| drop(ticket.take()));
+    let widget = widget.upcast_ref::<gtk::Widget>();
+    // The widget's handlers own the loader; it refers to the widget weakly.
+    widget.connect_map({
+        let loader = loader.clone();
+        move |widget| loader.mapped(widget)
+    });
+    widget.connect_unmap({
+        let loader = loader.clone();
+        move |_| loader.unmapped()
+    });
+    widget.connect_destroy(move |_| loader.unmapped());
 }
 
 /// A square cover with a placeholder icon while it loads. `large` gives it
@@ -147,7 +249,7 @@ impl Cover {
         frame.add_overlay(&picture);
         if let Some(image) = image {
             let weak = picture.downgrade();
-            load_when_mapped(ctx, &frame, image, size, move |texture| {
+            load_when_shown(ctx, &frame, image, size, move |texture| {
                 if let Some(picture) = weak.upgrade() {
                     picture.set_paintable(Some(texture));
                 }
@@ -171,6 +273,32 @@ impl Cover {
         self.icon.set_pixel_size((size / 4).clamp(16, 64));
         self.picture.set_pixel_size(size);
     }
+
+    /// A handle that does not keep the cover's widgets alive (for closures
+    /// stored in them).
+    fn downgrade(&self) -> WeakCover {
+        WeakCover {
+            frame: self.frame.downgrade(),
+            icon: self.icon.downgrade(),
+            picture: self.picture.downgrade(),
+        }
+    }
+}
+
+struct WeakCover {
+    frame: glib::WeakRef<gtk::Overlay>,
+    icon: glib::WeakRef<gtk::Image>,
+    picture: glib::WeakRef<gtk::Image>,
+}
+
+impl WeakCover {
+    fn upgrade(&self) -> Option<Cover> {
+        Some(Cover {
+            frame: self.frame.upgrade()?,
+            icon: self.icon.upgrade()?,
+            picture: self.picture.upgrade()?,
+        })
+    }
 }
 
 /// A round artist picture with initials while it loads.
@@ -180,7 +308,7 @@ pub fn avatar(ctx: &Rc<Ctx>, image: Option<Image>, name: &str, size: i32) -> adw
     avatar.set_valign(gtk::Align::Start);
     if let Some(image) = image {
         let weak = avatar.downgrade();
-        load_when_mapped(ctx, &avatar, image, size, move |texture| {
+        load_when_shown(ctx, &avatar, image, size, move |texture| {
             if let Some(avatar) = weak.upgrade() {
                 avatar.set_custom_image(Some(texture));
             }
@@ -332,25 +460,14 @@ impl MediaCard {
             });
             avatar.upcast()
         } else {
-            let cover = Rc::new(Cover::new(
-                ctx,
-                item_image(item),
-                size,
-                placeholder_icon(item),
-                true,
-            ));
-            let widget = cover.widget().clone();
-            let weak = Rc::downgrade(&cover);
-            super::follow_narrow(&widget, move |narrow| {
+            let cover = Cover::new(ctx, item_image(item), size, placeholder_icon(item), true);
+            let weak = cover.downgrade();
+            super::follow_narrow(cover.widget(), move |narrow| {
                 if let Some(cover) = weak.upgrade() {
                     cover.set_size(if narrow { NARROW_CARD_SIZE } else { CARD_SIZE });
                 }
             });
-            // The cover handle lives as long as its widget.
-            widget.connect_destroy(move |_| {
-                let _ = &cover;
-            });
-            widget
+            cover.widget().clone()
         };
         content.append(&art);
         let xalign = if round { 0.5 } else { 0.0 };

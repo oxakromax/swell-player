@@ -75,11 +75,9 @@ enum Edit {
     Add(Vec<u64>),
 }
 
-enum Outcome {
-    Done,
-    /// The playlist changed under us: reload it.
-    Resync,
-}
+/// Reloads in a row because the playlist kept changing while loading,
+/// after which the page settles for what it has.
+const MAX_RELOADS: u32 = 3;
 
 /// What the list's last item shows.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -121,6 +119,13 @@ struct PlaylistPage {
     /// Edits succeeded since the last refresh of the details.
     edited: Cell<bool>,
     resync: Cell<bool>,
+    /// The ETag of the playlist version the list shows (with the edits
+    /// sent so far); edits send it so they apply to the items on screen.
+    etag: RefCell<Option<String>>,
+    /// Reloads because the playlist changed while loading, in a row.
+    reloads: Cell<u32>,
+    /// An edit found the playlist changed elsewhere: say so once reloaded.
+    changed_elsewhere: Cell<bool>,
     task: RefCell<Option<glib::JoinHandle<()>>>,
     edit_task: RefCell<Option<glib::JoinHandle<()>>>,
     listener: Cell<u64>,
@@ -175,6 +180,9 @@ pub fn page(ctx: &Rc<Ctx>, uuid: String) -> adw::NavigationPage {
         editing: Cell::new(false),
         edited: Cell::new(false),
         resync: Cell::new(false),
+        etag: RefCell::default(),
+        reloads: Cell::new(0),
+        changed_elsewhere: Cell::new(false),
         task: RefCell::default(),
         edit_task: RefCell::default(),
         listener: Cell::new(0),
@@ -319,6 +327,8 @@ impl PlaylistPage {
         } else {
             OTHERS_FRESH_FOR
         };
+        // Known again once the loader has checked the version.
+        self.etag.replace(None);
         let updates = data::load(&ctx.api, self.uuid.clone(), fresh_for);
         self.follow(updates);
     }
@@ -333,7 +343,8 @@ impl PlaylistPage {
             task.abort();
         }
         let offset = self.slots.borrow().len();
-        let updates = data::load_from(&ctx.api, self.uuid.clone(), offset);
+        let etag = self.etag.borrow().clone();
+        let updates = data::load_from(&ctx.api, self.uuid.clone(), offset, etag);
         self.follow(updates);
     }
 
@@ -374,6 +385,23 @@ impl PlaylistPage {
                 }
                 self.update_footer();
             }
+            Update::Version(etag) => {
+                self.etag.replace(etag);
+            }
+            Update::Changed => {
+                self.loading.set(false);
+                if self.reloads.get() < MAX_RELOADS {
+                    self.reloads.set(self.reloads.get() + 1);
+                    self.load();
+                } else {
+                    // Keeps changing: show what there is, edits will find
+                    // out and reload.
+                    self.etag.replace(None);
+                    self.update_footer();
+                    self.play_pending();
+                    self.loaded();
+                }
+            }
             Update::Done => {
                 log::debug!(
                     "playlist {}: {} tracks of {} items",
@@ -382,11 +410,19 @@ impl PlaylistPage {
                     self.total.get()
                 );
                 self.loading.set(false);
+                self.reloads.set(0);
                 self.update_footer();
                 self.play_pending();
+                if self.changed_elsewhere.take()
+                    && let Some(ctx) = self.ctx.upgrade()
+                {
+                    ctx.toast("The playlist changed elsewhere; refreshed");
+                }
+                self.loaded();
             }
             Update::Failed(err) => {
                 self.loading.set(false);
+                self.loaded();
                 let Some(ctx) = self.ctx.upgrade() else {
                     return;
                 };
@@ -631,9 +667,9 @@ impl PlaylistPage {
     fn enable_editing(self: &Rc<Self>) {
         self.editable.set(true);
         let weak = Rc::downgrade(self);
-        self.list.set_remove_handler(move |index| {
+        self.list.set_remove_handler(move |index, id| {
             if let Some(state) = weak.upgrade() {
-                state.remove(index);
+                state.remove(index, id);
             }
         });
         let weak = Rc::downgrade(self);
@@ -659,7 +695,7 @@ impl PlaylistPage {
                 .and_then(|focus| focused_row(&focus));
             match (removes, row, weak.upgrade()) {
                 (true, Some(row), Some(state)) => {
-                    state.remove(row.index());
+                    state.list.remove_row(&row);
                     glib::Propagation::Stop
                 }
                 _ => glib::Propagation::Proceed,
@@ -704,18 +740,29 @@ impl PlaylistPage {
         if drag.track_ids.is_empty() {
             return false;
         }
-        match drag.origin {
-            Some((_, index)) => {
-                self.list.track(index).map(|t| t.id) != drag.track_ids.first().copied()
-            }
-            None => true,
-        }
+        drag.origin.is_none_or(|(list, _)| list != self.list.id())
     }
 
-    fn remove(self: &Rc<Self>, index: usize) {
+    /// Removes the track at list index `index`, which must be track `id`.
+    fn remove(self: &Rc<Self>, index: usize, id: u64) {
         let Some(ctx) = self.ctx.upgrade() else {
             return;
         };
+        if self.list.track(index).map(|t| t.id) != Some(id) {
+            // The list and what was acted on disagree: never remove
+            // another track.
+            log::warn!(
+                "playlist {}: track {id} is not at {index}; reloading",
+                self.uuid
+            );
+            if self.editing.get() {
+                self.edited.set(true);
+                self.resync.set(true);
+            } else {
+                self.load();
+            }
+            return;
+        }
         let Some(item) = self.slots.borrow_mut().remove(index) else {
             return;
         };
@@ -786,10 +833,22 @@ impl PlaylistPage {
         }
     }
 
+    /// Loading has stopped: edits made meanwhile can be sent (they waited,
+    /// as their indices are into the version being loaded).
+    fn loaded(self: &Rc<Self>) {
+        if !self.editing.get() && !self.edits.borrow().is_empty() {
+            self.next_edit();
+        }
+    }
+
     fn next_edit(self: &Rc<Self>) {
         let Some(ctx) = self.ctx.upgrade() else {
             return;
         };
+        if self.loading.get() {
+            self.editing.set(false);
+            return;
+        }
         let Some(edit) = self.edits.borrow_mut().pop_front() else {
             self.editing.set(false);
             self.edits_done();
@@ -798,38 +857,34 @@ impl PlaylistPage {
         self.editing.set(true);
         let api = ctx.api.clone();
         let uuid = self.uuid.clone();
+        let etag = self.etag.borrow().clone();
+        let last_updated = self
+            .playlist
+            .borrow()
+            .as_ref()
+            .and_then(|p| p.last_updated.clone());
         let request = edit.clone();
         let weak = Rc::downgrade(self);
         let task = glib::spawn_future_local(async move {
             let result = runtime::spawn(async move {
-                Ok(match request {
-                    Edit::Remove { item, .. } => {
-                        api.remove_from_playlist(&uuid, &[item]).await?;
-                        Outcome::Done
-                    }
+                let etag = match etag {
+                    Some(etag) => etag,
+                    // Shown from the cache without asking TIDAL.
+                    None => data::etag_if_unchanged(&api, &uuid, last_updated.as_deref()).await?,
+                };
+                match request {
+                    Edit::Remove { item, .. } => data::remove(&api, &uuid, item, &etag).await,
                     Edit::Restore {
                         item,
                         appended_at,
                         track,
                         ..
-                    } => {
-                        if data::restore(&api, &uuid, track.id, appended_at, item).await? {
-                            Outcome::Done
-                        } else {
-                            Outcome::Resync
-                        }
-                    }
+                    } => data::restore(&api, &uuid, &etag, track.id, appended_at, item).await,
                     Edit::Move {
                         item_from, item_to, ..
-                    } => {
-                        api.move_in_playlist(&uuid, item_from, item_to).await?;
-                        Outcome::Done
-                    }
-                    Edit::Add(ids) => {
-                        api.add_to_playlist(&uuid, &ids).await?;
-                        Outcome::Done
-                    }
-                })
+                    } => data::move_item(&api, &uuid, item_from, item_to, &etag).await,
+                    Edit::Add(ids) => data::add(&api, &uuid, &ids, &etag).await,
+                }
             })
             .await;
             if let Some(state) = weak.upgrade() {
@@ -839,12 +894,14 @@ impl PlaylistPage {
         self.edit_task.replace(Some(task));
     }
 
-    fn edit_finished(self: &Rc<Self>, edit: Edit, result: anyhow::Result<Outcome>) {
+    /// `result` is the playlist's next ETag.
+    fn edit_finished(self: &Rc<Self>, edit: Edit, result: anyhow::Result<Option<String>>) {
         let Some(ctx) = self.ctx.upgrade() else {
             return;
         };
         match result {
-            Ok(Outcome::Done) => {
+            Ok(etag) => {
+                self.etag.replace(etag);
                 self.edited.set(true);
                 if let Edit::Add(ids) = &edit {
                     let title = self
@@ -867,10 +924,14 @@ impl PlaylistPage {
                     }
                 }
             }
-            Ok(Outcome::Resync) => {
+            Err(err) if data::is_changed(&err) => {
+                // Nothing was edited: what is on screen is not what TIDAL
+                // has. Start over from TIDAL and say why.
+                log::info!("playlist {} changed elsewhere", self.uuid);
+                self.edits.borrow_mut().clear();
                 self.edited.set(true);
                 self.resync.set(true);
-                self.edits.borrow_mut().clear();
+                self.changed_elsewhere.set(true);
             }
             Err(err) => {
                 let message = match edit {

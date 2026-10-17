@@ -30,7 +30,7 @@ use crate::model::TrackInfo;
 use crate::playback::Source;
 use crate::runtime;
 use crate::tidal::pages::{self, Item, More, Page, Section, SectionKind};
-use crate::tidal::{self, Base};
+use crate::tidal::{self, Base, Call};
 
 const FRESH_FOR: Duration = Duration::from_secs(60 * 60);
 /// Items per request when paging a data list.
@@ -39,7 +39,23 @@ const PAGE_SIZE: usize = 50;
 /// The first answer, whatever the kind of [`More`].
 enum Loaded {
     Section(Section),
+    /// A page of a data list, with the number of items TIDAL sent (some
+    /// may not have been understood, so `items` can have fewer).
+    Data(Section, usize),
     Page(Page),
+}
+
+/// Items TIDAL sent in a page of a data list, understood or not: offsets
+/// count these.
+fn sent_items(value: &serde_json::Value) -> usize {
+    value
+        .get("items")
+        .and_then(serde_json::Value::as_array)
+        .map_or(0, Vec::len)
+}
+
+fn parse_data(value: &serde_json::Value) -> Loaded {
+    Loaded::Data(pages::parse_paged_list(value), sent_items(value))
 }
 
 /// What the page shows once loaded.
@@ -55,8 +71,40 @@ enum Body {
 #[derive(Clone)]
 struct Pager {
     path: String,
+    /// Items TIDAL has sent so far (the next page's offset).
     offset: usize,
     total: usize,
+    /// TIDAL sent a short page: nothing follows, whatever the total says.
+    ended: bool,
+    /// The next page replaces what is shown (a page module's own items,
+    /// which may not match the data list's offsets).
+    replace: bool,
+}
+
+impl Pager {
+    /// After the first page of `path`: `sent` items of `total`.
+    fn after_first(path: String, sent: usize, total: usize) -> Self {
+        Self {
+            path,
+            offset: sent,
+            total,
+            ended: sent < PAGE_SIZE,
+            replace: false,
+        }
+    }
+
+    fn has_more(&self) -> bool {
+        !self.ended && self.offset < self.total
+    }
+
+    /// After a page of `sent` items (`PAGE_SIZE` were asked for) that says
+    /// the list has `total`.
+    fn advance(&mut self, sent: usize, total: usize) {
+        self.offset += sent;
+        self.total = self.total.max(total);
+        self.ended = sent < PAGE_SIZE;
+        self.replace = false;
+    }
 }
 
 struct MorePage {
@@ -193,7 +241,7 @@ impl MorePage {
                 Base::V1,
                 with_query(path, &format!("offset=0&limit={PAGE_SIZE}")),
                 fresh_for,
-                |value| Loaded::Section(pages::parse_paged_list(value)),
+                parse_data,
             ),
             More::ViewAll(path) => ctx.api.load_cached(
                 Base::V2,
@@ -214,13 +262,12 @@ impl MorePage {
                     return;
                 };
                 match answer {
-                    Ok(Loaded::Section(section)) => {
+                    Ok(Loaded::Section(section)) => state.show_section(section, None),
+                    Ok(Loaded::Data(section, sent)) => {
                         let pager = match &state.more {
-                            More::Data(path) => Some(Pager {
-                                path: path.clone(),
-                                offset: section.items.len(),
-                                total: section.total,
-                            }),
+                            More::Data(path) => {
+                                Some(Pager::after_first(path.clone(), sent, section.total))
+                            }
                             _ => None,
                         };
                         state.show_section(section, pager);
@@ -269,11 +316,16 @@ impl MorePage {
             .filter(|s| !s.items.is_empty())
             .collect();
         if let [section] = sections.as_slice() {
+            // The module shows its first items, but how many TIDAL sent for
+            // it is unknown here: page its list from the start, replacing
+            // them with the first page.
             let pager = match &section.more {
                 Some(More::Data(path)) if section.total > section.items.len() => Some(Pager {
                     path: path.clone(),
-                    offset: section.items.len(),
+                    offset: 0,
                     total: section.total,
+                    ended: false,
+                    replace: true,
                 }),
                 _ => None,
             };
@@ -283,7 +335,12 @@ impl MorePage {
                 section.title.clone()
             };
             self.set_title(&title);
-            return self.show_section(section.clone(), pager);
+            let paged = pager.is_some();
+            self.show_section(section.clone(), pager);
+            if paged {
+                self.load_more();
+            }
+            return;
         }
         self.set_title(&page.title);
         self.show_column(&sections);
@@ -503,10 +560,10 @@ impl MorePage {
         if self.loading_more.get() || self.more_failed.get() {
             return;
         }
-        let Some(pager) = self.pager.borrow().clone() else {
+        let Some(mut pager) = self.pager.borrow().clone() else {
             return;
         };
-        if pager.offset >= pager.total {
+        if !pager.has_more() {
             return;
         }
         let Some(ctx) = self.ctx.upgrade() else {
@@ -517,14 +574,11 @@ impl MorePage {
         let api = ctx.api.clone();
         let weak = Rc::downgrade(self);
         let task = glib::spawn_future_local(async move {
-            let Pager {
-                path,
-                offset,
-                total,
-            } = pager;
-            let answer = runtime::spawn({
-                let path = path.clone();
-                async move { api.page_data(&path, offset, PAGE_SIZE).await }
+            let (path, offset) = (pager.path.clone(), pager.offset);
+            let answer = runtime::spawn(async move {
+                let call = Call::get(Base::V1, path).page(offset, PAGE_SIZE);
+                let value: serde_json::Value = api.get(call).await?;
+                Ok((pages::parse_paged_list(&value), sent_items(&value)))
             })
             .await;
             let Some(state) = weak.upgrade() else {
@@ -533,23 +587,19 @@ impl MorePage {
             state.loading_more.set(false);
             state.more_task.take();
             match answer {
-                Ok(section) => {
+                Ok((section, sent)) => {
                     state.set_footer(None);
-                    let got = section.items.len();
-                    // An empty page ends the list whatever the total said.
-                    let total = if got == 0 {
-                        offset
+                    let replace = pager.replace;
+                    pager.advance(sent, section.total);
+                    state.pager.replace(Some(pager));
+                    if replace {
+                        state.replace_items(section.items);
                     } else {
-                        total.max(section.total)
-                    };
-                    state.pager.replace(Some(Pager {
-                        path,
-                        offset: offset + got,
-                        total,
-                    }));
-                    state.append(section.items);
+                        state.append(section.items);
+                    }
                 }
                 Err(err) => {
+                    let path = &pager.path;
                     if let Some(ctx) = state.ctx.upgrade()
                         && tidal::is_auth_error(&err)
                     {
@@ -569,6 +619,20 @@ impl MorePage {
             }
         });
         self.more_task.replace(Some(task));
+    }
+
+    fn replace_items(&self, items: Vec<Item>) {
+        if items.is_empty() {
+            return;
+        }
+        match &*self.body.borrow() {
+            Body::Tracks(list) => list.set_tracks(tracks_of(&items)),
+            Body::Grid(store) => {
+                let items: Vec<_> = items.into_iter().map(glib::BoxedAnyObject::new).collect();
+                store.splice(0, store.n_items(), &items);
+            }
+            Body::Empty | Body::Column => {}
+        }
     }
 
     fn append(&self, items: Vec<Item>) {
@@ -609,4 +673,27 @@ fn tracks_of(items: &[Item]) -> Vec<TrackInfo> {
             _ => None,
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn paging_counts_what_tidal_sent() {
+        // 50 sent (even if fewer were understood): the next page starts
+        // at 50.
+        let mut pager = Pager::after_first("list".into(), PAGE_SIZE, 120);
+        assert_eq!(pager.offset, 50);
+        assert!(pager.has_more());
+        pager.advance(PAGE_SIZE, 120);
+        assert_eq!(pager.offset, 100);
+        // A short page ends the list even if the total said more.
+        pager.advance(7, 130);
+        assert_eq!(pager.offset, 107);
+        assert!(!pager.has_more());
+        // A first page shorter than asked for is the whole list.
+        assert!(!Pager::after_first("list".into(), 12, 40).has_more());
+        assert_eq!(sent_items(&serde_json::json!({"items": [1, {}, "x"]})), 3);
+    }
 }

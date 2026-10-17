@@ -35,6 +35,8 @@ impl CarouselSection {
             .hscrollbar_policy(gtk::PolicyType::External)
             .vscrollbar_policy(gtk::PolicyType::Never)
             .child(&cards)
+            // Covers load as their cards come near (see media_card).
+            .css_classes([super::media_card::CAROUSEL_SCROLLER])
             .build();
 
         let back = gtk::Button::builder()

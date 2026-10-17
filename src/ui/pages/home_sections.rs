@@ -32,9 +32,10 @@ const MAX_WIDTH: i32 = 1600;
 const FEATURED_WIDTH: i32 = 330;
 const FEATURED_HEIGHT: i32 = 240;
 
-/// The frame of a page made of sections.
+/// The frame of a page made of sections. It is kept by the page's state,
+/// which the page owns, so it only refers to the page weakly.
 pub struct Scaffold {
-    pub page: adw::NavigationPage,
+    page: glib::WeakRef<adw::NavigationPage>,
     pub title: adw::WindowTitle,
     pub stack: Rc<PageStack>,
     pub scrolled: gtk::ScrolledWindow,
@@ -58,9 +59,14 @@ pub enum Shape {
 }
 
 impl Scaffold {
-    /// A page titled `title`. Section roots (`root`) get the "Show Sidebar"
-    /// and narrow main-menu buttons in their header bar.
-    pub fn new(ctx: &Rc<Ctx>, title: &str, root: bool, shape: Shape) -> Self {
+    /// A page titled `title`, and its frame. Section roots (`root`) get the
+    /// "Show Sidebar" and narrow main-menu buttons in their header bar.
+    pub fn new(
+        ctx: &Rc<Ctx>,
+        title: &str,
+        root: bool,
+        shape: Shape,
+    ) -> (Self, adw::NavigationPage) {
         let heading = gtk::Label::builder()
             .label(title)
             .xalign(0.0)
@@ -141,22 +147,25 @@ impl Scaffold {
             .title(title)
             .child(&toolbar)
             .build();
-        Self {
-            page,
+        let scaffold = Self {
+            page: page.downgrade(),
             title: window_title,
             stack,
             scrolled,
             heading,
             sections,
             footer,
-        }
+        };
+        (scaffold, page)
     }
 
     /// Renames the page (heading, header bar and navigation title).
     pub fn set_title(&self, title: &str) {
         self.heading.set_label(title);
         self.title.set_title(title);
-        self.page.set_title(title);
+        if let Some(page) = self.page.upgrade() {
+            page.set_title(title);
+        }
     }
 
     /// Removes every section and the footer.

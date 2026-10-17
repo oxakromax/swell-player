@@ -35,9 +35,8 @@ struct HomePage {
 }
 
 pub fn page(ctx: &Rc<Ctx>) -> adw::NavigationPage {
-    let view = Scaffold::new(ctx, "Home", true, Shape::Feed);
+    let (view, page) = Scaffold::new(ctx, "Home", true, Shape::Feed);
     view.heading.set_label(greeting());
-    let page = view.page.clone();
     let state = Rc::new(HomePage {
         ctx: Rc::downgrade(ctx),
         view,

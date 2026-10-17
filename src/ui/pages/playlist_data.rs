@@ -11,7 +11,15 @@
 //! Playlists can hold videos, which Swell does not show. [`Slots`] keeps
 //! the place of every item so the indices sent back to TIDAL (remove,
 //! move) count the hidden videos too.
+//!
+//! Edits name items by index, so they must apply to the version of the
+//! playlist the indices were computed from. TIDAL versions playlists with
+//! an ETag (sent back in `If-None-Match`; a stale one gets 412): the loader
+//! reports the ETag of the items it shows ([`Update::Version`]), every edit
+//! sends it and gets the next one back, and a refusal comes back as
+//! [`Changed`], after which the page reloads.
 
+use std::fmt;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -51,6 +59,11 @@ impl Chunk {
 /// then fresh), items, then `Done` or `Failed`.
 pub enum Update {
     Details(Box<Playlist>),
+    /// The ETag of the version of the playlist the items belong to (sent
+    /// before the items that replace what is shown).
+    Version(Option<String>),
+    /// The playlist changed while it was loading: load it again.
+    Changed,
     /// Items; `reset` replaces what is shown, otherwise they follow it.
     /// `total` counts every item of the playlist (hidden ones too).
     Items {
@@ -64,38 +77,75 @@ pub enum Update {
     Failed(anyhow::Error),
 }
 
+/// TIDAL refused an edit because the playlist is no longer the version its
+/// items were loaded from (or it changed while loading).
+#[derive(Debug)]
+pub struct Changed;
+
+impl fmt::Display for Changed {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("the playlist changed elsewhere")
+    }
+}
+
+impl std::error::Error for Changed {}
+
+/// Whether `err` is [`Changed`].
+pub fn is_changed(err: &anyhow::Error) -> bool {
+    err.downcast_ref::<Changed>().is_some()
+}
+
+/// [`Changed`] for TIDAL's "wrong ETag" (412), `err` otherwise.
+fn conflict(err: anyhow::Error) -> anyhow::Error {
+    match err.downcast_ref::<crate::tidal::Error>() {
+        Some(crate::tidal::Error::Api { status: 412, .. }) => Changed.into(),
+        _ => err,
+    }
+}
+
+fn finish(tx: &UnboundedSender<Update>, result: Result<()>) {
+    let _ = tx.send(match result {
+        Ok(()) => Update::Done,
+        Err(err) if is_changed(&err) => Update::Changed,
+        Err(err) => Update::Failed(err),
+    });
+}
+
 /// Loads a playlist: the cached copy first, then, unless it is younger
 /// than `fresh_for`, whatever changed.
 pub fn load(api: &Arc<Api>, uuid: String, fresh_for: Duration) -> UnboundedReceiver<Update> {
     let (tx, rx) = unbounded_channel();
     let api = api.clone();
     crate::runtime::runtime().spawn(async move {
-        if let Err(err) = run(&api, &uuid, fresh_for, &tx).await {
-            let _ = tx.send(Update::Failed(err));
-        }
+        let result = run(&api, &uuid, fresh_for, &tx).await;
+        finish(&tx, result);
     });
     rx
 }
 
 /// Loads items from `offset` to the end from TIDAL (resuming after a
-/// failure, or picking up tracks just added), without caching them.
-pub fn load_from(api: &Arc<Api>, uuid: String, offset: usize) -> UnboundedReceiver<Update> {
+/// failure, or picking up tracks just added), without caching them. They
+/// must belong to version `etag` of the playlist (the one shown), or
+/// [`Update::Changed`] is sent.
+pub fn load_from(
+    api: &Arc<Api>,
+    uuid: String,
+    offset: usize,
+    etag: Option<String>,
+) -> UnboundedReceiver<Update> {
     let (tx, rx) = unbounded_channel();
     let api = api.clone();
     crate::runtime::runtime().spawn(async move {
         let result = async {
-            let (first, total) = fetch_page(&api, &uuid, offset).await?;
-            fetch_rest(&api, &uuid, None, offset, first, total, true, &tx).await
+            let (value, _, version) = fetch_raw(&api, &uuid, offset).await?;
+            if etag.is_some() && version != etag {
+                return Err(Changed.into());
+            }
+            let (first, total) = parse_items(&value);
+            fetch_rest(&api, &uuid, None, version, offset, first, total, true, &tx).await
         }
         .await;
-        match result {
-            Ok(()) => {
-                let _ = tx.send(Update::Done);
-            }
-            Err(err) => {
-                let _ = tx.send(Update::Failed(err));
-            }
-        }
+        finish(&tx, result);
     });
     rx
 }
@@ -120,32 +170,88 @@ pub async fn track_at(api: &Api, uuid: &str, index: usize) -> Result<Option<u64>
         .flatten())
 }
 
+/// The ETag of the playlist if it is still at version `last_updated` (for
+/// items shown from the cache without asking TIDAL); [`Changed`] if not.
+pub async fn etag_if_unchanged(api: &Api, uuid: &str, last_updated: Option<&str>) -> Result<String> {
+    let (playlist, etag) = api.playlist(uuid).await?;
+    match etag {
+        Some(etag) if last_updated.is_some() && playlist.last_updated.as_deref() == last_updated => {
+            Ok(etag)
+        }
+        _ => Err(Changed.into()),
+    }
+}
+
+/// Removes the item at index `item` from version `etag` of the playlist;
+/// returns the next ETag.
+pub async fn remove(api: &Api, uuid: &str, item: usize, etag: &str) -> Result<Option<String>> {
+    api.remove_from_playlist(uuid, &[item], etag)
+        .await
+        .map_err(conflict)
+}
+
+/// Moves item `from` to `to` in version `etag`; returns the next ETag.
+pub async fn move_item(
+    api: &Api,
+    uuid: &str,
+    from: usize,
+    to: usize,
+    etag: &str,
+) -> Result<Option<String>> {
+    api.move_in_playlist(uuid, from, to, etag)
+        .await
+        .map_err(conflict)
+}
+
+/// Appends tracks to version `etag` (`dupes`: "ADD" or "SKIP"); returns
+/// the next ETag.
+async fn append(
+    api: &Api,
+    uuid: &str,
+    track_ids: &[u64],
+    dupes: &str,
+    etag: &str,
+) -> Result<Option<String>> {
+    let ids = track_ids
+        .iter()
+        .map(u64::to_string)
+        .collect::<Vec<_>>()
+        .join(",");
+    let call = Call::post(Base::V1, format!("playlists/{uuid}/items"))
+        .form("trackIds", ids)
+        .form("onDupes", dupes.to_owned())
+        .header("If-None-Match", etag);
+    Ok(api.write(call).await.map_err(conflict)?.etag())
+}
+
+/// Appends tracks not in the playlist yet; returns the next ETag.
+pub async fn add(api: &Api, uuid: &str, track_ids: &[u64], etag: &str) -> Result<Option<String>> {
+    append(api, uuid, track_ids, "SKIP", etag).await
+}
+
 /// Puts a removed track back at item index `to` (undo): appends it (even
 /// if the playlist has it elsewhere) and moves it there from `appended_at`.
-/// `false` if the append did not land where expected (the playlist was
-/// edited elsewhere meanwhile).
+/// Returns the next ETag; [`Changed`] if the append did not land where
+/// expected.
 pub async fn restore(
     api: &Api,
     uuid: &str,
+    etag: &str,
     track_id: u64,
     appended_at: usize,
     to: usize,
-) -> Result<bool> {
-    let (_, etag) = api.playlist(uuid).await?;
-    let mut call = Call::post(Base::V1, format!("playlists/{uuid}/items"))
-        .form("trackIds", track_id)
-        .form("onDupes", "ADD");
-    if let Some(etag) = etag {
-        call = call.header("If-None-Match", etag);
-    }
-    api.write(call).await?;
+) -> Result<Option<String>> {
+    let etag = append(api, uuid, &[track_id], "ADD", etag).await?;
     if track_at(api, uuid, appended_at).await? != Some(track_id) {
-        return Ok(false);
+        return Err(Changed.into());
     }
-    if appended_at != to {
-        api.move_in_playlist(uuid, appended_at, to).await?;
+    if appended_at == to {
+        return Ok(etag);
     }
-    Ok(true)
+    let Some(etag) = etag else {
+        return Err(Changed.into());
+    };
+    move_item(api, uuid, appended_at, to, &etag).await
 }
 
 /// Forgets the cached copy (after an edit).
@@ -228,14 +334,13 @@ async fn run(
         cached = Some(playlist);
     }
     if complete && age < fresh_for {
-        let _ = tx.send(Update::Done);
         return Ok(());
     }
 
     // 2. Revalidate: unchanged details mean unchanged items.
     let fresh = match &cached {
         Some(cached) => match fetch_details(api, uuid).await {
-            Ok((fresh, raw)) => {
+            Ok((fresh, raw, etag)) => {
                 store(api, details_key(uuid), raw).await;
                 if version(&fresh) != version(cached)
                     || fresh.title != cached.title
@@ -246,7 +351,8 @@ async fn run(
                     let _ = tx.send(Update::Details(Box::new(fresh.clone())));
                 }
                 if complete && version(&fresh) == version(cached) {
-                    let _ = tx.send(Update::Done);
+                    // The cached items are this version's.
+                    let _ = tx.send(Update::Version(etag));
                     return Ok(());
                 }
                 fresh
@@ -254,7 +360,6 @@ async fn run(
             // Offline: the cached copy is all there is.
             Err(err) if complete => {
                 log::debug!("revalidating playlist {uuid} failed: {err:#}");
-                let _ = tx.send(Update::Done);
                 return Ok(());
             }
             Err(err) => return Err(err),
@@ -262,34 +367,29 @@ async fn run(
         None => {
             // Nothing cached: details and the first page together.
             let (details, first) = tokio::join!(fetch_details(api, uuid), fetch_raw(api, uuid, 0));
-            let (fresh, raw) = details?;
+            let (fresh, raw, _) = details?;
             store(api, details_key(uuid), raw).await;
             let _ = tx.send(Update::Details(Box::new(fresh.clone())));
-            let (value, raw) = first?;
+            let (value, raw, etag) = first?;
             let (chunk, total) = parse_items(&value);
             forget_items(api, uuid).await;
             store(api, items_key(uuid, &fresh, 0), raw).await;
-            return fetch_rest(api, uuid, Some(&fresh), 0, chunk, total, true, tx)
-                .await
-                .map(|()| {
-                    let _ = tx.send(Update::Done);
-                });
+            return fetch_rest(api, uuid, Some(&fresh), etag, 0, chunk, total, true, tx).await;
         }
     };
 
     // 3. The items changed (or were not all cached): fetch them all. When
     //    a stale copy is on screen, it is replaced at once at the end.
     forget_items(api, uuid).await;
-    let (value, raw) = fetch_raw(api, uuid, 0).await?;
+    let (value, raw, etag) = fetch_raw(api, uuid, 0).await?;
     store(api, items_key(uuid, &fresh, 0), raw).await;
     let (chunk, total) = parse_items(&value);
-    fetch_rest(api, uuid, Some(&fresh), 0, chunk, total, !items_shown, tx).await?;
-    let _ = tx.send(Update::Done);
-    Ok(())
+    fetch_rest(api, uuid, Some(&fresh), etag, 0, chunk, total, !items_shown, tx).await
 }
 
-/// Sends `first` (the page at `offset`) and fetches the pages after it,
-/// `CONCURRENCY` at a time, in order. `progressive` sends each page as it
+/// Sends `first` (the page at `offset`, of version `etag`) and fetches the
+/// pages after it, `CONCURRENCY` at a time, in order; a page of another
+/// version fails with [`Changed`]. `progressive` sends each page as it
 /// comes; otherwise everything is sent at the end, replacing what is shown.
 /// With `cache_as`, pages are stored under that version.
 #[allow(clippy::too_many_arguments)]
@@ -297,6 +397,7 @@ async fn fetch_rest(
     api: &Api,
     uuid: &str,
     cache_as: Option<&Playlist>,
+    etag: Option<String>,
     offset: usize,
     first: Chunk,
     total: usize,
@@ -306,6 +407,9 @@ async fn fetch_rest(
     let first_len = first.slots.len();
     let mut all = Chunk::default();
     if progressive {
+        if offset == 0 {
+            let _ = tx.send(Update::Version(etag.clone()));
+        }
         let _ = tx.send(Update::Items {
             chunk: first,
             total,
@@ -316,6 +420,7 @@ async fn fetch_rest(
     }
     if first_len == 0 {
         if !progressive {
+            let _ = tx.send(Update::Version(etag));
             let _ = tx.send(Update::Items {
                 chunk: all,
                 total,
@@ -329,7 +434,11 @@ async fn fetch_rest(
         .map(|at| async move { (at, fetch_raw(api, uuid, at).await) })
         .buffered(CONCURRENCY);
     while let Some((at, page)) = pages.next().await {
-        let (value, raw) = page?;
+        let (value, raw, version) = page?;
+        if etag.is_some() && version != etag {
+            log::debug!("playlist {uuid} changed while loading");
+            return Err(Changed.into());
+        }
         if let Some(playlist) = cache_as {
             store(api, items_key(uuid, playlist, at), raw).await;
         }
@@ -345,6 +454,7 @@ async fn fetch_rest(
         }
     }
     if !progressive {
+        let _ = tx.send(Update::Version(etag));
         let _ = tx.send(Update::Items {
             chunk: all,
             total,
@@ -354,24 +464,25 @@ async fn fetch_rest(
     Ok(())
 }
 
-async fn fetch_details(api: &Api, uuid: &str) -> Result<(Playlist, Vec<u8>)> {
+/// The details, as sent (for the cache), and the ETag.
+async fn fetch_details(api: &Api, uuid: &str) -> Result<(Playlist, Vec<u8>, Option<String>)> {
     let response = api
         .send(&Call::get(Base::V1, format!("playlists/{uuid}")))
         .await?;
-    Ok((response.json()?, response.body.to_vec()))
+    Ok((response.json()?, response.body.to_vec(), response.etag()))
 }
 
-async fn fetch_raw(api: &Api, uuid: &str, offset: usize) -> Result<(Value, Vec<u8>)> {
+/// A page of items, as sent (for the cache), and the playlist's ETag.
+async fn fetch_raw(
+    api: &Api,
+    uuid: &str,
+    offset: usize,
+) -> Result<(Value, Vec<u8>, Option<String>)> {
     let call = Call::get(Base::V1, format!("playlists/{uuid}/items")).page(offset, PAGE);
     let response = api.send(&call).await?;
     let value = serde_json::from_slice(&response.body)
         .map_err(|err| anyhow!("TIDAL sent unreadable playlist items: {err}"))?;
-    Ok((value, response.body.to_vec()))
-}
-
-async fn fetch_page(api: &Api, uuid: &str, offset: usize) -> Result<(Chunk, usize)> {
-    let (value, _) = fetch_raw(api, uuid, offset).await?;
-    Ok(parse_items(&value))
+    Ok((value, response.body.to_vec(), response.etag()))
 }
 
 async fn store(api: &Api, key: String, data: Vec<u8>) {

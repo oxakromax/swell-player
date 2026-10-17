@@ -149,6 +149,7 @@ pub fn spoken_duration(seconds: u32) -> String {
 
 type RowCallback = Box<dyn Fn(&TrackRow, &gtk::Widget)>;
 type MoveCallback = Box<dyn Fn(usize, usize)>;
+type LocateCallback = Box<dyn Fn(&Rc<TrackEntry>, Option<u32>) -> Option<usize>>;
 
 /// State a list shares with all its rows.
 pub struct RowShared {
@@ -167,6 +168,13 @@ pub struct RowShared {
     pub on_end_button: RefCell<Option<RowCallback>>,
     /// A row was dropped at another place: `(from, to)` track indices.
     pub on_move: RefCell<Option<MoveCallback>>,
+    /// The current index of a track entry, given the model position its
+    /// row is bound to (checked first) or found by looking for it. Rows
+    /// are not bound again when tracks before them are added, removed or
+    /// moved, so an index is only ever computed when it is used.
+    pub locate: OnceCell<LocateCallback>,
+    /// The entry a drag from this list started on (for the drop).
+    pub dragging: RefCell<Option<Rc<TrackEntry>>>,
 }
 
 impl RowShared {
@@ -183,6 +191,8 @@ impl RowShared {
             paused: Cell::new(false),
             on_end_button: RefCell::default(),
             on_move: RefCell::default(),
+            locate: OnceCell::new(),
+            dragging: RefCell::default(),
         })
     }
 }
@@ -209,8 +219,6 @@ mod imp {
         pub duration: gtk::Label,
         pub end_button: gtk::Button,
         pub entry: RefCell<Option<Rc<TrackEntry>>>,
-        /// Index among the list's tracks.
-        pub index: Cell<usize>,
         pub item: RefCell<glib::WeakRef<gtk::ListItem>>,
         pub cover_ticket: RefCell<Option<Ticket>>,
         /// Byte ranges of the secondary line that link somewhere.
@@ -457,10 +465,13 @@ impl TrackRow {
             let row = weak.upgrade()?;
             let entry = row.imp().entry.borrow().clone()?;
             let shared = row.shared();
-            let origin = shared
-                .reorderable
-                .get()
-                .then(|| (shared.list_id, row.imp().index.get()));
+            let origin = if shared.reorderable.get() {
+                let index = row.index()?;
+                shared.dragging.replace(Some(entry.clone()));
+                Some((shared.list_id, index))
+            } else {
+                None
+            };
             let drag = TrackDrag {
                 track_ids: vec![entry.info.id],
                 origin,
@@ -477,6 +488,12 @@ impl TrackRow {
                 ),
                 gdk::ContentProvider::for_value(&entry.info.share_url().to_value()),
             ]))
+        });
+        let weak = self.downgrade();
+        source.connect_drag_end(move |_, _, _| {
+            if let Some(row) = weak.upgrade() {
+                row.shared().dragging.take();
+            }
         });
         self.add_controller(source);
     }
@@ -511,11 +528,18 @@ impl TrackRow {
             if !row.accepts(Some(value)) {
                 return false;
             }
-            let Some((_, from)) = value.get::<TrackDrag>().ok().and_then(|d| d.origin) else {
+            // Where the dragged track and this row are now: the list may
+            // have changed since the drag started.
+            let shared = row.shared();
+            let dragged = shared.dragging.borrow().clone();
+            let (Some(from), Some(here)) = (
+                dragged.and_then(|entry| shared.locate.get()?(&entry, None)),
+                row.index(),
+            ) else {
                 return false;
             };
             let below = y > f64::from(row.height()) / 2.0;
-            let mut to = row.imp().index.get() + usize::from(below);
+            let mut to = here + usize::from(below);
             if from < to {
                 to -= 1;
             }
@@ -548,13 +572,12 @@ impl TrackRow {
         }
     }
 
-    /// Fills the row. `index` is the track's place among the list's tracks.
-    pub fn bind(&self, entry: &Rc<TrackEntry>, index: usize, position: u32, item: &gtk::ListItem) {
+    /// Fills the row with the entry at model `position`.
+    pub fn bind(&self, entry: &Rc<TrackEntry>, position: u32, item: &gtk::ListItem) {
         let imp = self.imp();
         let shared = self.shared().clone();
         let track = &entry.info;
         imp.entry.replace(Some(entry.clone()));
-        imp.index.set(index);
         imp.item.replace(item.downgrade());
 
         imp.title.set_label(&track.title);
@@ -622,9 +645,20 @@ impl TrackRow {
         self.imp().entry.borrow().as_ref().map(|e| e.info.id)
     }
 
-    /// The track's index among the list's tracks (valid while bound).
-    pub fn index(&self) -> usize {
-        self.imp().index.get()
+    /// The track's index among the list's tracks now (`None` when the row
+    /// is not bound). Computed on every call from the position of the row's
+    /// list item, which GTK keeps current while tracks before it come and
+    /// go without binding the row again.
+    pub fn index(&self) -> Option<usize> {
+        let imp = self.imp();
+        let entry = imp.entry.borrow().clone()?;
+        let position = imp
+            .item
+            .borrow()
+            .upgrade()
+            .map(|item| item.position())
+            .filter(|&position| position != gtk::INVALID_LIST_POSITION);
+        self.shared().locate.get()?(&entry, position)
     }
 
     pub fn heart(&self) -> Option<&HeartButton> {

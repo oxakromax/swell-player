@@ -43,6 +43,7 @@ enum Entry {
 }
 
 type IndexHook = Rc<dyn Fn(usize)>;
+type RemoveHook = Rc<dyn Fn(usize, u64)>;
 type MoveHook = Rc<dyn Fn(usize, usize)>;
 
 struct Inner {
@@ -52,6 +53,9 @@ struct Inner {
     view: glib::WeakRef<gtk::ListView>,
     scrolled: glib::WeakRef<gtk::ScrolledWindow>,
     menu: RefCell<Option<Rc<ItemMenu>>>,
+    /// The track the menu was last opened for: its actions find it again
+    /// when chosen, wherever it is by then.
+    menu_entry: RefCell<Option<Rc<TrackEntry>>>,
     header: RefCell<Option<gtk::Widget>>,
     footer: RefCell<Option<gtk::Widget>>,
     /// The list item currently showing the header/footer widget, so it can
@@ -63,7 +67,7 @@ struct Inner {
     bound: RefCell<Vec<TrackRow>>,
     source: RefCell<Source>,
     on_activate: RefCell<Option<IndexHook>>,
-    on_remove: RefCell<Option<IndexHook>>,
+    on_remove: RefCell<Option<RemoveHook>>,
     on_move: RefCell<Option<MoveHook>>,
     on_near_end: RefCell<Option<Rc<dyn Fn()>>>,
     subscriptions: Cell<(u64, u64)>,
@@ -152,6 +156,7 @@ impl TrackList {
                 .map(|s| s.downgrade())
                 .unwrap_or_default(),
             menu: RefCell::default(),
+            menu_entry: RefCell::default(),
             header: RefCell::default(),
             footer: RefCell::default(),
             holders: RefCell::default(),
@@ -169,6 +174,10 @@ impl TrackList {
             subscriptions: Cell::new((0, 0)),
         });
 
+        let weak = Rc::downgrade(&inner);
+        let _ = inner.shared.locate.set(Box::new(move |entry, position| {
+            weak.upgrade()?.locate(entry, position)
+        }));
         let weak = Rc::downgrade(&inner);
         factory.connect_bind(move |_, item| {
             if let Some(inner) = weak.upgrade() {
@@ -418,16 +427,36 @@ impl TrackList {
     }
 
     /// Shows "Remove from This Playlist" in the menu (and handles the ✕ of
-    /// queue rows). Gets the track index; the list does not remove it
+    /// queue rows and Delete on own playlists). Gets the track's index as
+    /// it is when the action runs, and its id; the list does not remove it
     /// itself.
-    pub fn set_remove_handler(&self, f: impl Fn(usize) + 'static) {
-        let f: IndexHook = Rc::new(f);
+    pub fn set_remove_handler(&self, f: impl Fn(usize, u64) + 'static) {
+        let f: RemoveHook = Rc::new(f);
         self.inner.on_remove.replace(Some(f.clone()));
         if self.inner.shared.variant != Variant::Queue
             && let Some(menu) = self.menu()
         {
-            menu.set_remove_handler(move |index| f(index));
+            let weak = Rc::downgrade(&self.inner);
+            menu.set_remove_handler(move |_| {
+                if let Some((index, id)) = weak.upgrade().and_then(|inner| inner.menu_target()) {
+                    f(index, id);
+                }
+            });
         }
+    }
+
+    /// Removes the track of `row` through the remove handler (Delete on a
+    /// focused row).
+    pub fn remove_row(&self, row: &TrackRow) {
+        let hook = self.inner.on_remove.borrow().clone();
+        if let (Some(hook), Some(index), Some(id)) = (hook, row.index(), row.track_id()) {
+            hook(index, id);
+        }
+    }
+
+    /// Identifies this list in [`super::track_row::TrackDrag::origin`].
+    pub fn id(&self) -> u64 {
+        self.inner.shared.list_id
     }
 
     /// Enables reordering: drag handles, drops inside the list, Alt+↑/↓ and
@@ -449,8 +478,24 @@ impl TrackList {
             .on_move
             .replace(Some(Box::new(do_move.clone())));
         if let Some(menu) = self.menu() {
+            // The menu's indices are from when it opened: move the track it
+            // was opened for from where it is now.
             let weak = self.downgrade();
-            menu.set_move_handler(do_move, move || weak.upgrade().map_or(0, |list| list.len()));
+            let menu_move = move |from: usize, to: usize| {
+                let Some(list) = weak.upgrade() else {
+                    return;
+                };
+                let Some((now, _)) = list.inner.menu_target() else {
+                    return;
+                };
+                if let Some(to) = now.checked_add_signed(to as isize - from as isize) {
+                    list.move_and_notify(now, to);
+                }
+            };
+            let weak = self.downgrade();
+            menu.set_move_handler(menu_move, move || {
+                weak.upgrade().map_or(0, |list| list.len())
+            });
         }
         inner.relayout_rows();
     }
@@ -516,19 +561,29 @@ impl Inner {
 
     /// Track index of the model position (whatever is there).
     fn index_of(&self, position: u32) -> usize {
-        let discs = self.discs.borrow();
-        let before = discs.partition_point(|&d| d < position) as u32;
-        position.saturating_sub(self.header_offset() + before) as usize
+        index_at(&self.discs.borrow(), self.header_offset(), position)
     }
 
     fn position_of(&self, index: usize) -> u32 {
-        let mut position = index as u32 + self.header_offset();
-        for &disc in self.discs.borrow().iter() {
-            if disc <= position {
-                position += 1;
-            }
-        }
-        position
+        position_at(&self.discs.borrow(), self.header_offset(), index)
+    }
+
+    /// The current track index of `entry`: at model `position` if it is
+    /// still there, otherwise wherever it is (`None` once it is gone).
+    fn locate(&self, entry: &Rc<TrackEntry>, position: Option<u32>) -> Option<usize> {
+        locate_in(
+            &self.store,
+            &self.discs.borrow(),
+            self.header_offset(),
+            entry,
+            position,
+        )
+    }
+
+    /// Index (now) and id of the track the menu was opened for.
+    fn menu_target(&self) -> Option<(usize, u64)> {
+        let entry = self.menu_entry.borrow().clone()?;
+        Some((self.locate(&entry, None)?, entry.info.id))
     }
 
     fn set_edge(&self, edge: usize, widget: Option<gtk::Widget>) {
@@ -630,8 +685,7 @@ impl Inner {
                 item.set_activatable(true);
                 item.set_selectable(false);
                 item.set_focusable(true);
-                let position = item.position();
-                row.bind(track, self.index_of(position), position, item);
+                row.bind(track, item.position(), item);
                 self.bound.borrow_mut().push(row);
             }
         }
@@ -672,22 +726,28 @@ impl Inner {
         }
     }
 
-    fn subject(row: &TrackRow) -> Option<Subject> {
+    /// What the menu opened on `row` is about; remembers the row's track
+    /// for the menu's actions.
+    fn subject(&self, row: &TrackRow) -> Option<Subject> {
+        let entry = row.entry()?;
+        let index = row.index()?;
+        let track = entry.info.clone();
+        self.menu_entry.replace(Some(entry));
         Some(Subject::Track {
-            track: row.entry()?.info.clone(),
-            index: Some(row.index()),
+            track,
+            index: Some(index),
         })
     }
 
     fn end_button(&self, row: &TrackRow, button: &gtk::Widget) {
         if self.shared.variant == Variant::Queue {
             let hook = self.on_remove.borrow().clone();
-            if let Some(hook) = hook {
-                hook(row.index());
+            if let (Some(hook), Some(index), Some(id)) = (hook, row.index(), row.track_id()) {
+                hook(index, id);
             }
             return;
         }
-        if let (Some(menu), Some(subject)) = (self.menu.borrow().clone(), Self::subject(row)) {
+        if let (Some(menu), Some(subject)) = (self.menu.borrow().clone(), self.subject(row)) {
             menu.popup_at(subject, button);
         }
     }
@@ -709,7 +769,7 @@ impl Inner {
             let Some(view) = inner.view.upgrade() else {
                 return;
             };
-            if let Some(subject) = Self::row_at(&view, x, y).as_ref().and_then(Self::subject)
+            if let Some(subject) = Self::row_at(&view, x, y).and_then(|row| inner.subject(&row))
                 && let Some(menu) = inner.menu.borrow().clone()
             {
                 gesture.set_state(gtk::EventSequenceState::Claimed);
@@ -727,7 +787,7 @@ impl Inner {
             let Some(view) = inner.view.upgrade() else {
                 return;
             };
-            if let Some(subject) = Self::row_at(&view, x, y).as_ref().and_then(Self::subject)
+            if let Some(subject) = Self::row_at(&view, x, y).and_then(|row| inner.subject(&row))
                 && let Some(menu) = inner.menu.borrow().clone()
             {
                 gesture.set_state(gtk::EventSequenceState::Claimed);
@@ -771,7 +831,7 @@ impl Inner {
             return glib::Propagation::Proceed;
         };
         if menu_key {
-            if let (Some(menu), Some(subject)) = (self.menu.borrow().clone(), Self::subject(&row)) {
+            if let (Some(menu), Some(subject)) = (self.menu.borrow().clone(), self.subject(&row)) {
                 menu.popup_at(subject, &row);
             }
             return glib::Propagation::Stop;
@@ -779,8 +839,10 @@ impl Inner {
         if !self.shared.reorderable.get() {
             return glib::Propagation::Proceed;
         }
-        let from = row.index();
-        let Some(to) = from.checked_add_signed(move_by) else {
+        let Some(to) = row.index().and_then(|from| from.checked_add_signed(move_by)) else {
+            return glib::Propagation::Stop;
+        };
+        let Some(from) = row.index() else {
             return glib::Propagation::Stop;
         };
         if let Some(on_move) = self.shared.on_move.borrow().as_ref() {
@@ -880,6 +942,44 @@ fn row_of(widget: &gtk::Widget) -> Option<TrackRow> {
     widget.first_child().and_downcast::<TrackRow>()
 }
 
+/// Track index of model `position` in a model with `header` leading items
+/// and disc separators at `discs` (ascending).
+fn index_at(discs: &[u32], header: u32, position: u32) -> usize {
+    let before = discs.partition_point(|&d| d < position) as u32;
+    position.saturating_sub(header + before) as usize
+}
+
+/// Model position of track `index` (the inverse of [`index_at`]).
+fn position_at(discs: &[u32], header: u32, index: usize) -> u32 {
+    let mut position = index as u32 + header;
+    for &disc in discs {
+        if disc <= position {
+            position += 1;
+        }
+    }
+    position
+}
+
+/// The track index of `entry` in `store`: at `hint` if it is still there,
+/// otherwise wherever it is.
+fn locate_in(
+    store: &gio::ListStore,
+    discs: &[u32],
+    header: u32,
+    entry: &Rc<TrackEntry>,
+    hint: Option<u32>,
+) -> Option<usize> {
+    let holds = |position: u32| {
+        entry_at(store, position).is_some_and(|object| {
+            matches!(&*object.borrow::<Entry>(), Entry::Track(other) if Rc::ptr_eq(other, entry))
+        })
+    };
+    let position = hint
+        .filter(|&position| holds(position))
+        .or_else(|| (0..store.n_items()).find(|&position| holds(position)))?;
+    Some(index_at(discs, header, position))
+}
+
 fn entry_at(store: &gio::ListStore, position: u32) -> Option<glib::BoxedAnyObject> {
     store.item(position).and_downcast()
 }
@@ -911,4 +1011,55 @@ pub fn compact_bin(
     breakpoint.connect_unapply(move |_| on_change(false));
     bin.add_breakpoint(breakpoint);
     bin
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn track(id: u64) -> Rc<TrackEntry> {
+        Rc::new(TrackEntry::new(TrackInfo {
+            id,
+            ..TrackInfo::default()
+        }))
+    }
+
+    #[test]
+    fn positions_and_indices_skip_header_and_discs() {
+        // Header, Disc 1, t0, t1, Disc 2, t2.
+        let discs = [1, 4];
+        assert_eq!(index_at(&discs, 1, 2), 0);
+        assert_eq!(index_at(&discs, 1, 3), 1);
+        assert_eq!(index_at(&discs, 1, 5), 2);
+        for index in 0..3 {
+            assert_eq!(index_at(&discs, 1, position_at(&discs, 1, index)), index);
+        }
+        assert_eq!(position_at(&[], 0, 7), 7);
+    }
+
+    /// A row keeps the entry it was bound to, not an index: after tracks
+    /// before it go, its index follows (GTK does not bind it again).
+    #[test]
+    fn an_entry_is_found_where_it_is_now() {
+        let store = gio::ListStore::new::<glib::BoxedAnyObject>();
+        let entries: Vec<_> = (0..4).map(track).collect();
+        store.append(&glib::BoxedAnyObject::new(Entry::Header));
+        for entry in &entries {
+            store.append(&glib::BoxedAnyObject::new(Entry::Track(entry.clone())));
+        }
+        // Bound at position 4 (index 3).
+        assert_eq!(locate_in(&store, &[], 1, &entries[3], Some(4)), Some(3));
+        // Two tracks before it are removed: the old position now holds
+        // nothing, the old index another track.
+        store.remove(1);
+        store.remove(1);
+        assert_eq!(locate_in(&store, &[], 1, &entries[3], Some(4)), Some(1));
+        // The row's item reports the new position.
+        assert_eq!(locate_in(&store, &[], 1, &entries[3], Some(2)), Some(1));
+        // One is put back in front of it.
+        store.insert(1, &glib::BoxedAnyObject::new(Entry::Track(track(9))));
+        assert_eq!(locate_in(&store, &[], 1, &entries[3], Some(2)), Some(2));
+        // Gone.
+        assert_eq!(locate_in(&store, &[], 1, &entries[0], Some(1)), None);
+    }
 }
