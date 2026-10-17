@@ -56,6 +56,7 @@ use engine::{Engine, EngineEvent, NextStream};
 #[allow(unused_imports)] // Public API for the UI.
 pub use format::{Codec, FormatDetails};
 use queue::Queue;
+pub use queue::QueueSnapshot;
 pub use sleep::SleepTimer;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -715,6 +716,46 @@ impl Playback {
         self.queue_changed();
     }
 
+    /// The queue as it is now, for [`Self::restore_queue`] (e.g. to undo
+    /// [`Self::clear_upcoming`]).
+    pub fn snapshot_queue(&self) -> QueueSnapshot {
+        self.queue.borrow().snapshot()
+    }
+
+    /// Puts back what was upcoming in `snapshot`: the context in its play
+    /// order and the up-next list, as they were. What plays now keeps
+    /// playing. If another context was started since, the snapshot's
+    /// upcoming tracks are queued after it instead.
+    pub fn restore_queue(&self, snapshot: QueueSnapshot) {
+        // Same context: what is left of it is a prefix of the snapshot's.
+        let same_context = {
+            let played = self.queue.borrow().context_in_order();
+            played.len() <= snapshot.order.len()
+                && played
+                    .iter()
+                    .zip(snapshot.order.iter().map(|&i| snapshot.context.get(i)))
+                    .all(|(a, b)| b.is_some_and(|b| a.id == b.id))
+        };
+        if same_context {
+            self.queue.borrow_mut().restore_upcoming(snapshot);
+        } else {
+            let upcoming: Vec<TrackInfo> = snapshot
+                .up_next
+                .iter()
+                .cloned()
+                .chain(
+                    snapshot
+                        .order
+                        .iter()
+                        .skip(snapshot.next)
+                        .filter_map(|&i| snapshot.context.get(i).cloned()),
+                )
+                .collect();
+            self.queue.borrow_mut().add_to_queue(upcoming);
+        }
+        self.queue_changed();
+    }
+
     fn queue_changed(&self) {
         self.emit(Event::Queue);
         if let Some(this) = self.this() {
@@ -839,6 +880,7 @@ impl Playback {
 
     fn set_state(&self, state: PlayState) {
         if self.state.replace(state) != state {
+            log::debug!("state: {state:?}");
             self.emit(Event::State(state));
         }
     }
@@ -1257,6 +1299,16 @@ impl Playback {
 
     fn tick(self: &Rc<Self>) {
         self.check_sleep_timer();
+        // A missed engine message must not leave the UI loading while
+        // audio plays.
+        if self.state.get() == PlayState::Loading
+            && self.loaded.get()
+            && self.want_play.get()
+            && self.engine.as_ref().is_some_and(Engine::is_playing)
+        {
+            log::debug!("playing, though no engine message said so");
+            self.set_state(PlayState::Playing);
+        }
         if self.state.get() != PlayState::Playing {
             return;
         }
