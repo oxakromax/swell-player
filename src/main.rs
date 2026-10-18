@@ -33,14 +33,21 @@ fn main() -> glib::ExitCode {
     // First: before anything reads the environment or starts a thread.
     #[cfg(any(windows, target_os = "macos"))]
     bundle::setup();
+    #[cfg(windows)]
+    set_app_user_model_id();
     timing::start();
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn")).init();
     if let Some(language) = i18n::init(&settings::saved_language()) {
         // GTK's and libadwaita's own strings follow the chosen language.
-        // Safety: no other thread exists yet (GStreamer, GTK and the
-        // runtime start below), so nothing reads the environment
+        // GLib's setenv, not std's: on Windows libintl reads the C
+        // runtime's copy of the environment, which only `_wputenv` (called
+        // by GLib, beside SetEnvironmentVariableW) updates. No other thread
+        // exists yet (GStreamer, GTK and the runtime start below).
+        // Safety: with no other thread, nothing reads the environment
         // concurrently.
-        unsafe { std::env::set_var("LANGUAGE", language) };
+        if let Err(err) = unsafe { glib::setenv("LANGUAGE", language, true) } {
+            log::warn!("could not set the interface language: {err}");
+        }
     }
 
     if let Err(err) = gst::init() {
@@ -89,15 +96,94 @@ fn main() -> glib::ExitCode {
     code
 }
 
+/// Groups the running window with the shortcuts the installer made (which
+/// carry this ID) on the taskbar, so a pinned Swell doesn't show twice.
+#[cfg(windows)]
+fn set_app_user_model_id() {
+    #[link(name = "shell32")]
+    unsafe extern "system" {
+        fn SetCurrentProcessExplicitAppUserModelID(id: *const u16) -> i32;
+    }
+    let id: Vec<u16> = config::APP_ID.encode_utf16().chain([0]).collect();
+    // Safety: `id` is a NUL-terminated UTF-16 string that outlives the call,
+    // which copies it.
+    let result = unsafe { SetCurrentProcessExplicitAppUserModelID(id.as_ptr()) };
+    if result != 0 {
+        log::debug!("could not set the AppUserModelID: HRESULT {result:#x}");
+    }
+}
+
 /// Starts this program again (after the Language preference changed).
 fn relaunch() {
-    let mut command = match std::env::current_exe() {
-        Ok(exe) => std::process::Command::new(exe),
+    let exe = match std::env::current_exe() {
+        Ok(exe) => exe,
         Err(err) => return log::warn!("cannot restart: {err}"),
     };
+    #[cfg(target_os = "linux")]
+    if std::path::Path::new("/.flatpak-info").exists() {
+        if let Err(err) = relaunch_in_flatpak(&exe) {
+            log::warn!("cannot restart: {err}");
+        }
+        return;
+    }
+    let mut command = std::process::Command::new(exe);
     i18n::restore_environment(&mut command);
     if let Err(err) = command.spawn() {
         log::warn!("cannot restart: {err}");
+    }
+}
+
+/// Inside Flatpak the sandbox ends with this process, children included,
+/// so the Flatpak portal starts the new instance in a sandbox of its own.
+/// The call returns once it runs. The new sandbox gets the session's
+/// environment, not this process's, so the `LANGUAGE` set in `main` stays
+/// behind.
+#[cfg(target_os = "linux")]
+fn relaunch_in_flatpak(exe: &std::path::Path) -> Result<(), glib::Error> {
+    let cwd = std::env::current_dir().unwrap_or_else(|_| "/".into());
+    let bus = gio::bus_get_sync(gio::BusType::Session, gio::Cancellable::NONE)?;
+    bus.call_sync(
+        Some("org.freedesktop.portal.Flatpak"),
+        "/org/freedesktop/portal/Flatpak",
+        "org.freedesktop.portal.Flatpak",
+        "Spawn",
+        Some(&spawn_args(&cwd, exe)),
+        Some(glib::VariantTy::new("(u)").expect("valid type")),
+        gio::DBusCallFlags::NONE,
+        10_000,
+        gio::Cancellable::NONE,
+    )?;
+    Ok(())
+}
+
+/// The arguments of the portal's `Spawn`: working directory, argv, file
+/// descriptors, environment, flags and options.
+#[cfg(target_os = "linux")]
+fn spawn_args(cwd: &std::path::Path, exe: &std::path::Path) -> glib::Variant {
+    use std::collections::HashMap;
+    use std::os::unix::ffi::OsStrExt;
+
+    let nul_terminated = |bytes: &[u8]| [bytes, b"\0"].concat();
+    (
+        nul_terminated(cwd.as_os_str().as_bytes()),
+        vec![nul_terminated(exe.as_os_str().as_bytes())],
+        HashMap::<u32, glib::variant::Handle>::new(),
+        HashMap::<String, String>::new(),
+        0u32,
+        HashMap::<String, glib::Variant>::new(),
+    )
+        .to_variant()
+}
+
+#[cfg(all(test, target_os = "linux"))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn spawn_args_match_the_portal_signature() {
+        let args = spawn_args("/".as_ref(), "/app/bin/swell-player".as_ref());
+        assert_eq!(args.type_().as_str(), "(ayaaya{uh}a{ss}ua{sv})");
+        assert_eq!(args.child_value(1).child_value(0).data(), b"/app/bin/swell-player\0");
     }
 }
 

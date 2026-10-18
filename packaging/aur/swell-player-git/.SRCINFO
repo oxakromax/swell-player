@@ -25,6 +25,8 @@ pkgbase = swell-player-git
 	optdepends = xdg-desktop-portal: open links in the browser and keep the system awake while playing
 	provides = swell-player
 	conflicts = swell-player
+	options = !lto
+	options = !debug
 	source = swell-player::git+https://github.com/oxakromax/swell-player.git
 	sha256sums = SKIP
 

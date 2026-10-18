@@ -148,15 +148,18 @@ Download the `.dmg` from the Releases page and drag Swell to
 Applications. The app is not notarised yet, so the first time,
 right-click (or Control-click) it and choose **Open**; on macOS 15 and
 later, open it once, then allow it in **System Settings → Privacy &
-Security → Open Anyway**.
+Security → Open Anyway**. Since each release is signed ad hoc, macOS may
+ask again for access to Swell's Keychain item after an update: choose
+**Always Allow**. `tidal://` links don't open Swell on macOS yet.
 
 Windows and macOS builds are newer than the Linux one: MPRIS and the
 bit-perfect notes below are Linux-specific.
 
 ### From source
 
-You need Rust ≥ 1.88 ([rustup](https://rustup.rs) if your distribution's is
-older), GTK 4, libadwaita, GStreamer, SQLite and GLib's
+You need Rust ≥ 1.96 ([rustup](https://rustup.rs) if your distribution's is
+older), GTK ≥ 4.20 and libadwaita ≥ 1.8 (or GTK 4.18 and libadwaita 1.7 with
+`--no-default-features`), GStreamer ≥ 1.24, SQLite and GLib's
 `glib-compile-resources`.
 
 <details>
@@ -167,10 +170,12 @@ older), GTK 4, libadwaita, GStreamer, SQLite and GLib's
 sudo pacman -S --needed rust pkgconf gtk4 libadwaita sqlite \
     gstreamer gst-plugins-base gst-plugins-good
 
-# Debian / Ubuntu
-sudo apt install cargo pkg-config libgtk-4-dev libadwaita-1-dev libsqlite3-dev \
-    libglib2.0-dev-bin libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
-    gstreamer1.0-plugins-good
+# Debian 13 / Ubuntu: their rustc is too old, so install Rust with rustup,
+# and build with `make CARGOFLAGS=--no-default-features` where GTK is
+# older than 4.20 (Debian 13 ships 4.18)
+sudo apt install build-essential pkg-config libgtk-4-dev libadwaita-1-dev \
+    libsqlite3-dev libglib2.0-dev-bin libgstreamer1.0-dev \
+    libgstreamer-plugins-base1.0-dev gstreamer1.0-plugins-good
 
 # Fedora
 sudo dnf install cargo pkgconf-pkg-config gtk4-devel libadwaita-devel sqlite-devel \

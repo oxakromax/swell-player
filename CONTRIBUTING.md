@@ -11,7 +11,7 @@ the [Code of Conduct](CODE_OF_CONDUCT.md).
 ## Building
 
 Install the dependencies listed in the README's
-[From source](README.md#from-source) section (Rust ≥ 1.88, GTK 4,
+[From source](README.md#from-source) section (Rust ≥ 1.96, GTK 4,
 libadwaita, GStreamer with the base and good plugins, SQLite and
 `glib-compile-resources`), then:
 

@@ -15,15 +15,16 @@ or the equivalent `Cargo.toml` metadata:
 
 ## Requirements
 
-Build: Rust 1.88 or newer, a C compiler, `pkg-config`, `glib-compile-resources`
+Build: Rust 1.96 or newer, a C compiler, `pkg-config`, `glib-compile-resources`
 (GLib's development tools) and the development files of GTK 4, libadwaita,
 GStreamer and SQLite.
 
 Run:
 
-- **GTK ≥ 4.20 and libadwaita ≥ 1.8** with the default features (the
-  `gtk`/`adw` feature levels in `Cargo.toml` set these).
-- **GStreamer ≥ 1.22** with the *base* plugins (`playbin3`, `audioconvert`,
+- **GTK ≥ 4.20 and libadwaita ≥ 1.8** with the default features, or
+  **GTK ≥ 4.18 and libadwaita ≥ 1.7** with `--no-default-features` (the
+  `adw-1-8` feature in `Cargo.toml` decides).
+- **GStreamer ≥ 1.24** with the *base* plugins (`playbin3`, `audioconvert`,
   `volume`) and the *good* plugins (`dashdemux2` for Hi-Res DASH streams,
   FLAC, MP4 and the HTTP source). The AAC qualities (Low/High) also need an
   AAC decoder, e.g. gst-libav.
@@ -183,11 +184,11 @@ Flathub's linter may suggest a newer GNOME runtime; moving to one only needs
 Natively, on the target distribution:
 
 ```bash
-# Ubuntu 25.10+ / Debian sid
+# Debian 13+ / Ubuntu 25.10+, with Rust ≥ 1.96 from rustup
 sudo apt install build-essential pkg-config libgtk-4-dev libadwaita-1-dev \
     libgstreamer1.0-dev libsqlite3-dev libglib2.0-dev-bin
 cargo install cargo-deb
-cargo build --release --locked
+cargo build --release --locked --no-default-features
 cargo deb --no-build            # target/debian/swell-player_1.0.0-1_amd64.deb
 
 # Fedora 43+
@@ -207,14 +208,17 @@ packaging/linux/build-in-container.sh rpm     # fedora:43 by default
 ls target/packages/
 ```
 
-The `.deb` gets its library dependencies from `dpkg-shlibdeps` (which also
-yields `libadwaita-1-0 (>= 1.8)`), states `libgtk-4-1 (>= 4.20)` (GTK's
-symbols file stops at 4.12) and the GStreamer base/good plugins, and
-recommends gstreamer1.0-libav (AAC) and xdg-desktop-portal. The `.rpm` gets
-its library requirements automatically and states `gtk4 >= 4.20`,
-`libadwaita >= 1.8` and the GStreamer plugins explicitly. Keep those GTK and
-libadwaita minimums in step with the `gtk`/`adw` feature levels in
-`Cargo.toml`.
+The release `.deb` is built with `--no-default-features` on Debian 13, so it
+runs on GTK 4.18 and libadwaita 1.7: it gets its library dependencies from
+`dpkg-shlibdeps`, states `libgtk-4-1 (>= 4.18)`, `libadwaita-1-0 (>= 1.7)`
+(GTK's symbols file stops at 4.12) and the GStreamer base/good plugins, and
+recommends gstreamer1.0-libav (AAC) and xdg-desktop-portal. The `.rpm` is
+built with the default features on Fedora: it gets its library requirements
+automatically and states `gtk4 >= 4.20`, `libadwaita >= 1.8`, the GStreamer
+plugins, `libsoup3` and `glib-networking` explicitly (Fedora only
+recommends the last two, and without them there is no HTTPS source). Keep
+those GTK and libadwaita minimums in step with the feature each package is
+built with.
 
 Install with `sudo apt install ./swell-player_*.deb` or
 `sudo dnf install ./swell-player-*.rpm`, so the dependencies are pulled in.

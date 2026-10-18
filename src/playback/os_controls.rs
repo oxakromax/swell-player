@@ -111,6 +111,18 @@ impl OsControls {
     }
 }
 
+impl Drop for Inner {
+    // souvlaki leaves the controls registered when dropped: after signing
+    // out they would keep showing the last track.
+    fn drop(&mut self) {
+        if let Some(mut controls) = self.controls.get_mut().take()
+            && let Err(err) = controls.detach()
+        {
+            log::debug!("media controls: could not detach: {err}");
+        }
+    }
+}
+
 impl Inner {
     #[cfg(windows)]
     fn create_for(&self, window: &gtk::Window) {
