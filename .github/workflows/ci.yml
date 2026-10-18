@@ -1,0 +1,200 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+  RUST_BACKTRACE: "1"
+
+jobs:
+  # GitHub's Ubuntu runners ship a GTK and libadwaita older than Swell
+  # needs, so Linux jobs run in containers with current ones.
+  linux:
+    name: Linux (Arch) – fmt, clippy, test
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Install dependencies
+        run: |
+          pacman -Syu --noconfirm --needed base-devel git rust \
+            gtk4 libadwaita gstreamer gst-plugins-base gst-plugins-good sqlite
+          rustc --version && cargo --version && cargo clippy --version && cargo fmt --version
+
+      - uses: actions/checkout@v5
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: linux-arch-${{ hashFiles('Cargo.lock') }}-${{ github.sha }}
+          restore-keys: |
+            linux-arch-${{ hashFiles('Cargo.lock') }}-
+            linux-arch-
+
+      - name: rustfmt
+        run: cargo fmt --all -- --check
+
+      - name: clippy
+        run: cargo clippy --locked --all-targets -- -D warnings
+
+      - name: Tests
+        run: cargo test --locked
+
+      - name: Build
+        run: cargo build --locked
+
+  # The `adw-1-8` feature (on by default) uses libadwaita 1.8 / GTK 4.20 API;
+  # without it Swell must build against Debian 13's GTK 4.18 and adw 1.7.
+  linux-old-gtk:
+    name: Linux (Debian 13) – no default features
+    runs-on: ubuntu-latest
+    container: debian:trixie
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Install dependencies
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            build-essential ca-certificates curl git pkgconf \
+            libgtk-4-dev libadwaita-1-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
+            libglib2.0-dev-bin libsqlite3-dev
+          # Debian's rustc is older than Swell's rust-version.
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs |
+            sh -s -- -y --profile minimal --default-toolchain stable
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
+      - uses: actions/checkout@v5
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: linux-trixie-${{ hashFiles('Cargo.lock') }}-${{ github.sha }}
+          restore-keys: |
+            linux-trixie-${{ hashFiles('Cargo.lock') }}-
+            linux-trixie-
+
+      - name: Build without default features
+        run: |
+          pkg-config --modversion gtk4 libadwaita-1
+          if cargo metadata --no-deps --format-version 1 | grep -q '"adw-1-8"'; then
+            cargo build --locked --no-default-features
+          else
+            echo "::warning::Cargo.toml has no adw-1-8 feature yet; skipping the GTK 4.18 build"
+          fi
+
+  windows:
+    name: Windows (MSYS2 UCRT64) – build, test
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - name: Keep line endings as committed
+        shell: pwsh
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+          "CARGO_HOME=$env:RUNNER_TEMP\cargo-home" >> $env:GITHUB_ENV
+
+      - uses: actions/checkout@v5
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-rust
+            mingw-w64-ucrt-x86_64-cc
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-nasm
+            mingw-w64-ucrt-x86_64-pkgconf
+            mingw-w64-ucrt-x86_64-glib2
+            mingw-w64-ucrt-x86_64-gtk4
+            mingw-w64-ucrt-x86_64-libadwaita
+            mingw-w64-ucrt-x86_64-gstreamer
+            mingw-w64-ucrt-x86_64-gst-plugins-base
+            mingw-w64-ucrt-x86_64-gst-plugins-good
+            mingw-w64-ucrt-x86_64-sqlite3
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ${{ runner.temp }}/cargo-home/registry/index
+            ${{ runner.temp }}/cargo-home/registry/cache
+            ${{ runner.temp }}/cargo-home/git/db
+            target
+          key: windows-ucrt64-${{ hashFiles('Cargo.lock') }}-${{ github.sha }}
+          restore-keys: |
+            windows-ucrt64-${{ hashFiles('Cargo.lock') }}-
+            windows-ucrt64-
+
+      - name: Toolchain
+        run: |
+          rustc -vV
+          cargo --version
+          pkg-config --modversion gtk4 libadwaita-1 gstreamer-1.0
+
+      - name: Build
+        run: cargo build --locked
+
+      - name: Tests
+        run: cargo test --locked
+
+  macos:
+    name: macOS (arm64) – build, test
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install dependencies
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+          HOMEBREW_NO_INSTALL_CLEANUP: "1"
+        run: |
+          brew install gtk4 libadwaita gstreamer pkgconf
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+          rustc -vV
+          pkg-config --modversion gtk4 libadwaita-1 gstreamer-1.0
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: macos-arm64-${{ hashFiles('Cargo.lock') }}-${{ github.sha }}
+          restore-keys: |
+            macos-arm64-${{ hashFiles('Cargo.lock') }}-
+            macos-arm64-
+
+      - name: Build
+        run: cargo build --locked
+
+      - name: Tests
+        run: cargo test --locked

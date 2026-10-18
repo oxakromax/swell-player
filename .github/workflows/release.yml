@@ -1,0 +1,315 @@
+name: Release
+
+# A tag v<version> (matching Cargo.toml) builds every package and attaches
+# them to a draft GitHub Release, to be reviewed and published by hand.
+# Running it by hand (workflow_dispatch) builds the same packages as
+# workflow artifacts without making a release.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+
+jobs:
+  meta:
+    name: Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+      - id: version
+        run: |
+          version=$(packaging/release.sh version)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            packaging/release.sh check-tag "$GITHUB_REF_NAME"
+          fi
+
+  # Ubuntu 26.04 LTS: GTK 4.22, libadwaita 1.9, glibc 2.43. The tarball's
+  # binary is the .deb's, so it needs a distribution at least as new.
+  linux-deb:
+    name: Linux – tarball and .deb
+    needs: meta
+    runs-on: ubuntu-latest
+    container: ubuntu:26.04
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Install dependencies
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            build-essential ca-certificates curl git pkgconf \
+            libgtk-4-dev libadwaita-1-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
+            libglib2.0-dev-bin libsqlite3-dev
+          # Distribution compilers lag behind what the dependencies need.
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs |
+            sh -s -- -y --profile minimal --default-toolchain stable
+          export PATH="$HOME/.cargo/bin:$PATH"
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          cargo install cargo-deb --locked
+
+      - uses: actions/checkout@v5
+
+      - name: Build
+        run: packaging/release.sh build
+
+      - name: Tarball
+        run: packaging/release.sh tarball dist
+
+      - name: .deb
+        run: packaging/release.sh deb dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-deb
+          path: |
+            dist/*.tar.gz
+            dist/*.deb
+          if-no-files-found: error
+
+  linux-rpm:
+    name: Linux – .rpm
+    needs: meta
+    runs-on: ubuntu-latest
+    container: fedora:43
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Install dependencies
+        run: |
+          dnf install -y --setopt=install_weak_deps=False \
+            gcc gcc-c++ make git pkgconf-pkg-config \
+            gtk4-devel libadwaita-devel gstreamer1-devel gstreamer1-plugins-base-devel \
+            glib2-devel sqlite-devel
+          # Distribution compilers lag behind what the dependencies need.
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs |
+            sh -s -- -y --profile minimal --default-toolchain stable
+          export PATH="$HOME/.cargo/bin:$PATH"
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          cargo install cargo-generate-rpm --locked
+
+      - uses: actions/checkout@v5
+
+      - name: Build
+        run: packaging/release.sh build
+
+      - name: .rpm
+        run: packaging/release.sh rpm dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-rpm
+          path: dist/*.rpm
+          if-no-files-found: error
+
+  flatpak:
+    name: Linux – Flatpak bundle
+    needs: meta
+    runs-on: ubuntu-latest
+    container:
+      # Keep the GNOME version in step with runtime-version in the manifest.
+      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-49
+      options: --privileged
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          manifest-path: packaging/flatpak/io.github.oxakromax.SwellPlayer.yml
+          bundle: swell-player-${{ needs.meta.outputs.version }}-x86_64.flatpak
+          cache-key: flatpak-builder-${{ github.sha }}
+          upload-artifact: true
+
+  windows:
+    name: Windows – portable zip and installer
+    needs: meta
+    runs-on: windows-latest
+    env:
+      VERSION: ${{ needs.meta.outputs.version }}
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - name: Keep line endings as committed
+        shell: pwsh
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+          "CARGO_HOME=$env:RUNNER_TEMP\cargo-home" >> $env:GITHUB_ENV
+
+      - uses: actions/checkout@v5
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            zip
+            mingw-w64-ucrt-x86_64-rust
+            mingw-w64-ucrt-x86_64-cc
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-nasm
+            mingw-w64-ucrt-x86_64-pkgconf
+            mingw-w64-ucrt-x86_64-ntldd
+            mingw-w64-ucrt-x86_64-glib2
+            mingw-w64-ucrt-x86_64-glib-networking
+            mingw-w64-ucrt-x86_64-gtk4
+            mingw-w64-ucrt-x86_64-libadwaita
+            mingw-w64-ucrt-x86_64-gdk-pixbuf2
+            mingw-w64-ucrt-x86_64-librsvg
+            mingw-w64-ucrt-x86_64-adwaita-icon-theme
+            mingw-w64-ucrt-x86_64-hicolor-icon-theme
+            mingw-w64-ucrt-x86_64-gstreamer
+            mingw-w64-ucrt-x86_64-gst-plugins-base
+            mingw-w64-ucrt-x86_64-gst-plugins-good
+            mingw-w64-ucrt-x86_64-gst-plugins-bad
+            mingw-w64-ucrt-x86_64-libsoup3
+            mingw-w64-ucrt-x86_64-ca-certificates
+            mingw-w64-ucrt-x86_64-sqlite3
+
+      - name: Build
+        run: cargo build --release --locked
+
+      - name: Bundle
+        run: |
+          packaging/windows/bundle.sh --out dist/windows/Swell \
+            --zip "dist/swell-player-$VERSION-windows-x86_64-portable.zip"
+
+      - name: Installer (Inno Setup)
+        shell: pwsh
+        run: |
+          $candidates = @("${env:ProgramFiles(x86)}\Inno Setup*\ISCC.exe", "$env:ProgramFiles\Inno Setup*\ISCC.exe")
+          $iscc = Get-ChildItem $candidates -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $iscc) {
+            choco install innosetup --no-progress -y
+            $iscc = Get-ChildItem $candidates -ErrorAction SilentlyContinue | Select-Object -First 1
+          }
+          if (-not $iscc) { throw "Inno Setup (ISCC.exe) not found" }
+          & $iscc.FullName "/DAppVersion=$env:VERSION" "/DSourceDir=$PWD\dist\windows\Swell" "/DOutputDir=$PWD\dist" packaging\windows\swell.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: |
+            dist/*.zip
+            dist/*-setup.exe
+          if-no-files-found: error
+
+  macos:
+    name: macOS (${{ matrix.arch }}) – app and disk image
+    needs: meta
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-14
+            arch: arm64
+          - runner: macos-15-intel
+            arch: x86_64
+    runs-on: ${{ matrix.runner }}
+    env:
+      VERSION: ${{ needs.meta.outputs.version }}
+      HOMEBREW_NO_AUTO_UPDATE: "1"
+      HOMEBREW_NO_INSTALL_CLEANUP: "1"
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install dependencies
+        run: |
+          brew install gtk4 libadwaita gstreamer pkgconf librsvg glib-networking libsoup \
+            adwaita-icon-theme hicolor-icon-theme ca-certificates
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+
+      - name: Build
+        env:
+          # Room in the load commands for the bundle's @loader_path names.
+          RUSTFLAGS: -C link-arg=-Wl,-headerpad_max_install_names
+        run: cargo build --release --locked
+
+      - name: Bundle
+        run: |
+          packaging/macos/bundle.sh --out dist/macos \
+            --dmg "dist/swell-player-$VERSION-macos-${{ matrix.arch }}.dmg"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-${{ matrix.arch }}
+          path: dist/*.dmg
+          if-no-files-found: error
+
+  publish:
+    name: Draft release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [meta, linux-deb, linux-rpm, flatpak, windows, macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.meta.outputs.version }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Checksums
+        run: packaging/release.sh checksums dist
+
+      - name: Release notes
+        run: |
+          cat > "$RUNNER_TEMP/notes.md" <<EOF
+          Swell $VERSION
+
+          ## Downloads
+
+          | System | File |
+          |---|---|
+          | Linux (any distribution with GTK ≥ 4.20, libadwaita ≥ 1.8, GStreamer good plugins) | \`swell-player-$VERSION-linux-x86_64.tar.gz\` (run \`./install.sh\` or \`./install.sh --user\`) |
+          | Debian / Ubuntu (26.04 or newer) | \`.deb\` |
+          | Fedora (43 or newer) | \`.rpm\` |
+          | Any distribution, sandboxed | \`swell-player-$VERSION-x86_64.flatpak\` (\`flatpak install --user ./swell-player-$VERSION-x86_64.flatpak\`) |
+          | Windows 10/11 (x64) | \`…-windows-x86_64-setup.exe\` (installer) or \`…-windows-x86_64-portable.zip\` |
+          | macOS (Apple silicon / Intel) | \`…-macos-arm64.dmg\` / \`…-macos-x86_64.dmg\` |
+
+          \`SHA256SUMS\` lists the checksums of every file.
+
+          ## Unsigned builds
+
+          - **Windows**: the installer and the executable are not code-signed, so SmartScreen may say it
+            "protected your PC": choose *More info*, then *Run anyway*.
+          - **macOS**: the app is signed ad hoc, not with an Apple Developer ID, and not notarised, so
+            Gatekeeper refuses to open it the first time. Open it once, then allow it in *System Settings
+            → Privacy & Security → Open Anyway*, or run
+            \`xattr -dr com.apple.quarantine /Applications/Swell.app\`.
+
+          Swell is not affiliated with TIDAL; a paid TIDAL subscription is needed.
+          EOF
+
+      - name: Create or update the draft release
+        run: |
+          tag=$GITHUB_REF_NAME
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$tag" dist/* --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$tag" dist/* --draft --verify-tag \
+              --title "Swell $VERSION" --notes-file "$RUNNER_TEMP/notes.md" --repo "$GITHUB_REPOSITORY"
+          fi
