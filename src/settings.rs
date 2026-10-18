@@ -70,8 +70,9 @@ pub struct Settings {
     /// display name (`Audio/Sink` devices of a `gst::DeviceMonitor`);
     /// `None` follows the system default.
     pub output_device: Option<String>,
-    /// Interface language: "auto" (the system's), "en" or "es". Read at
-    /// startup only (see `i18n::init`).
+    /// Interface language: "auto" (the system's) or a code of
+    /// `i18n::languages()` ("en", "es", "pt_BR"…). Read at startup only
+    /// (see `i18n::init`).
     pub language: String,
 }
 

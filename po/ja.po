@@ -1,0 +1,16 @@
+# Japanese translation of Swell.
+# This file is distributed under the same license as Swell (GPL-3.0-or-later).
+#
+# Placeholder: only the header, so that the catalogue is embedded before
+# its translation lands; every string falls back to English.
+# "X-Swell-Partial: yes" excuses it from the every_string_is_translated
+# test (see docs/translating.md).
+msgid ""
+msgstr ""
+"Project-Id-Version: swell-player\n"
+"Language: ja\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"X-Swell-Partial: yes\n"
