@@ -48,11 +48,16 @@ command -v cargo >/dev/null ||
     sh -s -- -y --profile minimal --default-toolchain stable --no-modify-path
 cd /src
 cargo build --release --locked
+# The third-party notices both packages ship (Cargo.toml's asset lists).
+command -v cargo-about >/dev/null ||
+  cargo install cargo-about --version 0.9.2 --locked --features cli
+packaging/release.sh licenses "$CARGO_TARGET_DIR/release/THIRD-PARTY-LICENSES.txt"
 if [ "$KIND" = deb ]; then
-  command -v cargo-deb >/dev/null || cargo install cargo-deb --locked
+  command -v cargo-deb >/dev/null || cargo install cargo-deb --version 3.8.0 --locked
   cargo deb --no-build --output /dist/
 else
-  command -v cargo-generate-rpm >/dev/null || cargo install cargo-generate-rpm --locked
+  command -v cargo-generate-rpm >/dev/null ||
+    cargo install cargo-generate-rpm --version 0.21.0 --locked
   cargo generate-rpm --target-dir "$CARGO_TARGET_DIR" --output /dist/
 fi
 chown -R "$OWNER" /cache /dist

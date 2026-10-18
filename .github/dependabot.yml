@@ -1,5 +1,9 @@
 version: 2
 updates:
+  # CI fails a Cargo.lock update until packaging/flatpak/cargo-sources.json is
+  # regenerated for it (packaging/flatpak/update-cargo-sources.sh, pushed to
+  # the Dependabot branch), and when a new crate's licence is not accepted
+  # in about.toml.
   - package-ecosystem: cargo
     directory: /
     schedule:

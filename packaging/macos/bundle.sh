@@ -1,7 +1,7 @@
 #!/bin/bash
 # Builds Swell.app (and optionally a .dmg) from Homebrew's GTK stack.
 #
-#   packaging/macos/bundle.sh [--binary PATH] [--out DIR] [--dmg FILE]
+#   packaging/macos/bundle.sh [--binary PATH] [--licenses FILE] [--out DIR] [--dmg FILE]
 #
 # Layout of Swell.app/Contents:
 #
@@ -13,19 +13,28 @@
 #   PlugIns/gdk-pixbuf/loaders/  SVG (and PNG/JPEG if not built in) loaders
 #   PlugIns/gio-modules/         glib-networking's TLS backend
 #   Resources/                   Info.plist data, icon, schemas, icon themes,
-#                                CA certificates, loaders.cache template
+#                                CA certificates, loaders.cache template,
+#                                translations of GTK, libadwaita, GLib, GStreamer
+#   Resources/COPYING            Swell's licence (GPL-3.0-or-later)
+#   Resources/THIRD-PARTY-LICENSES.txt  the Rust crates in swell-player (--licenses,
+#                                made by `packaging/release.sh licenses`)
+#   Resources/BUNDLED-PACKAGES.txt      every bundled Homebrew formula: version,
+#                                licence, upstream, source; their licence files
+#                                are in Resources/licenses/<formula>/
 #
 # The app is signed ad hoc (codesign -s -), not with a Developer ID, and not
 # notarised: Gatekeeper refuses it on first open until it is allowed in
 # System Settings > Privacy & Security ("Open Anyway"), or the quarantine
 # flag is removed (xattr -dr com.apple.quarantine /Applications/Swell.app).
 #
-# Runs on the macOS bash 3.2: no associative arrays, no mapfile.
+# Runs on the macOS bash 3.2: no associative arrays, no mapfile. Needs
+# Homebrew, rsvg-convert, iconutil, jq (on GitHub's runners).
 set -euo pipefail
 
 root=$(cd "$(dirname "$0")/../.." && pwd)
 brew=$(brew --prefix)
 binary=$root/target/release/swell-player
+licenses=$root/target/release/THIRD-PARTY-LICENSES.txt
 out=$root/dist/macos
 dmg=
 app_id=io.github.oxakromax.SwellPlayer
@@ -34,6 +43,7 @@ version=$(sed -n 's/^version = "\([^"]*\)"/\1/p' "$root/Cargo.toml" | head -n 1)
 while [ $# -gt 0 ]; do
     case $1 in
         --binary) binary=$2; shift ;;
+        --licenses) licenses=$2; shift ;;
         --out) out=$2; shift ;;
         --dmg) dmg=$2; shift ;;
         *) echo "unknown option: $1" >&2; exit 2 ;;
@@ -42,6 +52,11 @@ while [ $# -gt 0 ]; do
 done
 
 [ -f "$binary" ] || { echo "$binary is missing: cargo build --release first" >&2; exit 1; }
+[ -s "$licenses" ] || {
+    echo "$licenses is missing: run 'packaging/release.sh licenses' (needs cargo-about)" >&2
+    exit 1
+}
+command -v jq >/dev/null || { echo "jq is needed (brew install jq)" >&2; exit 1; }
 
 log() { printf '==> %s\n' "$*"; }
 warn() { printf '::warning::%s\n' "$*"; }
@@ -53,6 +68,17 @@ macos=$contents/MacOS
 fw=$contents/Frameworks
 plugins=$contents/PlugIns
 res=$contents/Resources
+
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+: >"$work/files"
+# Records files copied from Homebrew, to find the formulae they come from.
+from_brew() {
+    local file
+    for file; do
+        realpath "$file" >>"$work/files" 2>/dev/null || true
+    done
+}
 
 rm -rf "$app"
 mkdir -p "$macos" "$fw" "$plugins/gstreamer-1.0" "$plugins/gdk-pixbuf/loaders" "$plugins/gio-modules" \
@@ -138,6 +164,7 @@ relink() {
         name=$(basename "$dep")
         if [ ! -e "$fw/$name" ]; then
             cp -L "$src" "$fw/$name"
+            from_brew "$src"
             chmod u+w "$fw/$name"
             int -id "@rpath/$name" "$fw/$name"
             relink "$fw/$name" "$src" ""
@@ -150,6 +177,7 @@ relink() {
 add() {
     local src=$1 dest=$2 tofw=$3
     cp -L "$src" "$dest"
+    from_brew "$src"
     relink "$dest" "$src" "$tofw"
 }
 
@@ -251,6 +279,7 @@ $found || die "no GIO TLS module (brew install glib-networking)"
 # --- Data ----------------------------------------------------------------------------------
 log "GSettings schemas"
 cp "$brew"/share/glib-2.0/schemas/org.gtk.gtk4.*.gschema.xml "$res/share/glib-2.0/schemas/"
+from_brew "$brew"/share/glib-2.0/schemas/org.gtk.gtk4.*.gschema.xml
 glib-compile-schemas "$res/share/glib-2.0/schemas"
 
 log "icon themes"
@@ -259,6 +288,7 @@ cp -RH "$brew/share/icons/Adwaita" "$res/share/icons/"
 rm -rf "$res/share/icons/Adwaita/cursors"
 mkdir -p "$res/share/icons/hicolor"
 cp "$brew/share/icons/hicolor/index.theme" "$res/share/icons/hicolor/"
+from_brew "$brew/share/icons/Adwaita/index.theme" "$brew/share/icons/hicolor/index.theme"
 for theme in Adwaita hicolor; do
     gtk4-update-icon-cache -q -t -f "$res/share/icons/$theme" || warn "could not build the $theme icon cache"
 done
@@ -275,10 +305,29 @@ done
 [ -n "$ca" ] || die "no CA bundle (brew install ca-certificates)"
 cp -L "$ca" "$res/etc/ssl/cert.pem"
 cp -L "$ca" "$res/etc/ssl/certs/ca-bundle.crt"
+from_brew "$ca"
 
 if [ -d "$brew/etc/fonts" ]; then
     cp -RL "$brew/etc/fonts" "$res/etc/"
+    # $brew/etc is outside the Cellar: name the formula.
+    from_brew "$(brew --prefix fontconfig)/lib/libfontconfig.1.dylib"
 fi
+
+log "translations"
+# The catalogues of the libraries (Swell's own are in the binary).
+find -L "$brew/share/locale" -path '*/LC_MESSAGES/*.mo' 2>/dev/null |
+    while IFS= read -r mo; do
+        case $(basename "$mo") in
+            gtk40.mo | libadwaita.mo | glib20.mo | gstreamer-1.0.mo | gst-plugins-base-1.0.mo | \
+                gst-plugins-good-1.0.mo | gst-plugins-bad-1.0.mo) ;;
+            *) continue ;;
+        esac
+        lang_dir=${mo#"$brew/share/locale/"}
+        mkdir -p "$res/share/locale/$(dirname "$lang_dir")"
+        cp -L "$mo" "$res/share/locale/$lang_dir"
+        from_brew "$mo"
+    done
+[ -f "$res/share/locale/es/LC_MESSAGES/gtk40.mo" ] || warn "GTK's Spanish translation was not found"
 
 log "icon"
 iconset=$(mktemp -d)/swell.iconset
@@ -291,7 +340,60 @@ done
 iconutil -c icns -o "$res/swell.icns" "$iconset"
 rm -rf "$(dirname "$iconset")"
 
+log "licences"
 cp "$root/COPYING" "$res/COPYING"
+cp "$licenses" "$res/THIRD-PARTY-LICENSES.txt"
+# The formulae of the files copied above (Cellar/<formula>/<version>/...).
+sed -n "s|^$(realpath "$brew")/Cellar/\([^/]*\)/\([^/]*\)/.*|\1 \2|p" "$work/files" | sort -u >"$work/formulae"
+[ -s "$work/formulae" ] || die "found no Homebrew formula for the bundled files"
+# shellcheck disable=SC2046 # formula names have no spaces
+brew info --json=v2 $(cut -d' ' -f1 "$work/formulae") >"$work/info.json"
+{
+    cat <<'EOF'
+Swell for macOS carries these libraries and programs from Homebrew
+(https://brew.sh/), relinked to load from the app but otherwise unchanged.
+Each is listed with its version, its licence and its upstream project;
+their licence files are in Contents/Resources/licenses/.
+
+Source code: Homebrew builds each formula from the upstream source given
+below, with the build steps and patches of the formula file listed with it.
+If any of these is no longer available, ask for it at
+https://github.com/oxakromax/swell-player/issues and the Swell maintainers
+will provide it, for at least three years after this release.
+
+EOF
+    while read -r formula version; do
+        jq -r --arg f "$formula" --arg v "$version" '.formulae[] | select(.name == $f) |
+            "\($f) \($v)\n" +
+            "    Licence:  \(.license // "see the licence files")\n" +
+            "    Upstream: \(.homepage)\n" +
+            "    Source:   \(.urls.stable.url // "")\n" +
+            "    Formula:  https://github.com/Homebrew/homebrew-core/blob/HEAD/\(.ruby_source_path // ("Formula/" + $f + ".rb"))\n"' \
+            "$work/info.json"
+    done <"$work/formulae"
+} >"$res/BUNDLED-PACKAGES.txt"
+# Homebrew keeps each formula's licence files at the top of its keg.
+while read -r formula version; do
+    keg=$(realpath "$brew")/Cellar/$formula/$version
+    mkdir -p "$res/licenses/$formula"
+    found=false
+    for file in "$keg"/*; do
+        [ -f "$file" ] || continue
+        case $(basename "$file" | tr '[:lower:]' '[:upper:]') in
+            COPYING* | LICENSE* | LICENCE* | NOTICE* | COPYRIGHT* | LGPL* | GPL* | MPL* | MIT*)
+                cp -L "$file" "$res/licenses/$formula/"
+                found=true
+                ;;
+        esac
+    done
+    $found || warn "$formula keeps no licence file (BUNDLED-PACKAGES.txt names its licence)"
+done <"$work/formulae"
+# The CA list (Mozilla's, MPL-2.0) and the Adwaita icons (CC-BY-SA-3.0 or
+# LGPL-3.0-or-later) are data whose formulae may not keep the text.
+mkdir -p "$res/licenses/ca-certificates" "$res/licenses/adwaita-icon-theme"
+cp "$root/packaging/licenses/MPL-2.0.txt" "$res/licenses/ca-certificates/"
+cp "$root/packaging/licenses/CC-BY-SA-3.0.txt" "$res/licenses/adwaita-icon-theme/"
+log "$(wc -l <"$work/formulae" | tr -d ' ') Homebrew formulae bundled"
 
 # --- Launcher and Info.plist ---------------------------------------------------------------
 log "launcher"

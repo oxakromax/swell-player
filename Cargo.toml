@@ -97,6 +97,8 @@ assets = [
     ["data/icons/scalable/apps/io.github.oxakromax.SwellPlayer.svg", "usr/share/icons/hicolor/scalable/apps/", "644"],
     ["data/icons/symbolic/apps/io.github.oxakromax.SwellPlayer-symbolic.svg", "usr/share/icons/hicolor/symbolic/apps/", "644"],
     ["README.md", "usr/share/doc/swell-player/", "644"],
+    # Made by `packaging/release.sh licenses` (cargo-about).
+    ["target/release/THIRD-PARTY-LICENSES.txt", "usr/share/doc/swell-player/", "644"],
 ]
 
 [package.metadata.generate-rpm]
@@ -110,6 +112,8 @@ assets = [
     { source = "data/icons/scalable/apps/io.github.oxakromax.SwellPlayer.svg", dest = "/usr/share/icons/hicolor/scalable/apps/io.github.oxakromax.SwellPlayer.svg", mode = "644" },
     { source = "data/icons/symbolic/apps/io.github.oxakromax.SwellPlayer-symbolic.svg", dest = "/usr/share/icons/hicolor/symbolic/apps/io.github.oxakromax.SwellPlayer-symbolic.svg", mode = "644" },
     { source = "COPYING", dest = "/usr/share/licenses/swell-player/COPYING", mode = "644", doc = true },
+    # Made by `packaging/release.sh licenses` (cargo-about).
+    { source = "target/release/THIRD-PARTY-LICENSES.txt", dest = "/usr/share/licenses/swell-player/THIRD-PARTY-LICENSES.txt", mode = "644", doc = true },
     { source = "README.md", dest = "/usr/share/doc/swell-player/README.md", mode = "644", doc = true },
 ]
 

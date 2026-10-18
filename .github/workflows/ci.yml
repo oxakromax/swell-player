@@ -18,6 +18,9 @@ env:
   CARGO_INCREMENTAL: "0"
   RUST_BACKTRACE: "1"
 
+# Third-party actions are pinned by commit (Dependabot keeps them current);
+# caches are keyed on Cargo.lock, so a run only saves a new one when the
+# dependencies change.
 jobs:
   # GitHub's Ubuntu runners ship a GTK and libadwaita older than Swell
   # needs, so Linux jobs run in containers with current ones.
@@ -31,11 +34,23 @@ jobs:
     steps:
       - name: Install dependencies
         run: |
-          pacman -Syu --noconfirm --needed base-devel git rust \
+          pacman -Syu --noconfirm --needed base-devel git python rust cargo-about \
             gtk4 libadwaita gstreamer gst-plugins-base gst-plugins-good sqlite
           rustc --version && cargo --version && cargo clippy --version && cargo fmt --version
 
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      # Dependabot's Cargo.lock updates do not regenerate the Flatpak's
+      # vendored crate list; this fails them until it is (no network needed).
+      - name: Flatpak crate list matches Cargo.lock
+        run: packaging/flatpak/update-cargo-sources.sh --check
+
+      # A new dependency under a licence about.toml does not accept fails
+      # here, not at release time. (Arch's cargo-about; releases pin theirs.)
+      - name: Third-party licence notices
+        run: packaging/release.sh licenses "$RUNNER_TEMP/THIRD-PARTY-LICENSES.txt"
 
       - uses: actions/cache@v4
         with:
@@ -44,9 +59,8 @@ jobs:
             ~/.cargo/registry/cache
             ~/.cargo/git/db
             target
-          key: linux-arch-${{ hashFiles('Cargo.lock') }}-${{ github.sha }}
+          key: linux-arch-${{ hashFiles('Cargo.lock') }}
           restore-keys: |
-            linux-arch-${{ hashFiles('Cargo.lock') }}-
             linux-arch-
 
       - name: rustfmt
@@ -60,6 +74,52 @@ jobs:
 
       - name: Build
         run: cargo build --locked
+
+  # The AUR package (packaging/aur/swell-player-git) built from this commit
+  # with stock makepkg, as an AUR user would: a non-root user, Arch's default
+  # makepkg.conf (OPTIONS with lto and debug unless the PKGBUILD opts out),
+  # the release profile, and check().
+  aur:
+    name: Linux (Arch) – AUR package (makepkg)
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Install dependencies
+        run: |
+          pacman -Syu --noconfirm --needed base-devel git sudo
+          useradd --create-home builder
+          # makepkg --syncdeps installs the dependencies with sudo pacman.
+          echo 'builder ALL=(root) NOPASSWD: /usr/bin/pacman' >/etc/sudoers.d/builder
+          chmod 0440 /etc/sudoers.d/builder
+
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          # pkgver() counts commits and reads the v* tags.
+          fetch-depth: 0
+
+      - name: makepkg
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          # The checked-out commit (detached on pull requests) as a branch of
+          # a local repository the build user owns, in place of GitHub's.
+          git -C "$GITHUB_WORKSPACE" branch --force aur-ci HEAD
+          work=/home/builder/aur
+          install -d -o builder -g builder "$work"
+          git clone --quiet --bare --no-local "$GITHUB_WORKSPACE" "$work/swell-player.git"
+          cp packaging/aur/swell-player-git/PKGBUILD "$work/"
+          sed -i "s|^source=.*|source=(\"\$_pkgname::git+file://$work/swell-player.git#branch=aur-ci\")|" \
+            "$work/PKGBUILD"
+          grep -n '^source=' "$work/PKGBUILD"
+          chown -R builder:builder "$work"
+          cd "$work"
+          sudo -H -u builder makepkg --syncdeps --noconfirm
+          ls -l ./*.pkg.tar.*
+          pacman -Qip ./swell-player-git-[0-9]*.pkg.tar.*
+          pacman -Qlp ./swell-player-git-[0-9]*.pkg.tar.*
 
   # The `adw-1-8` feature (on by default) uses libadwaita 1.8 / GTK 4.20 API;
   # without it Swell must build against Debian 13's GTK 4.18 and adw 1.7.
@@ -84,6 +144,8 @@ jobs:
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
 
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
       - uses: actions/cache@v4
         with:
@@ -92,9 +154,8 @@ jobs:
             ~/.cargo/registry/cache
             ~/.cargo/git/db
             target
-          key: linux-trixie-${{ hashFiles('Cargo.lock') }}-${{ github.sha }}
+          key: linux-trixie-${{ hashFiles('Cargo.lock') }}
           restore-keys: |
-            linux-trixie-${{ hashFiles('Cargo.lock') }}-
             linux-trixie-
 
       - name: Versions
@@ -110,7 +171,7 @@ jobs:
         run: cargo build --locked --no-default-features
 
   windows:
-    name: Windows (MSYS2 UCRT64) – build, test
+    name: Windows (MSYS2 UCRT64) – clippy, build, test
     runs-on: windows-latest
     defaults:
       run:
@@ -124,8 +185,10 @@ jobs:
           "CARGO_HOME=$env:RUNNER_TEMP\cargo-home" >> $env:GITHUB_ENV
 
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
-      - uses: msys2/setup-msys2@v2
+      - uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e # v2.33.0
         with:
           msystem: UCRT64
           update: true
@@ -150,16 +213,21 @@ jobs:
             ${{ runner.temp }}/cargo-home/registry/cache
             ${{ runner.temp }}/cargo-home/git/db
             target
-          key: windows-ucrt64-${{ hashFiles('Cargo.lock') }}-${{ github.sha }}
+          key: windows-ucrt64-${{ hashFiles('Cargo.lock') }}
           restore-keys: |
-            windows-ucrt64-${{ hashFiles('Cargo.lock') }}-
             windows-ucrt64-
 
       - name: Toolchain
         run: |
           rustc -vV
           cargo --version
+          cargo clippy --version
           pkg-config --modversion gtk4 libadwaita-1 gstreamer-1.0
+
+      # The Windows-only code (keyring, SMTC, gdk-win32, the bundle setup)
+      # is linted nowhere else.
+      - name: clippy
+        run: cargo clippy --locked --bins --tests -- -D warnings
 
       - name: Build
         run: cargo build --locked
@@ -168,10 +236,12 @@ jobs:
         run: cargo test --locked
 
   macos:
-    name: macOS (arm64) – build, test
+    name: macOS (arm64) – clippy, build, test
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
       - name: Install dependencies
         env:
@@ -179,9 +249,10 @@ jobs:
           HOMEBREW_NO_INSTALL_CLEANUP: "1"
         run: |
           brew install gtk4 libadwaita gstreamer pkgconf sqlite
-          rustup toolchain install stable --profile minimal
+          rustup toolchain install stable --profile minimal --component clippy
           rustup default stable
           rustc -vV
+          cargo clippy --version
           pkg-config --modversion gtk4 libadwaita-1 gstreamer-1.0
 
       - uses: actions/cache@v4
@@ -191,10 +262,14 @@ jobs:
             ~/.cargo/registry/cache
             ~/.cargo/git/db
             target
-          key: macos-arm64-${{ hashFiles('Cargo.lock') }}-${{ github.sha }}
+          key: macos-arm64-${{ hashFiles('Cargo.lock') }}
           restore-keys: |
-            macos-arm64-${{ hashFiles('Cargo.lock') }}-
             macos-arm64-
+
+      # The macOS-only code (keyring, Now Playing, the bundle setup) is
+      # linted nowhere else.
+      - name: clippy
+        run: cargo clippy --locked --bins --tests -- -D warnings
 
       - name: Build
         run: cargo build --locked
