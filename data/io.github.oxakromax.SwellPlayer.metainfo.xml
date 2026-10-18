@@ -217,7 +217,7 @@
 
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/oxakromax/swell-player/v1.0.0/docs/screenshots/home.png</image>
+      <image>https://raw.githubusercontent.com/oxakromax/swell-player/v1.1.0/docs/screenshots/home.png</image>
       <caption>Home, your personalised TIDAL feed</caption>
       <caption xml:lang="de">Startseite, Ihr personalisierter TIDAL-Feed</caption>
       <caption xml:lang="es">Inicio, tu portada personalizada de TIDAL</caption>
@@ -231,7 +231,7 @@
       <caption xml:lang="zh_TW">首頁，你的個人化 TIDAL 動態</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/oxakromax/swell-player/v1.0.0/docs/screenshots/album.png</image>
+      <image>https://raw.githubusercontent.com/oxakromax/swell-player/v1.1.0/docs/screenshots/album.png</image>
       <caption>An album page</caption>
       <caption xml:lang="de">Eine Albumseite</caption>
       <caption xml:lang="es">La página de un álbum</caption>
@@ -245,7 +245,7 @@
       <caption xml:lang="zh_TW">專輯頁面</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/oxakromax/swell-player/v1.0.0/docs/screenshots/now-playing.png</image>
+      <image>https://raw.githubusercontent.com/oxakromax/swell-player/v1.1.0/docs/screenshots/now-playing.png</image>
       <caption>Now playing, with the queue</caption>
       <caption xml:lang="de">Aktuelle Wiedergabe, mit der Warteschlange</caption>
       <caption xml:lang="es">Sonando ahora, con la cola</caption>
@@ -259,7 +259,7 @@
       <caption xml:lang="zh_TW">正在播放，附帶佇列</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/oxakromax/swell-player/v1.0.0/docs/screenshots/narrow.png</image>
+      <image>https://raw.githubusercontent.com/oxakromax/swell-player/v1.1.0/docs/screenshots/narrow.png</image>
       <caption>The narrow layout, for small windows and phones</caption>
       <caption xml:lang="de">Das schmale Layout für kleine Fenster und Smartphones</caption>
       <caption xml:lang="es">El diseño estrecho, para ventanas pequeñas y teléfonos</caption>
@@ -359,6 +359,57 @@
   </keywords>
 
   <releases>
+    <release version="1.1.0" date="2026-10-18" type="stable">
+      <url type="details">https://github.com/oxakromax/swell-player/releases/tag/v1.1.0</url>
+      <description>
+        <p>Nine more languages, instant skips and smooth transitions.</p>
+        <p xml:lang="de">Neun weitere Sprachen, sofortiges Überspringen und sanfte Übergänge.</p>
+        <p xml:lang="es">Nueve idiomas más, saltos instantáneos y transiciones suaves.</p>
+        <p xml:lang="fr">Neuf langues de plus, des sauts instantanés et des transitions douces.</p>
+        <p xml:lang="it">Nove lingue in più, salti istantanei e transizioni morbide.</p>
+        <p xml:lang="ja">9つの言語を追加、瞬時の曲送り、なめらかな切り替え。</p>
+        <p xml:lang="ko">9개 언어 추가, 즉시 곡 넘기기, 부드러운 전환.</p>
+        <p xml:lang="pt_BR">Mais nove idiomas, pulos instantâneos e transições suaves.</p>
+        <p xml:lang="ru">Ещё девять языков, мгновенное переключение треков и плавные переходы.</p>
+        <p xml:lang="zh_CN">新增九种语言，即时切歌，平滑过渡。</p>
+        <p xml:lang="zh_TW">新增九種語言，即時切換曲目，平滑轉場。</p>
+        <ul>
+          <li>The interface in French, German, Italian, Brazilian Portuguese, Russian, Japanese, Korean and Chinese</li>
+          <li xml:lang="de">Die Oberfläche auf Französisch, Deutsch, Italienisch, brasilianischem Portugiesisch, Russisch, Japanisch, Koreanisch und Chinesisch</li>
+          <li xml:lang="es">La interfaz en francés, alemán, italiano, portugués de Brasil, ruso, japonés, coreano y chino</li>
+          <li xml:lang="fr">L’interface en français, allemand, italien, portugais du Brésil, russe, japonais, coréen et chinois</li>
+          <li xml:lang="it">L’interfaccia in francese, tedesco, italiano, portoghese brasiliano, russo, giapponese, coreano e cinese</li>
+          <li xml:lang="ja">フランス語、ドイツ語、イタリア語、ブラジルポルトガル語、ロシア語、日本語、韓国語、中国語のインターフェース</li>
+          <li xml:lang="ko">프랑스어, 독일어, 이탈리아어, 브라질 포르투갈어, 러시아어, 일본어, 한국어, 중국어 인터페이스</li>
+          <li xml:lang="pt_BR">A interface em francês, alemão, italiano, português do Brasil, russo, japonês, coreano e chinês</li>
+          <li xml:lang="ru">Интерфейс на французском, немецком, итальянском, бразильском португальском, русском, японском, корейском и китайском</li>
+          <li xml:lang="zh_CN">界面支持法语、德语、意大利语、巴西葡萄牙语、俄语、日语、韩语和中文</li>
+          <li xml:lang="zh_TW">介面支援法語、德語、義大利語、巴西葡萄牙語、俄語、日語、韓語和中文</li>
+          <li>Skipping to an upcoming track starts at once: its first seconds are fetched ahead and kept on disk</li>
+          <li xml:lang="de">Der Sprung zu einem kommenden Titel startet sofort: Seine ersten Sekunden werden vorab geladen und auf der Festplatte behalten</li>
+          <li xml:lang="es">Saltar a una canción de la cola empieza al instante: sus primeros segundos se descargan antes y se guardan en disco</li>
+          <li xml:lang="fr">Passer à un titre à venir démarre aussitôt : ses premières secondes sont téléchargées à l’avance et gardées sur le disque</li>
+          <li xml:lang="it">Il salto a un brano in coda parte subito: i suoi primi secondi vengono scaricati in anticipo e conservati sul disco</li>
+          <li xml:lang="ja">次の曲へのスキップがすぐに始まります。最初の数秒を前もって読み込み、ディスクに保存します</li>
+          <li xml:lang="ko">다음 곡으로 건너뛰면 바로 재생됩니다. 처음 몇 초를 미리 받아 디스크에 보관합니다</li>
+          <li xml:lang="pt_BR">Pular para uma faixa da fila começa na hora: os primeiros segundos são baixados antes e guardados no disco</li>
+          <li xml:lang="ru">Переход к следующему треку начинается сразу: его первые секунды загружаются заранее и хранятся на диске</li>
+          <li xml:lang="zh_CN">跳到队列中的下一首会立即开始：其开头几秒会预先下载并保存在磁盘上</li>
+          <li xml:lang="zh_TW">跳到佇列中的下一首會立即開始：其開頭幾秒會預先下載並儲存在磁碟上</li>
+          <li>Short fades when pausing, seeking and skipping, and an optional crossfade</li>
+          <li xml:lang="de">Kurze Blenden beim Pausieren, Spulen und Überspringen sowie eine optionale Überblendung</li>
+          <li xml:lang="es">Fundidos breves al pausar, buscar y saltar, y un fundido encadenado opcional</li>
+          <li xml:lang="fr">De courts fondus lors de la pause, du déplacement et du saut, et un fondu enchaîné facultatif</li>
+          <li xml:lang="it">Brevi dissolvenze in pausa, spostamento e salto, e una dissolvenza incrociata facoltativa</li>
+          <li xml:lang="ja">一時停止、シーク、スキップ時の短いフェードと、オプションのクロスフェード</li>
+          <li xml:lang="ko">일시 정지, 탐색, 건너뛰기 때의 짧은 페이드와 선택형 크로스페이드</li>
+          <li xml:lang="pt_BR">Fades curtos ao pausar, mudar a posição e pular, e um crossfade opcional</li>
+          <li xml:lang="ru">Короткие затухания при паузе, перемотке и переключении, а также кроссфейд по желанию</li>
+          <li xml:lang="zh_CN">暂停、跳转进度和切歌时的短暂淡入淡出，以及可选的交叉淡化</li>
+          <li xml:lang="zh_TW">暫停、跳轉進度和切換曲目時的短暫淡入淡出，以及可選的交叉淡化</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.0" date="2026-10-18" type="stable">
       <url type="details">https://github.com/oxakromax/swell-player/releases/tag/v1.0.0</url>
       <description>
