@@ -103,10 +103,16 @@ good plugins; the packages pull these in.
 
 ### Arch Linux (AUR)
 
+The AUR package is on its way. Until then, build the same PKGBUILD from
+this repository:
+
 ```bash
-yay -S swell-player        # latest release
-yay -S swell-player-git    # development version
+git clone https://github.com/oxakromax/swell-player.git
+cd swell-player/packaging/aur/swell-player   # or swell-player-git
+makepkg -si
 ```
+
+Once it is on the AUR: `yay -S swell-player` (or `swell-player-git`).
 
 ### Flatpak
 
