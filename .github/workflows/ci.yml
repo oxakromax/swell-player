@@ -38,7 +38,7 @@ jobs:
             gtk4 libadwaita gstreamer gst-plugins-base gst-plugins-good sqlite
           rustc --version && cargo --version && cargo clippy --version && cargo fmt --version
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
@@ -52,7 +52,7 @@ jobs:
       - name: Third-party licence notices
         run: packaging/release.sh licenses "$RUNNER_TEMP/THIRD-PARTY-LICENSES.txt"
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry/index
@@ -95,7 +95,7 @@ jobs:
           echo 'builder ALL=(root) NOPASSWD: /usr/bin/pacman' >/etc/sudoers.d/builder
           chmod 0440 /etc/sudoers.d/builder
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
           # pkgver() counts commits and reads the v* tags.
@@ -143,11 +143,11 @@ jobs:
             sh -s -- -y --profile minimal --default-toolchain stable --component clippy
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry/index
@@ -184,7 +184,7 @@ jobs:
           git config --global core.eol lf
           "CARGO_HOME=$env:RUNNER_TEMP\cargo-home" >> $env:GITHUB_ENV
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
@@ -206,7 +206,7 @@ jobs:
             mingw-w64-ucrt-x86_64-gst-plugins-good
             mingw-w64-ucrt-x86_64-sqlite3
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: |
             ${{ runner.temp }}/cargo-home/registry/index
@@ -239,7 +239,7 @@ jobs:
     name: macOS (arm64) – clippy, build, test
     runs-on: macos-14
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
@@ -255,7 +255,7 @@ jobs:
           cargo clippy --version
           pkg-config --modversion gtk4 libadwaita-1 gstreamer-1.0
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry/index
