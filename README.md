@@ -1,5 +1,7 @@
 <div align="center">
 
+**English** · [Español](README.es.md) · [Français](README.fr.md) · [Deutsch](README.de.md) · [Italiano](README.it.md) · [Português (Brasil)](README.pt_BR.md) · [Русский](README.ru.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [简体中文](README.zh_CN.md) · [繁體中文](README.zh_TW.md)
+
 <img src="data/icons/scalable/apps/io.github.oxakromax.SwellPlayer.svg" width="112" alt="">
 
 # Swell
@@ -80,7 +82,8 @@ desktops, using a fraction of the memory of other clients
   and narrow with a bottom sheet and mini player.
 - Full keyboard control (Space, Ctrl+←/→, Ctrl+F, Ctrl+L, F6…; Ctrl+? lists
   every shortcut) and accessible names on every control.
-- English and Spanish.
+- In English, Spanish, French, German, Italian, Brazilian Portuguese,
+  Russian, Japanese, Korean and Chinese (Simplified and Traditional).
 
 ## Screenshots
 
@@ -240,11 +243,13 @@ what reaches the device.
 
 ## Languages
 
-Swell speaks **English** and **Spanish**. It follows the system language
-automatically (`LANGUAGE`, `LC_ALL`, `LC_MESSAGES`, `LANG`, like gettext),
-and you can override it in **Preferences**. TIDAL's own content (editorial
-texts, page titles) is requested in the same language, so a screen never
-mixes two.
+Swell speaks **English**, **Spanish**, **French**, **German**,
+**Italian**, **Brazilian Portuguese**, **Russian**, **Japanese**,
+**Korean** and **Chinese** (Simplified and Traditional). It follows the
+system language automatically (`LANGUAGE`, `LC_ALL`, `LC_MESSAGES`,
+`LANG`, like gettext), and you can override it in **Preferences**.
+TIDAL's own content (editorial texts, page titles) is requested in the
+same language, so a screen never mixes two.
 
 Want Swell in your language? See [docs/translating.md](docs/translating.md).
 
