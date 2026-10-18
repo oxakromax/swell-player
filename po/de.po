@@ -323,7 +323,7 @@ msgstr "Lautstärke-Normalisierung"
 msgid "Album"
 msgstr "Album"
 
-#: src/ui/dialogs/preferences.rs:82 src/ui/dialogs/preferences.rs:132
+#: src/ui/dialogs/preferences.rs:82 src/ui/dialogs/preferences.rs:131
 #: src/ui/widgets/np_common.rs:610 src/ui/widgets/np_common.rs:801
 msgid "Off"
 msgstr "Aus"
@@ -356,83 +356,81 @@ msgstr "Kurze Blenden beim Pausieren, Spulen und Überspringen"
 msgid "Playback"
 msgstr "Wiedergabe"
 
-#: src/ui/dialogs/preferences.rs:130
+#: src/ui/dialogs/preferences.rs:129
 msgid "{n} s"
 msgstr "{n} s"
 
-#: src/ui/dialogs/preferences.rs:136
+#: src/ui/dialogs/preferences.rs:135
 msgid "Crossfade"
 msgstr "Überblendung"
 
-#: src/ui/dialogs/preferences.rs:144
-msgid "Not available while the output is bit-perfect: turn on Volume Normalisation"
-msgstr "Nicht verfügbar, solange die Ausgabe bit-perfect ist: Schalten Sie die Lautstärke-Normalisierung ein"
+#: src/ui/dialogs/preferences.rs:137
+msgid ""
+"Overlapping tracks are mixed, so those seconds are not bit-perfect; "
+"consecutive album tracks stay gapless"
+msgstr "Sich überlappende Titel werden gemischt, diese Sekunden sind also nicht bit-perfect; aufeinanderfolgende Albumtitel bleiben lückenlos"
 
-#: src/ui/dialogs/preferences.rs:146
-msgid "When a track ends by itself; consecutive album tracks stay gapless"
-msgstr "Wenn ein Titel von selbst endet; aufeinanderfolgende Albumtitel bleiben lückenlos"
-
-#: src/ui/dialogs/preferences.rs:159
+#: src/ui/dialogs/preferences.rs:147
 msgid "System Default"
 msgstr "Systemstandard"
 
-#: src/ui/dialogs/preferences.rs:161
+#: src/ui/dialogs/preferences.rs:149
 msgid "Output Device"
 msgstr "Ausgabegerät"
 
-#: src/ui/dialogs/preferences.rs:199 src/ui/widgets/np_common.rs:483
+#: src/ui/dialogs/preferences.rs:187 src/ui/widgets/np_common.rs:483
 msgid "Output"
 msgstr "Ausgabe"
 
-#: src/ui/dialogs/preferences.rs:230
+#: src/ui/dialogs/preferences.rs:218
 msgid "Behaviour"
 msgstr "Verhalten"
 
-#: src/ui/dialogs/preferences.rs:234
+#: src/ui/dialogs/preferences.rs:222
 msgid "Run in Background"
 msgstr "Im Hintergrund ausführen"
 
-#: src/ui/dialogs/preferences.rs:235
+#: src/ui/dialogs/preferences.rs:223
 msgid "Keep playing when the window is closed"
 msgstr "Wiedergabe fortsetzen, wenn das Fenster geschlossen wird"
 
-#: src/ui/dialogs/preferences.rs:241
+#: src/ui/dialogs/preferences.rs:229
 msgid "Track Change Notifications"
 msgstr "Benachrichtigung bei Titelwechsel"
 
-#: src/ui/dialogs/preferences.rs:242
+#: src/ui/dialogs/preferences.rs:230
 msgid "When the window is not focused"
 msgstr "Wenn das Fenster nicht im Fokus ist"
 
-#: src/ui/dialogs/preferences.rs:248
+#: src/ui/dialogs/preferences.rs:236
 msgid "Restore Queue on Start"
 msgstr "Warteschlange beim Start wiederherstellen"
 
-#: src/ui/dialogs/preferences.rs:256 src/ui/shortcuts.rs:26
+#: src/ui/dialogs/preferences.rs:244 src/ui/shortcuts.rs:26
 msgid "General"
 msgstr "Allgemein"
 
-#: src/ui/dialogs/preferences.rs:269
+#: src/ui/dialogs/preferences.rs:257
 msgid "Automatic"
 msgstr "Automatisch"
 
-#: src/ui/dialogs/preferences.rs:274
+#: src/ui/dialogs/preferences.rs:262
 msgid "Language"
 msgstr "Sprache"
 
-#: src/ui/dialogs/preferences.rs:296
+#: src/ui/dialogs/preferences.rs:284
 msgid "Restart Swell to change the language"
 msgstr "Starten Sie Swell neu, um die Sprache zu ändern"
 
-#: src/ui/dialogs/preferences.rs:297
+#: src/ui/dialogs/preferences.rs:285
 msgid "Restart"
 msgstr "Neu starten"
 
-#: src/ui/dialogs/preferences.rs:322
+#: src/ui/dialogs/preferences.rs:310
 msgid "Storage"
 msgstr "Speicher"
 
-#: src/ui/dialogs/preferences.rs:323
+#: src/ui/dialogs/preferences.rs:311
 msgid ""
 "Downloaded artwork and saved answers from TIDAL, so pages open instantly and "
 "work offline."
@@ -440,113 +438,113 @@ msgstr ""
 "Heruntergeladene Cover und gespeicherte Antworten von TIDAL, damit Seiten "
 "sofort öffnen und offline funktionieren."
 
-#: src/ui/dialogs/preferences.rs:328
+#: src/ui/dialogs/preferences.rs:316
 msgid "Cover Cache"
 msgstr "Cover-Cache"
 
-#: src/ui/dialogs/preferences.rs:329
+#: src/ui/dialogs/preferences.rs:317
 msgid "Clear the Cover Cache?"
 msgstr "Cover-Cache leeren?"
 
-#: src/ui/dialogs/preferences.rs:330
+#: src/ui/dialogs/preferences.rs:318
 msgid "Artwork is downloaded again as you browse."
 msgstr "Cover werden beim Stöbern erneut heruntergeladen."
 
-#: src/ui/dialogs/preferences.rs:331
+#: src/ui/dialogs/preferences.rs:319
 msgid "Cover Cache cleared"
 msgstr "Cover-Cache geleert"
 
-#: src/ui/dialogs/preferences.rs:332
+#: src/ui/dialogs/preferences.rs:320
 msgid "Couldn’t clear the Cover Cache"
 msgstr "Der Cover-Cache konnte nicht geleert werden"
 
-#: src/ui/dialogs/preferences.rs:353
+#: src/ui/dialogs/preferences.rs:341
 msgid "Library Cache"
 msgstr "Bibliotheks-Cache"
 
-#: src/ui/dialogs/preferences.rs:354
+#: src/ui/dialogs/preferences.rs:342
 msgid "Clear the Library Cache?"
 msgstr "Bibliotheks-Cache leeren?"
 
-#: src/ui/dialogs/preferences.rs:355
+#: src/ui/dialogs/preferences.rs:343
 msgid "Pages are loaded again from TIDAL. Your collection is not affected."
 msgstr ""
 "Seiten werden erneut von TIDAL geladen. Ihre Sammlung bleibt unberührt."
 
-#: src/ui/dialogs/preferences.rs:356
+#: src/ui/dialogs/preferences.rs:344
 msgid "Library Cache cleared"
 msgstr "Bibliotheks-Cache geleert"
 
-#: src/ui/dialogs/preferences.rs:357
+#: src/ui/dialogs/preferences.rs:345
 msgid "Couldn’t clear the Library Cache"
 msgstr "Der Bibliotheks-Cache konnte nicht geleert werden"
 
-#: src/ui/dialogs/preferences.rs:411
+#: src/ui/dialogs/preferences.rs:399
 msgid "Calculating…"
 msgstr "Wird berechnet …"
 
-#: src/ui/dialogs/preferences.rs:414 src/ui/dialogs/preferences.rs:460
+#: src/ui/dialogs/preferences.rs:402 src/ui/dialogs/preferences.rs:448
 msgid "_Clear"
 msgstr "_Leeren"
 
-#: src/ui/dialogs/preferences.rs:460 src/ui/window.rs:413
+#: src/ui/dialogs/preferences.rs:448 src/ui/window.rs:413
 msgid "_Cancel"
 msgstr "_Abbrechen"
 
-#: src/ui/dialogs/preferences.rs:515
+#: src/ui/dialogs/preferences.rs:503
 msgid "Blocked Artists"
 msgstr "Gesperrte Künstler"
 
-#: src/ui/dialogs/preferences.rs:516
+#: src/ui/dialogs/preferences.rs:504
 msgid "Loading…"
 msgstr "Wird geladen …"
 
-#: src/ui/dialogs/preferences.rs:532
+#: src/ui/dialogs/preferences.rs:520
 msgid "Couldn’t load blocked artists."
 msgstr "Gesperrte Künstler konnten nicht geladen werden."
 
-#: src/ui/dialogs/preferences.rs:537
+#: src/ui/dialogs/preferences.rs:525
 msgid "Nothing blocked. Blocked artists are skipped in radios and mixes."
 msgstr ""
 "Nichts gesperrt. Gesperrte Künstler werden in Radios und Mixen übersprungen."
 
-#: src/ui/dialogs/preferences.rs:539
+#: src/ui/dialogs/preferences.rs:527
 msgid "Skipped in radios and mixes."
 msgstr "In Radios und Mixen übersprungen."
 
-#: src/ui/dialogs/preferences.rs:548
+#: src/ui/dialogs/preferences.rs:536
 msgid "Unblock"
 msgstr "Entsperren"
 
-#: src/ui/dialogs/preferences.rs:581 src/ui/menus.rs:870
+#: src/ui/dialogs/preferences.rs:569 src/ui/menus.rs:870
 msgid "Unblocked {name}"
 msgstr "{name} entsperrt"
 
-#: src/ui/dialogs/preferences.rs:591
+#: src/ui/dialogs/preferences.rs:579
 msgid "Couldn’t unblock the artist"
 msgstr "Der Künstler konnte nicht entsperrt werden"
 
-#: src/ui/dialogs/preferences.rs:606
+#: src/ui/dialogs/preferences.rs:594
 msgid "Signed in with the browser"
 msgstr "Über den Browser angemeldet"
 
-#: src/ui/dialogs/preferences.rs:607
+#: src/ui/dialogs/preferences.rs:595
 msgid "Up to Hi-Res Lossless"
 msgstr "Bis zu Hi-Res Lossless"
 
-#: src/ui/dialogs/preferences.rs:610
+#: src/ui/dialogs/preferences.rs:598
 msgid "Signed in with a device code"
 msgstr "Mit einem Gerätecode angemeldet"
 
-#: src/ui/dialogs/preferences.rs:611
+#: src/ui/dialogs/preferences.rs:599
 msgid "Up to Lossless (16-bit/44.1 kHz)"
 msgstr "Bis zu Lossless (16 Bit/44,1 kHz)"
 
-#: src/ui/dialogs/preferences.rs:639
+#: src/ui/dialogs/preferences.rs:627
 msgid "Sign _Out…"
 msgstr "_Abmelden …"
 
-#: src/ui/dialogs/preferences.rs:660
+#: src/ui/dialogs/preferences.rs:648
 msgid "Account"
 msgstr "Konto"
 
@@ -2218,3 +2216,15 @@ msgstr "Ihre Bibliothek konnte nicht geladen werden"
 #: src/ui/window.rs:770
 msgid "Couldn't open the track"
 msgstr "Der Titel konnte nicht geöffnet werden"
+
+#~ msgid ""
+#~ "Not available while the output is bit-perfect: turn on Volume "
+#~ "Normalisation"
+#~ msgstr ""
+#~ "Nicht verfügbar, solange die Ausgabe bit-perfect ist: Schalten Sie die "
+#~ "Lautstärke-Normalisierung ein"
+
+#~ msgid "When a track ends by itself; consecutive album tracks stay gapless"
+#~ msgstr ""
+#~ "Wenn ein Titel von selbst endet; aufeinanderfolgende Albumtitel bleiben "
+#~ "lückenlos"

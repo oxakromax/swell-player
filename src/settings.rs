@@ -48,8 +48,9 @@ pub struct Settings {
     pub normalization: Normalization,
     pub gapless: bool,
     /// Crossfade between tracks that end by themselves, in seconds (0: off,
-    /// up to 12). Never while the output is bit-perfect, nor between
-    /// consecutive tracks of an album (see `playback/transition.rs`).
+    /// up to 12). Its own opt-in, whatever the normalisation (the overlap
+    /// is mixed, so not bit-perfect); never between consecutive tracks of
+    /// an album (see `playback/transition.rs`).
     pub crossfade_secs: u32,
     /// Short fades when pausing, seeking or changing track by hand, so the
     /// sound never stops with a click.

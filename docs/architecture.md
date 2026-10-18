@@ -80,9 +80,10 @@ embedded, so it runs from anywhere without being installed.
   track keeps its own format and the sound server mixes during the
   overlap.
 - **Crossfade** (Preferences → Playback, Off or 1–12 s, default Off) only
-  for tracks that end by themselves, never while the output is
-  bit-perfect (normalisation off), and never between consecutive tracks
-  of the same album (next track number, or first track of the next disc;
+  for tracks that end by themselves, whatever the normalisation (the
+  setting is the opt-in; the overlap is mixed, so those seconds are not
+  bit-perfect, and the rest of each track is), and never between
+  consecutive tracks of the same album (next track number, or first track of the next disc;
   same album with unknown numbers counts as consecutive), which stay
   gapless. At most a third of either track. Rules in
   `src/playback/transition.rs`.

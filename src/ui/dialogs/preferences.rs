@@ -101,7 +101,7 @@ fn playback_page(ctx: &Rc<Ctx>) -> adw::PreferencesPage {
         .build();
     processing.add(&normalization);
     processing.add(&gapless);
-    processing.add(&crossfade_row(ctx, &normalization));
+    processing.add(&crossfade_row(ctx));
     processing.add(&switch_row(
         ctx,
         tr("Smooth Transitions"),
@@ -121,10 +121,9 @@ fn playback_page(ctx: &Rc<Ctx>) -> adw::PreferencesPage {
     page
 }
 
-/// "Crossfade": Off or 1–12 s. Unavailable (insensitive, and said so)
-/// while normalisation is off, since that keeps the output bit-perfect;
-/// follows the normalisation row as it changes.
-fn crossfade_row(ctx: &Rc<Ctx>, normalization: &adw::ComboRow) -> adw::ComboRow {
+/// "Crossfade": Off (the default) or 1–12 s, whatever the normalisation:
+/// the setting is the opt-in, and its subtitle says what it costs.
+fn crossfade_row(ctx: &Rc<Ctx>) -> adw::ComboRow {
     use crate::playback::MAX_CROSSFADE_SECS;
     let seconds: Vec<String> = (1..=MAX_CROSSFADE_SECS)
         .map(|n| tr("{n} s").replace("{n}", &n.to_string()))
@@ -135,20 +134,9 @@ fn crossfade_row(ctx: &Rc<Ctx>, normalization: &adw::ComboRow) -> adw::ComboRow 
     let current = ctx.settings.get().crossfade_secs.min(MAX_CROSSFADE_SECS);
     let row = combo_row(tr("Crossfade"), &labels, current as usize);
     connect_combo(ctx, &row, |s, index| s.crossfade_secs = index as u32);
-    let update = {
-        let row = row.downgrade();
-        move |bit_perfect: bool| {
-            let Some(row) = row.upgrade() else { return };
-            row.set_sensitive(!bit_perfect);
-            row.set_subtitle(if bit_perfect {
-                tr("Not available while the output is bit-perfect: turn on Volume Normalisation")
-            } else {
-                tr("When a track ends by itself; consecutive album tracks stay gapless")
-            });
-        }
-    };
-    update(ctx.settings.get().normalization == Normalization::Off);
-    normalization.connect_selected_notify(move |row| update(row.selected() == 0));
+    row.set_subtitle(tr(
+        "Overlapping tracks are mixed, so those seconds are not bit-perfect; consecutive album tracks stay gapless",
+    ));
     row
 }
 

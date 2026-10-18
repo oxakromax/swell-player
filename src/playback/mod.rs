@@ -1338,7 +1338,6 @@ impl Playback {
     fn transition_rules(&self) -> transition::Rules {
         transition::Rules {
             crossfade_secs: self.crossfade_secs.get(),
-            bit_perfect: self.normalization.get() == Normalization::Off,
         }
     }
 
