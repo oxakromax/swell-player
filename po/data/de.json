@@ -1,0 +1,23 @@
+{
+  "A real queue, shuffle and repeat, synced lyrics and a sleep timer": "Eine echte Warteschlange, Zufallswiedergabe und Wiederholen, synchronisierte Songtexte und ein Schlaf-Timer",
+  "Adaptive layout, from phone-sized windows to wide screens, with full keyboard control": "Adaptives Layout, von Fenstern in Smartphone-Größe bis zu breiten Bildschirmen, mit vollständiger Tastaturbedienung",
+  "An album page": "Eine Albumseite",
+  "Create and edit playlists, with drag and drop and undo": "Playlists erstellen und bearbeiten, mit Drag & Drop und Rückgängig",
+  "English and Spanish": "Englisch und Spanisch",
+  "FLAC up to 24-bit/192 kHz, gapless playback and optional ReplayGain normalisation": "FLAC bis 24 Bit/192 kHz, lückenlose Wiedergabe und optionale ReplayGain-Normalisierung",
+  "First release.": "Erste Version.",
+  "Hi-Res Lossless playback, bit-perfect to PipeWire, with gapless playback and ReplayGain": "Hi-Res-Lossless-Wiedergabe, bit-perfect bis PipeWire, mit lückenloser Wiedergabe und ReplayGain",
+  "Home, Explore and search as you type, with album, artist, playlist and mix pages": "Startseite, Entdecken und Suche während der Eingabe, mit Seiten für Alben, Künstler, Playlists und Mixe",
+  "Home, Explore, search, and album, artist, playlist and mix pages": "Startseite, Entdecken, Suche sowie Seiten für Alben, Künstler, Playlists und Mixe",
+  "Home, your personalised TIDAL feed": "Startseite, Ihr personalisierter TIDAL-Feed",
+  "Listen to TIDAL in a native app": "TIDAL in einer nativen App hören",
+  "Media keys and desktop widgets through MPRIS": "Medientasten und Desktop-Widgets über MPRIS",
+  "Music Player": "Musikplayer",
+  "Now playing, with the queue": "Aktuelle Wiedergabe, mit der Warteschlange",
+  "Swell is a fast, lightweight TIDAL client built with GTK and libadwaita. It plays up to Hi-Res Lossless, bit-perfect, keeps your collection, playlists and mixes one click away, and follows your desktop’s light or dark style and accent colour.": "Swell ist ein schneller, schlanker TIDAL-Client, entwickelt mit GTK und libadwaita. Er spielt bis zu Hi-Res Lossless ab, bit-perfect, hält Ihre Sammlung, Playlists und Mixe einen Klick entfernt und folgt dem hellen oder dunklen Stil und der Akzentfarbe Ihres Desktops.",
+  "Swell is not affiliated with, endorsed by or supported by TIDAL. A paid TIDAL subscription is needed.": "Swell steht in keiner Verbindung zu TIDAL und wird weder von TIDAL unterstützt noch empfohlen. Ein kostenpflichtiges TIDAL-Abonnement ist erforderlich.",
+  "The narrow layout, for small windows and phones": "Das schmale Layout für kleine Fenster und Smartphones",
+  "Your collection from a local cache, playlist editing, queue, lyrics and MPRIS": "Ihre Sammlung aus einem lokalen Cache, Playlist-Bearbeitung, Warteschlange, Songtexte und MPRIS",
+  "Your favourite tracks, albums, artists, playlists and mixes, opened instantly from a local cache": "Ihre favorisierten Titel, Alben, Künstler, Playlists und Mixe, sofort aus einem lokalen Cache geöffnet",
+  "music;tidal;streaming;hi-res;lossless;flac;player;audio;": "Musik;tidal;Streaming;hi-res;lossless;verlustfrei;flac;Player;Audio;Musikplayer;Wiedergabe;"
+}
