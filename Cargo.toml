@@ -82,10 +82,12 @@ It plays up to Hi-Res Lossless, bit-perfect, keeps your collection, \
 playlists and mixes one click away, and follows the desktop's style. \
 A paid TIDAL subscription is needed; Swell is not affiliated with TIDAL."""
 # $auto (dpkg-shlibdeps) adds the shared libraries with the versions their
-# symbols files know; GTK's stops at 4.12, so its minimum is stated here and
-# must follow the gtk feature level in [dependencies]. dashdemux2, FLAC, MP4
-# and the HTTP source are in plugins-good.
-depends = "$auto, libgtk-4-1 (>= 4.20), gstreamer1.0-plugins-base, gstreamer1.0-plugins-good"
+# symbols files know; GTK's stops at 4.12, so the minimums are stated here.
+# They match the `--no-default-features` build (GTK 4.18, libadwaita 1.7)
+# the release .deb is made from, so it also installs on Debian 13 and
+# Ubuntu 25.04. dashdemux2, FLAC, MP4 and the HTTP source are in
+# plugins-good.
+depends = "$auto, libgtk-4-1 (>= 4.18), libadwaita-1-0 (>= 1.7), gstreamer1.0-plugins-base, gstreamer1.0-plugins-good"
 recommends = "gstreamer1.0-libav, xdg-desktop-portal"
 suggests = "gnome-keyring | keepassxc | kwalletmanager"
 assets = [
