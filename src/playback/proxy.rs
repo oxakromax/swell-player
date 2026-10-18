@@ -1869,6 +1869,54 @@ mod tests {
         assert_eq!(source.property::<String>("proxy"), "");
     }
 
+    /// What GStreamer's HTTP source sends passes the proxy's checks (its
+    /// `Host`, its headers), from the cached prefix through to upstream.
+    #[test]
+    fn souphttpsrc_reads_through_the_proxy() {
+        use gst::prelude::*;
+        if gst::init().is_err() || gst::ElementFactory::find("souphttpsrc").is_none() {
+            return;
+        }
+        let file: Bytes = (0..2_000_000u32).map(|i| (i % 253) as u8).collect();
+        let (proxy, route) = crate::runtime::runtime().block_on(async {
+            let upstream = fake_cdn(file.clone()).await;
+            let proxy = Proxy::start().unwrap();
+            let route = proxy.route_progressive(77, &upstream).unwrap();
+            proxy.set_ranks(&[77]);
+            proxy.prefetch(&route.key, 1.0, 100_000.0).await.unwrap();
+            (proxy, route)
+        });
+        assert!(proxy.cached(&route.key) > 0);
+        let pipeline = gst::parse::launch(&format!(
+            "souphttpsrc location={} ! fakesink name=sink signal-handoffs=true",
+            route.uri
+        ))
+        .unwrap()
+        .downcast::<gst::Pipeline>()
+        .unwrap();
+        let received = Arc::new(Mutex::new(0usize));
+        let sink = pipeline.by_name("sink").unwrap();
+        sink.connect("handoff", false, {
+            let received = received.clone();
+            move |values| {
+                let buffer = values[1].get::<gst::Buffer>().ok()?;
+                *received.lock().unwrap() += buffer.size();
+                None
+            }
+        });
+        pipeline.set_state(gst::State::Playing).unwrap();
+        let bus = pipeline.bus().unwrap();
+        let message = bus
+            .timed_pop_filtered(
+                gst::ClockTime::from_seconds(20),
+                &[gst::MessageType::Eos, gst::MessageType::Error],
+            )
+            .expect("no EOS");
+        let _ = pipeline.set_state(gst::State::Null);
+        assert_eq!(message.type_(), gst::MessageType::Eos, "{message:?}");
+        assert_eq!(*received.lock().unwrap(), file.len());
+    }
+
     #[test]
     fn store_never_exceeds_its_budget() {
         let mut store = Store {
