@@ -15,10 +15,17 @@ and this project adheres to
   each language's plural rules; TIDAL's content follows the chosen
   language. The desktop entry and the software-centre description are
   translated too, and the README is available in each language.
-- **Instant skips:** the next three tracks are prefetched while playing
-  (their streams and first seconds of audio, in memory, within 64 MB), so
-  skipping to one starts in a few tens of milliseconds instead of a second
-  or more. Nothing is prefetched on metered connections.
+- **Instant skips:** the next five tracks are prefetched while playing
+  (their streams and first seconds of audio), so skipping to one starts in
+  a few tens of milliseconds instead of a second or more. Nothing is
+  prefetched on metered connections.
+- **Audio cache on disk:** those first seconds are kept in
+  `~/.cache/swell-player/audio/` (at most 512 MB, `audio_cache_mb` in the
+  settings file, and never when the disk is short of space), so they
+  survive restarts: the first track of a session, or one played before,
+  starts from disk. Memory keeps only the next track's. Preferences →
+  Storage shows its size and can clear it; signing out deletes it. Only
+  audio is stored, never stream URLs or tokens.
 - **Crossfade** between tracks that end by themselves (Preferences →
   Playback, 1–12 s, off by default), with or without Volume Normalisation;
   the overlapping seconds are mixed, so not bit-perfect. Consecutive

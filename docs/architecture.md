@@ -87,20 +87,48 @@ embedded, so it runs from anywhere without being installed.
   same album with unknown numbers counts as consecutive), which stay
   gapless. At most a third of either track. Rules in
   `src/playback/transition.rs`.
-- **Prefetch.** While playing, the streams of the next three tracks in the
+- **Prefetch.** While playing, the streams of the next five tracks in the
   queue's own play order (shuffle and repeat respected) are resolved and
-  their first ~8 s downloaded into memory, one at a time, nearest first;
-  downloads for tracks no longer upcoming are cancelled and their bytes
-  dropped. Nothing is prefetched on a metered network or without one. The
-  bytes stay within a budget of 64 MB (less when the system is short of
-  memory), evicting the least wanted first. Signed URLs carry their
-  expiry (CloudFront `Policy`/`Expires`); a stream is used until five
-  minutes before it, then resolved again.
+  their first ~8 s downloaded, one at a time, nearest first; downloads for
+  tracks no longer upcoming are cancelled. A start already on disk is not
+  downloaded again (only the stream is resolved). Nothing is prefetched
+  on a metered network or without one. Signed URLs carry their expiry
+  (CloudFront `Policy`/`Expires`); a stream is used until five minutes
+  before it, then resolved again.
+- **Audio cache on disk** (`src/playback/diskcache.rs`). The starts live
+  in `~/.cache/swell-player/audio/`, so they survive restarts and the
+  first track of a session starts from disk too. Entries are keyed by the
+  track, its format (quality, codec, rate) and the identity of its media
+  (a hash of the URL's path; for DASH, also of the manifest without its
+  URLs), never by a signed URL, and hold media bytes only: one file each
+  (DASH: the init segment and each first media segment), with a header
+  holding the key, the length and a checksum, written to a temporary file
+  and renamed into place. A file that is short, altered or for another
+  key is deleted when read. There is no index file: it is rebuilt from
+  the directory at startup (off the main thread), with modification times
+  as the last use. At most 512 MB (`audio_cache_mb` in `settings.json`,
+  no preference; 0 turns it off), least recently used first, but never
+  the starts of tracks about to play for ones that play later; and it
+  never leaves the disk with less free than 5 % of it or 2 GiB, whichever
+  is less (GNOME's own low-space thresholds), giving space back as the
+  disk fills. Space is reserved before writing, so concurrent writers
+  never exceed it; a clear (Preferences → Storage, sign-out) wins over
+  writes begun before it. A start that is not prefetched (the track you
+  pick) is kept as it streams, without a second download; one that the
+  CDN no longer matches (another file now) is dropped and the track
+  reloaded.
+- **Memory.** With the disk cache, memory keeps only the start of the
+  next track (read from disk ahead of time) and of the one playing, within
+  32 MB; the OS's page cache does the rest. Without it (it cannot be
+  created, or is off), every prefetched start stays in memory within
+  64 MB, as before. Either budget is lower when the system is short of
+  memory, and never exceeded: room is reserved before downloading,
+  evicting the least wanted first.
 - **Local proxy.** All streams play through `http://127.0.0.1:<port>/…`
   (`src/playback/proxy.rs`): lossless files are served from the cached
   prefix and continued from the CDN with a `Range` request; DASH
-  manifests are rewritten so the init segment and first media segments
-  come from memory. Routes are random 128-bit keys and fetch only the
+  manifests are rewritten (fresh for every stream; never kept on disk)
+  so the init segment and first media segments come from the cache. Routes are random 128-bit keys and fetch only the
   URLs they were made for; requests must name `127.0.0.1:<port>` as their
   host (against DNS rebinding) and not come from a browser; signed URLs
   never leave the process. Proxies from the environment never apply to
@@ -119,10 +147,10 @@ embedded, so it runs from anywhere without being installed.
 | Location | Contents |
 |---|---|
 | `~/.config/swell-player/settings.json` | Preferences, window size, volume. |
-| `~/.cache/swell-player/` | `library.sqlite3` (cached API answers and the library) and `covers/` (artwork). Safe to delete. |
+| `~/.cache/swell-player/` | `library.sqlite3` (cached API answers and the library), `covers/` (artwork) and `audio/` (the first seconds of tracks, at most 512 MB; media bytes only, no URLs or tokens). Safe to delete. |
 | `~/.local/state/swell-player/` | The saved queue and position, recent searches. |
 | `$XDG_RUNTIME_DIR` | Hi-Res DASH manifests while playing (private, per process). |
 | Keyring (Secret Service) | The TIDAL tokens. Never written to disk in plain text. |
 
-Signing out deletes the tokens, the cache, the saved queue and the search
-history.
+Signing out deletes the tokens, the cache (the audio cache too: it shows
+what was listened to), the saved queue and the search history.

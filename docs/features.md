@@ -68,7 +68,7 @@ music client is expected to have. Items marked **(new)** are beyond High Tide.
 - Audio quality (up to what the login allows), normalisation, gapless,
   output device (automatic / specific PipeWire/ALSA sink).
 - Run in background, notifications.
-- Cache: size used, clear covers / library cache **(new)**.
+- Cache: size used, clear covers / library / audio cache **(new)**.
 - Blocked artists/tracks management.
 - Keyboard shortcuts dialog listing every shortcut.
 

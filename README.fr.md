@@ -276,7 +276,9 @@ Vous voulez Swell dans votre langue ? Consultez
   renouvelés peu avant leur expiration, et un problème réseau ne vous
   déconnecte jamais.
 - **Mis en cache sur votre ordinateur :** les réponses de TIDAL et votre
-  bibliothèque (`~/.cache/swell-player/library.sqlite3`), les pochettes,
+  bibliothèque (`~/.cache/swell-player/library.sqlite3`), les pochettes, les
+  premières secondes des titres écoutés ou sur le point de l’être
+  (`~/.cache/swell-player/audio/`, uniquement de l’audio, 512 Mo au plus),
   vos réglages, la file d’attente enregistrée et les recherches récentes.
   Les préférences permettent de vider le cache ; la déconnexion supprime les
   jetons, le cache, la file d’attente enregistrée et l’historique de

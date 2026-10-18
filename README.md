@@ -260,9 +260,11 @@ Want Swell in your language? See [docs/translating.md](docs/translating.md).
   never on disk in plain text. They are refreshed shortly before they
   expire, and network trouble never signs you out.
 - **Cached on your computer:** TIDAL's answers and your library
-  (`~/.cache/swell-player/library.sqlite3`), artwork, your settings, the
-  saved queue and recent searches. Preferences can clear the cache; signing
-  out deletes the tokens, the cache, the saved queue and the search history.
+  (`~/.cache/swell-player/library.sqlite3`), artwork, the first seconds of
+  tracks you played or were about to play (`~/.cache/swell-player/audio/`,
+  audio only, at most 512 MB), your settings, the saved queue and recent
+  searches. Preferences can clear the cache; signing out deletes the tokens,
+  the cache, the saved queue and the search history.
 - **No telemetry.** Swell connects only to TIDAL's servers, for what you
   ask it to show or play. It has no analytics, crash reporting or other
   third-party services.

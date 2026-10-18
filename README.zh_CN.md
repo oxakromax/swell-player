@@ -241,7 +241,7 @@ Swell 提供 **English**、**Español**、**Français**、**Deutsch**、**Italia
   GNOME Keyring、KWallet、KeePassXC…，在 Flatpak 中则是 secret portal），
   绝不会以明文形式写入磁盘。它们会在过期前不久刷新，网络问题也不会让你退出登录。
 - **缓存在你的电脑上的内容：**TIDAL 的应答和你的资料库
-  （`~/.cache/swell-player/library.sqlite3`）、封面图片、你的设置、
+  （`~/.cache/swell-player/library.sqlite3`）、封面图片、播放过或即将播放的曲目开头的几秒（`~/.cache/swell-player/audio/`，仅音频，最多 512 MB）、你的设置、
   已保存的队列和最近搜索。可以在首选项中清除缓存；退出登录会删除令牌、缓存、
   已保存的队列和搜索历史。
 - **没有遥测。**Swell 只会连接 TIDAL 的服务器，用于显示或播放你要求的内容。

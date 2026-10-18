@@ -271,10 +271,12 @@ pantalla nunca mezcle dos.
   Flatpak), nunca en el disco como texto plano. Se renuevan poco antes de
   caducar, y los problemas de red nunca cierran tu sesión.
 - **Guardado en tu equipo:** las respuestas de TIDAL y tu biblioteca
-  (`~/.cache/swell-player/library.sqlite3`), las portadas, tus ajustes, la
-  cola guardada y las búsquedas recientes. Preferencias permite vaciar la
-  caché; cerrar sesión borra los tokens, la caché, la cola guardada y el
-  historial de búsqueda.
+  (`~/.cache/swell-player/library.sqlite3`), las portadas, los primeros
+  segundos de las canciones que escuchaste o ibas a escuchar
+  (`~/.cache/swell-player/audio/`, solo audio, 512 MB como máximo), tus
+  ajustes, la cola guardada y las búsquedas recientes. Preferencias permite
+  vaciar la caché; cerrar sesión borra los tokens, la caché, la cola
+  guardada y el historial de búsqueda.
 - **Sin telemetría.** Swell solo se conecta a los servidores de TIDAL, para
   lo que le pides mostrar o reproducir. No tiene analíticas, informes de
   fallos ni otros servicios de terceros.

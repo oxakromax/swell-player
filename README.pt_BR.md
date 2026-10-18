@@ -268,10 +268,11 @@ Quer o Swell no seu idioma? Veja [docs/translating.md](docs/translating.md).
   Flatpak), nunca em texto simples no disco. Eles são renovados pouco antes
   de expirar, e problemas de rede nunca encerram sua sessão.
 - **Em cache no seu computador:** as respostas do TIDAL e sua biblioteca
-  (`~/.cache/swell-player/library.sqlite3`), capas, suas configurações, a
-  fila salva e as pesquisas recentes. As Preferências podem limpar o cache;
-  desconectar apaga os tokens, o cache, a fila salva e o histórico de
-  pesquisas.
+  (`~/.cache/swell-player/library.sqlite3`), capas, os primeiros segundos
+  das faixas que você ouviu ou ia ouvir (`~/.cache/swell-player/audio/`, só
+  áudio, no máximo 512 MB), suas configurações, a fila salva e as pesquisas
+  recentes. As Preferências podem limpar o cache; desconectar apaga os
+  tokens, o cache, a fila salva e o histórico de pesquisas.
 - **Sem telemetria.** O Swell se conecta apenas aos servidores do TIDAL, para
   o que você pede que ele mostre ou reproduza. Não há análises, relatórios de
   falhas nem outros serviços de terceiros.

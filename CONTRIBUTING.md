@@ -94,7 +94,8 @@ the full list). Screenshot runs don't change your settings, and
 | `SWELL_DEBUG_ENGINE_FAIL=<at>[@<status>]` | Simulates a playback network error (see `src/playback/mod.rs`). |
 | `SWELL_DEBUG_SKIP=<seconds>[x<count>]` | Skips to the next track every `seconds` of playback; with debug logs, "first audio … ms" says how fast each start was. |
 | `SWELL_NO_PROXY=1` | Streams straight from TIDAL, without the local proxy (and so without prefetched audio). |
-| `SWELL_PREFETCH_BUDGET_MB=<n>` | Caps the prefetched audio at `n` MB (at most 64), to watch eviction. |
+| `SWELL_PREFETCH_BUDGET_MB=<n>` | Caps the prefetched audio in memory at `n` MB (at most 64; 32 with the audio cache on disk), to watch eviction. |
+| `SWELL_AUDIO_CACHE_MB=<n>` | Caps the audio cache on disk at `n` MB instead of the `audio_cache_mb` setting; `0` turns it off (and empties it). Point `XDG_CACHE_HOME` at a scratch directory to keep your own. |
 
 Useful ids: album `529955456`, artist `17275`, track `529955457`.
 

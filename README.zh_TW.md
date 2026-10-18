@@ -241,7 +241,7 @@ Swell 提供 **English**、**Español**、**Français**、**Deutsch**、**Italia
   GNOME Keyring、KWallet、KeePassXC…，在 Flatpak 中則是 secret portal），
   絕不會以明文形式寫入磁碟。它們會在過期前不久更新，網路問題也不會讓你被登出。
 - **快取在你電腦上的內容：**TIDAL 的回應與你的音樂庫
-  （`~/.cache/swell-player/library.sqlite3`）、封面圖片、你的設定、
+  （`~/.cache/swell-player/library.sqlite3`）、封面圖片、播放過或即將播放的曲目開頭的幾秒（`~/.cache/swell-player/audio/`，僅音訊，最多 512 MB）、你的設定、
   已儲存的佇列與最近搜尋。可以在偏好設定中清除快取；登出會刪除權杖、快取、
   已儲存的佇列與搜尋記錄。
 - **沒有遙測。**Swell 只會連線到 TIDAL 的伺服器，用於顯示或播放你要求的內容。

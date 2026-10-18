@@ -844,7 +844,7 @@ suggested-action` and the others are 44 px.
 |---|---|
 | Playback | **Quality:** `AdwComboRow` "Streaming Quality" (Low, High, Lossless, Hi-Res Lossless; the ones the login doesn't allow appear with the subtitle "Requires browser sign-in" and are insensitive). **Processing:** `AdwComboRow` "Volume Normalisation" (Off / Track / Album), subtitle "Off keeps the output bit-perfect"; `AdwSwitchRow` "Gapless Playback". **Output:** `AdwComboRow` "Output Device" (Automatic + PipeWire/ALSA sinks). |
 | General | `AdwSwitchRow` "Run in Background" (subtitle "Keep playing when the window is closed"; requests the background portal); `AdwSwitchRow` "Track Change Notifications"; `AdwSwitchRow` "Restore Queue on Start" |
-| Storage | `AdwActionRow` "Cover Cache" (subtitle with the size "128 MB") + `flat` "Clear" button; same for "Library Cache"; confirmation via toast |
+| Storage | `AdwActionRow` "Cover Cache" (subtitle with the size "128 MB") + `flat` "Clear" button; same for "Library Cache" and "Audio Cache"; confirmation via toast |
 | Blocked | Two `AdwPreferencesGroup`s (Artists, Tracks); `AdwActionRow` rows with avatar/cover and a `flat` "Unblock" button; empty: `AdwStatusPage.compact` "Nothing Blocked" |
 | Account | 64 `AdwAvatar` + name + plan; `AdwButtonRow` "Sign Out…" `destructive-action` → `AdwAlertDialog` |
 

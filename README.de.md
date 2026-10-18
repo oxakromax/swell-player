@@ -277,7 +277,9 @@ Sie möchten Swell in Ihrer Sprache? Siehe [docs/translating.md](docs/translatin
   Flatpak), nie im Klartext auf der Festplatte. Sie werden kurz vor ihrem
   Ablauf erneuert, und Netzwerkprobleme melden Sie nie ab.
 - **Auf Ihrem Computer zwischengespeichert:** die Antworten von TIDAL und
-  Ihre Bibliothek (`~/.cache/swell-player/library.sqlite3`), Cover, Ihre
+  Ihre Bibliothek (`~/.cache/swell-player/library.sqlite3`), Cover, die
+  ersten Sekunden der gehörten oder als Nächstes anstehenden Titel
+  (`~/.cache/swell-player/audio/`, nur Audio, höchstens 512 MB), Ihre
   Einstellungen, die gespeicherte Warteschlange und letzte Suchanfragen. In
   den Einstellungen lässt sich der Cache leeren; beim Abmelden werden die
   Tokens, der Cache, die gespeicherte Warteschlange und der Suchverlauf
