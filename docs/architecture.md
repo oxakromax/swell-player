@@ -99,9 +99,15 @@ embedded, so it runs from anywhere without being installed.
   (`src/playback/proxy.rs`): lossless files are served from the cached
   prefix and continued from the CDN with a `Range` request; DASH
   manifests are rewritten so the init segment and first media segments
-  come from memory. Routes are random keys; signed URLs never leave the
-  process. Without the proxy (`SWELL_NO_PROXY=1`, or if it cannot listen)
-  streams play straight from TIDAL.
+  come from memory. Routes are random 128-bit keys and fetch only the
+  URLs they were made for; requests must name `127.0.0.1:<port>` as their
+  host (against DNS rebinding) and not come from a browser; signed URLs
+  never leave the process. Proxies from the environment never apply to
+  it: `no_proxy` gets the loopback addresses at startup (for
+  `dashdemux2`), and `souphttpsrc`, which applies `http_proxy` to every
+  host, has its proxy unset for local URLs. Without the proxy
+  (`SWELL_NO_PROXY=1`, or if it cannot listen) streams play straight from
+  TIDAL.
 - Expired stream URLs are reloaded at the same position; network drops are
   waited out and playback resumes where it stopped.
 - With normalisation off and volume at 100 %, no element touches the

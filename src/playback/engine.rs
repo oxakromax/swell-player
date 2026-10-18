@@ -138,7 +138,7 @@ impl Stream {
                 .next()
                 .context("the manifest lists no URL")?;
             let lifetime = expiry::lifetime([url.as_str()], now);
-            match proxy::get().map(|proxy| proxy.route_progressive(track_id, &url)) {
+            match proxy::get().and_then(|proxy| proxy.route_progressive(track_id, &url)) {
                 Some(route) => (route.uri.clone(), bts.codecs, lifetime, Some(route)),
                 None => (url, bts.codecs, lifetime, None),
             }
@@ -421,6 +421,14 @@ impl Deck {
         // reports network stalls.
         playbin.set_property_from_str("flags", "audio+soft-volume+buffering");
         let shared = Arc::new(Mutex::new(Shared::default()));
+
+        // Streams from the local proxy must not go through `http_proxy`.
+        playbin.connect("source-setup", false, |values| {
+            if let Ok(source) = values[1].get::<gst::Element>() {
+                proxy::bypass_env_proxy(&source);
+            }
+            None
+        });
 
         // Runs on a streaming thread: only hand over what is ready.
         playbin.connect("about-to-finish", false, {

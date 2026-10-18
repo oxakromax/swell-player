@@ -22,11 +22,22 @@
 //! also keeps one warm HTTP/2 connection to the CDN for every track, so
 //! even what is not cached starts without a new TLS handshake.
 //!
-//! Only 127.0.0.1 is listened on, routes are unguessable random keys, and
-//! signed URLs never leave the process (logs redact them). The cached
-//! bytes live in memory within the budget of `budget.rs`. If the proxy
-//! cannot start (or `SWELL_NO_PROXY=1`), streams play straight from TIDAL
-//! as before.
+//! Only 127.0.0.1 is listened on, routes are unguessable random keys (128
+//! bits from the OS's CSPRNG), and signed URLs never leave the process
+//! (logs redact them). A route only ever fetches the URLs it was made for:
+//! a lossless file's one URL, or a DASH stream's init segment and media
+//! segments of its template, in the template's own directory. Requests
+//! must name `127.0.0.1:<port>` as their `Host` (a web page reaching the
+//! port through DNS rebinding names its own host) and must not come from
+//! a browser (`Origin`, `Sec-Fetch-*`); the request head is bounded in
+//! size and time, and so is the number of connections. The cached bytes
+//! live in memory within the budget of `budget.rs`. If the proxy cannot
+//! start (or `SWELL_NO_PROXY=1`), streams play straight from TIDAL as
+//! before.
+//!
+//! Proxies from the environment (`http_proxy`…) must not apply to the
+//! proxy's own address: see [`exempt_loopback_from_proxies`] and
+//! [`bypass_env_proxy`].
 
 use std::cell::Cell;
 use std::collections::HashMap;
@@ -46,6 +57,11 @@ use super::failure;
 const MAX_HEAD: usize = 16 << 10;
 /// A client that sends nothing for this long is dropped.
 const HEAD_TIMEOUT: Duration = Duration::from_secs(15);
+/// Connections served at once at most (GStreamer opens a few: one per deck
+/// and DASH segment download); more are closed at once.
+const MAX_CONNECTIONS: usize = 64;
+/// Hosts that must never be reached through a proxy from the environment.
+const LOOPBACK_HOSTS: [&str; 3] = ["127.0.0.1", "localhost", "::1"];
 /// Media segments prefetched per DASH track at most.
 const MAX_SEGMENTS: usize = 4;
 /// Bytes prefetched per track at most.
@@ -79,6 +95,84 @@ pub fn get() -> Option<Arc<Proxy>> {
             }
         })
         .clone()
+}
+
+/// Adds the loopback addresses to `no_proxy`/`NO_PROXY` when a proxy is
+/// set in the environment, so the HTTP stack of GStreamer's DASH demuxer
+/// (libsoup with GLib's default proxy resolver, which honours them)
+/// reaches the local proxy directly instead of sending `127.0.0.1`
+/// requests to the configured proxy, where they fail. `souphttpsrc` reads
+/// `http_proxy` itself and ignores `no_proxy`: see [`bypass_env_proxy`].
+///
+/// Call first in `main`, before any other thread exists (it changes the
+/// environment).
+pub fn exempt_loopback_from_proxies() {
+    let proxied = [
+        "http_proxy",
+        "HTTP_PROXY",
+        "https_proxy",
+        "HTTPS_PROXY",
+        "all_proxy",
+        "ALL_PROXY",
+    ]
+    .iter()
+    .any(|name| std::env::var_os(name).is_some_and(|v| !v.is_empty()));
+    if !proxied {
+        return;
+    }
+    for name in ["no_proxy", "NO_PROXY"] {
+        let current = std::env::var(name).unwrap_or_default();
+        let value = with_loopback(&current);
+        if value != current {
+            // SAFETY: called first in `main`, before any other thread
+            // exists, so nothing reads the environment concurrently.
+            unsafe { std::env::set_var(name, &value) };
+        }
+    }
+}
+
+/// `no_proxy` with the loopback hosts added (those already there kept).
+fn with_loopback(no_proxy: &str) -> String {
+    let mut hosts: Vec<&str> = no_proxy
+        .split(',')
+        .map(str::trim)
+        .filter(|h| !h.is_empty())
+        .collect();
+    for host in LOOPBACK_HOSTS {
+        if !hosts.iter().any(|h| h.eq_ignore_ascii_case(host)) {
+            hosts.push(host);
+        }
+    }
+    hosts.join(",")
+}
+
+/// Whether `uri` is served by this local proxy (or anything on the
+/// loopback address).
+pub fn is_local(uri: &str) -> bool {
+    uri.strip_prefix("http://127.0.0.1")
+        .is_some_and(|rest| rest.starts_with([':', '/']) || rest.is_empty())
+}
+
+/// For `playbin3`'s `source-setup`: a `souphttpsrc` that fetches from the
+/// local proxy must not use the proxy of `http_proxy`, which it reads
+/// itself and applies to every host, loopback included (`no_proxy` is
+/// ignored). Unsetting its `proxy` makes it use GLib's resolver, which
+/// honours `no_proxy` (see [`exempt_loopback_from_proxies`]).
+pub fn bypass_env_proxy(source: &gst::Element) {
+    use gst::prelude::*;
+    if source.find_property("proxy").is_none() || source.find_property("location").is_none() {
+        return;
+    }
+    let local = source
+        .property::<Option<String>>("location")
+        .is_some_and(|location| is_local(&location));
+    let proxied = source
+        .property::<Option<String>>("proxy")
+        .is_some_and(|proxy| !proxy.is_empty());
+    if local && proxied {
+        log::debug!("stream proxy: not sending local requests through http_proxy");
+        source.set_property("proxy", None::<&str>);
+    }
 }
 
 /// The proxy, only if it already runs (never starts it).
@@ -302,15 +396,20 @@ fn current_budget() -> usize {
         )
 }
 
-/// A random, unguessable route key.
-fn new_key() -> String {
+/// A random, unguessable route key: 128 bits from the OS's CSPRNG, or
+/// `None` when it cannot give them (the stream then plays without the
+/// proxy: a predictable key would let anyone on the machine read it).
+fn new_key() -> Option<String> {
     let mut bytes = [0u8; 16];
-    let _ = getrandom::fill(&mut bytes);
+    if let Err(err) = getrandom::fill(&mut bytes) {
+        log::warn!("stream proxy: no random numbers for a route: {err}");
+        return None;
+    }
     let mut key = String::with_capacity(32);
     for byte in bytes {
         let _ = write!(key, "{byte:02x}");
     }
-    key
+    Some(key)
 }
 
 /// The HTTP client for the CDN: like the API's, but without an overall
@@ -343,6 +442,7 @@ impl Proxy {
             http: cdn_client()?,
         });
         let weak = Arc::downgrade(&proxy);
+        let connections = Arc::new(tokio::sync::Semaphore::new(MAX_CONNECTIONS));
         crate::runtime::runtime().spawn(async move {
             let listener = match TcpListener::from_std(listener) {
                 Ok(listener) => listener,
@@ -358,10 +458,15 @@ impl Proxy {
                     }
                 };
                 let Some(proxy) = weak.upgrade() else { break };
+                let Ok(permit) = connections.clone().try_acquire_owned() else {
+                    log::debug!("stream proxy: too many connections, closing one");
+                    continue;
+                };
                 tokio::spawn(async move {
                     if let Err(err) = proxy.serve(socket).await {
                         log::debug!("stream proxy: {}", failure::redact(&format!("{err:#}")));
                     }
+                    drop(permit);
                 });
             }
         });
@@ -384,8 +489,7 @@ impl Proxy {
         format!("http://127.0.0.1:{}", self.port)
     }
 
-    fn insert(&self, track_id: u64, upstream: Upstream) -> String {
-        let key = new_key();
+    fn insert(&self, key: String, track_id: u64, upstream: Upstream) {
         let mut store = self.lock();
         let tick = store.tick();
         store.routes.insert(
@@ -399,22 +503,24 @@ impl Proxy {
                 touched: Instant::now(),
             },
         );
-        key
     }
 
-    /// Routes a lossless file (one signed URL). No network.
-    pub fn route_progressive(&self, track_id: u64, url: &str) -> Route {
-        let key = self.insert(
+    /// Routes a lossless file (one signed URL). No network. `None`: play
+    /// it without the proxy.
+    pub fn route_progressive(&self, track_id: u64, url: &str) -> Option<Route> {
+        let key = new_key()?;
+        self.insert(
+            key.clone(),
             track_id,
             Upstream::Progressive {
                 url: url.to_owned(),
             },
         );
-        Route {
+        Some(Route {
             uri: format!("{}/p/{key}", self.base()),
             key,
             dash: false,
-        }
+        })
     }
 
     /// Routes a DASH manifest: returns it rewritten to fetch its segments
@@ -422,7 +528,7 @@ impl Proxy {
     /// manifests of a shape it does not know.
     pub fn route_dash(&self, track_id: u64, mpd: &str) -> Result<(String, Route)> {
         let parsed = parse_mpd(mpd)?;
-        let key = new_key();
+        let key = new_key().context("no random route key")?;
         let base = format!("{}/d/{key}", self.base());
         let rewritten = parsed.rewrite(mpd, &base);
         let upstream = Upstream::Dash {
@@ -431,20 +537,7 @@ impl Proxy {
             media_query: parsed.media_query.clone(),
             info: parsed.info,
         };
-        let mut store = self.lock();
-        let tick = store.tick();
-        store.routes.insert(
-            key.clone(),
-            Entry {
-                track_id,
-                upstream,
-                cached: Cached::Nothing,
-                active: 0,
-                last_used: tick,
-                touched: Instant::now(),
-            },
-        );
-        drop(store);
+        self.insert(key.clone(), track_id, upstream);
         Ok((
             rewritten,
             Route {
@@ -578,8 +671,9 @@ impl Proxy {
         let total = match response.status().as_u16() {
             206 => header(&response, "content-range")
                 .and_then(|range| parse_content_range(&range))
+                .filter(|(start, _, _)| *start == 0)
                 .map(|(_, _, total)| total)
-                .context("no total in the Content-Range")?,
+                .context("no Content-Range from the start with a total")?,
             _ => response.content_length().context("no Content-Length")?,
         };
         let content_type = header(&response, "content-type");
@@ -692,6 +786,10 @@ impl Proxy {
             .await
             .context("the request head timed out")??;
         let request = parse_request(&head)?;
+        if !request.allowed(self.port) {
+            log::debug!("stream proxy: refused a request for another host or from a browser");
+            return respond_empty(&mut socket, 403).await;
+        }
         let head_only = match request.method.as_str() {
             "GET" => false,
             "HEAD" => true,
@@ -708,16 +806,21 @@ impl Proxy {
                 entry.active += 1;
                 entry.last_used = tick;
                 entry.touched = Instant::now();
+                // Only the URLs the route was made for, nothing a request
+                // could steer elsewhere.
                 let upstream = match &entry.upstream {
-                    Upstream::Progressive { url } => url.clone(),
+                    Upstream::Progressive { url } if file.is_empty() => url.clone(),
+                    Upstream::Progressive { .. } => String::new(),
                     Upstream::Dash {
                         init,
                         media_dir,
                         media_query,
-                        ..
+                        info,
                     } => match file.split_once('/') {
-                        Some(("i", _)) => init.clone(),
-                        Some(("m", name)) => with_query(&format!("{media_dir}{name}"), media_query),
+                        Some(("i", name)) if name == file_name(init) => init.clone(),
+                        Some(("m", name)) if info.is_media_name(name) => {
+                            with_query(&format!("{media_dir}{name}"), media_query)
+                        }
                         _ => String::new(),
                     },
                 };
@@ -801,7 +904,8 @@ impl Proxy {
                 .http
                 .get(upstream)
                 .header(reqwest::header::RANGE, format!("bytes={cached_end}-{end}"));
-            tokio::spawn(request.send())
+            // Cancelled if the client goes away before it is needed.
+            AbortOnDrop(tokio::spawn(request.send()))
         });
         let status = if request.range.is_some() { 206 } else { 200 };
         let mut head = status_line(status);
@@ -820,13 +924,16 @@ impl Proxy {
         socket
             .write_all(&prefix[start as usize..cached_end as usize])
             .await?;
-        let Some(rest) = rest else {
+        // Not held while the rest streams (for the whole track): the
+        // budget may evict these bytes, and then they must really go.
+        drop(prefix);
+        let Some(mut rest) = rest else {
             return Ok(());
         };
-        let mut response = rest.await??;
+        let mut response = (&mut rest.0).await??;
         let range = header(&response, "content-range").and_then(|r| parse_content_range(&r));
         if response.status().as_u16() != 206
-            || range.is_none_or(|(from, _, size)| from != cached_end || size != total)
+            || range.is_none_or(|(from, to, size)| from != cached_end || to != end || size != total)
         {
             // Not the same file any more: close, so the source fails
             // (and the track is reloaded) instead of playing garbage.
@@ -892,6 +999,15 @@ impl Proxy {
     }
 }
 
+/// A spawned task, aborted when this is dropped.
+struct AbortOnDrop<T>(tokio::task::JoinHandle<T>);
+
+impl<T> Drop for AbortOnDrop<T> {
+    fn drop(&mut self) {
+        self.0.abort();
+    }
+}
+
 enum Plan {
     Prefix { url: String, bytes: usize },
     Files(Vec<(String, String)>),
@@ -936,6 +1052,7 @@ fn status_line(status: u16) -> String {
     let reason = match status {
         200 => "OK",
         206 => "Partial Content",
+        403 => "Forbidden",
         404 => "Not Found",
         405 => "Method Not Allowed",
         416 => "Range Not Satisfiable",
@@ -1012,6 +1129,24 @@ struct Request {
     /// The `Range` header as sent, and parsed.
     range_header: Option<String>,
     range: Option<(u64, Option<u64>)>,
+    /// The `Host` header (only the last one, if repeated).
+    host: Option<String>,
+    /// Sent by a web browser (`Origin` or `Sec-Fetch-*` headers), which
+    /// GStreamer never sends.
+    from_browser: bool,
+}
+
+impl Request {
+    /// Addressed to this proxy (`Host: 127.0.0.1:<port>`; a page that
+    /// reached the port through DNS rebinding names its own host) and not
+    /// made by a web page.
+    fn allowed(&self, port: u16) -> bool {
+        !self.from_browser
+            && self
+                .host
+                .as_deref()
+                .is_some_and(|host| host == format!("127.0.0.1:{port}"))
+    }
 }
 
 fn parse_request(head: &[u8]) -> Result<Request> {
@@ -1022,11 +1157,25 @@ fn parse_request(head: &[u8]) -> Result<Request> {
     let method = parts.next().context("no method")?.to_owned();
     let path = parts.next().context("no path")?.to_owned();
     let mut range_header = None;
+    let mut host = None;
+    let mut hosts = 0;
+    let mut from_browser = false;
     for line in lines {
-        if let Some((name, value)) = line.split_once(':')
-            && name.trim().eq_ignore_ascii_case("range")
-        {
+        let Some((name, value)) = line.split_once(':') else {
+            continue;
+        };
+        let name = name.trim();
+        if name.eq_ignore_ascii_case("range") {
             range_header = Some(value.trim().to_owned());
+        } else if name.eq_ignore_ascii_case("host") {
+            hosts += 1;
+            host = Some(value.trim().to_ascii_lowercase());
+        } else if name.eq_ignore_ascii_case("origin")
+            || name
+                .get(..10)
+                .is_some_and(|prefix| prefix.eq_ignore_ascii_case("sec-fetch-"))
+        {
+            from_browser = true;
         }
     }
     let range = range_header.as_deref().and_then(parse_range);
@@ -1035,6 +1184,9 @@ fn parse_request(head: &[u8]) -> Result<Request> {
         path,
         range_header,
         range,
+        // Two `Host` headers: ambiguous, so none.
+        host: host.filter(|_| hosts == 1),
+        from_browser,
     })
 }
 
@@ -1091,6 +1243,28 @@ pub struct DashInfo {
 }
 
 impl DashInfo {
+    /// Whether `name` is a media segment's file name made from the
+    /// template: its literal start and end, and between them only what its
+    /// identifiers expand to (numbers, or a representation id), never
+    /// anything that would reach another path on the CDN.
+    fn is_media_name(&self, name: &str) -> bool {
+        let (Some(first), Some(last)) = (self.template.find('$'), self.template.rfind('$')) else {
+            return false;
+        };
+        let (prefix, suffix) = (&self.template[..first], &self.template[last + 1..]);
+        let Some(middle) = name
+            .strip_prefix(prefix)
+            .and_then(|rest| rest.strip_suffix(suffix))
+        else {
+            return false;
+        };
+        !middle.is_empty()
+            && !name.contains("..")
+            && middle
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b"._,-".contains(&b))
+    }
+
     /// File names of the media segments covering the first `seconds`.
     fn first_segments(&self, seconds: f64) -> Vec<String> {
         if !self.template.contains("$Number$") || self.timescale == 0 {
@@ -1377,17 +1551,26 @@ mod tests {
 
     /// A stand-in for the CDN on 127.0.0.1: serves `file` with ranges.
     async fn fake_cdn(file: Bytes) -> String {
+        logging_cdn(file).await.0
+    }
+
+    /// [`fake_cdn`], also giving the paths it was asked for.
+    async fn logging_cdn(file: Bytes) -> (String, Arc<Mutex<Vec<String>>>) {
         let listener = TcpListener::bind(("127.0.0.1", 0)).await.unwrap();
         let port = listener.local_addr().unwrap().port();
+        let paths = Arc::new(Mutex::new(Vec::new()));
+        let log = paths.clone();
         tokio::spawn(async move {
             loop {
                 let Ok((mut socket, _)) = listener.accept().await else {
                     break;
                 };
                 let file = file.clone();
+                let log = log.clone();
                 tokio::spawn(async move {
                     let head = read_head(&mut socket).await.unwrap();
                     let request = parse_request(&head).unwrap();
+                    log.lock().unwrap().push(request.path.clone());
                     let total = file.len() as u64;
                     let (start, end) = request.range.unwrap_or((0, None));
                     let end = end.unwrap_or(total - 1).min(total - 1);
@@ -1402,7 +1585,10 @@ mod tests {
                 });
             }
         });
-        format!("http://127.0.0.1:{port}/track.flac?token=secret")
+        (
+            format!("http://127.0.0.1:{port}/track.flac?token=secret"),
+            paths,
+        )
     }
 
     async fn fetch(url: &str, range: Option<&str>) -> (u16, Option<String>, Vec<u8>) {
@@ -1430,7 +1616,7 @@ mod tests {
         crate::runtime::runtime().block_on(async {
             let upstream = fake_cdn(file.clone()).await;
             let proxy = Proxy::start().unwrap();
-            let route = proxy.route_progressive(42, &upstream);
+            let route = proxy.route_progressive(42, &upstream).unwrap();
             assert!(!route.uri.contains("secret"));
             proxy.set_ranks(&[42]);
             let done = proxy.prefetch(&route.key, 1.0, 100_000.0).await.unwrap();
@@ -1493,7 +1679,9 @@ mod tests {
                 }
             });
             let proxy = Proxy::start().unwrap();
-            let route = proxy.route_progressive(7, &format!("http://127.0.0.1:{port}/x.flac"));
+            let route = proxy
+                .route_progressive(7, &format!("http://127.0.0.1:{port}/x.flac"))
+                .unwrap();
             proxy.set_ranks(&[7]);
             let before = proxy.usage().0;
             let task = tokio::spawn({
@@ -1510,6 +1698,175 @@ mod tests {
             assert!(proxy.reserve(&route.key, usize::MAX).is_none());
             assert_eq!(proxy.usage().0, before);
         });
+    }
+
+    /// Sends `head` as it is to the proxy; the status it answers.
+    async fn raw_status(port: u16, head: &str) -> u16 {
+        let mut socket = TcpStream::connect(("127.0.0.1", port)).await.unwrap();
+        socket.write_all(head.as_bytes()).await.unwrap();
+        let mut answer = Vec::new();
+        let _ = socket.read_to_end(&mut answer).await;
+        let answer = String::from_utf8_lossy(&answer);
+        answer
+            .split(' ')
+            .nth(1)
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(0)
+    }
+
+    /// Only requests for this proxy's own address, not from browsers, and
+    /// only the URLs a route was made for: never a path a request names.
+    #[test]
+    fn refuses_foreign_hosts_browsers_and_other_paths() {
+        crate::runtime::runtime().block_on(async {
+            let (upstream, paths) = logging_cdn(Bytes::from_static(b"segment")).await;
+            let cdn = upstream.split("/track.flac").next().unwrap().to_owned();
+            let mpd = MPD
+                .replace("https://sp-ad-cf.audio.tidal.com", &cdn)
+                .replace("mediatracks/AbC/", "secure/AbC/");
+            let proxy = Proxy::start().unwrap();
+            let port = proxy.port;
+            let (_, route) = proxy.route_dash(9, &mpd).unwrap();
+            let key = &route.key;
+            let host = format!("127.0.0.1:{port}");
+            let get = |path: &str, host: &str, extra: &str| {
+                format!("GET {path} HTTP/1.1\r\nHost: {host}\r\n{extra}\r\n")
+            };
+            // A segment of the template, and the init segment: fetched.
+            assert_eq!(
+                raw_status(port, &get(&format!("/d/{key}/m/7.mp4"), &host, "")).await,
+                200
+            );
+            assert_eq!(
+                raw_status(port, &get(&format!("/d/{key}/i/0.mp4"), &host, "")).await,
+                200
+            );
+            // DNS rebinding (another Host), no Host, two Hosts, browsers.
+            let segment = format!("/d/{key}/m/8.mp4");
+            for (host, extra) in [
+                ("evil.example:80", ""),
+                ("localhost", ""),
+                (host.as_str(), "Origin: https://evil.example\r\n"),
+                (host.as_str(), "Sec-Fetch-Mode: no-cors\r\n"),
+                (host.as_str(), "Host: evil.example\r\n"),
+            ] {
+                assert_eq!(
+                    raw_status(port, &get(&segment, host, extra)).await,
+                    403,
+                    "{host} {extra}"
+                );
+            }
+            assert_eq!(
+                raw_status(port, &format!("GET {segment} HTTP/1.0\r\n\r\n")).await,
+                403
+            );
+            // Paths outside the template: never fetched.
+            for file in [
+                "m/..%2f..%2fother%2f1.mp4",
+                "m/../../other/1.mp4",
+                "m/%2e%2e/1.mp4",
+                "m/1.mp4%3fx",
+                "m/x/1.mp4",
+                "m/.mp4",
+                "i/other.mp4",
+                "i/../0.mp4",
+                "x/0.mp4",
+            ] {
+                assert_eq!(
+                    raw_status(port, &get(&format!("/d/{key}/{file}"), &host, "")).await,
+                    404,
+                    "{file}"
+                );
+            }
+            // A lossless route has no files.
+            let progressive = proxy.route_progressive(10, &upstream).unwrap();
+            assert_eq!(
+                raw_status(
+                    port,
+                    &get(&format!("/d/{}/m/1.mp4", progressive.key), &host, "")
+                )
+                .await,
+                404
+            );
+            let asked = paths.lock().unwrap().clone();
+            assert_eq!(
+                asked,
+                [
+                    "/secure/AbC/7.mp4?Policy=P&Signature=S~x&Key-Pair-Id=K",
+                    "/secure/AbC/0.mp4?Policy=P&Signature=S~x&Key-Pair-Id=K",
+                ]
+            );
+        });
+    }
+
+    #[test]
+    fn media_names_follow_the_template() {
+        let info = parse_mpd(MPD).unwrap().info;
+        assert!(info.is_media_name("1.mp4"));
+        assert!(info.is_media_name("123.mp4"));
+        for name in [
+            "", ".mp4", "1.mp3", "../1.mp4", "a/1.mp4", "1%2f.mp4", "...mp4",
+        ] {
+            assert!(!info.is_media_name(name), "{name}");
+        }
+        let padded = DashInfo {
+            template: "seg-$RepresentationID$-$Number%05d$.m4s".into(),
+            ..info
+        };
+        assert!(padded.is_media_name("seg-FLAC,96000,24-00001.m4s"));
+        assert!(!padded.is_media_name("seg-a/b-1.m4s"));
+    }
+
+    #[test]
+    fn requests_name_their_host() {
+        let request =
+            parse_request(b"GET /p/k HTTP/1.1\r\nHOST: 127.0.0.1:80\r\nIcy-MetaData: 1\r\n\r\n")
+                .unwrap();
+        assert!(request.allowed(80));
+        assert!(!request.allowed(81));
+        let browser = parse_request(
+            b"GET /p/k HTTP/1.1\r\nHost: 127.0.0.1:80\r\nsec-fetch-site: cross-site\r\n\r\n",
+        )
+        .unwrap();
+        assert!(!browser.allowed(80));
+    }
+
+    #[test]
+    fn loopback_is_exempt_from_proxies() {
+        assert_eq!(with_loopback(""), "127.0.0.1,localhost,::1");
+        assert_eq!(
+            with_loopback(" .corp.example , LOCALHOST"),
+            ".corp.example,LOCALHOST,127.0.0.1,::1"
+        );
+        assert_eq!(
+            with_loopback("127.0.0.1,localhost,::1"),
+            "127.0.0.1,localhost,::1"
+        );
+        assert!(is_local("http://127.0.0.1:4242/p/abc"));
+        assert!(!is_local("http://127.0.0.10:4242/p/abc"));
+        assert!(!is_local("http://127.0.0.1.evil.example/p/abc"));
+        assert!(!is_local("https://sp-pr-cf.audio.tidal.com/x.flac"));
+    }
+
+    /// `souphttpsrc` applies `http_proxy` to every host: for the local
+    /// proxy's URLs it is unset (GLib's resolver, honouring `no_proxy`,
+    /// takes over); other URLs keep it.
+    #[test]
+    fn local_sources_skip_the_environment_proxy() {
+        use gst::prelude::*;
+        if gst::init().is_err() {
+            return;
+        }
+        let Ok(source) = gst::ElementFactory::make("souphttpsrc").build() else {
+            return; // gst-plugins-good is not installed here
+        };
+        source.set_property("proxy", "http://127.0.0.1:9");
+        source.set_property("location", "https://sp-pr-cf.audio.tidal.com/x.flac");
+        bypass_env_proxy(&source);
+        assert_eq!(source.property::<String>("proxy"), "http://127.0.0.1:9/");
+        source.set_property("location", "http://127.0.0.1:4242/p/abc");
+        bypass_env_proxy(&source);
+        assert_eq!(source.property::<String>("proxy"), "");
     }
 
     #[test]
