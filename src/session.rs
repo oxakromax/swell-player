@@ -189,7 +189,7 @@ mod store {
     }
 
     pub async fn load() -> Result<Option<Vec<u8>>> {
-        blocking(|store| parts::read(store)).await
+        blocking(parts::read).await
     }
 
     pub async fn save(secret: Vec<u8>) -> Result<()> {
@@ -197,7 +197,7 @@ mod store {
     }
 
     pub async fn clear() -> Result<()> {
-        blocking(|store| parts::clear(store)).await
+        blocking(parts::clear).await
     }
 }
 

@@ -117,11 +117,15 @@ assets = [
 # added automatically; these pin the minimum versions that the gtk/adw
 # feature levels in [dependencies] need, and the GStreamer plugins that are
 # loaded at runtime (dashdemux2, FLAC, MP4 and HTTP are in plugins-good).
+# plugins-good only recommends libsoup3, and libsoup3 only recommends
+# glib-networking: without both there is no HTTPS source, so require them.
 [package.metadata.generate-rpm.requires]
 gtk4 = ">= 4.20"
 libadwaita = ">= 1.8"
 gstreamer1-plugins-base = "*"
 gstreamer1-plugins-good = "*"
+libsoup3 = "*"
+glib-networking = "*"
 
 [package.metadata.generate-rpm.recommends]
 gstreamer1-plugin-libav = "*"

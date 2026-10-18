@@ -174,10 +174,10 @@ impl Inner {
             }
         }
         // macOS forgets the position with new metadata: send it again.
-        if new_track || old.is_some_and(|old| old.status != new.status) {
-            if let Err(err) = controls.set_playback(playback(&new)) {
-                log::debug!("media controls: could not show the state: {err}");
-            }
+        if (new_track || old.is_some_and(|old| old.status != new.status))
+            && let Err(err) = controls.set_playback(playback(&new))
+        {
+            log::debug!("media controls: could not show the state: {err}");
         }
     }
 }
