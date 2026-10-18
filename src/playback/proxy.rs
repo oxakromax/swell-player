@@ -2331,6 +2331,16 @@ mod tests {
                         .push((request.path.clone(), request.range));
                     let total = file.len() as u64;
                     let (start, end) = request.range.unwrap_or((0, None));
+                    if start >= total {
+                        // As a CDN answers a range past the end of a file.
+                        let head = format!(
+                            "{}Content-Range: bytes */{total}\r\nContent-Length: 0\r\n\
+                             Connection: close\r\n\r\n",
+                            status_line(416)
+                        );
+                        let _ = socket.write_all(head.as_bytes()).await;
+                        return;
+                    }
                     let end = end.unwrap_or(total - 1).min(total - 1);
                     let mut head = status_line(if request.range.is_some() { 206 } else { 200 });
                     let _ = write!(head, "Content-Length: {}\r\n", end - start + 1);
