@@ -39,3 +39,61 @@ zbus = { version = "5.19.0", default-features = false, features = ["tokio"] }
 lto = "thin"
 codegen-units = 1
 strip = true
+
+# Linux packages. Build the binary first (`cargo build --release --locked`),
+# then `cargo deb --no-build` / `cargo generate-rpm`. See packaging/README.md.
+
+[package.metadata.deb]
+maintainer = "oxakromax <oxakromax@users.noreply.github.com>"
+copyright = "2026 oxakromax"
+license-file = ["COPYING", "0"]
+section = "sound"
+priority = "optional"
+extended-description = """\
+Swell is a fast, lightweight TIDAL client built with GTK and libadwaita. \
+It plays up to Hi-Res Lossless, bit-perfect, keeps your collection, \
+playlists and mixes one click away, and follows the desktop's style. \
+A paid TIDAL subscription is needed; Swell is not affiliated with TIDAL."""
+# $auto (dpkg-shlibdeps) adds the shared libraries with the versions their
+# symbols files know; GTK's stops at 4.12, so its minimum is stated here and
+# must follow the gtk feature level in [dependencies]. dashdemux2, FLAC, MP4
+# and the HTTP source are in plugins-good.
+depends = "$auto, libgtk-4-1 (>= 4.20), gstreamer1.0-plugins-base, gstreamer1.0-plugins-good"
+recommends = "gstreamer1.0-libav, xdg-desktop-portal"
+suggests = "gnome-keyring | keepassxc | kwalletmanager"
+assets = [
+    ["target/release/swell-player", "usr/bin/", "755"],
+    ["data/io.github.oxakromax.SwellPlayer.desktop", "usr/share/applications/", "644"],
+    ["data/io.github.oxakromax.SwellPlayer.metainfo.xml", "usr/share/metainfo/", "644"],
+    ["data/icons/scalable/apps/io.github.oxakromax.SwellPlayer.svg", "usr/share/icons/hicolor/scalable/apps/", "644"],
+    ["data/icons/symbolic/apps/io.github.oxakromax.SwellPlayer-symbolic.svg", "usr/share/icons/hicolor/symbolic/apps/", "644"],
+    ["README.md", "usr/share/doc/swell-player/", "644"],
+]
+
+[package.metadata.generate-rpm]
+summary = "Fast, lightweight native TIDAL client with bit-perfect Hi-Res playback"
+license = "GPL-3.0-or-later"
+url = "https://github.com/oxakromax/swell-player"
+assets = [
+    { source = "target/release/swell-player", dest = "/usr/bin/swell-player", mode = "755" },
+    { source = "data/io.github.oxakromax.SwellPlayer.desktop", dest = "/usr/share/applications/io.github.oxakromax.SwellPlayer.desktop", mode = "644" },
+    { source = "data/io.github.oxakromax.SwellPlayer.metainfo.xml", dest = "/usr/share/metainfo/io.github.oxakromax.SwellPlayer.metainfo.xml", mode = "644" },
+    { source = "data/icons/scalable/apps/io.github.oxakromax.SwellPlayer.svg", dest = "/usr/share/icons/hicolor/scalable/apps/io.github.oxakromax.SwellPlayer.svg", mode = "644" },
+    { source = "data/icons/symbolic/apps/io.github.oxakromax.SwellPlayer-symbolic.svg", dest = "/usr/share/icons/hicolor/symbolic/apps/io.github.oxakromax.SwellPlayer-symbolic.svg", mode = "644" },
+    { source = "COPYING", dest = "/usr/share/licenses/swell-player/COPYING", mode = "644", doc = true },
+    { source = "README.md", dest = "/usr/share/doc/swell-player/README.md", mode = "644", doc = true },
+]
+
+# Shared-library requirements (libgtk-4.so.1, libadwaita-1.so.0, ...) are
+# added automatically; these pin the minimum versions that the gtk/adw
+# feature levels in [dependencies] need, and the GStreamer plugins that are
+# loaded at runtime (dashdemux2, FLAC, MP4 and HTTP are in plugins-good).
+[package.metadata.generate-rpm.requires]
+gtk4 = ">= 4.20"
+libadwaita = ">= 1.8"
+gstreamer1-plugins-base = "*"
+gstreamer1-plugins-good = "*"
+
+[package.metadata.generate-rpm.recommends]
+gstreamer1-plugin-libav = "*"
+xdg-desktop-portal = "*"
