@@ -16,7 +16,7 @@ fn prefix() -> Option<PathBuf> {
     let plugins = if cfg!(windows) {
         prefix.join("lib").join("gstreamer-1.0")
     } else {
-        prefix.join("PlugIns").join("gstreamer-1.0")
+        prefix.join("Resources").join("lib").join("gstreamer-1.0")
     };
     plugins.is_dir().then_some(prefix)
 }
@@ -64,13 +64,16 @@ pub fn setup() {
         // and gdk-pixbuf ones; repeated for a direct start of the binary.
         set_default(
             "GST_PLUGIN_SYSTEM_PATH_1_0",
-            prefix.join("PlugIns").join("gstreamer-1.0"),
+            prefix.join("Resources").join("lib").join("gstreamer-1.0"),
         );
         set_default(
             "GST_PLUGIN_SCANNER_1_0",
             prefix.join("MacOS").join("gst-plugin-scanner"),
         );
-        set_default("GIO_MODULE_DIR", prefix.join("PlugIns").join("gio-modules"));
+        set_default(
+            "GIO_MODULE_DIR",
+            prefix.join("Resources").join("lib").join("gio-modules"),
+        );
         let share = prefix.join("Resources").join("share");
         set_default(
             "GSETTINGS_SCHEMA_DIR",

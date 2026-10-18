@@ -9,9 +9,9 @@
 #   MacOS/swell-player           the binary
 #   MacOS/gst-plugin-scanner     GStreamer's plugin scanner
 #   Frameworks/*.dylib           every non-system library, relinked to @loader_path
-#   PlugIns/gstreamer-1.0/       the GStreamer plugins playback uses
-#   PlugIns/gdk-pixbuf/loaders/  SVG (and PNG/JPEG if not built in) loaders
-#   PlugIns/gio-modules/         glib-networking's TLS backend
+#   Resources/lib/gstreamer-1.0/       the GStreamer plugins playback uses
+#   Resources/lib/gdk-pixbuf/loaders/  SVG (and PNG/JPEG if not built in) loaders
+#   Resources/lib/gio-modules/         glib-networking's TLS backend
 #   Resources/                   Info.plist data, icon, schemas, icon themes,
 #                                CA certificates, loaders.cache template,
 #                                translations of GTK, libadwaita, GLib, GStreamer
@@ -66,7 +66,9 @@ app=$out/Swell.app
 contents=$app/Contents
 macos=$contents/MacOS
 fw=$contents/Frameworks
-plugins=$contents/PlugIns
+# Plug-in modules go under Resources/lib, not PlugIns/: codesign takes
+# everything in PlugIns/ for a bundle and refuses plain directories there.
+plugins=$contents/Resources/lib
 res=$contents/Resources
 
 work=$(mktemp -d)
@@ -219,13 +221,13 @@ plugin_file() {
 for name in coreelements typefindfunctions playback audioconvert audioresample volume autodetect \
     soup adaptivedemux2 isomp4 flac audioparsers osxaudio; do
     src=$(plugin_file "$name") || die "required GStreamer plugin $name is missing"
-    add "$src" "$plugins/gstreamer-1.0/$(basename "$src")" ../../Frameworks
+    add "$src" "$plugins/gstreamer-1.0/$(basename "$src")" ../../../Frameworks
 done
 # Optional: AAC decoders for the "High"/"Low" qualities (Audio Toolbox via
 # applemedia, or faad), ID3 tags some FLAC files carry.
 for name in applemedia faad id3demux pbtypes; do
     if src=$(plugin_file "$name"); then
-        add "$src" "$plugins/gstreamer-1.0/$(basename "$src")" ../../Frameworks
+        add "$src" "$plugins/gstreamer-1.0/$(basename "$src")" ../../../Frameworks
     else
         warn "optional GStreamer plugin $name not found"
     fi
@@ -253,7 +255,7 @@ loaders=
 for file in "$loaders_dir"/*; do
     case $(basename "$file") in
         *svg* | *png* | *jpeg*)
-            add "$file" "$plugins/gdk-pixbuf/loaders/$(basename "$file")" ../../../Frameworks
+            add "$file" "$plugins/gdk-pixbuf/loaders/$(basename "$file")" ../../../../Frameworks
             loaders="$loaders $file"
             ;;
     esac
@@ -278,7 +280,7 @@ log "GIO TLS module"
 found=false
 for file in "$brew"/lib/gio/modules/libgiognutls.* "$brew"/lib/gio/modules/libgioopenssl.*; do
     [ -f "$file" ] || continue
-    add "$file" "$plugins/gio-modules/$(basename "$file")" ../../Frameworks
+    add "$file" "$plugins/gio-modules/$(basename "$file")" ../../../Frameworks
     found=true
 done
 $found || die "no GIO TLS module (brew install glib-networking)"
@@ -410,7 +412,7 @@ cat >"$macos/Swell" <<'EOF'
 # then runs the real binary.
 contents=$(cd "$(dirname "$0")/.." && pwd -P)
 res=$contents/Resources
-plugins=$contents/PlugIns
+plugins=$res/lib
 cache=$HOME/Library/Caches/io.github.oxakromax.SwellPlayer
 mkdir -p "$cache"
 
