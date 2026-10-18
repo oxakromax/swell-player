@@ -40,6 +40,9 @@ pub const SETTLE_SECONDS: f64 = 1.5;
 const ROUTE_GRACE: Duration = Duration::from_secs(60);
 /// A track whose prefetch failed is not tried again for this long.
 const RETRY_AFTER: Duration = Duration::from_secs(60);
+/// A prefetched track whose audio did not fit is tried again after this
+/// (room frees up as playback moves on).
+const FILL_AFTER: Duration = Duration::from_secs(5);
 
 /// What to prefetch: the first `n` tracks of `upcoming` (in play order),
 /// without the current one and without repeats.
@@ -74,12 +77,20 @@ type ReadyCallback = Box<dyn Fn(u64)>;
 struct Slot {
     stream: Rc<Stream>,
     at: Instant,
+    /// All of its first seconds fit in the budget.
+    complete: bool,
+    /// When its audio was last downloaded or tried.
+    filled_at: Instant,
 }
 
 struct Job {
     track_id: u64,
     handle: glib::JoinHandle<()>,
 }
+
+/// What a job brings back: a newly resolved stream with its cached
+/// bytes, or (`None`) more bytes for a stream already there.
+type JobResult = anyhow::Result<(Option<Stream>, proxy::Prefetched)>;
 
 /// Inputs of the last [`Prefetcher::update`], to go on when a job ends.
 #[derive(Clone, Default)]
@@ -152,6 +163,31 @@ impl Prefetcher {
                 PREFETCH_TRACKS,
             )
             .contains(&track_id)
+    }
+
+    /// Forgets the stream prefetched for `track_id` (it failed to play):
+    /// the next load resolves it afresh.
+    pub fn forget(&self, track_id: u64) {
+        let slot = self.slots.borrow_mut().remove(&track_id);
+        let job = self
+            .job
+            .borrow_mut()
+            .take_if(|job| job.track_id == track_id);
+        if let Some(job) = job {
+            job.handle.abort();
+        }
+        let stale: Vec<String> = slot
+            .and_then(|slot| slot.stream.route.as_ref().map(|r| r.key.clone()))
+            .into_iter()
+            .collect();
+        if let Some(proxy) = proxy::running() {
+            proxy.collect(ROUTE_GRACE, &stale);
+        }
+        self.keep_manifests();
+    }
+
+    fn keep_manifests(&self) {
+        super::engine::keep_prefetched_manifests(&self.track_ids());
     }
 
     /// Tracks with a prefetched stream (their DASH manifests must stay).
@@ -231,16 +267,23 @@ impl Prefetcher {
             job.handle.abort();
         }
         if let Some(proxy) = proxy::running() {
-            let mut ranks: Vec<u64> = wanted.current.into_iter().collect();
-            ranks.extend(&targets);
+            // The current track ranks last: it already started, its first
+            // seconds only matter again for a restart.
+            let mut ranks = targets.clone();
+            ranks.extend(wanted.current);
             proxy.set_ranks(&ranks);
             proxy.collect(ROUTE_GRACE, &stale);
         }
 
+        self.keep_manifests();
         let Some(quality) = wanted.quality else {
             return;
         };
-        if !wanted.active || self.job.borrow().is_some() || !self.network_allows() {
+        if !wanted.active
+            || self.job.borrow().is_some()
+            || proxy::running().is_none()
+            || !self.network_allows()
+        {
             return;
         }
         let now = Instant::now();
@@ -251,29 +294,62 @@ impl Prefetcher {
             !self.slots.borrow().contains_key(id) && !self.failed.borrow().contains_key(id)
         });
         if let Some(track_id) = next {
-            self.start(track_id, quality);
+            return self.start(track_id, Some(quality));
+        }
+        // Resolved, but its audio did not fit then (or was evicted since):
+        // try again.
+        let Some(proxy) = proxy::running() else {
+            return;
+        };
+        let unfilled = targets.iter().copied().find(|id| {
+            self.slots.borrow().get(id).is_some_and(|slot| {
+                slot.filled_at.elapsed() >= FILL_AFTER
+                    && slot
+                        .stream
+                        .route
+                        .as_ref()
+                        .is_some_and(|route| !slot.complete || proxy.cached(&route.key) == 0)
+            })
+        });
+        if let Some(track_id) = unfilled {
+            self.start(track_id, None);
         }
     }
 
-    fn start(&self, track_id: u64, quality: Quality) {
+    /// Resolves `track_id` (with `quality`) and caches its first seconds,
+    /// or (`None`) only caches them for the stream already resolved.
+    fn start(&self, track_id: u64, quality: Option<Quality>) {
+        let route = self
+            .slots
+            .borrow()
+            .get(&track_id)
+            .and_then(|slot| Some((slot.stream.route.clone()?, slot.stream.details.clone())));
         let api = self.api.clone();
         let weak = self.weak_self.clone();
         let started = Instant::now();
         let handle = glib::spawn_future_local(async move {
             let result = runtime::spawn(async move {
-                let stream = api.stream_with_quality(track_id, quality).await?;
-                let mut bytes = 0;
-                if let (Some(route), Some(proxy)) = (&stream.route, proxy::running()) {
-                    let rate = bytes_per_second(&stream.details);
+                let (stream, route, details) = match (quality, route) {
+                    (Some(quality), _) => {
+                        let stream = api.stream_with_quality(track_id, quality).await?;
+                        let (route, details) = (stream.route.clone(), stream.details.clone());
+                        (Some(stream), route, details)
+                    }
+                    (None, Some((route, details))) => (None, Some(route), details),
+                    (None, None) => anyhow::bail!("nothing to fill"),
+                };
+                let mut cached = proxy::Prefetched::default();
+                if let (Some(route), Some(proxy)) = (route, proxy::running()) {
+                    let rate = bytes_per_second(&details);
                     match proxy.prefetch(&route.key, PREFETCH_SECONDS, rate).await {
-                        Ok(cached) => bytes = cached,
+                        Ok(prefetched) => cached = prefetched,
                         Err(err) => log::debug!(
                             "prefetch: no audio cached for track {track_id}: {}",
                             failure::redact(&format!("{err:#}"))
                         ),
                     }
                 }
-                anyhow::Ok((stream, bytes))
+                anyhow::Ok((stream, cached))
             })
             .await;
             if let Some(this) = weak.upgrade() {
@@ -281,9 +357,10 @@ impl Prefetcher {
             }
         });
         self.job.replace(Some(Job { track_id, handle }));
+        self.keep_manifests();
     }
 
-    fn finished(&self, track_id: u64, started: Instant, result: anyhow::Result<(Stream, usize)>) {
+    fn finished(&self, track_id: u64, started: Instant, result: JobResult) {
         let ours = self
             .job
             .borrow()
@@ -294,23 +371,37 @@ impl Prefetcher {
         }
         self.job.replace(None);
         match result {
-            Ok((stream, bytes)) => {
+            Ok((stream, cached)) => {
                 let usage = proxy::running().map(|p| p.usage());
                 log::debug!(
-                    "prefetched track {track_id} ({}): {} KiB in {} ms; cache {:?} KiB of {:?}",
-                    stream.format,
-                    bytes >> 10,
+                    "prefetched track {track_id} ({}): {} KiB{} in {} ms; cache {:?} KiB of {:?}",
+                    stream.as_ref().map_or("audio only", |s| s.format.as_str()),
+                    cached.bytes >> 10,
+                    if cached.complete { "" } else { " (partly)" },
                     started.elapsed().as_millis(),
                     usage.map(|(used, _)| used >> 10),
                     usage.map(|(_, budget)| budget >> 10),
                 );
-                self.slots.borrow_mut().insert(
-                    track_id,
-                    Slot {
-                        stream: Rc::new(stream),
-                        at: started,
-                    },
-                );
+                let mut slots = self.slots.borrow_mut();
+                match stream {
+                    Some(stream) => {
+                        slots.insert(
+                            track_id,
+                            Slot {
+                                stream: Rc::new(stream),
+                                at: started,
+                                complete: cached.complete,
+                                filled_at: Instant::now(),
+                            },
+                        );
+                    }
+                    None => {
+                        if let Some(slot) = slots.get_mut(&track_id) {
+                            slot.complete = cached.complete;
+                            slot.filled_at = Instant::now();
+                        }
+                    }
+                }
             }
             Err(err) => {
                 log::debug!(

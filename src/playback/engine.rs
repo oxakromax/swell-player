@@ -120,7 +120,8 @@ impl Stream {
                 Some((mpd, route)) => (mpd, Some(route)),
                 None => (mpd, None),
             };
-            let path = write_manifest(track_id, mpd.as_bytes()).await?;
+            let tag = route.as_ref().map_or("direct", |r| &r.key[..8]);
+            let path = write_manifest(track_id, tag, mpd.as_bytes()).await?;
             let uri = glib::filename_to_uri(&path, None)?.to_string();
             (uri, codecs, lifetime, route)
         } else if mime.starts_with("application/vnd.tidal.bts") {
@@ -191,11 +192,23 @@ pub fn keep_manifests(track_ids: &[u64]) {
         .unwrap_or_else(PoisonError::into_inner) = track_ids.to_vec();
 }
 
+/// Tracks the prefetcher holds streams for (their manifests stay too).
+static KEEP_PREFETCHED: Mutex<Vec<u64>> = Mutex::new(Vec::new());
+
+/// Sets which tracks the prefetcher holds (or is resolving) streams for.
+pub fn keep_prefetched_manifests(track_ids: &[u64]) {
+    *KEEP_PREFETCHED
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner) = track_ids.to_vec();
+}
+
 /// Manifests carry signed segment URLs, so they go to this process's
 /// private, in-memory runtime directory, one file per track.
-async fn write_manifest(track_id: u64, manifest: &[u8]) -> Result<PathBuf> {
+/// `<track id>-<tag>.mpd`: each stream has its own (`tag` tells streams of
+/// the same track apart).
+async fn write_manifest(track_id: u64, tag: &str, manifest: &[u8]) -> Result<PathBuf> {
     let dir = tokio::task::spawn_blocking(super::rundir::create).await??;
-    let path = dir.join(format!("{track_id}.mpd"));
+    let path = dir.join(format!("{track_id}-{tag}.mpd"));
     let partial = super::rundir::temp_path(&path);
     let written = match tokio::fs::write(&partial, manifest).await {
         Ok(()) => tokio::fs::rename(&partial, &path).await,
@@ -206,10 +219,16 @@ async fn write_manifest(track_id: u64, manifest: &[u8]) -> Result<PathBuf> {
         return Err(err.into());
     }
 
-    let keep = KEEP_MANIFESTS
+    let mut keep = KEEP_MANIFESTS
         .lock()
         .unwrap_or_else(PoisonError::into_inner)
         .clone();
+    keep.extend(
+        KEEP_PREFETCHED
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .iter(),
+    );
     let mut entries = tokio::fs::read_dir(&dir).await?;
     while let Some(entry) = entries.next_entry().await? {
         let old = entry.path();
@@ -219,7 +238,8 @@ async fn write_manifest(track_id: u64, manifest: &[u8]) -> Result<PathBuf> {
         let id = old
             .file_stem()
             .and_then(|stem| stem.to_str())
-            .and_then(|stem| stem.parse::<u64>().ok());
+            .and_then(|stem| stem.split('-').next())
+            .and_then(|id| id.parse::<u64>().ok());
         if !id.is_some_and(|id| keep.contains(&id)) {
             let _ = tokio::fs::remove_file(old).await;
         }
@@ -255,6 +275,9 @@ pub struct NextStream {
     pub gain: Option<f64>,
     /// Crossfade into it over this long instead of switching gaplessly.
     pub crossfade: Option<Duration>,
+    /// If the crossfade cannot happen (its pre-roll failed), switch
+    /// gaplessly instead (gapless playback is on).
+    pub gapless_fallback: bool,
 }
 
 /// Pre-roll the next track this long before its crossfade starts.
@@ -891,6 +914,7 @@ impl Inner {
 
     fn load(self: &Rc<Self>, uri: &str, play: bool, start: Option<f64>, gain: Option<f64>) {
         self.disarm();
+        self.preroll_failed.set(None);
         self.release_active();
         // The active deck if it is free, else the other one (stopping
         // whatever that still did: an older fade-out).
@@ -947,6 +971,9 @@ impl Inner {
             if self.fades.get() && deck.start_at.get().is_none() {
                 deck.fade_in.set(true);
                 self.set_gain_now(deck, 0.0);
+            } else if !deck.fade_in.get() {
+                // Never left silent by an earlier fade.
+                self.set_gain_now(deck, 1.0);
             }
             if !deck.buffering.get() && deck.start_at.get().is_none() {
                 deck.set_state(gst::State::Playing);
@@ -966,6 +993,20 @@ impl Inner {
             // The fade-out before an earlier seek still runs.
             deck.pending_seek.set(Some(position));
             return;
+        }
+        if !deck.target_playing.get() {
+            // Paused, or fading out to pause: pause at once, then seek;
+            // resuming fades in.
+            if deck.then.get() == Then::Pause {
+                deck.ramp.set(None);
+                deck.then.set(Then::Nothing);
+                deck.then_at.set(None);
+                self.set_gain_now(deck, 0.0);
+                deck.set_state(gst::State::Paused);
+            }
+            seek(&deck.playbin, position);
+            self.check_armed_after_seek();
+            return self.ensure_timer();
         }
         if self.fades.get() && deck.is_audible() {
             deck.pending_seek.set(Some(position));
@@ -1034,6 +1075,9 @@ impl Inner {
         let mut armed = self.armed.borrow_mut();
         let Some(armed) = armed.as_mut() else { return };
         let left = transition::crossfade_start(duration, armed.length) - position;
+        if left > 0.0 {
+            armed.due = false;
+        }
         if left > PREROLL_LEAD + 5.0
             && let Some(index) = armed.deck.take()
         {
@@ -1107,7 +1151,11 @@ impl Inner {
                 }
                 Then::Seek => {
                     if let Some(position) = deck.pending_seek.take() {
-                        deck.fade_in.set(self.fades.get());
+                        if self.fades.get() {
+                            deck.fade_in.set(true);
+                        } else {
+                            self.set_gain_now(deck, 1.0);
+                        }
                         seek(&deck.playbin, position);
                     }
                 }
@@ -1129,7 +1177,8 @@ impl Inner {
         };
         let left = transition::crossfade_start(duration, armed.length) - position;
         if armed.deck.is_none() {
-            if left > PREROLL_LEAD {
+            if left > PREROLL_LEAD || self.decks[self.other()].role.get() == Role::Outgoing {
+                // Too early, or the other deck still fades out: later.
                 return;
             }
             self.preroll(&armed.next);
@@ -1241,7 +1290,11 @@ impl Inner {
                 deck.prerolled.set(true);
                 deck.measure_tail();
                 let due = self.armed.borrow().as_ref().is_some_and(|a| a.due);
-                if due {
+                let active = self.active();
+                let playing = active.role.get() == Role::Active
+                    && active.target_playing.get()
+                    && active.is_playing();
+                if due && playing {
                     // Late: fade over what is left of the current track.
                     let active = self.active();
                     let left = active
@@ -1270,11 +1323,13 @@ impl Inner {
                 // Fall back to the gapless switch, if it is not too late.
                 if let Some(armed) = self.armed.take() {
                     self.preroll_failed.set(Some(armed.next.track_id));
-                    let next = NextStream {
-                        crossfade: None,
-                        ..armed.next
-                    };
-                    let _ = lock(&self.active().shared).offer(Some(next));
+                    if armed.next.gapless_fallback {
+                        let next = NextStream {
+                            crossfade: None,
+                            ..armed.next
+                        };
+                        let _ = lock(&self.active().shared).offer(Some(next));
+                    }
                 }
             }
             _ => {}
@@ -1523,6 +1578,7 @@ mod tests {
             uri: format!("file:///{track_id}.mpd"),
             gain: None,
             crossfade: None,
+            gapless_fallback: true,
         }
     }
 

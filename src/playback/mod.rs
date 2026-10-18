@@ -48,7 +48,8 @@
 //! next track every `seconds` of playback (with `RUST_LOG=swell_player=debug`
 //! the log says how long each start took: "first audio … ms");
 //! `SWELL_NO_PROXY=1` plays straight from TIDAL, without the local proxy
-//! and prefetched audio.
+//! and prefetched audio; `SWELL_PREFETCH_BUDGET_MB=<n>` caps the prefetched
+//! audio (to watch eviction).
 //!
 //! Transitions: a track that ends by itself hands over gaplessly, or
 //! crossfades (see `transition.rs` for when); manual changes, pausing and
@@ -1382,6 +1383,7 @@ impl Playback {
                 uri: p.stream.uri.clone(),
                 gain: self.gain_for(&p.stream),
                 crossfade: self.crossfade_into(p.stream.track_id),
+                gapless_fallback: self.gapless.get(),
             });
         if !engine.set_next(next) {
             // Handed over already: too late to change; `NextStarted` sorts
@@ -1963,6 +1965,9 @@ impl Playback {
             // expired. Finish this track without it; the next one is
             // loaded afresh when it ends.
             let next = self.prepared.take().map(|p| p.stream.track_id);
+            if let Some(next) = next {
+                self.prefetcher.forget(next);
+            }
             log::info!(
                 "the stream handed over after track {} failed ({message}): finishing this one first",
                 track.id
@@ -1974,7 +1979,9 @@ impl Playback {
         }
         // Otherwise (also during the handover: the network, the audio
         // output) it is the current track's; the prepared next one stays.
-        // The prepared stream may be just as stale.
+        // Its prefetched stream (likely expired) is not used again, and the
+        // prepared stream may be just as stale.
+        self.prefetcher.forget(track.id);
         if self
             .prepared
             .borrow()

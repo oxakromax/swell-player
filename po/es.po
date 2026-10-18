@@ -2156,7 +2156,7 @@ msgstr "No disponible mientras la salida es bit-perfect: activa la normalizació
 
 #: src/ui/dialogs/preferences.rs
 msgid "When a track ends by itself; consecutive album tracks stay gapless"
-msgstr "Cuando una pista termina sola; las pistas seguidas de un álbum siguen sin pausas"
+msgstr "Cuando una canción termina sola; las canciones seguidas de un álbum siguen sin pausas"
 
 #: src/ui/dialogs/preferences.rs
 msgid "Smooth Transitions"

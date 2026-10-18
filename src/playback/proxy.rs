@@ -28,6 +28,7 @@
 //! cannot start (or `SWELL_NO_PROXY=1`), streams play straight from TIDAL
 //! as before.
 
+use std::cell::Cell;
 use std::collections::HashMap;
 use std::fmt::Write as _;
 use std::sync::{Arc, Mutex, OnceLock, PoisonError};
@@ -239,6 +240,38 @@ impl Store {
     }
 }
 
+/// What [`Proxy::prefetch`] cached.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Prefetched {
+    /// Bytes downloaded now.
+    pub bytes: usize,
+    /// Everything planned is cached (false: the budget had no room).
+    pub complete: bool,
+}
+
+/// Budget reserved for a download; given back when dropped (a cancelled
+/// download is dropped at whatever `await` it was waiting on).
+struct Reservation<'a> {
+    proxy: &'a Proxy,
+    bytes: Cell<usize>,
+}
+
+impl Reservation<'_> {
+    /// Gives the bytes back now, under a lock the caller already holds.
+    fn release(self, store: &mut Store) {
+        store.release(self.bytes.replace(0));
+    }
+}
+
+impl Drop for Reservation<'_> {
+    fn drop(&mut self) {
+        let bytes = self.bytes.replace(0);
+        if bytes > 0 {
+            self.proxy.lock().release(bytes);
+        }
+    }
+}
+
 /// Decrements an entry's active count when a request ends.
 struct Serving<'a> {
     proxy: &'a Proxy,
@@ -255,6 +288,18 @@ impl Drop for Serving<'_> {
             entry.touched = Instant::now();
         }
     }
+}
+
+/// The prefetch budget now (`SWELL_PREFETCH_BUDGET_MB` overrides it, for
+/// testing).
+fn current_budget() -> usize {
+    std::env::var("SWELL_PREFETCH_BUDGET_MB")
+        .ok()
+        .and_then(|mb| mb.parse::<usize>().ok())
+        .map_or_else(
+            || budget::budget(budget::available_memory()),
+            |mb| (mb << 20).min(budget::MAX_BUDGET),
+        )
 }
 
 /// A random, unguessable route key.
@@ -289,7 +334,7 @@ impl Proxy {
         listener.set_nonblocking(true)?;
         let port = listener.local_addr()?.port();
         let store = Store {
-            budget: budget::budget(budget::available_memory()),
+            budget: current_budget(),
             ..Store::default()
         };
         let proxy = Arc::new(Self {
@@ -422,14 +467,17 @@ impl Proxy {
     }
 
     /// Forgets routes of tracks no longer wanted that nothing used for
-    /// `grace` (a deck fading out still streams from its route), and
-    /// cached bytes of streams that were replaced (`stale`: route keys).
+    /// `grace` (a deck fading out still streams from its route), and drops
+    /// the cached bytes of streams not needed any more (`stale`: route
+    /// keys; their routes stay while their track is wanted, as a paused
+    /// deck may still fetch through them).
     pub fn collect(&self, grace: Duration, stale: &[String]) {
         let mut store = self.lock();
         let ranks = std::mem::take(&mut store.ranks);
-        store.routes.retain(|key, entry| {
-            let wanted = ranks.contains_key(&entry.track_id) && !stale.contains(key);
-            wanted || entry.active > 0 || entry.touched.elapsed() < grace
+        store.routes.retain(|_, entry| {
+            ranks.contains_key(&entry.track_id)
+                || entry.active > 0
+                || entry.touched.elapsed() < grace
         });
         for key in stale {
             if let Some(entry) = store.routes.get_mut(key) {
@@ -452,17 +500,27 @@ impl Proxy {
         (store.used(), store.budget)
     }
 
+    /// Bytes cached for the route `key`.
+    pub fn cached(&self, key: &str) -> usize {
+        self.lock().routes.get(key).map_or(0, |e| e.cached.len())
+    }
+
     // ---- Prefetching ----
 
     /// Downloads the first `seconds` of the route `key` into memory,
-    /// within the budget; `bytes_per_second` estimates the size of a
-    /// lossless file's prefix. Returns the bytes cached.
-    pub async fn prefetch(&self, key: &str, seconds: f64, bytes_per_second: f64) -> Result<usize> {
+    /// within the budget (what is cached already is kept);
+    /// `bytes_per_second` estimates the size of a lossless file's prefix.
+    pub async fn prefetch(
+        &self,
+        key: &str,
+        seconds: f64,
+        bytes_per_second: f64,
+    ) -> Result<Prefetched> {
         {
             let mut store = self.lock();
-            store.set_budget(budget::budget(budget::available_memory()));
+            store.set_budget(current_budget());
             if store.budget == 0 {
-                return Ok(0);
+                return Ok(Prefetched::default());
             }
         }
         let plan = {
@@ -494,88 +552,113 @@ impl Proxy {
         }
     }
 
-    async fn prefetch_prefix(&self, key: &str, url: &str, want: usize) -> Result<usize> {
-        if !self.lock().reserve(key, want) {
+    async fn prefetch_prefix(&self, key: &str, url: &str, want: usize) -> Result<Prefetched> {
+        if self
+            .lock()
+            .routes
+            .get(key)
+            .is_some_and(|e| e.cached.len() > 0)
+        {
+            return Ok(Prefetched {
+                bytes: 0,
+                complete: true,
+            });
+        }
+        let Some(reservation) = self.reserve(key, want) else {
             log::debug!("prefetch: no room for {} KiB", want >> 10);
-            return Ok(0);
-        }
-        let result = async {
-            let mut response = self
-                .http
-                .get(url)
-                .header(reqwest::header::RANGE, format!("bytes=0-{}", want - 1))
-                .send()
-                .await?
-                .error_for_status()?;
-            let total = match response.status().as_u16() {
-                206 => header(&response, "content-range")
-                    .and_then(|range| parse_content_range(&range))
-                    .map(|(_, _, total)| total)
-                    .context("no total in the Content-Range")?,
-                _ => response.content_length().context("no Content-Length")?,
+            return Ok(Prefetched::default());
+        };
+        let mut response = self
+            .http
+            .get(url)
+            .header(reqwest::header::RANGE, format!("bytes=0-{}", want - 1))
+            .send()
+            .await?
+            .error_for_status()?;
+        let total = match response.status().as_u16() {
+            206 => header(&response, "content-range")
+                .and_then(|range| parse_content_range(&range))
+                .map(|(_, _, total)| total)
+                .context("no total in the Content-Range")?,
+            _ => response.content_length().context("no Content-Length")?,
+        };
+        let content_type = header(&response, "content-type");
+        let mut bytes = BytesMut::with_capacity(want);
+        while bytes.len() < want {
+            let Some(chunk) = response.chunk().await? else {
+                break;
             };
-            let content_type = header(&response, "content-type");
-            let mut bytes = BytesMut::with_capacity(want);
-            while bytes.len() < want {
-                let Some(chunk) = response.chunk().await? else {
-                    break;
-                };
-                let room = want - bytes.len();
-                bytes.extend_from_slice(&chunk[..chunk.len().min(room)]);
-            }
-            anyhow::Ok((bytes.freeze(), total, content_type))
+            let room = want - bytes.len();
+            bytes.extend_from_slice(&chunk[..chunk.len().min(room)]);
         }
-        .await;
-        let mut store = self.lock();
-        store.release(want);
-        let (bytes, total, content_type) = result?;
         let len = bytes.len();
+        let mut store = self.lock();
+        // Released in the same critical section the bytes are counted in.
+        reservation.release(&mut store);
         let Some(entry) = store.routes.get_mut(key) else {
-            return Ok(0);
+            return Ok(Prefetched::default());
         };
         if len == 0 || len as u64 > total {
-            return Ok(0);
+            return Ok(Prefetched::default());
         }
         entry.cached = Cached::Prefix {
-            bytes,
+            bytes: bytes.freeze(),
             total,
             content_type,
         };
-        Ok(len)
+        Ok(Prefetched {
+            bytes: len,
+            complete: true,
+        })
     }
 
-    async fn prefetch_files(&self, key: &str, files: Vec<(String, String)>) -> Result<usize> {
-        let mut cached = 0;
+    async fn prefetch_files(&self, key: &str, files: Vec<(String, String)>) -> Result<Prefetched> {
+        let mut done = Prefetched {
+            bytes: 0,
+            complete: true,
+        };
         for (path, url) in files {
+            let have = self
+                .lock()
+                .routes
+                .get(key)
+                .is_some_and(|e| match &e.cached {
+                    Cached::Files(files) => files.contains_key(&path),
+                    _ => false,
+                });
+            if have {
+                continue;
+            }
             let mut response = self.http.get(&url).send().await?.error_for_status()?;
             let Some(len) = response
                 .content_length()
                 .and_then(|l| usize::try_from(l).ok())
             else {
+                done.complete = false;
                 break;
             };
-            if cached + len > MAX_ENTRY || !self.lock().reserve(key, len) {
+            let reservation = (done.bytes + len <= MAX_ENTRY)
+                .then(|| self.reserve(key, len))
+                .flatten();
+            let Some(reservation) = reservation else {
                 log::debug!("prefetch: no room for {path}");
+                done.complete = false;
                 break;
-            }
-            let body = async {
-                let mut bytes = BytesMut::with_capacity(len);
-                while let Some(chunk) = response.chunk().await? {
-                    if bytes.len() + chunk.len() > len {
-                        bail!("more bytes than announced");
-                    }
-                    bytes.extend_from_slice(&chunk);
-                }
-                anyhow::Ok(bytes.freeze())
-            }
-            .await;
-            let mut store = self.lock();
-            store.release(len);
-            let body = body?;
-            let Some(entry) = store.routes.get_mut(key) else {
-                return Ok(cached);
             };
-            cached += body.len();
+            let mut bytes = BytesMut::with_capacity(len);
+            while let Some(chunk) = response.chunk().await? {
+                if bytes.len() + chunk.len() > len {
+                    bail!("more bytes than announced");
+                }
+                bytes.extend_from_slice(&chunk);
+            }
+            let mut store = self.lock();
+            reservation.release(&mut store);
+            let Some(entry) = store.routes.get_mut(key) else {
+                return Ok(done);
+            };
+            done.bytes += bytes.len();
+            let body = bytes.freeze();
             match &mut entry.cached {
                 Cached::Files(files) => {
                     files.insert(path, body);
@@ -585,7 +668,20 @@ impl Proxy {
                 }
             }
         }
-        Ok(cached)
+        Ok(done)
+    }
+
+    /// Reserves `bytes` of the budget for the route `key` (see
+    /// [`Store::reserve`]); the reservation is given back when dropped,
+    /// also when the download is cancelled half-way.
+    fn reserve(&self, key: &str, bytes: usize) -> Option<Reservation<'_>> {
+        // The lock must be released before a refused `Reservation` would
+        // be dropped (its `Drop` takes the lock).
+        let reserved = self.lock().reserve(key, bytes);
+        reserved.then(|| Reservation {
+            proxy: self,
+            bytes: Cell::new(bytes),
+        })
     }
 
     // ---- Serving ----
@@ -865,7 +961,13 @@ async fn serve_bytes(
 ) -> Result<()> {
     let total = bytes.len() as u64;
     let (start, end) = request.range.unwrap_or((0, None));
-    if start >= total.max(1) {
+    if total == 0 && request.range.is_none() {
+        let mut head = status_line(200);
+        head.push_str("Content-Length: 0\r\nConnection: close\r\n\r\n");
+        socket.write_all(head.as_bytes()).await?;
+        return Ok(());
+    }
+    if start >= total {
         return respond_empty(socket, 416).await;
     }
     let end = end.unwrap_or(total - 1).min(total - 1);
@@ -1331,8 +1433,13 @@ mod tests {
             let route = proxy.route_progressive(42, &upstream);
             assert!(!route.uri.contains("secret"));
             proxy.set_ranks(&[42]);
-            let cached = proxy.prefetch(&route.key, 1.0, 100_000.0).await.unwrap();
+            let done = proxy.prefetch(&route.key, 1.0, 100_000.0).await.unwrap();
+            assert!(done.complete);
+            let cached = done.bytes;
             assert_eq!(cached, prefix_bytes(1.0, 100_000.0));
+            // Again: nothing more to download.
+            let again = proxy.prefetch(&route.key, 1.0, 100_000.0).await.unwrap();
+            assert_eq!((again.bytes, again.complete), (0, true));
             assert!(cached < file.len());
             assert!(proxy.usage().0 <= proxy.usage().1);
 
@@ -1369,6 +1476,39 @@ mod tests {
             proxy.collect(Duration::ZERO, &[]);
             let (status, _, _) = fetch(&route.uri, None).await;
             assert_eq!(status, 404);
+        });
+    }
+
+    /// A download cancelled half-way gives its reservation back.
+    #[test]
+    fn cancelled_prefetch_releases_its_reservation() {
+        crate::runtime::runtime().block_on(async {
+            // A CDN that accepts and never answers.
+            let listener = TcpListener::bind(("127.0.0.1", 0)).await.unwrap();
+            let port = listener.local_addr().unwrap().port();
+            tokio::spawn(async move {
+                let mut held = Vec::new();
+                while let Ok((socket, _)) = listener.accept().await {
+                    held.push(socket);
+                }
+            });
+            let proxy = Proxy::start().unwrap();
+            let route = proxy.route_progressive(7, &format!("http://127.0.0.1:{port}/x.flac"));
+            proxy.set_ranks(&[7]);
+            let before = proxy.usage().0;
+            let task = tokio::spawn({
+                let proxy = proxy.clone();
+                let key = route.key.clone();
+                async move { proxy.prefetch(&key, 8.0, 100_000.0).await }
+            });
+            tokio::time::sleep(Duration::from_millis(200)).await;
+            assert!(proxy.usage().0 > before, "reserved while downloading");
+            task.abort();
+            let _ = task.await;
+            assert_eq!(proxy.usage().0, before);
+            // A reservation that does not fit is refused without blocking.
+            assert!(proxy.reserve(&route.key, usize::MAX).is_none());
+            assert_eq!(proxy.usage().0, before);
         });
     }
 

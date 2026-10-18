@@ -28,33 +28,33 @@ msgstr ""
 msgid "Unknown format"
 msgstr ""
 
-#: src/playback/mod.rs:1532
+#: src/playback/mod.rs:1534
 msgid "Skipped a track that is not available"
 msgid_plural "Skipped {n} tracks that are not available"
 msgstr[0] ""
 msgstr[1] ""
 
-#: src/playback/mod.rs:1562
+#: src/playback/mod.rs:1564
 msgid "Playback needs GStreamer's playbin3"
 msgstr ""
 
-#: src/playback/mod.rs:1663
+#: src/playback/mod.rs:1665
 msgid "The TIDAL session has expired: sign in again to play"
 msgstr ""
 
-#: src/playback/mod.rs:1688
+#: src/playback/mod.rs:1690
 msgid "Connection lost — retrying"
 msgstr ""
 
-#: src/playback/mod.rs:1756
+#: src/playback/mod.rs:1758
 msgid "Could not play “{title}”. Playback stopped after {n} tracks failed"
 msgstr ""
 
-#: src/playback/mod.rs:1762
+#: src/playback/mod.rs:1764
 msgid "Could not play “{title}”, skipped"
 msgstr ""
 
-#: src/playback/mod.rs:1957
+#: src/playback/mod.rs:1959
 msgid "Playback failed: {error}"
 msgstr ""
 
