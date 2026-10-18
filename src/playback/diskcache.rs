@@ -26,7 +26,7 @@
 //!   concurrent writers never exceed it either.
 //! - Everything here is blocking file I/O: call it from `spawn_blocking`.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs::{self, File};
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
@@ -58,6 +58,8 @@ const VERSION: u32 = 1;
 const HEADER: usize = 4 + 4 + 8 + 8 + 8 + 2 + 2;
 const EXTENSION: &str = "swa";
 const TEMP_EXTENSION: &str = "part";
+/// What [`DiskCache::clear`] renames the directory to, before deleting it.
+const TOMBSTONE: &str = ".deleted-";
 /// Temporary files older than this are a crash's leftovers.
 const STALE_TEMP: Duration = Duration::from_secs(10 * 60);
 /// A file's modification time (its last use, for the next session's LRU)
@@ -203,6 +205,14 @@ struct State {
     epoch: u64,
 }
 
+impl State {
+    fn forget(&mut self, name: &str) {
+        if let Some(meta) = self.entries.remove(name) {
+            self.used = self.used.saturating_sub(meta.size);
+        }
+    }
+}
+
 /// Why an entry could not be read.
 enum ReadError {
     Missing,
@@ -220,22 +230,30 @@ impl From<io::Error> for ReadError {
     }
 }
 
+/// Two locks: `io` serialises what changes the directory (evicting,
+/// renaming into place, deleting, clearing), so the index always matches
+/// it and the cap holds on disk too; `state` (the index) is only ever
+/// held for a moment, never across I/O, so asking what is cached (from
+/// the main thread, or the proxy) never waits for the disk.
 pub struct DiskCache {
     dir: PathBuf,
     /// Bytes; 0 turns the disk tier off.
     cap: AtomicU64,
+    io: Mutex<()>,
     state: Mutex<State>,
 }
 
 impl DiskCache {
     /// Opens (creating it) the cache in `dir` with a cap of `cap` bytes:
-    /// reads the directory, deletes what crashes left behind, and evicts
-    /// what is over the budget.
+    /// reads the directory, deletes what crashes and interrupted clears
+    /// left behind, and evicts what is over the budget.
     pub fn open(dir: PathBuf, cap: u64) -> io::Result<Self> {
+        remove_tombstones(&dir);
         create_private(&dir)?;
         let cache = Self {
             dir,
             cap: AtomicU64::new(cap),
+            io: Mutex::default(),
             state: Mutex::default(),
         };
         let (entries, used) = scan(&cache.dir)?;
@@ -261,20 +279,38 @@ impl DiskCache {
         self.state.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
+    fn lock_io(&self) -> MutexGuard<'_, ()> {
+        self.io.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
     pub fn cap(&self) -> u64 {
         self.cap.load(Ordering::Relaxed)
     }
 
-    /// Changes the cap, evicting what no longer fits.
+    /// Changes the cap, evicting what no longer fits (blocking).
+    #[cfg(test)]
     pub fn set_cap(&self, cap: u64) {
-        if self.cap.swap(cap, Ordering::Relaxed) > cap {
+        if self.swap_cap(cap) > cap {
             self.prune();
         }
+    }
+
+    /// Changes the cap and gives the old one, without evicting: then call
+    /// [`Self::prune`] (blocking) if it is lower.
+    pub fn swap_cap(&self, cap: u64) -> u64 {
+        self.cap.swap(cap, Ordering::Relaxed)
     }
 
     /// Bytes held (files, headers included).
     pub fn used(&self) -> u64 {
         self.lock().used
+    }
+
+    /// The generation of the cache: [`Self::clear`] starts a new one, and
+    /// writes for an older one are refused. Read it when the bytes to
+    /// write are obtained (while their stream is known to be current).
+    pub fn epoch(&self) -> u64 {
+        self.lock().epoch
     }
 
     /// Whether an entry for `key` is there, as far as the index knows (no
@@ -285,7 +321,7 @@ impl DiskCache {
 
     /// About the payload's size of the entry for `key`, from the index: its
     /// file's size less the header (the content type, a few bytes, is
-    /// counted in).
+    /// counted in). No I/O.
     pub fn size_of(&self, key: &Key) -> usize {
         self.lock().entries.get(&key.file_name()).map_or(0, |meta| {
             usize::try_from(meta.size)
@@ -305,24 +341,30 @@ impl DiskCache {
                 Some(blob)
             }
             Err(ReadError::Missing) => {
-                self.forget(&name);
+                let _io = self.lock_io();
+                // Not if a writer has just renamed it into place.
+                if !path.exists() {
+                    self.lock().forget(&name);
+                }
                 None
             }
             Err(ReadError::Corrupt(why)) => {
                 log::debug!("audio cache: deleting {name} ({why})");
-                let mut state = self.lock();
+                let _io = self.lock_io();
                 if let Err(err) = fs::remove_file(&path)
                     && err.kind() != io::ErrorKind::NotFound
                 {
                     log::debug!("audio cache: could not delete {name}: {err}");
                 }
-                if let Some(meta) = state.entries.remove(&name) {
-                    state.used = state.used.saturating_sub(meta.size);
-                }
+                self.lock().forget(&name);
                 None
             }
             Err(ReadError::Io(err)) => {
+                // Unreadable (permissions, a file locked by another
+                // program): not counted on any more, so the start can be
+                // downloaded and written again.
                 log::debug!("audio cache: could not read {name}: {err}");
+                self.lock().forget(&name);
                 None
             }
         }
@@ -331,12 +373,32 @@ impl DiskCache {
     /// Stores `payload` for `key` (`total`: the size of the whole file it
     /// starts). False when it does not fit in the budget, or the cache was
     /// cleared meanwhile.
+    #[cfg(test)]
     pub fn put(
         &self,
         key: &Key,
         payload: &[u8],
         total: u64,
         content_type: Option<&str>,
+    ) -> io::Result<bool> {
+        let epoch = self.epoch();
+        self.put_keeping(key, payload, total, content_type, &HashSet::new(), epoch)
+    }
+
+    /// Stores `payload` for `key` (`total`: the size of the whole file it
+    /// starts) if the cache is still of `epoch` (see [`Self::epoch`]),
+    /// never evicting the entries named in `keep` (file names: the starts
+    /// of tracks wanted more than this one, so a small cache does not
+    /// throw out what is about to play for what plays later). False when
+    /// it does not fit in the budget, or the cache was cleared since.
+    pub fn put_keeping(
+        &self,
+        key: &Key,
+        payload: &[u8],
+        total: u64,
+        content_type: Option<&str>,
+        keep: &HashSet<String>,
+        epoch: u64,
     ) -> io::Result<bool> {
         let name = key.file_name();
         let content_type = content_type.unwrap_or("");
@@ -346,12 +408,15 @@ impl DiskCache {
         ) else {
             return Ok(false);
         };
+        if !valid_content_type(content_type) {
+            return Ok(false);
+        }
         let mut header = Vec::with_capacity(HEADER + key.0.len() + content_type.len());
         header.extend_from_slice(MAGIC);
         header.extend_from_slice(&VERSION.to_le_bytes());
         header.extend_from_slice(&(payload.len() as u64).to_le_bytes());
         header.extend_from_slice(&total.to_le_bytes());
-        header.extend_from_slice(&checksum(payload).to_le_bytes());
+        header.extend_from_slice(&entry_checksum(payload, total, content_type).to_le_bytes());
         header.extend_from_slice(&key_len.to_le_bytes());
         header.extend_from_slice(&type_len.to_le_bytes());
         header.extend_from_slice(key.0.as_bytes());
@@ -359,23 +424,24 @@ impl DiskCache {
         let size = (header.len() + payload.len()) as u64;
 
         let space = space(&self.dir);
-        let epoch = {
-            let mut state = self.lock();
-            if !self.make_room(&mut state, &name, size, space) {
+        {
+            let _io = self.lock_io();
+            if self.lock().epoch != epoch || !self.make_room(&name, size, space, keep) {
                 return Ok(false);
             }
-            state.reserved += size;
-            state.epoch
-        };
+        }
         let written = self.write_temp(&name, &header, payload, epoch);
+        let _io = self.lock_io();
         let mut state = self.lock();
         state.reserved = state.reserved.saturating_sub(size);
         let temp = written?;
         if state.epoch != epoch {
+            drop(state);
             let _ = fs::remove_file(&temp);
             return Ok(false);
         }
-        // Renamed under the lock, so the index always matches the
+        drop(state);
+        // Renamed under the I/O lock, so the index always matches the
         // directory, also with writers of the same key racing.
         if let Err(err) = fs::rename(&temp, self.dir.join(&name)) {
             let _ = fs::remove_file(&temp);
@@ -387,6 +453,7 @@ impl DiskCache {
             used_at: now,
             touched_at: now,
         };
+        let mut state = self.lock();
         if let Some(old) = state.entries.insert(name, meta) {
             state.used = state.used.saturating_sub(old.size);
         }
@@ -397,70 +464,117 @@ impl DiskCache {
     /// Deletes the entry for `key`.
     pub fn remove(&self, key: &Key) {
         let name = key.file_name();
-        let mut state = self.lock();
+        let _io = self.lock_io();
         let _ = fs::remove_file(self.dir.join(&name));
-        if let Some(meta) = state.entries.remove(&name) {
-            state.used = state.used.saturating_sub(meta.size);
-        }
+        self.lock().forget(&name);
     }
 
-    /// Deletes everything, the directory included (sign-out, "Clear"):
-    /// writes under way are dropped, later ones create it again.
+    /// Deletes everything (sign-out, "Clear"): writes under way are
+    /// dropped, later ones create the directory again. The directory is
+    /// renamed out of the way at once and deleted afterwards (also at the
+    /// next start, if that is interrupted).
     pub fn clear(&self) -> io::Result<()> {
-        let mut state = self.lock();
-        state.epoch += 1;
-        state.entries.clear();
-        state.used = 0;
-        // Under the lock: nothing is renamed into place meanwhile.
-        match fs::remove_dir_all(&self.dir) {
-            Err(err) if err.kind() != io::ErrorKind::NotFound => Err(err),
-            _ => Ok(()),
+        let tombstone = {
+            let _io = self.lock_io();
+            {
+                let mut state = self.lock();
+                state.epoch += 1;
+                state.entries.clear();
+                state.used = 0;
+            }
+            let tombstone = tombstone_for(&self.dir);
+            match fs::rename(&self.dir, &tombstone) {
+                Ok(()) => tombstone,
+                Err(err) if err.kind() == io::ErrorKind::NotFound => return Ok(()),
+                // Could not rename (another filesystem's rules): delete in
+                // place, still under the lock.
+                Err(_) => return remove_dir(&self.dir),
+            }
+        };
+        if let Err(err) = remove_dir(&tombstone) {
+            log::debug!(
+                "audio cache: {} stays until the next start: {err}",
+                tombstone.display()
+            );
         }
+        Ok(())
     }
 
     /// Evicts until what is held fits the budget now.
     pub fn prune(&self) {
         let space = space(&self.dir);
-        let mut state = self.lock();
-        self.make_room(&mut state, "", 0, space);
+        let _io = self.lock_io();
+        self.make_room("", 0, space, &HashSet::new());
     }
 
-    /// Evicts the least recently used entries (never `name`) until `size`
-    /// more bytes fit in the budget, counting the entry for `name` as
-    /// replaced. False when they cannot fit.
-    fn make_room(&self, state: &mut State, name: &str, size: u64, space: Option<Space>) -> bool {
-        let replaced = state.entries.get(name).map_or(0, |meta| meta.size);
-        let allowed = allowed(self.cap(), state.used, space);
-        let held = |state: &State| state.used + state.reserved - replaced.min(state.used);
+    /// Evicts the least recently used entries (never `name` or those in
+    /// `keep`) until `size` more bytes fit in the budget, counting the
+    /// entry for `name` as replaced, and reserves them. False when they
+    /// cannot fit. Call with the I/O lock held.
+    fn make_room(
+        &self,
+        name: &str,
+        size: u64,
+        space: Option<Space>,
+        keep: &HashSet<String>,
+    ) -> bool {
+        // What the disk allows with what the cache holds now (evicting
+        // frees as much on the disk as it takes from the cache).
+        let allowed = allowed(self.cap(), self.lock().used, space);
         if size > allowed {
             return false;
         }
-        if held(state) + size <= allowed {
-            return true;
-        }
-        let mut order: Vec<(SystemTime, String)> = state
-            .entries
-            .iter()
-            .filter(|(entry, _)| entry.as_str() != name)
-            .map(|(entry, meta)| (meta.used_at, entry.clone()))
-            .collect();
-        order.sort();
-        for (_, victim) in order {
-            if held(state) + size <= allowed {
-                break;
+        let fits = |state: &State| {
+            let replaced = state.entries.get(name).map_or(0, |meta| meta.size);
+            state.used + state.reserved - replaced.min(state.used) + size <= allowed
+        };
+        // Chosen and taken out of the index at once; their files go while
+        // only the I/O lock is held.
+        let victims: Vec<(String, Meta)> = {
+            let mut state = self.lock();
+            if fits(&state) {
+                state.reserved += size;
+                return true;
             }
+            let mut order: Vec<(SystemTime, String)> = state
+                .entries
+                .iter()
+                .filter(|(entry, _)| entry.as_str() != name && !keep.contains(*entry))
+                .map(|(entry, meta)| (meta.used_at, entry.clone()))
+                .collect();
+            order.sort();
+            let mut victims = Vec::new();
+            for (_, victim) in order {
+                if fits(&state) {
+                    break;
+                }
+                if let Some(meta) = state.entries.remove(&victim) {
+                    state.used = state.used.saturating_sub(meta.size);
+                    victims.push((victim, meta));
+                }
+            }
+            victims
+        };
+        let mut kept = Vec::new();
+        for (victim, meta) in victims {
             match fs::remove_file(self.dir.join(&victim)) {
                 Err(err) if err.kind() != io::ErrorKind::NotFound => {
                     log::debug!("audio cache: could not evict {victim}: {err}");
-                    continue;
+                    kept.push((victim, meta));
                 }
                 _ => {}
             }
-            if let Some(meta) = state.entries.remove(&victim) {
-                state.used = state.used.saturating_sub(meta.size);
-            }
         }
-        held(state) + size <= allowed
+        let mut state = self.lock();
+        for (victim, meta) in kept {
+            state.used += meta.size;
+            state.entries.insert(victim, meta);
+        }
+        let fits = fits(&state);
+        if fits {
+            state.reserved += size;
+        }
+        fits
     }
 
     /// Writes an entry's file under a temporary name; returns that name.
@@ -499,36 +613,29 @@ impl DiskCache {
     /// and forgets the entries that were in it, unless the cache was
     /// cleared since `epoch` (then it stays gone).
     fn lost_dir(&self, epoch: u64) -> io::Result<()> {
-        let mut state = self.lock();
-        if state.epoch != epoch {
+        let _io = self.lock_io();
+        if self.lock().epoch != epoch {
             return Err(io::Error::new(io::ErrorKind::NotFound, "cleared"));
         }
         if !self.dir.is_dir() {
             log::debug!("audio cache: the directory is gone, starting afresh");
-            state.entries.clear();
-            state.used = 0;
+            {
+                let mut state = self.lock();
+                state.entries.clear();
+                state.used = 0;
+            }
             create_private(&self.dir)?;
         }
         Ok(())
     }
 
-    fn forget(&self, name: &str) {
-        let mut state = self.lock();
-        if let Some(meta) = state.entries.remove(name) {
-            state.used = state.used.saturating_sub(meta.size);
-        }
-    }
-
-    /// Marks an entry used now (and, now and then, its file).
+    /// Marks an entry used now (and, now and then, its file, for the LRU
+    /// of the next session).
     fn touch(&self, name: &str, path: &Path) {
         let now = SystemTime::now();
         let stale = {
             let mut state = self.lock();
             let Some(meta) = state.entries.get_mut(name) else {
-                // Read but not indexed (the directory was rebuilt by hand):
-                // counted from now on.
-                drop(state);
-                self.adopt(name, path);
                 return;
             };
             meta.used_at = now;
@@ -547,25 +654,33 @@ impl DiskCache {
                 .and_then(|file| file.set_modified(now));
         }
     }
+}
 
-    fn adopt(&self, name: &str, path: &Path) {
-        let Ok(metadata) = fs::metadata(path) else {
-            return;
-        };
-        let now = SystemTime::now();
-        let mut state = self.lock();
-        if state.entries.contains_key(name) {
-            return;
+/// Where [`DiskCache::clear`] moves a directory before deleting it: next
+/// to it, unique to this process and call.
+fn tombstone_for(dir: &Path) -> PathBuf {
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
+    let n = COUNTER.fetch_add(1, Ordering::Relaxed);
+    let name = dir
+        .file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    dir.with_file_name(format!("{name}{TOMBSTONE}{}-{n}", std::process::id()))
+}
+
+/// Deletes the tombstones of `dir` that an interrupted clear left.
+fn remove_tombstones(dir: &Path) {
+    let (Some(parent), Some(name)) = (dir.parent(), dir.file_name()) else {
+        return;
+    };
+    let prefix = format!("{}{TOMBSTONE}", name.to_string_lossy());
+    let Ok(items) = fs::read_dir(parent) else {
+        return;
+    };
+    for item in items.flatten() {
+        if item.file_name().to_string_lossy().starts_with(&prefix) {
+            let _ = fs::remove_dir_all(item.path());
         }
-        state.entries.insert(
-            name.to_owned(),
-            Meta {
-                size: metadata.len(),
-                used_at: now,
-                touched_at: metadata.modified().unwrap_or(now),
-            },
-        );
-        state.used += metadata.len();
     }
 }
 
@@ -617,6 +732,22 @@ fn is_entry_name(name: &str) -> bool {
         .is_some_and(|stem| stem.len() == 32 && stem.bytes().all(|b| b.is_ascii_hexdigit()))
 }
 
+/// A content type that may go into an HTTP header as it is.
+fn valid_content_type(content_type: &str) -> bool {
+    content_type.bytes().all(|b| (0x20..0x7f).contains(&b))
+}
+
+/// The checksum of an entry: its payload, and the header fields that are
+/// served (the total and the content type; the key is compared whole).
+fn entry_checksum(payload: &[u8], total: u64, content_type: &str) -> u64 {
+    let mut fields = total.to_le_bytes().to_vec();
+    fields.extend_from_slice(content_type.as_bytes());
+    checksum(payload) ^ checksum(&fields).rotate_left(17)
+}
+
+/// Payloads bigger than this are not entries (they are at most 16 MiB).
+const MAX_PAYLOAD: u64 = 1 << 30;
+
 fn read_entry(path: &Path, key: &Key) -> Result<Blob, ReadError> {
     let mut file = File::open(path)?;
     let len = file.metadata()?.len();
@@ -635,8 +766,7 @@ fn read_entry(path: &Path, key: &Key) -> Result<Blob, ReadError> {
     let total = u64_at(16);
     let sum = u64_at(24);
     let (key_len, type_len) = (usize::from(u16_at(32)), usize::from(u16_at(34)));
-    let expected = (HEADER + key_len + type_len) as u64 + payload_len;
-    if len != expected || payload_len > 1 << 30 {
+    if payload_len > MAX_PAYLOAD || len != (HEADER + key_len + type_len) as u64 + payload_len {
         return Err(ReadError::Corrupt("wrong length"));
     }
     let mut names = vec![0u8; key_len + type_len];
@@ -645,11 +775,13 @@ fn read_entry(path: &Path, key: &Key) -> Result<Blob, ReadError> {
         return Err(ReadError::Corrupt("another key"));
     }
     let content_type = std::str::from_utf8(&names[key_len..])
-        .map_err(|_| ReadError::Corrupt("bad content type"))?
+        .ok()
+        .filter(|content_type| valid_content_type(content_type))
+        .ok_or(ReadError::Corrupt("bad content type"))?
         .to_owned();
     let mut payload = vec![0u8; payload_len as usize];
     file.read_exact(&mut payload)?;
-    if checksum(&payload) != sum {
+    if entry_checksum(&payload, total, &content_type) != sum {
         return Err(ReadError::Corrupt("checksum mismatch"));
     }
     Ok(Blob {
@@ -819,7 +951,7 @@ mod tests {
         let data = payload(50_000, 2);
         let path = dir.join(key.file_name());
         type Damage = fn(&mut Vec<u8>);
-        let damage: [(&str, Damage); 5] = [
+        let damage: [(&str, Damage); 7] = [
             ("cut short", |f| f.truncate(f.len() - 10)),
             ("a flipped bit", |f| {
                 let at = f.len() - 100;
@@ -827,6 +959,10 @@ mod tests {
             }),
             ("grown", |f| f.extend_from_slice(b"junk")),
             ("another magic", |f| f[0] = b'X'),
+            ("an absurd length", |f| {
+                f[8..16].copy_from_slice(&u64::MAX.to_le_bytes())
+            }),
+            ("another total", |f| f[16] ^= 1),
             ("empty", |f| f.clear()),
         ];
         for (what, change) in damage {
@@ -919,6 +1055,72 @@ mod tests {
         let cache = DiskCache::open(dir.clone(), entry as u64 + 200).unwrap();
         assert!(cache.used() <= entry as u64 + 200);
         assert_eq!(cache.used(), on_disk());
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn clearing_wins_over_writes_begun_before() {
+        let dir = temp_dir("epoch");
+        let cache = DiskCache::open(dir.clone(), 10 << 20).unwrap();
+        let key = Key::new(3, "x", "");
+        let before = cache.epoch();
+        assert!(cache.put(&key, &payload(1000, 0), 0, None).unwrap());
+        cache.clear().unwrap();
+        assert!(!dir.exists());
+        // A write whose bytes were obtained before the clear: refused, and
+        // the directory is not created again for it.
+        let keep = HashSet::new();
+        assert!(
+            !cache
+                .put_keeping(&key, &payload(1000, 0), 0, None, &keep, before)
+                .unwrap()
+        );
+        assert!(!dir.exists());
+        assert_eq!(cache.used(), 0);
+        // One of the new generation is written.
+        assert!(
+            cache
+                .put_keeping(&key, &payload(1000, 0), 0, None, &keep, cache.epoch())
+                .unwrap()
+        );
+        // A clear interrupted half-way (its renamed directory left behind)
+        // is finished at the next start.
+        let tombstone = tombstone_for(&dir);
+        fs::create_dir_all(tombstone.join("x")).unwrap();
+        drop(cache);
+        let cache = DiskCache::open(dir.clone(), 10 << 20).unwrap();
+        assert!(!tombstone.exists());
+        assert!(cache.contains(&key));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn never_evicts_what_is_wanted_more() {
+        let dir = temp_dir("keep");
+        let entry = 100_000;
+        let cache = DiskCache::open(dir.clone(), 2 * (entry as u64 + 200)).unwrap();
+        let (a, b, c) = (
+            Key::new(1, "x", ""),
+            Key::new(2, "x", ""),
+            Key::new(3, "x", ""),
+        );
+        assert!(cache.put(&a, &payload(entry, 0), 0, None).unwrap());
+        assert!(cache.put(&b, &payload(entry, 0), 0, None).unwrap());
+        let keep: HashSet<String> = [a.file_name(), b.file_name()].into();
+        let epoch = cache.epoch();
+        assert!(
+            !cache
+                .put_keeping(&c, &payload(entry, 0), 0, None, &keep, epoch)
+                .unwrap()
+        );
+        assert!(cache.contains(&a) && cache.contains(&b) && !cache.contains(&c));
+        let keep: HashSet<String> = [b.file_name()].into();
+        assert!(
+            cache
+                .put_keeping(&c, &payload(entry, 0), 0, None, &keep, epoch)
+                .unwrap()
+        );
+        assert!(!cache.contains(&a) && cache.contains(&b) && cache.contains(&c));
         let _ = fs::remove_dir_all(&dir);
     }
 
