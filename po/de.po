@@ -1,10 +1,5 @@
 # German translation of Swell.
 # This file is distributed under the same license as Swell (GPL-3.0-or-later).
-#
-# Placeholder: only the header, so that the catalogue is embedded before
-# its translation lands; every string falls back to English.
-# "X-Swell-Partial: yes" excuses it from the every_string_is_translated
-# test (see docs/translating.md).
 msgid ""
 msgstr ""
 "Project-Id-Version: swell-player\n"
@@ -13,4 +8,2288 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
-"X-Swell-Partial: yes\n"
+
+#: src/playback/format.rs:30
+msgid "Unknown"
+msgstr "Unbekannt"
+
+#: src/playback/format.rs:122
+msgid "{bits}-bit/{rate} kHz {codec}"
+msgstr "{codec} {bits} Bit/{rate} kHz"
+
+#: src/playback/format.rs:136
+msgid "Unknown format"
+msgstr "Unbekanntes Format"
+
+#: src/playback/mod.rs:1439
+msgid "Skipped a track that is not available"
+msgid_plural "Skipped {n} tracks that are not available"
+msgstr[0] "Ein nicht verfügbarer Titel wurde übersprungen"
+msgstr[1] "{n} nicht verfügbare Titel wurden übersprungen"
+
+#: src/playback/mod.rs:1469
+msgid "Playback needs GStreamer's playbin3"
+msgstr "Die Wiedergabe benötigt playbin3 von GStreamer"
+
+#: src/playback/mod.rs:1566
+msgid "The TIDAL session has expired: sign in again to play"
+msgstr "Die TIDAL-Sitzung ist abgelaufen: Melden Sie sich erneut an, um Musik abzuspielen"
+
+#: src/playback/mod.rs:1591
+msgid "Connection lost — retrying"
+msgstr "Verbindung unterbrochen — neuer Versuch"
+
+#: src/playback/mod.rs:1659
+msgid "Could not play “{title}”. Playback stopped after {n} tracks failed"
+msgstr "„{title}“ konnte nicht abgespielt werden. Die Wiedergabe wurde angehalten, nachdem {n} Titel fehlgeschlagen sind"
+
+#: src/playback/mod.rs:1665
+msgid "Could not play “{title}”, skipped"
+msgstr "„{title}“ konnte nicht abgespielt werden und wurde übersprungen"
+
+#: src/playback/mod.rs:1858
+msgid "Playback failed: {error}"
+msgstr "Wiedergabe fehlgeschlagen: {error}"
+
+#: src/playback/notify.rs:35
+msgid "Playing music"
+msgstr "Musik wird abgespielt"
+
+#: src/playback/notify.rs:242
+msgid "{artists} — {album}"
+msgstr "{artists} — {album}"
+
+#: src/playback/plugins.rs:24
+msgid "Playback needs GStreamer’s “{element}”. Install {package}."
+msgstr "Die Wiedergabe benötigt das GStreamer-Element „{element}“. Installieren Sie {package}."
+
+#: src/session.rs:73
+msgid "Couldn't open the system's credential store."
+msgstr "Der Anmeldedaten-Speicher des Systems konnte nicht geöffnet werden."
+
+#: src/session.rs:75
+msgid "Couldn't open the keyring. Make sure a keyring service (GNOME Keyring, KWallet) is running."
+msgstr "Der Schlüsselbund konnte nicht geöffnet werden. Stellen Sie sicher, dass ein Schlüsselbunddienst (GNOME Keyring, KWallet) läuft."
+
+#: src/session.rs:84
+msgid "Couldn't save the session in the system's credential store."
+msgstr "Die Sitzung konnte nicht im Anmeldedaten-Speicher des Systems gespeichert werden."
+
+#: src/session.rs:86
+msgid "Couldn't save the session in the keyring. Make sure a keyring service (GNOME Keyring, KWallet) is running."
+msgstr "Die Sitzung konnte nicht im Schlüsselbund gespeichert werden. Stellen Sie sicher, dass ein Schlüsselbunddienst (GNOME Keyring, KWallet) läuft."
+
+#: src/ui/context.rs:105
+msgid "You’re offline — showing saved data"
+msgstr "Sie sind offline — gespeicherte Daten werden angezeigt"
+
+#: src/ui/context.rs:238
+#: src/ui/shortcuts.rs:31
+msgid "Undo"
+msgstr "Rückgängig"
+
+#: src/ui/context.rs:258
+msgid "Your TIDAL session has expired. Please sign in again."
+msgstr "Ihre TIDAL-Sitzung ist abgelaufen. Bitte melden Sie sich erneut an."
+
+#: src/ui/debug.rs:58
+#: src/ui/pages/artist.rs:271
+#: src/ui/pages/explore.rs:176
+#: src/ui/pages/home_sections.rs:303
+#: src/ui/pages/more.rs:151
+#: src/ui/pages/search_views.rs:156
+#: src/ui/widgets/carousel.rs:56
+#: src/ui/widgets/section.rs:124
+msgid "View All"
+msgstr "Alle anzeigen"
+
+#: src/ui/dialogs/about.rs:14
+msgid "Swell contributors"
+msgstr "Swell-Mitwirkende"
+
+#: src/ui/dialogs/about.rs:16
+msgid "A native TIDAL client for Linux.\n\nNot affiliated with TIDAL."
+msgstr "Ein nativer TIDAL-Client für Linux.\n\nNicht mit TIDAL verbunden."
+
+#: src/ui/dialogs/credits.rs:26
+#: src/ui/menus.rs:473
+#: src/ui/pages/album.rs:362
+#: src/ui/pages/album.rs:489
+msgid "Credits"
+msgstr "Credits"
+
+#: src/ui/dialogs/credits.rs:50
+#: src/ui/pages/album.rs:510
+msgid "No Credits"
+msgstr "Keine Credits"
+
+#: src/ui/dialogs/credits.rs:51
+msgid "TIDAL has no credits for this track."
+msgstr "TIDAL hat keine Credits für diesen Titel."
+
+#: src/ui/dialogs/credits.rs:56
+#: src/ui/pages/album.rs:519
+msgid "Couldn't load the credits"
+msgstr "Die Credits konnten nicht geladen werden"
+
+#: src/ui/dialogs/credits.rs:60
+msgid "Couldn't Load the Credits"
+msgstr "Credits konnten nicht geladen werden"
+
+#: src/ui/dialogs/playlist.rs:61
+#: src/ui/pages/playlist.rs:1234
+msgid "Added to “{title}”"
+msgstr "Zu „{title}“ hinzugefügt"
+
+#: src/ui/dialogs/playlist.rs:63
+#: src/ui/pages/playlist.rs:1236
+msgid "Added {n} track to “{title}”"
+msgid_plural "Added {n} tracks to “{title}”"
+msgstr[0] "{n} Titel zu „{title}“ hinzugefügt"
+msgstr[1] "{n} Titel zu „{title}“ hinzugefügt"
+
+#: src/ui/dialogs/playlist.rs:71
+#: src/ui/dialogs/playlist.rs:404
+msgid "Open"
+msgstr "Öffnen"
+
+#: src/ui/dialogs/playlist.rs:75
+msgid "Couldn't add to “{title}”"
+msgstr "Hinzufügen zu „{title}“ fehlgeschlagen"
+
+#: src/ui/dialogs/playlist.rs:90
+msgid "Search Playlists"
+msgstr "Playlists durchsuchen"
+
+#: src/ui/dialogs/playlist.rs:168
+#: src/ui/format.rs:29
+#: src/ui/format.rs:54
+#: src/ui/format.rs:149
+#: src/ui/format.rs:150
+#: src/ui/pages/collection.rs:914
+#: src/ui/pages/collection.rs:1061
+#: src/ui/widgets/media_card.rs:506
+msgid "{n} track"
+msgid_plural "{n} tracks"
+msgstr[0] "{n} Titel"
+msgstr[1] "{n} Titel"
+
+#: src/ui/dialogs/playlist.rs:210
+msgid "Your Playlists"
+msgstr "Ihre Playlists"
+
+#: src/ui/dialogs/playlist.rs:221
+#: src/ui/menus.rs:802
+msgid "New Playlist…"
+msgstr "Neue Playlist …"
+
+#: src/ui/dialogs/playlist.rs:244
+#: src/ui/menus.rs:442
+#: src/ui/menus.rs:507
+msgid "Add to Playlist"
+msgstr "Zu Playlist hinzufügen"
+
+#: src/ui/dialogs/playlist.rs:294
+#: src/ui/pages/collection.rs:590
+#: src/ui/pages/collection_grid.rs:41
+#: src/ui/pages/collection_grid.rs:46
+#: src/ui/pages/collection_grid.rs:47
+msgid "Title"
+msgstr "Titel"
+
+#: src/ui/dialogs/playlist.rs:295
+#: src/ui/widgets/page_header.rs:581
+msgid "Description"
+msgstr "Beschreibung"
+
+#: src/ui/dialogs/playlist.rs:297
+#: src/ui/widgets/page_header.rs:571
+msgid "Public"
+msgstr "Öffentlich"
+
+#: src/ui/dialogs/playlist.rs:298
+msgid "Anyone can find it and see what's in it"
+msgstr "Jeder kann sie finden und sehen, was darin ist"
+
+#: src/ui/dialogs/playlist.rs:312
+#: src/ui/dialogs/playlist.rs:515
+msgid "Cancel"
+msgstr "Abbrechen"
+
+#: src/ui/dialogs/playlist.rs:362
+msgid "Create"
+msgstr "Erstellen"
+
+#: src/ui/dialogs/playlist.rs:362
+#: src/ui/pages/collection_grid.rs:310
+#: src/ui/pages/collection_grid.rs:340
+#: src/ui/sidebar.rs:726
+#: src/ui/sidebar.rs:779
+#: src/ui/sidebar.rs:784
+msgid "New Playlist"
+msgstr "Neue Playlist"
+
+#: src/ui/dialogs/playlist.rs:403
+msgid "Created “{title}”"
+msgstr "„{title}“ erstellt"
+
+#: src/ui/dialogs/playlist.rs:413
+msgid "Couldn't create the playlist"
+msgstr "Die Playlist konnte nicht erstellt werden"
+
+#: src/ui/dialogs/playlist.rs:430
+#: src/ui/widgets/page_header.rs:591
+msgid "Edit Details"
+msgstr "Details bearbeiten"
+
+#: src/ui/dialogs/playlist.rs:430
+msgid "Save"
+msgstr "Speichern"
+
+#: src/ui/dialogs/playlist.rs:467
+msgid "Playlist updated"
+msgstr "Playlist aktualisiert"
+
+#: src/ui/dialogs/playlist.rs:474
+msgid "Couldn't update the playlist"
+msgstr "Die Playlist konnte nicht aktualisiert werden"
+
+#: src/ui/dialogs/playlist.rs:493
+msgid "The playlist is now public"
+msgstr "Die Playlist ist jetzt öffentlich"
+
+#: src/ui/dialogs/playlist.rs:495
+msgid "The playlist is now private"
+msgstr "Die Playlist ist jetzt privat"
+
+#: src/ui/dialogs/playlist.rs:499
+msgid "Couldn't change the playlist's visibility"
+msgstr "Die Sichtbarkeit der Playlist konnte nicht geändert werden"
+
+#: src/ui/dialogs/playlist.rs:508
+msgid "Delete “{title}”?"
+msgstr "„{title}“ löschen?"
+
+#: src/ui/dialogs/playlist.rs:509
+msgid "The playlist will be deleted from your TIDAL account. This can't be undone."
+msgstr "Die Playlist wird aus Ihrem TIDAL-Konto gelöscht. Dies kann nicht rückgängig gemacht werden."
+
+#: src/ui/dialogs/playlist.rs:515
+msgid "Delete"
+msgstr "Löschen"
+
+#: src/ui/dialogs/playlist.rs:534
+msgid "Deleted “{title}”"
+msgstr "„{title}“ gelöscht"
+
+#: src/ui/dialogs/playlist.rs:540
+msgid "Couldn't delete the playlist"
+msgstr "Die Playlist konnte nicht gelöscht werden"
+
+#: src/ui/dialogs/preferences.rs:42
+#: src/ui/widgets/np_common.rs:407
+#: src/ui/widgets/np_common.rs:411
+#: src/ui/widgets/quality_badge.rs:28
+msgid "Hi-Res Lossless"
+msgstr "Hi-Res Lossless"
+
+#: src/ui/dialogs/preferences.rs:45
+#: src/ui/widgets/np_common.rs:408
+#: src/ui/widgets/np_common.rs:412
+#: src/ui/widgets/quality_badge.rs:29
+msgid "Lossless"
+msgstr "Lossless"
+
+#: src/ui/dialogs/preferences.rs:46
+#: src/ui/widgets/np_common.rs:409
+msgid "High"
+msgstr "Hoch"
+
+#: src/ui/dialogs/preferences.rs:47
+#: src/ui/widgets/np_common.rs:410
+msgid "Low"
+msgstr "Niedrig"
+
+#: src/ui/dialogs/preferences.rs:57
+msgid "Streaming Quality"
+msgstr "Streaming-Qualität"
+
+#: src/ui/dialogs/preferences.rs:65
+msgid "Hi-Res Lossless requires browser sign-in"
+msgstr "Hi-Res Lossless erfordert die Anmeldung über den Browser"
+
+#: src/ui/dialogs/preferences.rs:71
+#: src/ui/widgets/np_common.rs:477
+msgid "Quality"
+msgstr "Qualität"
+
+#: src/ui/dialogs/preferences.rs:81
+msgid "Volume Normalisation"
+msgstr "Lautstärke-Normalisierung"
+
+#: src/ui/dialogs/preferences.rs:82
+#: src/ui/pages/album.rs:68
+#: src/ui/pages/collection.rs:592
+#: src/ui/pages/search_views.rs:339
+#: src/ui/widgets/page_header.rs:526
+msgid "Album"
+msgstr "Album"
+
+#: src/ui/dialogs/preferences.rs:82
+#: src/ui/widgets/np_common.rs:610
+#: src/ui/widgets/np_common.rs:801
+msgid "Off"
+msgstr "Aus"
+
+#: src/ui/dialogs/preferences.rs:82
+#: src/ui/pages/search_views.rs:343
+msgid "Track"
+msgstr "Titel"
+
+#: src/ui/dialogs/preferences.rs:88
+msgid "Off keeps the output bit-perfect"
+msgstr "„Aus“ hält die Ausgabe bit-perfect"
+
+#: src/ui/dialogs/preferences.rs:94
+msgid "Gapless Playback"
+msgstr "Lückenlose Wiedergabe"
+
+#: src/ui/dialogs/preferences.rs:100
+msgid "Processing"
+msgstr "Verarbeitung"
+
+#: src/ui/dialogs/preferences.rs:107
+#: src/ui/shortcuts.rs:60
+msgid "Playback"
+msgstr "Wiedergabe"
+
+#: src/ui/dialogs/preferences.rs:120
+msgid "System Default"
+msgstr "Systemstandard"
+
+#: src/ui/dialogs/preferences.rs:122
+msgid "Output Device"
+msgstr "Ausgabegerät"
+
+#: src/ui/dialogs/preferences.rs:160
+#: src/ui/widgets/np_common.rs:483
+msgid "Output"
+msgstr "Ausgabe"
+
+#: src/ui/dialogs/preferences.rs:191
+msgid "Behaviour"
+msgstr "Verhalten"
+
+#: src/ui/dialogs/preferences.rs:195
+msgid "Run in Background"
+msgstr "Im Hintergrund ausführen"
+
+#: src/ui/dialogs/preferences.rs:196
+msgid "Keep playing when the window is closed"
+msgstr "Wiedergabe fortsetzen, wenn das Fenster geschlossen wird"
+
+#: src/ui/dialogs/preferences.rs:202
+msgid "Track Change Notifications"
+msgstr "Benachrichtigung bei Titelwechsel"
+
+#: src/ui/dialogs/preferences.rs:203
+msgid "When the window is not focused"
+msgstr "Wenn das Fenster nicht im Fokus ist"
+
+#: src/ui/dialogs/preferences.rs:209
+msgid "Restore Queue on Start"
+msgstr "Warteschlange beim Start wiederherstellen"
+
+#: src/ui/dialogs/preferences.rs:217
+#: src/ui/shortcuts.rs:26
+msgid "General"
+msgstr "Allgemein"
+
+#: src/ui/dialogs/preferences.rs:231
+msgid "Language"
+msgstr "Sprache"
+
+#: src/ui/dialogs/preferences.rs:232
+msgid "Automatic"
+msgstr "Automatisch"
+
+#: src/ui/dialogs/preferences.rs:253
+msgid "Restart Swell to change the language"
+msgstr "Starten Sie Swell neu, um die Sprache zu ändern"
+
+#: src/ui/dialogs/preferences.rs:254
+msgid "Restart"
+msgstr "Neu starten"
+
+#: src/ui/dialogs/preferences.rs:279
+msgid "Storage"
+msgstr "Speicher"
+
+#: src/ui/dialogs/preferences.rs:280
+msgid "Downloaded artwork and saved answers from TIDAL, so pages open instantly and work offline."
+msgstr "Heruntergeladene Cover und gespeicherte Antworten von TIDAL, damit Seiten sofort öffnen und offline funktionieren."
+
+#: src/ui/dialogs/preferences.rs:285
+msgid "Cover Cache"
+msgstr "Cover-Cache"
+
+#: src/ui/dialogs/preferences.rs:286
+msgid "Clear the Cover Cache?"
+msgstr "Cover-Cache leeren?"
+
+#: src/ui/dialogs/preferences.rs:287
+msgid "Artwork is downloaded again as you browse."
+msgstr "Cover werden beim Stöbern erneut heruntergeladen."
+
+#: src/ui/dialogs/preferences.rs:288
+msgid "Cover Cache cleared"
+msgstr "Cover-Cache geleert"
+
+#: src/ui/dialogs/preferences.rs:289
+msgid "Couldn’t clear the Cover Cache"
+msgstr "Der Cover-Cache konnte nicht geleert werden"
+
+#: src/ui/dialogs/preferences.rs:310
+msgid "Library Cache"
+msgstr "Bibliotheks-Cache"
+
+#: src/ui/dialogs/preferences.rs:311
+msgid "Clear the Library Cache?"
+msgstr "Bibliotheks-Cache leeren?"
+
+#: src/ui/dialogs/preferences.rs:312
+msgid "Pages are loaded again from TIDAL. Your collection is not affected."
+msgstr "Seiten werden erneut von TIDAL geladen. Ihre Sammlung bleibt unberührt."
+
+#: src/ui/dialogs/preferences.rs:313
+msgid "Library Cache cleared"
+msgstr "Bibliotheks-Cache geleert"
+
+#: src/ui/dialogs/preferences.rs:314
+msgid "Couldn’t clear the Library Cache"
+msgstr "Der Bibliotheks-Cache konnte nicht geleert werden"
+
+#: src/ui/dialogs/preferences.rs:368
+msgid "Calculating…"
+msgstr "Wird berechnet …"
+
+#: src/ui/dialogs/preferences.rs:371
+#: src/ui/dialogs/preferences.rs:417
+msgid "_Clear"
+msgstr "_Leeren"
+
+#: src/ui/dialogs/preferences.rs:417
+#: src/ui/window.rs:413
+msgid "_Cancel"
+msgstr "_Abbrechen"
+
+#: src/ui/dialogs/preferences.rs:472
+msgid "Blocked Artists"
+msgstr "Gesperrte Künstler"
+
+#: src/ui/dialogs/preferences.rs:473
+msgid "Loading…"
+msgstr "Wird geladen …"
+
+#: src/ui/dialogs/preferences.rs:489
+msgid "Couldn’t load blocked artists."
+msgstr "Gesperrte Künstler konnten nicht geladen werden."
+
+#: src/ui/dialogs/preferences.rs:494
+msgid "Nothing blocked. Blocked artists are skipped in radios and mixes."
+msgstr "Nichts gesperrt. Gesperrte Künstler werden in Radios und Mixen übersprungen."
+
+#: src/ui/dialogs/preferences.rs:496
+msgid "Skipped in radios and mixes."
+msgstr "In Radios und Mixen übersprungen."
+
+#: src/ui/dialogs/preferences.rs:505
+msgid "Unblock"
+msgstr "Entsperren"
+
+#: src/ui/dialogs/preferences.rs:538
+#: src/ui/menus.rs:870
+msgid "Unblocked {name}"
+msgstr "{name} entsperrt"
+
+#: src/ui/dialogs/preferences.rs:548
+msgid "Couldn’t unblock the artist"
+msgstr "Der Künstler konnte nicht entsperrt werden"
+
+#: src/ui/dialogs/preferences.rs:563
+msgid "Signed in with the browser"
+msgstr "Über den Browser angemeldet"
+
+#: src/ui/dialogs/preferences.rs:564
+msgid "Up to Hi-Res Lossless"
+msgstr "Bis zu Hi-Res Lossless"
+
+#: src/ui/dialogs/preferences.rs:567
+msgid "Signed in with a device code"
+msgstr "Mit einem Gerätecode angemeldet"
+
+#: src/ui/dialogs/preferences.rs:568
+msgid "Up to Lossless (16-bit/44.1 kHz)"
+msgstr "Bis zu Lossless (16 Bit/44,1 kHz)"
+
+#: src/ui/dialogs/preferences.rs:596
+msgid "Sign _Out…"
+msgstr "_Abmelden …"
+
+#: src/ui/dialogs/preferences.rs:617
+msgid "Account"
+msgstr "Konto"
+
+#: src/ui/format.rs:13
+msgid ","
+msgstr "."
+
+#: src/ui/format.rs:107
+msgid "January"
+msgstr "Januar"
+
+#: src/ui/format.rs:108
+msgid "February"
+msgstr "Februar"
+
+#: src/ui/format.rs:109
+msgid "March"
+msgstr "März"
+
+#: src/ui/format.rs:110
+msgid "April"
+msgstr "April"
+
+#: src/ui/format.rs:111
+msgid "May"
+msgstr "Mai"
+
+#: src/ui/format.rs:112
+msgid "June"
+msgstr "Juni"
+
+#: src/ui/format.rs:113
+msgid "July"
+msgstr "Juli"
+
+#: src/ui/format.rs:114
+msgid "August"
+msgstr "August"
+
+#: src/ui/format.rs:115
+msgid "September"
+msgstr "September"
+
+#: src/ui/format.rs:116
+msgid "October"
+msgstr "Oktober"
+
+#: src/ui/format.rs:117
+msgid "November"
+msgstr "November"
+
+#: src/ui/format.rs:118
+msgid "December"
+msgstr "Dezember"
+
+#: src/ui/format.rs:125
+msgid "Monday"
+msgstr "Montag"
+
+#: src/ui/format.rs:126
+msgid "Tuesday"
+msgstr "Dienstag"
+
+#: src/ui/format.rs:127
+msgid "Wednesday"
+msgstr "Mittwoch"
+
+#: src/ui/format.rs:128
+msgid "Thursday"
+msgstr "Donnerstag"
+
+#: src/ui/format.rs:129
+msgid "Friday"
+msgstr "Freitag"
+
+#: src/ui/format.rs:130
+msgid "Saturday"
+msgstr "Samstag"
+
+#: src/ui/format.rs:131
+msgid "Sunday"
+msgstr "Sonntag"
+
+#: src/ui/login.rs:29
+#: src/ui/login.rs:88
+msgid "Sign In with Browser"
+msgstr "Im Browser anmelden"
+
+#: src/ui/login.rs:30
+#: src/ui/login.rs:138
+msgid "Use a Device Code"
+msgstr "Gerätecode verwenden"
+
+#: src/ui/login.rs:42
+msgid "Hi-Res Lossless, up to 24-bit/192 kHz"
+msgstr "Hi-Res Lossless, bis zu 24 Bit/192 kHz"
+
+#: src/ui/login.rs:46
+msgid "Lossless, up to 16-bit/44.1 kHz"
+msgstr "Lossless, bis zu 16 Bit/44,1 kHz"
+
+#: src/ui/login.rs:51
+msgid "Welcome to Swell"
+msgstr "Willkommen bei Swell"
+
+#: src/ui/login.rs:52
+msgid "Sign in with your TIDAL account."
+msgstr "Melden Sie sich mit Ihrem TIDAL-Konto an."
+
+#: src/ui/login.rs:56
+msgid "Sign In"
+msgstr "Anmelden"
+
+#: src/ui/login.rs:60
+msgid "1. Sign in on the TIDAL page that opened in your browser.\n2. TIDAL then shows a page that says “Oops”.\n3. Copy that page’s address and paste it here."
+msgstr "1. Melden Sie sich auf der TIDAL-Seite an, die sich in Ihrem Browser geöffnet hat.\n2. TIDAL zeigt danach eine Seite mit „Oops“ an.\n3. Kopieren Sie die Adresse dieser Seite und fügen Sie sie hier ein."
+
+#: src/ui/login.rs:65
+msgid "Paste the address of the “Oops” page"
+msgstr "Adresse der „Oops“-Seite einfügen"
+
+#: src/ui/login.rs:73
+msgid "Continue"
+msgstr "Weiter"
+
+#: src/ui/login.rs:75
+msgid "Open Browser Again"
+msgstr "Browser erneut öffnen"
+
+#: src/ui/login.rs:89
+msgid "Your browser opens TIDAL’s sign-in page."
+msgstr "Ihr Browser öffnet die Anmeldeseite von TIDAL."
+
+#: src/ui/login.rs:92
+msgid "Browser"
+msgstr "Browser"
+
+#: src/ui/login.rs:102
+#: src/ui/login.rs:106
+msgid "Copy Code"
+msgstr "Code kopieren"
+
+#: src/ui/login.rs:119
+msgid "Waiting for approval…"
+msgstr "Warten auf Bestätigung …"
+
+#: src/ui/login.rs:121
+msgid "Get a New Code"
+msgstr "Neuen Code anfordern"
+
+#: src/ui/login.rs:139
+msgid "Open link.tidal.com on any device and enter this code."
+msgstr "Öffnen Sie link.tidal.com auf einem beliebigen Gerät und geben Sie diesen Code ein."
+
+#: src/ui/login.rs:142
+msgid "Device Code"
+msgstr "Gerätecode"
+
+#: src/ui/login.rs:192
+msgid "Couldn't start the sign-in. Please try again."
+msgstr "Die Anmeldung konnte nicht gestartet werden. Bitte versuchen Sie es erneut."
+
+#: src/ui/login.rs:202
+msgid "Couldn't open the browser ({error}). Open this address yourself:\n{url}"
+msgstr "Der Browser konnte nicht geöffnet werden ({error}). Öffnen Sie diese Adresse selbst:\n{url}"
+
+#: src/ui/login.rs:258
+msgid "Sign-in failed. {error}"
+msgstr "Anmeldung fehlgeschlagen. {error}"
+
+#: src/ui/login.rs:313
+msgid "Couldn't get a code. {error}"
+msgstr "Es konnte kein Code abgerufen werden. {error}"
+
+#: src/ui/login.rs:332
+msgid "This code expired or was not approved."
+msgstr "Dieser Code ist abgelaufen oder wurde nicht bestätigt."
+
+#: src/ui/menus.rs:201
+#: src/ui/pages/artist.rs:298
+msgid "There's nothing to play here"
+msgstr "Hier gibt es nichts abzuspielen"
+
+#: src/ui/menus.rs:203
+#: src/ui/menus.rs:842
+msgid "Couldn't load the tracks"
+msgstr "Die Titel konnten nicht geladen werden"
+
+#: src/ui/menus.rs:232
+msgid "“{title}” isn't available in your region"
+msgstr "„{title}“ ist in Ihrer Region nicht verfügbar"
+
+#: src/ui/menus.rs:243
+#: src/ui/menus.rs:256
+#: src/ui/menus.rs:269
+msgid "None of these tracks are available in your region"
+msgstr "Keiner dieser Titel ist in Ihrer Region verfügbar"
+
+#: src/ui/menus.rs:272
+msgid "“{title}” will play next"
+msgstr "„{title}“ wird als Nächstes abgespielt"
+
+#: src/ui/menus.rs:273
+msgid "Added “{title}” to the queue"
+msgstr "„{title}“ zur Warteschlange hinzugefügt"
+
+#: src/ui/menus.rs:274
+msgid "Added {n} track to the queue"
+msgid_plural "Added {n} tracks to the queue"
+msgstr[0] "{n} Titel zur Warteschlange hinzugefügt"
+msgstr[1] "{n} Titel zur Warteschlange hinzugefügt"
+
+#: src/ui/menus.rs:287
+#: src/ui/pages/search.rs:130
+msgid "Show"
+msgstr "Anzeigen"
+
+#: src/ui/menus.rs:320
+msgid "Couldn't play this track"
+msgstr "Dieser Titel konnte nicht abgespielt werden"
+
+#: src/ui/menus.rs:428
+#: src/ui/widgets/heart_button.rs:173
+#: src/ui/widgets/np_common.rs:791
+msgid "Remove from Favourites"
+msgstr "Aus Favoriten entfernen"
+
+#: src/ui/menus.rs:430
+#: src/ui/widgets/heart_button.rs:175
+#: src/ui/widgets/np_common.rs:725
+#: src/ui/widgets/np_common.rs:793
+msgid "Add to Favourites"
+msgstr "Zu Favoriten hinzufügen"
+
+#: src/ui/menus.rs:437
+#: src/ui/menus.rs:784
+msgid "Play Next"
+msgstr "Als Nächstes abspielen"
+
+#: src/ui/menus.rs:438
+#: src/ui/menus.rs:785
+msgid "Add to Queue"
+msgstr "Zur Warteschlange hinzufügen"
+
+#: src/ui/menus.rs:447
+#: src/ui/widgets/np_common.rs:921
+msgid "Go to Album"
+msgstr "Zum Album"
+
+#: src/ui/menus.rs:452
+#: src/ui/menus.rs:465
+#: src/ui/menus.rs:512
+#: src/ui/widgets/np_common.rs:922
+msgid "Go to Artist"
+msgstr "Zum Künstler"
+
+#: src/ui/menus.rs:468
+#: src/ui/pages/mix.rs:51
+#: src/ui/pages/mix.rs:60
+#: src/ui/widgets/now_playing.rs:178
+#: src/ui/widgets/now_playing.rs:180
+#: src/ui/widgets/np_common.rs:923
+msgid "Track Radio"
+msgstr "Titelradio"
+
+#: src/ui/menus.rs:474
+#: src/ui/menus.rs:523
+#: src/ui/menus.rs:542
+#: src/ui/menus.rs:551
+#: src/ui/menus.rs:575
+#: src/ui/widgets/np_common.rs:927
+#: src/ui/widgets/page_header.rs:486
+msgid "Copy Link"
+msgstr "Link kopieren"
+
+#: src/ui/menus.rs:480
+msgid "Remove from This Playlist"
+msgstr "Aus dieser Playlist entfernen"
+
+#: src/ui/menus.rs:484
+#: src/ui/shortcuts.rs:82
+msgid "Move Up"
+msgstr "Nach oben"
+
+#: src/ui/menus.rs:487
+#: src/ui/shortcuts.rs:83
+msgid "Move Down"
+msgstr "Nach unten"
+
+#: src/ui/menus.rs:497
+msgid "Block {name}"
+msgstr "{name} sperren"
+
+#: src/ui/menus.rs:517
+#: src/ui/menus.rs:559
+#: src/ui/pages/mix.rs:52
+#: src/ui/pages/mix.rs:61
+#: src/ui/widgets/page_header.rs:631
+msgid "Artist Radio"
+msgstr "Künstlerradio"
+
+#: src/ui/menus.rs:527
+msgid "Edit Details…"
+msgstr "Details bearbeiten …"
+
+#: src/ui/menus.rs:530
+msgid "Make Private"
+msgstr "Privat machen"
+
+#: src/ui/menus.rs:532
+msgid "Make Public"
+msgstr "Öffentlich machen"
+
+#: src/ui/menus.rs:545
+msgid "Delete Playlist…"
+msgstr "Playlist löschen …"
+
+#: src/ui/menus.rs:555
+msgid "Play Top Tracks"
+msgstr "Beliebteste Titel abspielen"
+
+#: src/ui/menus.rs:556
+#: src/ui/menus.rs:783
+#: src/ui/pages/collection.rs:681
+#: src/ui/shortcuts.rs:71
+#: src/ui/widgets/np_controls.rs:147
+#: src/ui/widgets/page_header.rs:153
+#: src/ui/widgets/page_header.rs:316
+#: src/ui/widgets/page_header.rs:320
+#: src/ui/widgets/page_header.rs:323
+msgid "Shuffle"
+msgstr "Zufällige Wiedergabe"
+
+#: src/ui/menus.rs:568
+#: src/ui/widgets/heart_button.rs:189
+msgid "Unfollow"
+msgstr "Nicht mehr folgen"
+
+#: src/ui/menus.rs:570
+#: src/ui/widgets/heart_button.rs:185
+msgid "Follow"
+msgstr "Folgen"
+
+#: src/ui/menus.rs:578
+msgid "Block Artist"
+msgstr "Künstler sperren"
+
+#: src/ui/menus.rs:625
+#: src/ui/widgets/heart_button.rs:215
+#: src/ui/widgets/np_common.rs:765
+#: src/ui/window.rs:744
+msgid "Couldn't update favourites"
+msgstr "Favoriten konnten nicht aktualisiert werden"
+
+#: src/ui/menus.rs:693
+#: src/ui/widgets/np_common.rs:882
+#: src/ui/widgets/page_header.rs:490
+msgid "Link copied"
+msgstr "Link kopiert"
+
+#: src/ui/menus.rs:782
+#: src/ui/pages/collection.rs:680
+#: src/ui/widgets/np_controls.rs:52
+#: src/ui/widgets/np_controls.rs:56
+#: src/ui/widgets/np_controls.rs:86
+#: src/ui/widgets/page_header.rs:309
+msgid "Play"
+msgstr "Abspielen"
+
+#: src/ui/menus.rs:819
+msgid "More…"
+msgstr "Mehr …"
+
+#: src/ui/menus.rs:861
+msgid "Blocked {name}"
+msgstr "{name} gesperrt"
+
+#: src/ui/menus.rs:871
+msgid "Couldn't update blocked artists"
+msgstr "Gesperrte Künstler konnten nicht aktualisiert werden"
+
+#: src/ui/nav.rs:174
+#: src/ui/pages/home.rs:39
+#: src/ui/sidebar.rs:112
+msgid "Home"
+msgstr "Startseite"
+
+#: src/ui/nav.rs:175
+#: src/ui/pages/collection.rs:651
+#: src/ui/pages/explore.rs:43
+#: src/ui/pages/explore.rs:47
+#: src/ui/pages/home.rs:160
+#: src/ui/sidebar.rs:113
+msgid "Explore"
+msgstr "Entdecken"
+
+#: src/ui/nav.rs:176
+#: src/ui/pages/playlist.rs:913
+#: src/ui/pages/search.rs:234
+#: src/ui/sidebar.rs:114
+msgid "Search"
+msgstr "Suche"
+
+#: src/ui/nav.rs:177
+#: src/ui/nav.rs:407
+#: src/ui/sidebar.rs:288
+#: src/ui/sidebar.rs:317
+#: src/ui/window.rs:806
+msgid "Collection"
+msgstr "Sammlung"
+
+#: src/ui/pages/album.rs:165
+msgid "Couldn't load the album"
+msgstr "Das Album konnte nicht geladen werden"
+
+#: src/ui/pages/album.rs:300
+msgid "Couldn't load all the album's tracks"
+msgstr "Nicht alle Titel des Albums konnten geladen werden"
+
+#: src/ui/pages/album.rs:356
+msgid "Released {date}"
+msgstr "Veröffentlicht am {date}"
+
+#: src/ui/pages/album.rs:437
+#: src/ui/pages/album.rs:460
+msgid "Review"
+msgstr "Rezension"
+
+#: src/ui/pages/album.rs:452
+#: src/ui/pages/artist.rs:345
+#: src/ui/widgets/page_header.rs:424
+msgid "Read More"
+msgstr "Mehr lesen"
+
+#: src/ui/pages/album.rs:473
+msgid "%B %-d, %Y"
+msgstr "%-d. %B %Y"
+
+#: src/ui/pages/album.rs:511
+msgid "TIDAL has no credits for this album."
+msgstr "TIDAL hat keine Credits für dieses Album."
+
+#: src/ui/pages/artist.rs:78
+#: src/ui/pages/collection.rs:591
+#: src/ui/pages/collection_grid.rs:42
+#: src/ui/pages/search_views.rs:336
+#: src/ui/widgets/media_card.rs:500
+#: src/ui/widgets/page_header.rs:617
+msgid "Artist"
+msgstr "Künstler"
+
+#: src/ui/pages/artist.rs:174
+msgid "Couldn't load the artist"
+msgstr "Der Künstler konnte nicht geladen werden"
+
+#: src/ui/pages/artist.rs:235
+#: src/ui/pages/explore.rs:155
+#: src/ui/pages/home.rs:156
+#: src/ui/pages/more.rs:365
+#: src/ui/pages/more.rs:509
+msgid "Nothing Here Yet"
+msgstr "Noch nichts hier"
+
+#: src/ui/pages/artist.rs:236
+msgid "TIDAL has no music from this artist in your country."
+msgstr "TIDAL hat in Ihrem Land keine Musik dieses Künstlers."
+
+#: src/ui/pages/artist.rs:301
+msgid "Couldn't load the artist's tracks"
+msgstr "Die Titel des Künstlers konnten nicht geladen werden"
+
+#: src/ui/pages/artist.rs:353
+msgid "Biography"
+msgstr "Biografie"
+
+#: src/ui/pages/collection.rs:123
+msgid "Sort"
+msgstr "Sortieren"
+
+#: src/ui/pages/collection.rs:271
+msgid "Ascending"
+msgstr "Aufsteigend"
+
+#: src/ui/pages/collection.rs:272
+msgid "Descending"
+msgstr "Absteigend"
+
+#: src/ui/pages/collection.rs:291
+msgid "Sort by {label}, descending"
+msgstr "Sortiert nach {label}, absteigend"
+
+#: src/ui/pages/collection.rs:293
+msgid "Sort by {label}, ascending"
+msgstr "Sortiert nach {label}, aufsteigend"
+
+#: src/ui/pages/collection.rs:403
+msgid "No Matches for “{query}”"
+msgstr "Keine Treffer für „{query}“"
+
+#: src/ui/pages/collection.rs:437
+#: src/ui/pages/collection_grid.rs:575
+msgid "{n} album"
+msgid_plural "{n} albums"
+msgstr[0] "{n} Album"
+msgstr[1] "{n} Alben"
+
+#: src/ui/pages/collection.rs:451
+msgid "{shown} of {count}"
+msgstr "{shown} von {count}"
+
+#: src/ui/pages/collection.rs:483
+#: src/ui/pages/collection.rs:507
+#: src/ui/pages/home_sections.rs:525
+#: src/ui/pages/more.rs:140
+#: src/ui/widgets/np_controls.rs:103
+#: src/ui/widgets/skeleton.rs:109
+msgid "Loading"
+msgstr "Wird geladen"
+
+#: src/ui/pages/collection.rs:589
+#: src/ui/pages/collection_grid.rs:40
+#: src/ui/pages/collection_grid.rs:45
+#: src/ui/pages/collection_grid.rs:47
+msgid "Date Added"
+msgstr "Hinzugefügt"
+
+#: src/ui/pages/collection.rs:593
+msgid "Duration"
+msgstr "Dauer"
+
+#: src/ui/pages/collection.rs:642
+msgid "Favourite Tracks"
+msgstr "Favorisierte Titel"
+
+#: src/ui/pages/collection.rs:662
+msgid "No Favourite Tracks"
+msgstr "Keine favorisierten Titel"
+
+#: src/ui/pages/collection.rs:663
+msgid "Use the heart on a track to save it here."
+msgstr "Verwenden Sie das Herz bei einem Titel, um ihn hier zu speichern."
+
+#: src/ui/pages/collection.rs:669
+#: src/ui/pages/search_data.rs:80
+#: src/ui/pages/search_views.rs:88
+#: src/ui/sidebar.rs:121
+#: src/ui/widgets/track_list.rs:126
+msgid "Tracks"
+msgstr "Titel"
+
+#: src/ui/pages/collection.rs:670
+msgid "Filter tracks"
+msgstr "Titel filtern"
+
+#: src/ui/pages/collection.rs:833
+msgid "Couldn't update your favourite tracks"
+msgstr "Ihre favorisierten Titel konnten nicht aktualisiert werden"
+
+#: src/ui/pages/collection.rs:956
+msgid "Removed “{title}” from Favourites"
+msgstr "„{title}“ aus Favoriten entfernt"
+
+#: src/ui/pages/collection.rs:964
+msgid "Couldn't add the track back"
+msgstr "Der Titel konnte nicht wieder hinzugefügt werden"
+
+#: src/ui/pages/collection_grid.rs:43
+msgid "Release Date"
+msgstr "Veröffentlichungsdatum"
+
+#: src/ui/pages/collection_grid.rs:45
+msgid "Name"
+msgstr "Name"
+
+#: src/ui/pages/collection_grid.rs:46
+msgid "Last Updated"
+msgstr "Zuletzt aktualisiert"
+
+#: src/ui/pages/collection_grid.rs:158
+#: src/ui/pages/search_data.rs:81
+#: src/ui/sidebar.rs:126
+msgid "Albums"
+msgstr "Alben"
+
+#: src/ui/pages/collection_grid.rs:158
+msgid "Filter albums"
+msgstr "Alben filtern"
+
+#: src/ui/pages/collection_grid.rs:159
+#: src/ui/pages/search_data.rs:82
+#: src/ui/sidebar.rs:131
+msgid "Artists"
+msgstr "Künstler"
+
+#: src/ui/pages/collection_grid.rs:159
+msgid "Filter artists"
+msgstr "Künstler filtern"
+
+#: src/ui/pages/collection_grid.rs:162
+#: src/ui/pages/search_data.rs:83
+#: src/ui/sidebar.rs:136
+msgid "Playlists"
+msgstr "Playlists"
+
+#: src/ui/pages/collection_grid.rs:163
+msgid "Filter playlists"
+msgstr "Playlists filtern"
+
+#: src/ui/pages/collection_grid.rs:166
+msgid "Filter mixes"
+msgstr "Mixe filtern"
+
+#: src/ui/pages/collection_grid.rs:166
+#: src/ui/sidebar.rs:141
+msgid "Mixes & Radios"
+msgstr "Mixe & Radios"
+
+#: src/ui/pages/collection_grid.rs:298
+msgid "No Favourite Albums"
+msgstr "Keine favorisierten Alben"
+
+#: src/ui/pages/collection_grid.rs:299
+msgid "Use the heart on an album to save it here."
+msgstr "Verwenden Sie das Herz bei einem Album, um es hier zu speichern."
+
+#: src/ui/pages/collection_grid.rs:304
+msgid "No Followed Artists"
+msgstr "Keine gefolgten Künstler"
+
+#: src/ui/pages/collection_grid.rs:305
+msgid "Follow artists you like to find them here."
+msgstr "Folgen Sie Künstlern, die Ihnen gefallen, um sie hier zu finden."
+
+#: src/ui/pages/collection_grid.rs:321
+msgid "No Playlists"
+msgstr "Keine Playlists"
+
+#: src/ui/pages/collection_grid.rs:322
+msgid "Create a playlist, or use the heart on someone else's to save it here."
+msgstr "Erstellen Sie eine Playlist oder verwenden Sie das Herz bei der Playlist einer anderen Person, um sie hier zu speichern."
+
+#: src/ui/pages/collection_grid.rs:328
+msgid "No Saved Mixes"
+msgstr "Keine gespeicherten Mixe"
+
+#: src/ui/pages/collection_grid.rs:329
+msgid "Use the heart on a mix or radio to save it here."
+msgstr "Speichern Sie Mixe und Radios mit dem Herz, damit sie hier erscheinen."
+
+#: src/ui/pages/collection_grid.rs:351
+#: src/ui/pages/search_data.rs:79
+msgid "All"
+msgstr "Alle"
+
+#: src/ui/pages/collection_grid.rs:352
+msgid "Created by Me"
+msgstr "Von mir erstellt"
+
+#: src/ui/pages/collection_grid.rs:353
+msgid "Favourited"
+msgstr "Favorisiert"
+
+#: src/ui/pages/collection_grid.rs:482
+msgid "Couldn't update your collection"
+msgstr "Ihre Sammlung konnte nicht aktualisiert werden"
+
+#: src/ui/pages/collection_grid.rs:576
+msgid "{n} artist"
+msgid_plural "{n} artists"
+msgstr[0] "{n} Künstler"
+msgstr[1] "{n} Künstler"
+
+#: src/ui/pages/collection_grid.rs:577
+msgid "{n} playlist"
+msgid_plural "{n} playlists"
+msgstr[0] "{n} Playlist"
+msgstr[1] "{n} Playlists"
+
+#: src/ui/pages/collection_grid.rs:578
+msgid "{n} mix"
+msgid_plural "{n} mixes"
+msgstr[0] "{n} Mix"
+msgstr[1] "{n} Mixe"
+
+#: src/ui/pages/collection_grid.rs:682
+msgid "Unfollowed {name}"
+msgstr "{name} nicht mehr gefolgt"
+
+#: src/ui/pages/collection_grid.rs:684
+msgid "Removed from Favourites: {name}"
+msgstr "Aus Favoriten entfernt: {name}"
+
+#: src/ui/pages/collection_grid.rs:693
+msgid "Couldn't undo that"
+msgstr "Das konnte nicht rückgängig gemacht werden"
+
+#: src/ui/pages/explore.rs:110
+#: src/ui/pages/more.rs:289
+msgid "Couldn't load the page"
+msgstr "Die Seite konnte nicht geladen werden"
+
+#: src/ui/pages/explore.rs:156
+#: src/ui/pages/more.rs:510
+msgid "TIDAL has nothing on this page in your country."
+msgstr "TIDAL hat in Ihrem Land nichts auf dieser Seite."
+
+#: src/ui/pages/history.rs:107
+msgid "Today"
+msgstr "Heute"
+
+#: src/ui/pages/history.rs:108
+msgid "Yesterday"
+msgstr "Gestern"
+
+#: src/ui/pages/history.rs:109
+msgid "This Week"
+msgstr "Diese Woche"
+
+#: src/ui/pages/history.rs:110
+msgid "Earlier"
+msgstr "Früher"
+
+#: src/ui/pages/history.rs:132
+#: src/ui/pages/history.rs:468
+msgid "Just now"
+msgstr "Gerade eben"
+
+#: src/ui/pages/history.rs:134
+#: src/ui/pages/history.rs:472
+msgid "{n} min ago"
+msgstr "Vor {n} Min."
+
+#: src/ui/pages/history.rs:136
+#: src/ui/pages/history.rs:476
+msgid "{n} h ago"
+msgstr "Vor {n} Std."
+
+#: src/ui/pages/history.rs:143
+msgid "%b %-d"
+msgstr "%-d. %b"
+
+#: src/ui/pages/history.rs:183
+#: src/ui/pages/history.rs:248
+#: src/ui/pages/history.rs:255
+#: src/ui/sidebar.rs:146
+#: src/ui/window.rs:1229
+msgid "Recently Played"
+msgstr "Zuletzt gespielt"
+
+#: src/ui/pages/history.rs:194
+msgid "This Session"
+msgstr "Diese Sitzung"
+
+#: src/ui/pages/history.rs:196
+msgid "Tracks you play in Swell appear here."
+msgstr "Titel, die Sie in Swell abspielen, erscheinen hier."
+
+#: src/ui/pages/history.rs:227
+msgid "On TIDAL"
+msgstr "Auf TIDAL"
+
+#: src/ui/pages/history.rs:228
+msgid "What you played lately, on any device"
+msgstr "Was Sie zuletzt gehört haben, auf jedem Gerät"
+
+#: src/ui/pages/history.rs:242
+msgid "Nothing Played Yet"
+msgstr "Noch nichts abgespielt"
+
+#: src/ui/pages/history.rs:243
+msgid "Music you play appears here."
+msgstr "Musik, die Sie abspielen, erscheint hier."
+
+#: src/ui/pages/history.rs:397
+msgid "Nothing yet."
+msgstr "Noch nichts."
+
+#: src/ui/pages/history.rs:411
+msgid "Couldn't load what you played"
+msgstr "Ihr Wiedergabeverlauf konnte nicht geladen werden"
+
+#: src/ui/pages/history.rs:415
+msgid "Couldn't load this. {reason}"
+msgstr "Dies konnte nicht geladen werden. {reason}"
+
+#: src/ui/pages/history.rs:419
+#: src/ui/pages/home_sections.rs:257
+#: src/ui/pages/playlist.rs:886
+#: src/ui/pages/search.rs:201
+#: src/ui/pages/search_views.rs:493
+#: src/ui/widgets/lyrics_view.rs:181
+#: src/ui/widgets/status.rs:191
+msgid "Retry"
+msgstr "Erneut versuchen"
+
+#: src/ui/pages/home.rs:78
+msgid "Good Morning"
+msgstr "Guten Morgen"
+
+#: src/ui/pages/home.rs:79
+msgid "Good Afternoon"
+msgstr "Guten Tag"
+
+#: src/ui/pages/home.rs:80
+msgid "Good Evening"
+msgstr "Guten Abend"
+
+#: src/ui/pages/home.rs:128
+msgid "Couldn't load Home"
+msgstr "Die Startseite konnte nicht geladen werden"
+
+#: src/ui/pages/home.rs:157
+msgid "Play some music and TIDAL will suggest more here."
+msgstr "Spielen Sie etwas Musik ab, dann schlägt TIDAL Ihnen hier mehr vor."
+
+#: src/ui/pages/home.rs:225
+msgid "Couldn't load more of Home"
+msgstr "Weitere Inhalte der Startseite konnten nicht geladen werden"
+
+#: src/ui/pages/home.rs:230
+#: src/ui/pages/more.rs:611
+msgid "Couldn't load more. {reason}"
+msgstr "Weitere Inhalte konnten nicht geladen werden. {reason}"
+
+#: src/ui/pages/home_sections.rs:239
+msgid "Loading more"
+msgstr "Weitere Inhalte werden geladen"
+
+#: src/ui/pages/mix.rs:50
+#: src/ui/pages/mix.rs:294
+#: src/ui/pages/search_views.rs:349
+msgid "Mix"
+msgstr "Mix"
+
+#: src/ui/pages/mix.rs:241
+msgid "No Radio for This Artist"
+msgstr "Kein Radio für diesen Künstler"
+
+#: src/ui/pages/mix.rs:242
+msgid "TIDAL has no radio for this artist yet."
+msgstr "TIDAL hat noch kein Radio für diesen Künstler."
+
+#: src/ui/pages/mix.rs:245
+msgid "No Radio for This Track"
+msgstr "Kein Radio für diesen Titel"
+
+#: src/ui/pages/mix.rs:246
+msgid "TIDAL has no radio for this track yet. Try the artist's radio instead."
+msgstr "TIDAL hat noch kein Radio für diesen Titel. Versuchen Sie stattdessen das Radio des Künstlers."
+
+#: src/ui/pages/mix.rs:264
+msgid "Couldn't load the mix"
+msgstr "Der Mix konnte nicht geladen werden"
+
+#: src/ui/pages/mix.rs:386
+msgid "Couldn't load all the mix's tracks"
+msgstr "Nicht alle Titel des Mixes konnten geladen werden"
+
+#: src/ui/pages/mix.rs:420
+msgid "{title} Radio"
+msgstr "{title}-Radio"
+
+#: src/ui/pages/mix.rs:441
+msgid "This Mix Is Empty"
+msgstr "Dieser Mix ist leer"
+
+#: src/ui/pages/mix.rs:442
+msgid "This Radio Is Empty"
+msgstr "Dieses Radio ist leer"
+
+#: src/ui/pages/mix.rs:444
+msgid "TIDAL has nothing in it right now. Try again later."
+msgstr "TIDAL hat im Moment nichts darin. Versuchen Sie es später erneut."
+
+#: src/ui/pages/more.rs:366
+msgid "TIDAL has nothing in this list for now."
+msgstr "TIDAL hat im Moment nichts in dieser Liste."
+
+#: src/ui/pages/more.rs:606
+msgid "Couldn't load more"
+msgstr "Weitere Inhalte konnten nicht geladen werden"
+
+#: src/ui/pages/playlist.rs:118
+msgid "Couldn't remove the track"
+msgstr "Der Titel konnte nicht entfernt werden"
+
+#: src/ui/pages/playlist.rs:119
+msgid "Couldn't put the track back"
+msgstr "Der Titel konnte nicht wiederhergestellt werden"
+
+#: src/ui/pages/playlist.rs:120
+msgid "Couldn't move the track"
+msgstr "Der Titel konnte nicht verschoben werden"
+
+#: src/ui/pages/playlist.rs:121
+msgid "Couldn't add to the playlist"
+msgstr "Zur Playlist konnte nichts hinzugefügt werden"
+
+#: src/ui/pages/playlist.rs:246
+msgid "The playlist changed; your last edit was not applied"
+msgstr "Die Playlist hat sich geändert; Ihre letzte Änderung wurde nicht angewendet"
+
+#: src/ui/pages/playlist.rs:490
+#: src/ui/pages/search_views.rs:347
+#: src/ui/widgets/media_card.rs:516
+#: src/ui/widgets/page_header.rs:556
+msgid "Playlist"
+msgstr "Playlist"
+
+#: src/ui/pages/playlist.rs:784
+msgid "Couldn't load the playlist"
+msgstr "Die Playlist konnte nicht geladen werden"
+
+#: src/ui/pages/playlist.rs:877
+msgid "Couldn't load the rest of the playlist. {reason}"
+msgstr "Der Rest der Playlist konnte nicht geladen werden. {reason}"
+
+#: src/ui/pages/playlist.rs:904
+msgid "This Playlist Is Empty"
+msgstr "Diese Playlist ist leer"
+
+#: src/ui/pages/playlist.rs:906
+msgid "Add tracks from their menu or drag them here."
+msgstr "Fügen Sie Titel über deren Menü hinzu oder ziehen Sie sie hierher."
+
+#: src/ui/pages/playlist.rs:908
+msgid "There's nothing in it yet."
+msgstr "Sie enthält noch nichts."
+
+#: src/ui/pages/playlist.rs:1108
+msgid "The playlist isn't up to date yet; try again in a moment"
+msgstr "Die Playlist ist noch nicht aktuell; versuchen Sie es gleich noch einmal"
+
+#: src/ui/pages/playlist.rs:1163
+msgid "Removed from “{title}”"
+msgstr "Aus „{title}“ entfernt"
+
+#: src/ui/pages/search.rs:93
+#: src/ui/pages/search.rs:97
+#: src/ui/pages/search_views.rs:543
+msgid "Search TIDAL"
+msgstr "TIDAL durchsuchen"
+
+#: src/ui/pages/search.rs:111
+#: src/ui/pages/search.rs:170
+msgid "Searching"
+msgstr "Suche läuft"
+
+#: src/ui/pages/search.rs:207
+#: src/ui/widgets/status.rs:201
+msgid "You're Offline"
+msgstr "Sie sind offline"
+
+#: src/ui/pages/search.rs:208
+msgid "Searching needs an internet connection."
+msgstr "Für die Suche ist eine Internetverbindung nötig."
+
+#: src/ui/pages/search.rs:219
+msgid "TIDAL Link"
+msgstr "TIDAL-Link"
+
+#: src/ui/pages/search.rs:563
+msgid "No Results for “{query}”"
+msgstr "Keine Ergebnisse für „{query}“"
+
+#: src/ui/pages/search.rs:565
+msgid "Check the spelling or try other words."
+msgstr "Prüfen Sie die Schreibweise oder versuchen Sie andere Wörter."
+
+#: src/ui/pages/search.rs:567
+msgid "Try another filter or other words."
+msgstr "Versuchen Sie einen anderen Filter oder andere Wörter."
+
+#: src/ui/pages/search.rs:670
+#: src/ui/pages/search_views.rs:491
+msgid "Couldn't load more results"
+msgstr "Weitere Ergebnisse konnten nicht geladen werden"
+
+#: src/ui/pages/search.rs:722
+msgid "Couldn't search"
+msgstr "Die Suche ist fehlgeschlagen"
+
+#: src/ui/pages/search.rs:791
+msgid "Recent searches cleared"
+msgstr "Letzte Suchanfragen gelöscht"
+
+#: src/ui/pages/search.rs:816
+msgid "This is a link to an album."
+msgstr "Dies ist ein Link zu einem Album."
+
+#: src/ui/pages/search.rs:817
+msgid "Open Album"
+msgstr "Album öffnen"
+
+#: src/ui/pages/search.rs:821
+msgid "This is a link to an artist."
+msgstr "Dies ist ein Link zu einem Künstler."
+
+#: src/ui/pages/search.rs:822
+msgid "Open Artist"
+msgstr "Künstler öffnen"
+
+#: src/ui/pages/search.rs:826
+msgid "This is a link to a playlist."
+msgstr "Dies ist ein Link zu einer Playlist."
+
+#: src/ui/pages/search.rs:827
+msgid "Open Playlist"
+msgstr "Playlist öffnen"
+
+#: src/ui/pages/search.rs:831
+msgid "This is a link to a mix."
+msgstr "Dies ist ein Link zu einem Mix."
+
+#: src/ui/pages/search.rs:832
+msgid "Open Mix"
+msgstr "Mix öffnen"
+
+#: src/ui/pages/search.rs:836
+msgid "This is a link to a track."
+msgstr "Dies ist ein Link zu einem Titel."
+
+#: src/ui/pages/search.rs:837
+msgid "Play Track"
+msgstr "Titel abspielen"
+
+#: src/ui/pages/search.rs:841
+msgid "This is a link to your collection."
+msgstr "Dies ist ein Link zu Ihrer Sammlung."
+
+#: src/ui/pages/search.rs:842
+msgid "Open Collection"
+msgstr "Sammlung öffnen"
+
+#: src/ui/pages/search.rs:846
+msgid "This is a link to a TIDAL page."
+msgstr "Dies ist ein Link zu einer TIDAL-Seite."
+
+#: src/ui/pages/search.rs:847
+msgid "Open Link"
+msgstr "Link öffnen"
+
+#: src/ui/pages/search_views.rs:31
+msgid "Search “{query}”"
+msgstr "Suche: „{query}“"
+
+#: src/ui/pages/search_views.rs:74
+msgid "Top Hit"
+msgstr "Bester Treffer"
+
+#: src/ui/pages/search_views.rs:245
+msgid "Top hit: {summary}"
+msgstr "Bester Treffer: {summary}"
+
+#: src/ui/pages/search_views.rs:272
+msgid "Play {name}"
+msgstr "{name} abspielen"
+
+#: src/ui/pages/search_views.rs:311
+#: src/ui/widgets/media_card.rs:511
+msgid "{n} video"
+msgid_plural "{n} videos"
+msgstr[0] "{n} Video"
+msgstr[1] "{n} Videos"
+
+#: src/ui/pages/search_views.rs:490
+msgid "Loading more results"
+msgstr "Weitere Ergebnisse werden geladen"
+
+#: src/ui/pages/search_views.rs:544
+msgid "Tracks, albums, artists and playlists"
+msgstr "Titel, Alben, Künstler und Playlists"
+
+#: src/ui/pages/search_views.rs:555
+#: src/ui/pages/search_views.rs:569
+msgid "Recent Searches"
+msgstr "Letzte Suchanfragen"
+
+#: src/ui/pages/search_views.rs:557
+#: src/ui/widgets/queue_view.rs:97
+msgid "Clear"
+msgstr "Löschen"
+
+#: src/ui/pages/search_views.rs:584
+msgid "Remove “{query}”"
+msgstr "„{query}“ entfernen"
+
+#: src/ui/shortcuts.rs:28
+msgid "Focus Search"
+msgstr "Zur Suche springen"
+
+#: src/ui/shortcuts.rs:29
+msgid "Preferences"
+msgstr "Einstellungen"
+
+#: src/ui/shortcuts.rs:30
+#: src/ui/shortcuts.rs:158
+msgid "Keyboard Shortcuts"
+msgstr "Tastenkürzel"
+
+#: src/ui/shortcuts.rs:32
+msgid "Reload Page"
+msgstr "Seite neu laden"
+
+#: src/ui/shortcuts.rs:33
+msgid "Close Window"
+msgstr "Fenster schließen"
+
+#: src/ui/shortcuts.rs:34
+msgid "Quit"
+msgstr "Beenden"
+
+#: src/ui/shortcuts.rs:38
+msgid "Navigation"
+msgstr "Navigation"
+
+#: src/ui/shortcuts.rs:40
+msgid "Go to Home"
+msgstr "Zur Startseite"
+
+#: src/ui/shortcuts.rs:41
+msgid "Go to Explore"
+msgstr "Zu Entdecken"
+
+#: src/ui/shortcuts.rs:42
+msgid "Go to Search"
+msgstr "Zur Suche"
+
+#: src/ui/shortcuts.rs:43
+msgid "Go to Collection"
+msgstr "Zur Sammlung"
+
+#: src/ui/shortcuts.rs:44
+msgid "Back"
+msgstr "Zurück"
+
+#: src/ui/shortcuts.rs:45
+#: src/ui/sidebar.rs:943
+#: src/ui/sidebar.rs:946
+msgid "Show Sidebar"
+msgstr "Seitenleiste anzeigen"
+
+#: src/ui/shortcuts.rs:46
+msgid "Next Region"
+msgstr "Nächster Bereich"
+
+#: src/ui/shortcuts.rs:47
+msgid "Previous Region"
+msgstr "Vorheriger Bereich"
+
+#: src/ui/shortcuts.rs:48
+msgid "Close Panel or Popover"
+msgstr "Bereich oder Popover schließen"
+
+#: src/ui/shortcuts.rs:52
+#: src/ui/shortcuts.rs:54
+#: src/ui/widgets/now_playing.rs:305
+#: src/ui/widgets/queue_view.rs:734
+msgid "Now Playing"
+msgstr "Aktuelle Wiedergabe"
+
+#: src/ui/shortcuts.rs:55
+#: src/ui/widgets/lyrics_view.rs:200
+#: src/ui/widgets/now_playing.rs:274
+#: src/ui/widgets/player_bar.rs:109
+msgid "Lyrics"
+msgstr "Songtext"
+
+#: src/ui/shortcuts.rs:56
+#: src/ui/widgets/now_playing.rs:277
+#: src/ui/widgets/player_bar.rs:110
+#: src/ui/widgets/queue_view.rs:124
+msgid "Queue"
+msgstr "Warteschlange"
+
+#: src/ui/shortcuts.rs:62
+msgid "Play/Pause"
+msgstr "Wiedergabe/Pause"
+
+#: src/ui/shortcuts.rs:63
+msgid "Play/Pause Anywhere"
+msgstr "Wiedergabe/Pause (überall)"
+
+#: src/ui/shortcuts.rs:64
+#: src/ui/widgets/mini_player.rs:70
+#: src/ui/widgets/mini_player.rs:72
+#: src/ui/widgets/np_controls.rs:150
+msgid "Next Track"
+msgstr "Nächster Titel"
+
+#: src/ui/shortcuts.rs:65
+#: src/ui/widgets/np_controls.rs:148
+#: src/ui/widgets/np_controls.rs:240
+msgid "Previous Track"
+msgstr "Vorheriger Titel"
+
+#: src/ui/shortcuts.rs:66
+msgid "Seek Forward 10 Seconds"
+msgstr "10 Sekunden vorspulen"
+
+#: src/ui/shortcuts.rs:67
+msgid "Seek Backward 10 Seconds"
+msgstr "10 Sekunden zurückspulen"
+
+#: src/ui/shortcuts.rs:68
+msgid "Volume Up"
+msgstr "Lauter"
+
+#: src/ui/shortcuts.rs:69
+msgid "Volume Down"
+msgstr "Leiser"
+
+#: src/ui/shortcuts.rs:70
+#: src/ui/widgets/np_controls.rs:605
+msgid "Mute"
+msgstr "Stummschalten"
+
+#: src/ui/shortcuts.rs:72
+#: src/ui/widgets/np_controls.rs:152
+msgid "Repeat"
+msgstr "Wiederholen"
+
+#: src/ui/shortcuts.rs:73
+msgid "Toggle Favourite"
+msgstr "Favorit umschalten"
+
+#: src/ui/shortcuts.rs:77
+msgid "Lists"
+msgstr "Listen"
+
+#: src/ui/shortcuts.rs:79
+msgid "Play or Open"
+msgstr "Abspielen oder öffnen"
+
+#: src/ui/shortcuts.rs:80
+msgid "Context Menu"
+msgstr "Kontextmenü"
+
+#: src/ui/shortcuts.rs:81
+msgid "Remove"
+msgstr "Entfernen"
+
+#: src/ui/sidebar.rs:194
+msgid "Sidebar"
+msgstr "Seitenleiste"
+
+#: src/ui/sidebar.rs:740
+#: src/ui/widgets/media_card.rs:505
+#: src/ui/widgets/page_header.rs:560
+msgid "by {name}"
+msgstr "von {name}"
+
+#: src/ui/sidebar.rs:808
+msgid "COLLECTION"
+msgstr "SAMMLUNG"
+
+#: src/ui/sidebar.rs:810
+msgid "PLAYLISTS"
+msgstr "PLAYLISTS"
+
+#: src/ui/sidebar.rs:853
+#: src/ui/sidebar.rs:856
+#: src/ui/widgets/now_playing.rs:270
+msgid "Playing"
+msgstr "Wird abgespielt"
+
+#: src/ui/sidebar.rs:903
+msgid "_Preferences"
+msgstr "_Einstellungen"
+
+#: src/ui/sidebar.rs:904
+msgid "_Keyboard Shortcuts"
+msgstr "_Tastenkürzel"
+
+#: src/ui/sidebar.rs:905
+msgid "_About Swell"
+msgstr "_Info zu Swell"
+
+#: src/ui/sidebar.rs:908
+msgid "_Sign Out…"
+msgstr "_Abmelden …"
+
+#: src/ui/sidebar.rs:911
+msgid "_Quit"
+msgstr "_Beenden"
+
+#: src/ui/sidebar.rs:922
+#: src/ui/sidebar.rs:926
+msgid "Main Menu"
+msgstr "Hauptmenü"
+
+#: src/ui/widgets/carousel.rs:48
+msgid "Scroll Back"
+msgstr "Zurückblättern"
+
+#: src/ui/widgets/carousel.rs:54
+msgid "Scroll Forward"
+msgstr "Vorblättern"
+
+#: src/ui/widgets/heart_button.rs:76
+#: src/ui/widgets/np_common.rs:728
+msgid "Favourite"
+msgstr "Favorit"
+
+#: src/ui/widgets/heart_button.rs:182
+msgid "Following"
+msgstr "Gefolgt"
+
+#: src/ui/widgets/heart_button.rs:191
+msgid "Follow this artist"
+msgstr "Diesem Künstler folgen"
+
+#: src/ui/widgets/lyrics_view.rs:158
+#: src/ui/widgets/now_playing.rs:254
+msgid "Nothing Playing"
+msgstr "Keine Wiedergabe"
+
+#: src/ui/widgets/lyrics_view.rs:175
+msgid "No Lyrics for This Track"
+msgstr "Kein Songtext für diesen Titel"
+
+#: src/ui/widgets/lyrics_view.rs:188
+msgid "Couldn't Load Lyrics"
+msgstr "Songtext konnte nicht geladen werden"
+
+#: src/ui/widgets/lyrics_view.rs:216
+msgid "Back to Current Line"
+msgstr "Zurück zur aktuellen Zeile"
+
+#: src/ui/widgets/lyrics_view.rs:439
+msgid "Couldn't load lyrics"
+msgstr "Der Songtext konnte nicht geladen werden"
+
+#: src/ui/widgets/lyrics_view.rs:694
+msgid "Lyrics provided by {provider}"
+msgstr "Songtext bereitgestellt von {provider}"
+
+#: src/ui/widgets/media_card.rs:474
+msgid "Track: {title}, by {artists}"
+msgstr "Titel: {title}, von {artists}"
+
+#: src/ui/widgets/media_card.rs:493
+msgid "Album: {title}, by {artist}"
+msgstr "Album: {title}, von {artist}"
+
+#: src/ui/widgets/media_card.rs:501
+msgid "Artist: {name}"
+msgstr "Künstler: {name}"
+
+#: src/ui/widgets/media_card.rs:521
+msgid "Playlist: {title}, {details}"
+msgstr "Playlist: {title}, {details}"
+
+#: src/ui/widgets/media_card.rs:529
+msgid "Mix: {title}, {details}"
+msgstr "Mix: {title}, {details}"
+
+#: src/ui/widgets/media_card.rs:689
+msgid "Play {title}"
+msgstr "{title} abspielen"
+
+#: src/ui/widgets/mini_player.rs:185
+msgid "Now Playing: {title} by {artists}. Open player"
+msgstr "Aktuelle Wiedergabe: {title} von {artists}. Player öffnen"
+
+#: src/ui/widgets/now_playing.rs:172
+msgid "Radio"
+msgstr "Radio"
+
+#: src/ui/widgets/now_playing.rs:208
+msgid "Show Queue"
+msgstr "Warteschlange anzeigen"
+
+#: src/ui/widgets/now_playing.rs:216
+msgid "UP NEXT"
+msgstr "ALS NÄCHSTES"
+
+#: src/ui/widgets/now_playing.rs:255
+msgid "Pick something from your collection."
+msgstr "Wählen Sie etwas aus Ihrer Sammlung."
+
+#: src/ui/widgets/now_playing.rs:281
+#: src/ui/widgets/now_playing.rs:284
+msgid "Close"
+msgstr "Schließen"
+
+#: src/ui/widgets/np_common.rs:413
+msgid "Lossy"
+msgstr "Verlustbehaftet"
+
+#: src/ui/widgets/np_common.rs:434
+msgid "normalisation is on"
+msgstr "Normalisierung ist aktiv"
+
+#: src/ui/widgets/np_common.rs:437
+msgid "muted"
+msgstr "stummgeschaltet"
+
+#: src/ui/widgets/np_common.rs:440
+msgid "volume at {percent} %"
+msgstr "Lautstärke bei {percent} %"
+
+#: src/ui/widgets/np_common.rs:444
+msgid "lossy stream"
+msgstr "verlustbehafteter Stream"
+
+#: src/ui/widgets/np_common.rs:478
+msgid "Codec"
+msgstr "Codec"
+
+#: src/ui/widgets/np_common.rs:479
+msgid "Bit depth"
+msgstr "Bittiefe"
+
+#: src/ui/widgets/np_common.rs:480
+msgid "Sample rate"
+msgstr "Abtastrate"
+
+#: src/ui/widgets/np_common.rs:481
+msgid "Bitrate"
+msgstr "Bitrate"
+
+#: src/ui/widgets/np_common.rs:482
+msgid "ReplayGain"
+msgstr "ReplayGain"
+
+#: src/ui/widgets/np_common.rs:484
+msgid "Output device"
+msgstr "Ausgabegerät"
+
+#: src/ui/widgets/np_common.rs:496
+msgid "Audio Format"
+msgstr "Audioformat"
+
+#: src/ui/widgets/np_common.rs:582
+msgid "Bit-perfect"
+msgstr "Bit-perfect"
+
+#: src/ui/widgets/np_common.rs:584
+msgid "Not bit-perfect: {reasons}"
+msgstr "Nicht bit-perfect: {reasons}"
+
+#: src/ui/widgets/np_common.rs:588
+msgid "{gain} (album)"
+msgstr "{gain} (Album)"
+
+#: src/ui/widgets/np_common.rs:589
+msgid "{gain} (track)"
+msgstr "{gain} (Titel)"
+
+#: src/ui/widgets/np_common.rs:599
+msgid "{n}-bit"
+msgstr "{n} Bit"
+
+#: src/ui/widgets/np_common.rs:618
+msgid "System default"
+msgstr "Systemstandard"
+
+#: src/ui/widgets/np_common.rs:624
+msgid "Lossless delivered: this track has no Hi-Res master"
+msgstr "Lossless wird geliefert: Dieser Titel hat keinen Hi-Res-Master"
+
+#: src/ui/widgets/np_common.rs:625
+msgid "Lossless delivered: Hi-Res is turned off in Preferences"
+msgstr "Lossless wird geliefert: Hi-Res ist in den Einstellungen deaktiviert"
+
+#: src/ui/widgets/np_common.rs:640
+msgid "Audio format: {quality}, {format}. {output}"
+msgstr "Audioformat: {quality}, {format}. {output}"
+
+#: src/ui/widgets/np_common.rs:683
+msgid "The exact format shows once the track starts playing."
+msgstr "Das genaue Format wird angezeigt, sobald der Titel abgespielt wird."
+
+#: src/ui/widgets/np_common.rs:694
+msgid "Audio quality: {quality}"
+msgstr "Audioqualität: {quality}"
+
+#: src/ui/widgets/np_common.rs:802
+msgid "15 Minutes"
+msgstr "15 Minuten"
+
+#: src/ui/widgets/np_common.rs:803
+msgid "30 Minutes"
+msgstr "30 Minuten"
+
+#: src/ui/widgets/np_common.rs:804
+msgid "45 Minutes"
+msgstr "45 Minuten"
+
+#: src/ui/widgets/np_common.rs:805
+msgid "60 Minutes"
+msgstr "60 Minuten"
+
+#: src/ui/widgets/np_common.rs:806
+msgid "End of Track"
+msgstr "Am Ende des Titels"
+
+#: src/ui/widgets/np_common.rs:918
+msgid "Sleep Timer"
+msgstr "Schlaf-Timer"
+
+#: src/ui/widgets/np_common.rs:926
+msgid "Add to Playlist…"
+msgstr "Zu Playlist hinzufügen …"
+
+#: src/ui/widgets/np_common.rs:934
+#: src/ui/widgets/np_common.rs:936
+msgid "More"
+msgstr "Mehr"
+
+#: src/ui/widgets/np_common.rs:996
+msgid "Sleep timer: stops at the end of this track"
+msgstr "Schlaf-Timer: stoppt am Ende dieses Titels"
+
+#: src/ui/widgets/np_common.rs:1004
+msgid "{n} min"
+msgstr "{n} Min."
+
+#: src/ui/widgets/np_common.rs:1005
+msgid "Sleep timer: stops in {n} minute"
+msgid_plural "Sleep timer: stops in {n} minutes"
+msgstr[0] "Schlaf-Timer: stoppt in {n} Minute"
+msgstr[1] "Schlaf-Timer: stoppt in {n} Minuten"
+
+#: src/ui/widgets/np_common.rs:1031
+#: src/ui/widgets/track_row.rs:131
+msgid "{n} hour"
+msgid_plural "{n} hours"
+msgstr[0] "{n} Stunde"
+msgstr[1] "{n} Stunden"
+
+#: src/ui/widgets/np_common.rs:1034
+#: src/ui/widgets/track_row.rs:134
+msgid "{n} minute"
+msgid_plural "{n} minutes"
+msgstr[0] "{n} Minute"
+msgstr[1] "{n} Minuten"
+
+#: src/ui/widgets/np_common.rs:1037
+#: src/ui/widgets/track_row.rs:137
+msgid "{n} second"
+msgid_plural "{n} seconds"
+msgstr[0] "{n} Sekunde"
+msgstr[1] "{n} Sekunden"
+
+#: src/ui/widgets/np_controls.rs:84
+msgid "Pause"
+msgstr "Pause"
+
+#: src/ui/widgets/np_controls.rs:151
+#: src/ui/widgets/np_controls.rs:280
+msgid "Repeat: Off"
+msgstr "Wiederholen: Aus"
+
+#: src/ui/widgets/np_controls.rs:238
+msgid "Restart Track"
+msgstr "Titel neu starten"
+
+#: src/ui/widgets/np_controls.rs:281
+msgid "Repeat: All"
+msgstr "Wiederholen: Alle"
+
+#: src/ui/widgets/np_controls.rs:282
+msgid "Repeat: One"
+msgstr "Wiederholen: Titel"
+
+#: src/ui/widgets/np_controls.rs:329
+msgid "Seek"
+msgstr "Position"
+
+#: src/ui/widgets/np_controls.rs:456
+msgid "{position} of {duration}"
+msgstr "{position} von {duration}"
+
+#: src/ui/widgets/np_controls.rs:487
+#: src/ui/widgets/np_controls.rs:494
+#: src/ui/widgets/np_controls.rs:509
+#: src/ui/widgets/np_controls.rs:513
+msgid "Volume"
+msgstr "Lautstärke"
+
+#: src/ui/widgets/np_controls.rs:605
+msgid "Unmute"
+msgstr "Stummschaltung aufheben"
+
+#: src/ui/widgets/np_controls.rs:613
+msgid "Muted"
+msgstr "Stummgeschaltet"
+
+#: src/ui/widgets/page_header.rs:503
+#: src/ui/widgets/track_row.rs:388
+msgid "More Options"
+msgstr "Weitere Optionen"
+
+#: src/ui/widgets/page_header.rs:524
+msgid "EP"
+msgstr "EP"
+
+#: src/ui/widgets/page_header.rs:525
+msgid "Single"
+msgstr "Single"
+
+#: src/ui/widgets/page_header.rs:562
+msgid "by TIDAL"
+msgstr "von TIDAL"
+
+#: src/ui/widgets/page_header.rs:573
+msgid "Private"
+msgstr "Privat"
+
+#: src/ui/widgets/player_bar.rs:54
+#: src/ui/widgets/player_bar.rs:56
+msgid "Show Now Playing"
+msgstr "Aktuelle Wiedergabe anzeigen"
+
+#: src/ui/widgets/player_bar.rs:136
+msgid "Player"
+msgstr "Player"
+
+#: src/ui/widgets/player_bar.rs:233
+msgid "{title} by {artists}"
+msgstr "{title} von {artists}"
+
+#: src/ui/widgets/quality_badge.rs:30
+#: src/ui/widgets/track_row.rs:108
+msgid "Explicit"
+msgstr "Explizit"
+
+#: src/ui/widgets/queue_view.rs:100
+msgid "Clear Queue"
+msgstr "Warteschlange leeren"
+
+#: src/ui/widgets/queue_view.rs:144
+msgid "Queue Is Empty"
+msgstr "Die Warteschlange ist leer"
+
+#: src/ui/widgets/queue_view.rs:145
+msgid "Use “Add to Queue” on any track, album or playlist."
+msgstr "Verwenden Sie „Zur Warteschlange hinzufügen“ bei einem Titel, Album oder einer Playlist."
+
+#: src/ui/widgets/queue_view.rs:313
+msgid "Playing from {source}"
+msgstr "Wiedergabe aus: {source}"
+
+#: src/ui/widgets/queue_view.rs:331
+msgid "Queue cleared"
+msgstr "Warteschlange geleert"
+
+#: src/ui/widgets/queue_view.rs:513
+msgid "Drag to Reorder"
+msgstr "Zum Umsortieren ziehen"
+
+#: src/ui/widgets/queue_view.rs:520
+#: src/ui/widgets/queue_view.rs:522
+#: src/ui/widgets/track_row.rs:384
+msgid "Remove from Queue"
+msgstr "Aus Warteschlange entfernen"
+
+#: src/ui/widgets/queue_view.rs:699
+#: src/ui/widgets/track_row.rs:759
+msgid "{track}, playing"
+msgstr "{track}, wird abgespielt"
+
+#: src/ui/widgets/queue_view.rs:735
+msgid "Next in Queue"
+msgstr "Als Nächstes in der Warteschlange"
+
+#: src/ui/widgets/queue_view.rs:737
+msgid "Next"
+msgstr "Als Nächstes"
+
+#: src/ui/widgets/queue_view.rs:738
+msgid "Next From: {source}"
+msgstr "Als Nächstes aus: {source}"
+
+#: src/ui/widgets/status.rs:163
+msgid "Go Back"
+msgstr "Zurück"
+
+#: src/ui/widgets/status.rs:178
+msgid "Not Available"
+msgstr "Nicht verfügbar"
+
+#: src/ui/widgets/status.rs:202
+msgid "Couldn't Load This Page"
+msgstr "Diese Seite konnte nicht geladen werden"
+
+#: src/ui/widgets/status.rs:225
+msgid "TIDAL doesn't have this, or it isn't available in your country."
+msgstr "TIDAL hat dies nicht, oder es ist in Ihrem Land nicht verfügbar."
+
+#: src/ui/widgets/status.rs:226
+msgid "Check your internet connection and try again."
+msgstr "Prüfen Sie Ihre Internetverbindung und versuchen Sie es erneut."
+
+#: src/ui/widgets/status.rs:227
+msgid "Something went wrong. Try again in a moment."
+msgstr "Etwas ist schiefgelaufen. Versuchen Sie es gleich noch einmal."
+
+#: src/ui/widgets/track_list.rs:372
+#: src/ui/widgets/track_list.rs:408
+msgid "Disc {n}"
+msgstr "Disc {n}"
+
+#: src/ui/widgets/track_list.rs:640
+msgid "played {when}"
+msgstr "gespielt: {when}"
+
+#: src/ui/widgets/track_row.rs:98
+msgid "by {artists}"
+msgstr "von {artists}"
+
+#: src/ui/widgets/track_row.rs:101
+msgid "from {album}"
+msgstr "aus {album}"
+
+#: src/ui/widgets/track_row.rs:105
+msgid "Hi-Res"
+msgstr "Hi-Res"
+
+#: src/ui/widgets/track_row.rs:111
+msgid "not available"
+msgstr "nicht verfügbar"
+
+#: src/ui/widgets/track_row.rs:280
+msgid "Drag to Reorder (Alt+↑/↓)"
+msgstr "Zum Umsortieren ziehen (Alt+↑/↓)"
+
+#: src/ui/widgets/track_row.rs:608
+msgid "Not available in your region"
+msgstr "In Ihrer Region nicht verfügbar"
+
+#: src/ui/window.rs:398
+msgid "Couldn't remove your session from the keyring."
+msgstr "Ihre Sitzung konnte nicht aus dem Schlüsselbund entfernt werden."
+
+#: src/ui/window.rs:408
+msgid "Sign Out?"
+msgstr "Abmelden?"
+
+#: src/ui/window.rs:409
+msgid "You will need to sign in again to listen. Your library cached on this computer is deleted."
+msgstr "Sie müssen sich erneut anmelden, um Musik zu hören. Ihre auf diesem Computer zwischengespeicherte Bibliothek wird gelöscht."
+
+#: src/ui/window.rs:413
+msgid "_Sign Out"
+msgstr "A_bmelden"
+
+#: src/ui/window.rs:518
+msgid "Couldn't load your library"
+msgstr "Ihre Bibliothek konnte nicht geladen werden"
+
+#: src/ui/window.rs:770
+msgid "Couldn't open the track"
+msgstr "Der Titel konnte nicht geöffnet werden"

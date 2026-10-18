@@ -1,10 +1,5 @@
 # Russian translation of Swell.
 # This file is distributed under the same license as Swell (GPL-3.0-or-later).
-#
-# Placeholder: only the header, so that the catalogue is embedded before
-# its translation lands; every string falls back to English.
-# "X-Swell-Partial: yes" excuses it from the every_string_is_translated
-# test (see docs/translating.md).
 msgid ""
 msgstr ""
 "Project-Id-Version: swell-player\n"
@@ -13,4 +8,2301 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
-"X-Swell-Partial: yes\n"
+
+#: src/playback/format.rs:30
+msgid "Unknown"
+msgstr "Неизвестно"
+
+#: src/playback/format.rs:122
+msgid "{bits}-bit/{rate} kHz {codec}"
+msgstr "{codec} {bits} бит/{rate} кГц"
+
+#: src/playback/format.rs:136
+msgid "Unknown format"
+msgstr "Неизвестный формат"
+
+#: src/playback/mod.rs:1439
+msgid "Skipped a track that is not available"
+msgid_plural "Skipped {n} tracks that are not available"
+msgstr[0] "Пропущен {n} недоступный трек"
+msgstr[1] "Пропущено {n} недоступных трека"
+msgstr[2] "Пропущено {n} недоступных треков"
+
+#: src/playback/mod.rs:1469
+msgid "Playback needs GStreamer's playbin3"
+msgstr "Для воспроизведения нужен playbin3 из GStreamer"
+
+#: src/playback/mod.rs:1566
+msgid "The TIDAL session has expired: sign in again to play"
+msgstr "Сеанс TIDAL истёк: войдите снова, чтобы продолжить воспроизведение"
+
+#: src/playback/mod.rs:1591
+msgid "Connection lost — retrying"
+msgstr "Соединение потеряно — повторная попытка"
+
+#: src/playback/mod.rs:1659
+msgid "Could not play “{title}”. Playback stopped after {n} tracks failed"
+msgstr "Не удалось воспроизвести «{title}». Воспроизведение остановлено. Сбоев подряд: {n}"
+
+#: src/playback/mod.rs:1665
+msgid "Could not play “{title}”, skipped"
+msgstr "Не удалось воспроизвести «{title}», трек пропущен"
+
+#: src/playback/mod.rs:1858
+msgid "Playback failed: {error}"
+msgstr "Сбой воспроизведения: {error}"
+
+#: src/playback/notify.rs:35
+msgid "Playing music"
+msgstr "Воспроизводится музыка"
+
+#: src/playback/notify.rs:242
+msgid "{artists} — {album}"
+msgstr "{artists} — {album}"
+
+#: src/playback/plugins.rs:24
+msgid "Playback needs GStreamer’s “{element}”. Install {package}."
+msgstr "Для воспроизведения нужен элемент GStreamer «{element}». Установите {package}."
+
+#: src/session.rs:73
+msgid "Couldn't open the system's credential store."
+msgstr "Не удалось открыть хранилище учётных данных системы."
+
+#: src/session.rs:75
+msgid "Couldn't open the keyring. Make sure a keyring service (GNOME Keyring, KWallet) is running."
+msgstr "Не удалось открыть связку ключей. Убедитесь, что служба связки ключей (GNOME Keyring, KWallet) запущена."
+
+#: src/session.rs:84
+msgid "Couldn't save the session in the system's credential store."
+msgstr "Не удалось сохранить сеанс в хранилище учётных данных системы."
+
+#: src/session.rs:86
+msgid "Couldn't save the session in the keyring. Make sure a keyring service (GNOME Keyring, KWallet) is running."
+msgstr "Не удалось сохранить сеанс в связке ключей. Убедитесь, что служба связки ключей (GNOME Keyring, KWallet) запущена."
+
+#: src/ui/context.rs:105
+msgid "You’re offline — showing saved data"
+msgstr "Вы не в сети — показаны сохранённые данные"
+
+#: src/ui/context.rs:238
+#: src/ui/shortcuts.rs:31
+msgid "Undo"
+msgstr "Отменить"
+
+#: src/ui/context.rs:258
+msgid "Your TIDAL session has expired. Please sign in again."
+msgstr "Ваш сеанс TIDAL истёк. Войдите снова."
+
+#: src/ui/debug.rs:58
+#: src/ui/pages/artist.rs:271
+#: src/ui/pages/explore.rs:176
+#: src/ui/pages/home_sections.rs:303
+#: src/ui/pages/more.rs:151
+#: src/ui/pages/search_views.rs:156
+#: src/ui/widgets/carousel.rs:56
+#: src/ui/widgets/section.rs:124
+msgid "View All"
+msgstr "Показать все"
+
+#: src/ui/dialogs/about.rs:14
+msgid "Swell contributors"
+msgstr "Участники Swell"
+
+#: src/ui/dialogs/about.rs:16
+msgid "A native TIDAL client for Linux.\n\nNot affiliated with TIDAL."
+msgstr "Нативный клиент TIDAL для Linux.\n\nНе связан с TIDAL."
+
+#: src/ui/dialogs/credits.rs:26
+#: src/ui/menus.rs:473
+#: src/ui/pages/album.rs:362
+#: src/ui/pages/album.rs:489
+msgid "Credits"
+msgstr "Авторы"
+
+#: src/ui/dialogs/credits.rs:50
+#: src/ui/pages/album.rs:510
+msgid "No Credits"
+msgstr "Нет данных об авторах"
+
+#: src/ui/dialogs/credits.rs:51
+msgid "TIDAL has no credits for this track."
+msgstr "У TIDAL нет данных об авторах этого трека."
+
+#: src/ui/dialogs/credits.rs:56
+#: src/ui/pages/album.rs:519
+msgid "Couldn't load the credits"
+msgstr "Не удалось загрузить данные об авторах"
+
+#: src/ui/dialogs/credits.rs:60
+msgid "Couldn't Load the Credits"
+msgstr "Не удалось загрузить данные об авторах"
+
+#: src/ui/dialogs/playlist.rs:61
+#: src/ui/pages/playlist.rs:1234
+msgid "Added to “{title}”"
+msgstr "Добавлено в «{title}»"
+
+#: src/ui/dialogs/playlist.rs:63
+#: src/ui/pages/playlist.rs:1236
+msgid "Added {n} track to “{title}”"
+msgid_plural "Added {n} tracks to “{title}”"
+msgstr[0] "Добавлен {n} трек в «{title}»"
+msgstr[1] "Добавлено {n} трека в «{title}»"
+msgstr[2] "Добавлено {n} треков в «{title}»"
+
+#: src/ui/dialogs/playlist.rs:71
+#: src/ui/dialogs/playlist.rs:404
+msgid "Open"
+msgstr "Открыть"
+
+#: src/ui/dialogs/playlist.rs:75
+msgid "Couldn't add to “{title}”"
+msgstr "Не удалось добавить в «{title}»"
+
+#: src/ui/dialogs/playlist.rs:90
+msgid "Search Playlists"
+msgstr "Поиск плейлистов"
+
+#: src/ui/dialogs/playlist.rs:168
+#: src/ui/format.rs:29
+#: src/ui/format.rs:54
+#: src/ui/format.rs:149
+#: src/ui/format.rs:150
+#: src/ui/pages/collection.rs:914
+#: src/ui/pages/collection.rs:1061
+#: src/ui/widgets/media_card.rs:506
+msgid "{n} track"
+msgid_plural "{n} tracks"
+msgstr[0] "{n} трек"
+msgstr[1] "{n} трека"
+msgstr[2] "{n} треков"
+
+#: src/ui/dialogs/playlist.rs:210
+msgid "Your Playlists"
+msgstr "Ваши плейлисты"
+
+#: src/ui/dialogs/playlist.rs:221
+#: src/ui/menus.rs:802
+msgid "New Playlist…"
+msgstr "Новый плейлист…"
+
+#: src/ui/dialogs/playlist.rs:244
+#: src/ui/menus.rs:442
+#: src/ui/menus.rs:507
+msgid "Add to Playlist"
+msgstr "Добавить в плейлист"
+
+#: src/ui/dialogs/playlist.rs:294
+#: src/ui/pages/collection.rs:590
+#: src/ui/pages/collection_grid.rs:41
+#: src/ui/pages/collection_grid.rs:46
+#: src/ui/pages/collection_grid.rs:47
+msgid "Title"
+msgstr "Название"
+
+#: src/ui/dialogs/playlist.rs:295
+#: src/ui/widgets/page_header.rs:581
+msgid "Description"
+msgstr "Описание"
+
+#: src/ui/dialogs/playlist.rs:297
+#: src/ui/widgets/page_header.rs:571
+msgid "Public"
+msgstr "Публичный"
+
+#: src/ui/dialogs/playlist.rs:298
+msgid "Anyone can find it and see what's in it"
+msgstr "Любой сможет найти его и увидеть, что в нём"
+
+#: src/ui/dialogs/playlist.rs:312
+#: src/ui/dialogs/playlist.rs:515
+msgid "Cancel"
+msgstr "Отмена"
+
+#: src/ui/dialogs/playlist.rs:362
+msgid "Create"
+msgstr "Создать"
+
+#: src/ui/dialogs/playlist.rs:362
+#: src/ui/pages/collection_grid.rs:310
+#: src/ui/pages/collection_grid.rs:340
+#: src/ui/sidebar.rs:726
+#: src/ui/sidebar.rs:779
+#: src/ui/sidebar.rs:784
+msgid "New Playlist"
+msgstr "Новый плейлист"
+
+#: src/ui/dialogs/playlist.rs:403
+msgid "Created “{title}”"
+msgstr "Плейлист «{title}» создан"
+
+#: src/ui/dialogs/playlist.rs:413
+msgid "Couldn't create the playlist"
+msgstr "Не удалось создать плейлист"
+
+#: src/ui/dialogs/playlist.rs:430
+#: src/ui/widgets/page_header.rs:591
+msgid "Edit Details"
+msgstr "Изменить сведения"
+
+#: src/ui/dialogs/playlist.rs:430
+msgid "Save"
+msgstr "Сохранить"
+
+#: src/ui/dialogs/playlist.rs:467
+msgid "Playlist updated"
+msgstr "Плейлист обновлён"
+
+#: src/ui/dialogs/playlist.rs:474
+msgid "Couldn't update the playlist"
+msgstr "Не удалось обновить плейлист"
+
+#: src/ui/dialogs/playlist.rs:493
+msgid "The playlist is now public"
+msgstr "Плейлист теперь публичный"
+
+#: src/ui/dialogs/playlist.rs:495
+msgid "The playlist is now private"
+msgstr "Плейлист теперь приватный"
+
+#: src/ui/dialogs/playlist.rs:499
+msgid "Couldn't change the playlist's visibility"
+msgstr "Не удалось изменить видимость плейлиста"
+
+#: src/ui/dialogs/playlist.rs:508
+msgid "Delete “{title}”?"
+msgstr "Удалить «{title}»?"
+
+#: src/ui/dialogs/playlist.rs:509
+msgid "The playlist will be deleted from your TIDAL account. This can't be undone."
+msgstr "Плейлист будет удалён из вашей учётной записи TIDAL. Это действие нельзя отменить."
+
+#: src/ui/dialogs/playlist.rs:515
+msgid "Delete"
+msgstr "Удалить"
+
+#: src/ui/dialogs/playlist.rs:534
+msgid "Deleted “{title}”"
+msgstr "Плейлист «{title}» удалён"
+
+#: src/ui/dialogs/playlist.rs:540
+msgid "Couldn't delete the playlist"
+msgstr "Не удалось удалить плейлист"
+
+#: src/ui/dialogs/preferences.rs:42
+#: src/ui/widgets/np_common.rs:407
+#: src/ui/widgets/np_common.rs:411
+#: src/ui/widgets/quality_badge.rs:28
+msgid "Hi-Res Lossless"
+msgstr "Hi-Res Lossless"
+
+#: src/ui/dialogs/preferences.rs:45
+#: src/ui/widgets/np_common.rs:408
+#: src/ui/widgets/np_common.rs:412
+#: src/ui/widgets/quality_badge.rs:29
+msgid "Lossless"
+msgstr "Lossless"
+
+#: src/ui/dialogs/preferences.rs:46
+#: src/ui/widgets/np_common.rs:409
+msgid "High"
+msgstr "Высокое"
+
+#: src/ui/dialogs/preferences.rs:47
+#: src/ui/widgets/np_common.rs:410
+msgid "Low"
+msgstr "Низкое"
+
+#: src/ui/dialogs/preferences.rs:57
+msgid "Streaming Quality"
+msgstr "Качество стриминга"
+
+#: src/ui/dialogs/preferences.rs:65
+msgid "Hi-Res Lossless requires browser sign-in"
+msgstr "Для Hi-Res Lossless нужен вход через браузер"
+
+#: src/ui/dialogs/preferences.rs:71
+#: src/ui/widgets/np_common.rs:477
+msgid "Quality"
+msgstr "Качество"
+
+#: src/ui/dialogs/preferences.rs:81
+msgid "Volume Normalisation"
+msgstr "Нормализация громкости"
+
+#: src/ui/dialogs/preferences.rs:82
+#: src/ui/pages/album.rs:68
+#: src/ui/pages/collection.rs:592
+#: src/ui/pages/search_views.rs:339
+#: src/ui/widgets/page_header.rs:526
+msgid "Album"
+msgstr "Альбом"
+
+#: src/ui/dialogs/preferences.rs:82
+#: src/ui/widgets/np_common.rs:610
+#: src/ui/widgets/np_common.rs:801
+msgid "Off"
+msgstr "Выкл."
+
+#: src/ui/dialogs/preferences.rs:82
+#: src/ui/pages/search_views.rs:343
+msgid "Track"
+msgstr "Трек"
+
+#: src/ui/dialogs/preferences.rs:88
+msgid "Off keeps the output bit-perfect"
+msgstr "«Выкл.» сохраняет вывод bit-perfect"
+
+#: src/ui/dialogs/preferences.rs:94
+msgid "Gapless Playback"
+msgstr "Воспроизведение без пауз"
+
+#: src/ui/dialogs/preferences.rs:100
+msgid "Processing"
+msgstr "Обработка"
+
+#: src/ui/dialogs/preferences.rs:107
+#: src/ui/shortcuts.rs:60
+msgid "Playback"
+msgstr "Воспроизведение"
+
+#: src/ui/dialogs/preferences.rs:120
+msgid "System Default"
+msgstr "Системное по умолчанию"
+
+#: src/ui/dialogs/preferences.rs:122
+msgid "Output Device"
+msgstr "Устройство вывода"
+
+#: src/ui/dialogs/preferences.rs:160
+#: src/ui/widgets/np_common.rs:483
+msgid "Output"
+msgstr "Вывод"
+
+#: src/ui/dialogs/preferences.rs:191
+msgid "Behaviour"
+msgstr "Поведение"
+
+#: src/ui/dialogs/preferences.rs:195
+msgid "Run in Background"
+msgstr "Работать в фоновом режиме"
+
+#: src/ui/dialogs/preferences.rs:196
+msgid "Keep playing when the window is closed"
+msgstr "Продолжать воспроизведение при закрытии окна"
+
+#: src/ui/dialogs/preferences.rs:202
+msgid "Track Change Notifications"
+msgstr "Уведомления о смене трека"
+
+#: src/ui/dialogs/preferences.rs:203
+msgid "When the window is not focused"
+msgstr "Когда окно не в фокусе"
+
+#: src/ui/dialogs/preferences.rs:209
+msgid "Restore Queue on Start"
+msgstr "Восстанавливать очередь при запуске"
+
+#: src/ui/dialogs/preferences.rs:217
+#: src/ui/shortcuts.rs:26
+msgid "General"
+msgstr "Общие"
+
+#: src/ui/dialogs/preferences.rs:231
+msgid "Language"
+msgstr "Язык"
+
+#: src/ui/dialogs/preferences.rs:232
+msgid "Automatic"
+msgstr "Автоматически"
+
+#: src/ui/dialogs/preferences.rs:253
+msgid "Restart Swell to change the language"
+msgstr "Перезапустите Swell, чтобы сменить язык"
+
+#: src/ui/dialogs/preferences.rs:254
+msgid "Restart"
+msgstr "Перезапустить"
+
+#: src/ui/dialogs/preferences.rs:279
+msgid "Storage"
+msgstr "Хранилище"
+
+#: src/ui/dialogs/preferences.rs:280
+msgid "Downloaded artwork and saved answers from TIDAL, so pages open instantly and work offline."
+msgstr "Загруженные обложки и сохранённые ответы TIDAL: страницы открываются мгновенно и работают без сети."
+
+#: src/ui/dialogs/preferences.rs:285
+msgid "Cover Cache"
+msgstr "Кэш обложек"
+
+#: src/ui/dialogs/preferences.rs:286
+msgid "Clear the Cover Cache?"
+msgstr "Очистить кэш обложек?"
+
+#: src/ui/dialogs/preferences.rs:287
+msgid "Artwork is downloaded again as you browse."
+msgstr "Обложки будут загружены заново при просмотре."
+
+#: src/ui/dialogs/preferences.rs:288
+msgid "Cover Cache cleared"
+msgstr "Кэш обложек очищен"
+
+#: src/ui/dialogs/preferences.rs:289
+msgid "Couldn’t clear the Cover Cache"
+msgstr "Не удалось очистить кэш обложек"
+
+#: src/ui/dialogs/preferences.rs:310
+msgid "Library Cache"
+msgstr "Кэш библиотеки"
+
+#: src/ui/dialogs/preferences.rs:311
+msgid "Clear the Library Cache?"
+msgstr "Очистить кэш библиотеки?"
+
+#: src/ui/dialogs/preferences.rs:312
+msgid "Pages are loaded again from TIDAL. Your collection is not affected."
+msgstr "Страницы будут снова загружены из TIDAL. Ваша коллекция не пострадает."
+
+#: src/ui/dialogs/preferences.rs:313
+msgid "Library Cache cleared"
+msgstr "Кэш библиотеки очищен"
+
+#: src/ui/dialogs/preferences.rs:314
+msgid "Couldn’t clear the Library Cache"
+msgstr "Не удалось очистить кэш библиотеки"
+
+#: src/ui/dialogs/preferences.rs:368
+msgid "Calculating…"
+msgstr "Подсчёт…"
+
+#: src/ui/dialogs/preferences.rs:371
+#: src/ui/dialogs/preferences.rs:417
+msgid "_Clear"
+msgstr "Очис_тить"
+
+#: src/ui/dialogs/preferences.rs:417
+#: src/ui/window.rs:413
+msgid "_Cancel"
+msgstr "_Отмена"
+
+#: src/ui/dialogs/preferences.rs:472
+msgid "Blocked Artists"
+msgstr "Заблокированные исполнители"
+
+#: src/ui/dialogs/preferences.rs:473
+msgid "Loading…"
+msgstr "Загрузка…"
+
+#: src/ui/dialogs/preferences.rs:489
+msgid "Couldn’t load blocked artists."
+msgstr "Не удалось загрузить заблокированных исполнителей."
+
+#: src/ui/dialogs/preferences.rs:494
+msgid "Nothing blocked. Blocked artists are skipped in radios and mixes."
+msgstr "Нет заблокированных. Заблокированные исполнители пропускаются в радио и миксах."
+
+#: src/ui/dialogs/preferences.rs:496
+msgid "Skipped in radios and mixes."
+msgstr "Пропускается в радио и миксах."
+
+#: src/ui/dialogs/preferences.rs:505
+msgid "Unblock"
+msgstr "Разблокировать"
+
+#: src/ui/dialogs/preferences.rs:538
+#: src/ui/menus.rs:870
+msgid "Unblocked {name}"
+msgstr "Разблокировано: {name}"
+
+#: src/ui/dialogs/preferences.rs:548
+msgid "Couldn’t unblock the artist"
+msgstr "Не удалось разблокировать исполнителя"
+
+#: src/ui/dialogs/preferences.rs:563
+msgid "Signed in with the browser"
+msgstr "Вход выполнен через браузер"
+
+#: src/ui/dialogs/preferences.rs:564
+msgid "Up to Hi-Res Lossless"
+msgstr "До Hi-Res Lossless"
+
+#: src/ui/dialogs/preferences.rs:567
+msgid "Signed in with a device code"
+msgstr "Вход выполнен с помощью кода устройства"
+
+#: src/ui/dialogs/preferences.rs:568
+msgid "Up to Lossless (16-bit/44.1 kHz)"
+msgstr "До Lossless (16 бит/44,1 кГц)"
+
+#: src/ui/dialogs/preferences.rs:596
+msgid "Sign _Out…"
+msgstr "Выйти из _учётной записи…"
+
+#: src/ui/dialogs/preferences.rs:617
+msgid "Account"
+msgstr "Учётная запись"
+
+#: src/ui/format.rs:13
+msgid ","
+msgstr " "
+
+#: src/ui/format.rs:107
+msgid "January"
+msgstr "января"
+
+#: src/ui/format.rs:108
+msgid "February"
+msgstr "февраля"
+
+#: src/ui/format.rs:109
+msgid "March"
+msgstr "марта"
+
+#: src/ui/format.rs:110
+msgid "April"
+msgstr "апреля"
+
+#: src/ui/format.rs:111
+msgid "May"
+msgstr "мая"
+
+#: src/ui/format.rs:112
+msgid "June"
+msgstr "июня"
+
+#: src/ui/format.rs:113
+msgid "July"
+msgstr "июля"
+
+#: src/ui/format.rs:114
+msgid "August"
+msgstr "августа"
+
+#: src/ui/format.rs:115
+msgid "September"
+msgstr "сентября"
+
+#: src/ui/format.rs:116
+msgid "October"
+msgstr "октября"
+
+#: src/ui/format.rs:117
+msgid "November"
+msgstr "ноября"
+
+#: src/ui/format.rs:118
+msgid "December"
+msgstr "декабря"
+
+#: src/ui/format.rs:125
+msgid "Monday"
+msgstr "понедельник"
+
+#: src/ui/format.rs:126
+msgid "Tuesday"
+msgstr "вторник"
+
+#: src/ui/format.rs:127
+msgid "Wednesday"
+msgstr "среда"
+
+#: src/ui/format.rs:128
+msgid "Thursday"
+msgstr "четверг"
+
+#: src/ui/format.rs:129
+msgid "Friday"
+msgstr "пятница"
+
+#: src/ui/format.rs:130
+msgid "Saturday"
+msgstr "суббота"
+
+#: src/ui/format.rs:131
+msgid "Sunday"
+msgstr "воскресенье"
+
+#: src/ui/login.rs:29
+#: src/ui/login.rs:88
+msgid "Sign In with Browser"
+msgstr "Войти через браузер"
+
+#: src/ui/login.rs:30
+#: src/ui/login.rs:138
+msgid "Use a Device Code"
+msgstr "Использовать код устройства"
+
+#: src/ui/login.rs:42
+msgid "Hi-Res Lossless, up to 24-bit/192 kHz"
+msgstr "Hi-Res Lossless, до 24 бит/192 кГц"
+
+#: src/ui/login.rs:46
+msgid "Lossless, up to 16-bit/44.1 kHz"
+msgstr "Lossless, до 16 бит/44,1 кГц"
+
+#: src/ui/login.rs:51
+msgid "Welcome to Swell"
+msgstr "Добро пожаловать в Swell"
+
+#: src/ui/login.rs:52
+msgid "Sign in with your TIDAL account."
+msgstr "Войдите в свою учётную запись TIDAL."
+
+#: src/ui/login.rs:56
+msgid "Sign In"
+msgstr "Войти"
+
+#: src/ui/login.rs:60
+msgid "1. Sign in on the TIDAL page that opened in your browser.\n2. TIDAL then shows a page that says “Oops”.\n3. Copy that page’s address and paste it here."
+msgstr "1. Войдите на странице TIDAL, открывшейся в браузере.\n2. Затем TIDAL покажет страницу с надписью «Oops».\n3. Скопируйте адрес этой страницы и вставьте его сюда."
+
+#: src/ui/login.rs:65
+msgid "Paste the address of the “Oops” page"
+msgstr "Вставьте адрес страницы «Oops»"
+
+#: src/ui/login.rs:73
+msgid "Continue"
+msgstr "Продолжить"
+
+#: src/ui/login.rs:75
+msgid "Open Browser Again"
+msgstr "Открыть браузер снова"
+
+#: src/ui/login.rs:89
+msgid "Your browser opens TIDAL’s sign-in page."
+msgstr "В браузере откроется страница входа TIDAL."
+
+#: src/ui/login.rs:92
+msgid "Browser"
+msgstr "Браузер"
+
+#: src/ui/login.rs:102
+#: src/ui/login.rs:106
+msgid "Copy Code"
+msgstr "Копировать код"
+
+#: src/ui/login.rs:119
+msgid "Waiting for approval…"
+msgstr "Ожидание подтверждения…"
+
+#: src/ui/login.rs:121
+msgid "Get a New Code"
+msgstr "Получить новый код"
+
+#: src/ui/login.rs:139
+msgid "Open link.tidal.com on any device and enter this code."
+msgstr "Откройте link.tidal.com на любом устройстве и введите этот код."
+
+#: src/ui/login.rs:142
+msgid "Device Code"
+msgstr "Код устройства"
+
+#: src/ui/login.rs:192
+msgid "Couldn't start the sign-in. Please try again."
+msgstr "Не удалось начать вход. Повторите попытку."
+
+#: src/ui/login.rs:202
+msgid "Couldn't open the browser ({error}). Open this address yourself:\n{url}"
+msgstr "Не удалось открыть браузер ({error}). Откройте этот адрес самостоятельно:\n{url}"
+
+#: src/ui/login.rs:258
+msgid "Sign-in failed. {error}"
+msgstr "Не удалось войти. {error}"
+
+#: src/ui/login.rs:313
+msgid "Couldn't get a code. {error}"
+msgstr "Не удалось получить код. {error}"
+
+#: src/ui/login.rs:332
+msgid "This code expired or was not approved."
+msgstr "Срок действия кода истёк, или он не был подтверждён."
+
+#: src/ui/menus.rs:201
+#: src/ui/pages/artist.rs:298
+msgid "There's nothing to play here"
+msgstr "Здесь нечего воспроизводить"
+
+#: src/ui/menus.rs:203
+#: src/ui/menus.rs:842
+msgid "Couldn't load the tracks"
+msgstr "Не удалось загрузить треки"
+
+#: src/ui/menus.rs:232
+msgid "“{title}” isn't available in your region"
+msgstr "В вашем регионе недоступно: «{title}»"
+
+#: src/ui/menus.rs:243
+#: src/ui/menus.rs:256
+#: src/ui/menus.rs:269
+msgid "None of these tracks are available in your region"
+msgstr "Ни один из этих треков не доступен в вашем регионе"
+
+#: src/ui/menus.rs:272
+msgid "“{title}” will play next"
+msgstr "Далее будет играть «{title}»"
+
+#: src/ui/menus.rs:273
+msgid "Added “{title}” to the queue"
+msgstr "В очередь добавлено: «{title}»"
+
+#: src/ui/menus.rs:274
+msgid "Added {n} track to the queue"
+msgid_plural "Added {n} tracks to the queue"
+msgstr[0] "В очередь добавлен {n} трек"
+msgstr[1] "В очередь добавлено {n} трека"
+msgstr[2] "В очередь добавлено {n} треков"
+
+#: src/ui/menus.rs:287
+#: src/ui/pages/search.rs:130
+msgid "Show"
+msgstr "Показать"
+
+#: src/ui/menus.rs:320
+msgid "Couldn't play this track"
+msgstr "Не удалось воспроизвести этот трек"
+
+#: src/ui/menus.rs:428
+#: src/ui/widgets/heart_button.rs:173
+#: src/ui/widgets/np_common.rs:791
+msgid "Remove from Favourites"
+msgstr "Убрать из избранного"
+
+#: src/ui/menus.rs:430
+#: src/ui/widgets/heart_button.rs:175
+#: src/ui/widgets/np_common.rs:725
+#: src/ui/widgets/np_common.rs:793
+msgid "Add to Favourites"
+msgstr "Добавить в избранное"
+
+#: src/ui/menus.rs:437
+#: src/ui/menus.rs:784
+msgid "Play Next"
+msgstr "Играть следующим"
+
+#: src/ui/menus.rs:438
+#: src/ui/menus.rs:785
+msgid "Add to Queue"
+msgstr "Добавить в очередь"
+
+#: src/ui/menus.rs:447
+#: src/ui/widgets/np_common.rs:921
+msgid "Go to Album"
+msgstr "Перейти к альбому"
+
+#: src/ui/menus.rs:452
+#: src/ui/menus.rs:465
+#: src/ui/menus.rs:512
+#: src/ui/widgets/np_common.rs:922
+msgid "Go to Artist"
+msgstr "Перейти к исполнителю"
+
+#: src/ui/menus.rs:468
+#: src/ui/pages/mix.rs:51
+#: src/ui/pages/mix.rs:60
+#: src/ui/widgets/now_playing.rs:178
+#: src/ui/widgets/now_playing.rs:180
+#: src/ui/widgets/np_common.rs:923
+msgid "Track Radio"
+msgstr "Радио трека"
+
+#: src/ui/menus.rs:474
+#: src/ui/menus.rs:523
+#: src/ui/menus.rs:542
+#: src/ui/menus.rs:551
+#: src/ui/menus.rs:575
+#: src/ui/widgets/np_common.rs:927
+#: src/ui/widgets/page_header.rs:486
+msgid "Copy Link"
+msgstr "Копировать ссылку"
+
+#: src/ui/menus.rs:480
+msgid "Remove from This Playlist"
+msgstr "Убрать из этого плейлиста"
+
+#: src/ui/menus.rs:484
+#: src/ui/shortcuts.rs:82
+msgid "Move Up"
+msgstr "Вверх"
+
+#: src/ui/menus.rs:487
+#: src/ui/shortcuts.rs:83
+msgid "Move Down"
+msgstr "Вниз"
+
+#: src/ui/menus.rs:497
+msgid "Block {name}"
+msgstr "Заблокировать: {name}"
+
+#: src/ui/menus.rs:517
+#: src/ui/menus.rs:559
+#: src/ui/pages/mix.rs:52
+#: src/ui/pages/mix.rs:61
+#: src/ui/widgets/page_header.rs:631
+msgid "Artist Radio"
+msgstr "Радио исполнителя"
+
+#: src/ui/menus.rs:527
+msgid "Edit Details…"
+msgstr "Изменить сведения…"
+
+#: src/ui/menus.rs:530
+msgid "Make Private"
+msgstr "Сделать приватным"
+
+#: src/ui/menus.rs:532
+msgid "Make Public"
+msgstr "Сделать публичным"
+
+#: src/ui/menus.rs:545
+msgid "Delete Playlist…"
+msgstr "Удалить плейлист…"
+
+#: src/ui/menus.rs:555
+msgid "Play Top Tracks"
+msgstr "Воспроизвести популярные треки"
+
+#: src/ui/menus.rs:556
+#: src/ui/menus.rs:783
+#: src/ui/pages/collection.rs:681
+#: src/ui/shortcuts.rs:71
+#: src/ui/widgets/np_controls.rs:147
+#: src/ui/widgets/page_header.rs:153
+#: src/ui/widgets/page_header.rs:316
+#: src/ui/widgets/page_header.rs:320
+#: src/ui/widgets/page_header.rs:323
+msgid "Shuffle"
+msgstr "Перемешать"
+
+#: src/ui/menus.rs:568
+#: src/ui/widgets/heart_button.rs:189
+msgid "Unfollow"
+msgstr "Отписаться"
+
+#: src/ui/menus.rs:570
+#: src/ui/widgets/heart_button.rs:185
+msgid "Follow"
+msgstr "Подписаться"
+
+#: src/ui/menus.rs:578
+msgid "Block Artist"
+msgstr "Заблокировать исполнителя"
+
+#: src/ui/menus.rs:625
+#: src/ui/widgets/heart_button.rs:215
+#: src/ui/widgets/np_common.rs:765
+#: src/ui/window.rs:744
+msgid "Couldn't update favourites"
+msgstr "Не удалось обновить избранное"
+
+#: src/ui/menus.rs:693
+#: src/ui/widgets/np_common.rs:882
+#: src/ui/widgets/page_header.rs:490
+msgid "Link copied"
+msgstr "Ссылка скопирована"
+
+#: src/ui/menus.rs:782
+#: src/ui/pages/collection.rs:680
+#: src/ui/widgets/np_controls.rs:52
+#: src/ui/widgets/np_controls.rs:56
+#: src/ui/widgets/np_controls.rs:86
+#: src/ui/widgets/page_header.rs:309
+msgid "Play"
+msgstr "Воспроизвести"
+
+#: src/ui/menus.rs:819
+msgid "More…"
+msgstr "Ещё…"
+
+#: src/ui/menus.rs:861
+msgid "Blocked {name}"
+msgstr "Заблокировано: {name}"
+
+#: src/ui/menus.rs:871
+msgid "Couldn't update blocked artists"
+msgstr "Не удалось обновить список заблокированных исполнителей"
+
+#: src/ui/nav.rs:174
+#: src/ui/pages/home.rs:39
+#: src/ui/sidebar.rs:112
+msgid "Home"
+msgstr "Главная"
+
+#: src/ui/nav.rs:175
+#: src/ui/pages/collection.rs:651
+#: src/ui/pages/explore.rs:43
+#: src/ui/pages/explore.rs:47
+#: src/ui/pages/home.rs:160
+#: src/ui/sidebar.rs:113
+msgid "Explore"
+msgstr "Обзор"
+
+#: src/ui/nav.rs:176
+#: src/ui/pages/playlist.rs:913
+#: src/ui/pages/search.rs:234
+#: src/ui/sidebar.rs:114
+msgid "Search"
+msgstr "Поиск"
+
+#: src/ui/nav.rs:177
+#: src/ui/nav.rs:407
+#: src/ui/sidebar.rs:288
+#: src/ui/sidebar.rs:317
+#: src/ui/window.rs:806
+msgid "Collection"
+msgstr "Коллекция"
+
+#: src/ui/pages/album.rs:165
+msgid "Couldn't load the album"
+msgstr "Не удалось загрузить альбом"
+
+#: src/ui/pages/album.rs:300
+msgid "Couldn't load all the album's tracks"
+msgstr "Не удалось загрузить все треки альбома"
+
+#: src/ui/pages/album.rs:356
+msgid "Released {date}"
+msgstr "Дата выпуска: {date}"
+
+#: src/ui/pages/album.rs:437
+#: src/ui/pages/album.rs:460
+msgid "Review"
+msgstr "Рецензия"
+
+#: src/ui/pages/album.rs:452
+#: src/ui/pages/artist.rs:345
+#: src/ui/widgets/page_header.rs:424
+msgid "Read More"
+msgstr "Читать далее"
+
+#: src/ui/pages/album.rs:473
+msgid "%B %-d, %Y"
+msgstr "%-d %B %Y г."
+
+#: src/ui/pages/album.rs:511
+msgid "TIDAL has no credits for this album."
+msgstr "У TIDAL нет данных об авторах этого альбома."
+
+#: src/ui/pages/artist.rs:78
+#: src/ui/pages/collection.rs:591
+#: src/ui/pages/collection_grid.rs:42
+#: src/ui/pages/search_views.rs:336
+#: src/ui/widgets/media_card.rs:500
+#: src/ui/widgets/page_header.rs:617
+msgid "Artist"
+msgstr "Исполнитель"
+
+#: src/ui/pages/artist.rs:174
+msgid "Couldn't load the artist"
+msgstr "Не удалось загрузить исполнителя"
+
+#: src/ui/pages/artist.rs:235
+#: src/ui/pages/explore.rs:155
+#: src/ui/pages/home.rs:156
+#: src/ui/pages/more.rs:365
+#: src/ui/pages/more.rs:509
+msgid "Nothing Here Yet"
+msgstr "Здесь пока ничего нет"
+
+#: src/ui/pages/artist.rs:236
+msgid "TIDAL has no music from this artist in your country."
+msgstr "У TIDAL нет музыки этого исполнителя в вашей стране."
+
+#: src/ui/pages/artist.rs:301
+msgid "Couldn't load the artist's tracks"
+msgstr "Не удалось загрузить треки исполнителя"
+
+#: src/ui/pages/artist.rs:353
+msgid "Biography"
+msgstr "Биография"
+
+#: src/ui/pages/collection.rs:123
+msgid "Sort"
+msgstr "Сортировка"
+
+#: src/ui/pages/collection.rs:271
+msgid "Ascending"
+msgstr "По возрастанию"
+
+#: src/ui/pages/collection.rs:272
+msgid "Descending"
+msgstr "По убыванию"
+
+#: src/ui/pages/collection.rs:291
+msgid "Sort by {label}, descending"
+msgstr "Сортировка: {label}, по убыванию"
+
+#: src/ui/pages/collection.rs:293
+msgid "Sort by {label}, ascending"
+msgstr "Сортировка: {label}, по возрастанию"
+
+#: src/ui/pages/collection.rs:403
+msgid "No Matches for “{query}”"
+msgstr "Нет совпадений для «{query}»"
+
+#: src/ui/pages/collection.rs:437
+#: src/ui/pages/collection_grid.rs:575
+msgid "{n} album"
+msgid_plural "{n} albums"
+msgstr[0] "{n} альбом"
+msgstr[1] "{n} альбома"
+msgstr[2] "{n} альбомов"
+
+#: src/ui/pages/collection.rs:451
+msgid "{shown} of {count}"
+msgstr "{shown} из {count}"
+
+#: src/ui/pages/collection.rs:483
+#: src/ui/pages/collection.rs:507
+#: src/ui/pages/home_sections.rs:525
+#: src/ui/pages/more.rs:140
+#: src/ui/widgets/np_controls.rs:103
+#: src/ui/widgets/skeleton.rs:109
+msgid "Loading"
+msgstr "Загрузка"
+
+#: src/ui/pages/collection.rs:589
+#: src/ui/pages/collection_grid.rs:40
+#: src/ui/pages/collection_grid.rs:45
+#: src/ui/pages/collection_grid.rs:47
+msgid "Date Added"
+msgstr "Дата добавления"
+
+#: src/ui/pages/collection.rs:593
+msgid "Duration"
+msgstr "Длительность"
+
+#: src/ui/pages/collection.rs:642
+msgid "Favourite Tracks"
+msgstr "Избранные треки"
+
+#: src/ui/pages/collection.rs:662
+msgid "No Favourite Tracks"
+msgstr "Нет избранных треков"
+
+#: src/ui/pages/collection.rs:663
+msgid "Use the heart on a track to save it here."
+msgstr "Нажмите на сердце у трека, чтобы сохранить его здесь."
+
+#: src/ui/pages/collection.rs:669
+#: src/ui/pages/search_data.rs:80
+#: src/ui/pages/search_views.rs:88
+#: src/ui/sidebar.rs:121
+#: src/ui/widgets/track_list.rs:126
+msgid "Tracks"
+msgstr "Треки"
+
+#: src/ui/pages/collection.rs:670
+msgid "Filter tracks"
+msgstr "Фильтр треков"
+
+#: src/ui/pages/collection.rs:833
+msgid "Couldn't update your favourite tracks"
+msgstr "Не удалось обновить избранные треки"
+
+#: src/ui/pages/collection.rs:956
+msgid "Removed “{title}” from Favourites"
+msgstr "Убрано из избранного: «{title}»"
+
+#: src/ui/pages/collection.rs:964
+msgid "Couldn't add the track back"
+msgstr "Не удалось вернуть трек"
+
+#: src/ui/pages/collection_grid.rs:43
+msgid "Release Date"
+msgstr "Дата выпуска"
+
+#: src/ui/pages/collection_grid.rs:45
+msgid "Name"
+msgstr "Имя"
+
+#: src/ui/pages/collection_grid.rs:46
+msgid "Last Updated"
+msgstr "Последнее обновление"
+
+#: src/ui/pages/collection_grid.rs:158
+#: src/ui/pages/search_data.rs:81
+#: src/ui/sidebar.rs:126
+msgid "Albums"
+msgstr "Альбомы"
+
+#: src/ui/pages/collection_grid.rs:158
+msgid "Filter albums"
+msgstr "Фильтр альбомов"
+
+#: src/ui/pages/collection_grid.rs:159
+#: src/ui/pages/search_data.rs:82
+#: src/ui/sidebar.rs:131
+msgid "Artists"
+msgstr "Исполнители"
+
+#: src/ui/pages/collection_grid.rs:159
+msgid "Filter artists"
+msgstr "Фильтр исполнителей"
+
+#: src/ui/pages/collection_grid.rs:162
+#: src/ui/pages/search_data.rs:83
+#: src/ui/sidebar.rs:136
+msgid "Playlists"
+msgstr "Плейлисты"
+
+#: src/ui/pages/collection_grid.rs:163
+msgid "Filter playlists"
+msgstr "Фильтр плейлистов"
+
+#: src/ui/pages/collection_grid.rs:166
+msgid "Filter mixes"
+msgstr "Фильтр миксов"
+
+#: src/ui/pages/collection_grid.rs:166
+#: src/ui/sidebar.rs:141
+msgid "Mixes & Radios"
+msgstr "Миксы и радио"
+
+#: src/ui/pages/collection_grid.rs:298
+msgid "No Favourite Albums"
+msgstr "Нет избранных альбомов"
+
+#: src/ui/pages/collection_grid.rs:299
+msgid "Use the heart on an album to save it here."
+msgstr "Нажмите на сердце у альбома, чтобы сохранить его здесь."
+
+#: src/ui/pages/collection_grid.rs:304
+msgid "No Followed Artists"
+msgstr "Нет подписок на исполнителей"
+
+#: src/ui/pages/collection_grid.rs:305
+msgid "Follow artists you like to find them here."
+msgstr "Подписывайтесь на любимых исполнителей, чтобы находить их здесь."
+
+#: src/ui/pages/collection_grid.rs:321
+msgid "No Playlists"
+msgstr "Нет плейлистов"
+
+#: src/ui/pages/collection_grid.rs:322
+msgid "Create a playlist, or use the heart on someone else's to save it here."
+msgstr "Создайте плейлист или нажмите на сердце у чужого плейлиста, чтобы сохранить его здесь."
+
+#: src/ui/pages/collection_grid.rs:328
+msgid "No Saved Mixes"
+msgstr "Нет сохранённых миксов"
+
+#: src/ui/pages/collection_grid.rs:329
+msgid "Use the heart on a mix or radio to save it here."
+msgstr "Нажмите на сердце у микса или радио, чтобы сохранить его здесь."
+
+#: src/ui/pages/collection_grid.rs:351
+#: src/ui/pages/search_data.rs:79
+msgid "All"
+msgstr "Все"
+
+#: src/ui/pages/collection_grid.rs:352
+msgid "Created by Me"
+msgstr "Созданные мной"
+
+#: src/ui/pages/collection_grid.rs:353
+msgid "Favourited"
+msgstr "Избранные"
+
+#: src/ui/pages/collection_grid.rs:482
+msgid "Couldn't update your collection"
+msgstr "Не удалось обновить вашу коллекцию"
+
+#: src/ui/pages/collection_grid.rs:576
+msgid "{n} artist"
+msgid_plural "{n} artists"
+msgstr[0] "{n} исполнитель"
+msgstr[1] "{n} исполнителя"
+msgstr[2] "{n} исполнителей"
+
+#: src/ui/pages/collection_grid.rs:577
+msgid "{n} playlist"
+msgid_plural "{n} playlists"
+msgstr[0] "{n} плейлист"
+msgstr[1] "{n} плейлиста"
+msgstr[2] "{n} плейлистов"
+
+#: src/ui/pages/collection_grid.rs:578
+msgid "{n} mix"
+msgid_plural "{n} mixes"
+msgstr[0] "{n} микс"
+msgstr[1] "{n} микса"
+msgstr[2] "{n} миксов"
+
+#: src/ui/pages/collection_grid.rs:682
+msgid "Unfollowed {name}"
+msgstr "Вы отписались: {name}"
+
+#: src/ui/pages/collection_grid.rs:684
+msgid "Removed from Favourites: {name}"
+msgstr "Убрано из избранного: {name}"
+
+#: src/ui/pages/collection_grid.rs:693
+msgid "Couldn't undo that"
+msgstr "Не удалось отменить"
+
+#: src/ui/pages/explore.rs:110
+#: src/ui/pages/more.rs:289
+msgid "Couldn't load the page"
+msgstr "Не удалось загрузить страницу"
+
+#: src/ui/pages/explore.rs:156
+#: src/ui/pages/more.rs:510
+msgid "TIDAL has nothing on this page in your country."
+msgstr "У TIDAL нет ничего на этой странице в вашей стране."
+
+#: src/ui/pages/history.rs:107
+msgid "Today"
+msgstr "Сегодня"
+
+#: src/ui/pages/history.rs:108
+msgid "Yesterday"
+msgstr "Вчера"
+
+#: src/ui/pages/history.rs:109
+msgid "This Week"
+msgstr "На этой неделе"
+
+#: src/ui/pages/history.rs:110
+msgid "Earlier"
+msgstr "Раньше"
+
+#: src/ui/pages/history.rs:132
+#: src/ui/pages/history.rs:468
+msgid "Just now"
+msgstr "Только что"
+
+#: src/ui/pages/history.rs:134
+#: src/ui/pages/history.rs:472
+msgid "{n} min ago"
+msgstr "{n} мин назад"
+
+#: src/ui/pages/history.rs:136
+#: src/ui/pages/history.rs:476
+msgid "{n} h ago"
+msgstr "{n} ч назад"
+
+#: src/ui/pages/history.rs:143
+msgid "%b %-d"
+msgstr "%-d %b"
+
+#: src/ui/pages/history.rs:183
+#: src/ui/pages/history.rs:248
+#: src/ui/pages/history.rs:255
+#: src/ui/sidebar.rs:146
+#: src/ui/window.rs:1229
+msgid "Recently Played"
+msgstr "Недавние"
+
+#: src/ui/pages/history.rs:194
+msgid "This Session"
+msgstr "В этом сеансе"
+
+#: src/ui/pages/history.rs:196
+msgid "Tracks you play in Swell appear here."
+msgstr "Треки, которые вы воспроизводите в Swell, появятся здесь."
+
+#: src/ui/pages/history.rs:227
+msgid "On TIDAL"
+msgstr "В TIDAL"
+
+#: src/ui/pages/history.rs:228
+msgid "What you played lately, on any device"
+msgstr "Что вы слушали в последнее время на любом устройстве"
+
+#: src/ui/pages/history.rs:242
+msgid "Nothing Played Yet"
+msgstr "Пока ничего не воспроизводилось"
+
+#: src/ui/pages/history.rs:243
+msgid "Music you play appears here."
+msgstr "Музыка, которую вы воспроизводите, появится здесь."
+
+#: src/ui/pages/history.rs:397
+msgid "Nothing yet."
+msgstr "Пока ничего."
+
+#: src/ui/pages/history.rs:411
+msgid "Couldn't load what you played"
+msgstr "Не удалось загрузить историю прослушивания"
+
+#: src/ui/pages/history.rs:415
+msgid "Couldn't load this. {reason}"
+msgstr "Не удалось загрузить. {reason}"
+
+#: src/ui/pages/history.rs:419
+#: src/ui/pages/home_sections.rs:257
+#: src/ui/pages/playlist.rs:886
+#: src/ui/pages/search.rs:201
+#: src/ui/pages/search_views.rs:493
+#: src/ui/widgets/lyrics_view.rs:181
+#: src/ui/widgets/status.rs:191
+msgid "Retry"
+msgstr "Повторить"
+
+#: src/ui/pages/home.rs:78
+msgid "Good Morning"
+msgstr "Доброе утро"
+
+#: src/ui/pages/home.rs:79
+msgid "Good Afternoon"
+msgstr "Добрый день"
+
+#: src/ui/pages/home.rs:80
+msgid "Good Evening"
+msgstr "Добрый вечер"
+
+#: src/ui/pages/home.rs:128
+msgid "Couldn't load Home"
+msgstr "Не удалось загрузить главную страницу"
+
+#: src/ui/pages/home.rs:157
+msgid "Play some music and TIDAL will suggest more here."
+msgstr "Включите музыку, и TIDAL предложит вам здесь что-нибудь ещё."
+
+#: src/ui/pages/home.rs:225
+msgid "Couldn't load more of Home"
+msgstr "Не удалось загрузить остальное на главной"
+
+#: src/ui/pages/home.rs:230
+#: src/ui/pages/more.rs:611
+msgid "Couldn't load more. {reason}"
+msgstr "Не удалось загрузить ещё. {reason}"
+
+#: src/ui/pages/home_sections.rs:239
+msgid "Loading more"
+msgstr "Загрузка ещё"
+
+#: src/ui/pages/mix.rs:50
+#: src/ui/pages/mix.rs:294
+#: src/ui/pages/search_views.rs:349
+msgid "Mix"
+msgstr "Микс"
+
+#: src/ui/pages/mix.rs:241
+msgid "No Radio for This Artist"
+msgstr "Нет радио для этого исполнителя"
+
+#: src/ui/pages/mix.rs:242
+msgid "TIDAL has no radio for this artist yet."
+msgstr "У TIDAL пока нет радио для этого исполнителя."
+
+#: src/ui/pages/mix.rs:245
+msgid "No Radio for This Track"
+msgstr "Нет радио для этого трека"
+
+#: src/ui/pages/mix.rs:246
+msgid "TIDAL has no radio for this track yet. Try the artist's radio instead."
+msgstr "У TIDAL пока нет радио для этого трека. Попробуйте радио исполнителя."
+
+#: src/ui/pages/mix.rs:264
+msgid "Couldn't load the mix"
+msgstr "Не удалось загрузить микс"
+
+#: src/ui/pages/mix.rs:386
+msgid "Couldn't load all the mix's tracks"
+msgstr "Не удалось загрузить все треки микса"
+
+#: src/ui/pages/mix.rs:420
+msgid "{title} Radio"
+msgstr "Радио: {title}"
+
+#: src/ui/pages/mix.rs:441
+msgid "This Mix Is Empty"
+msgstr "Этот микс пуст"
+
+#: src/ui/pages/mix.rs:442
+msgid "This Radio Is Empty"
+msgstr "Это радио пусто"
+
+#: src/ui/pages/mix.rs:444
+msgid "TIDAL has nothing in it right now. Try again later."
+msgstr "Сейчас в нём ничего нет. Повторите попытку позже."
+
+#: src/ui/pages/more.rs:366
+msgid "TIDAL has nothing in this list for now."
+msgstr "У TIDAL сейчас нет ничего в этом списке."
+
+#: src/ui/pages/more.rs:606
+msgid "Couldn't load more"
+msgstr "Не удалось загрузить ещё"
+
+#: src/ui/pages/playlist.rs:118
+msgid "Couldn't remove the track"
+msgstr "Не удалось убрать трек"
+
+#: src/ui/pages/playlist.rs:119
+msgid "Couldn't put the track back"
+msgstr "Не удалось вернуть трек на место"
+
+#: src/ui/pages/playlist.rs:120
+msgid "Couldn't move the track"
+msgstr "Не удалось переместить трек"
+
+#: src/ui/pages/playlist.rs:121
+msgid "Couldn't add to the playlist"
+msgstr "Не удалось добавить в плейлист"
+
+#: src/ui/pages/playlist.rs:246
+msgid "The playlist changed; your last edit was not applied"
+msgstr "Плейлист изменился; ваше последнее изменение не применено"
+
+#: src/ui/pages/playlist.rs:490
+#: src/ui/pages/search_views.rs:347
+#: src/ui/widgets/media_card.rs:516
+#: src/ui/widgets/page_header.rs:556
+msgid "Playlist"
+msgstr "Плейлист"
+
+#: src/ui/pages/playlist.rs:784
+msgid "Couldn't load the playlist"
+msgstr "Не удалось загрузить плейлист"
+
+#: src/ui/pages/playlist.rs:877
+msgid "Couldn't load the rest of the playlist. {reason}"
+msgstr "Не удалось загрузить остальную часть плейлиста. {reason}"
+
+#: src/ui/pages/playlist.rs:904
+msgid "This Playlist Is Empty"
+msgstr "Этот плейлист пуст"
+
+#: src/ui/pages/playlist.rs:906
+msgid "Add tracks from their menu or drag them here."
+msgstr "Добавляйте треки из их меню или перетаскивайте их сюда."
+
+#: src/ui/pages/playlist.rs:908
+msgid "There's nothing in it yet."
+msgstr "В нём пока ничего нет."
+
+#: src/ui/pages/playlist.rs:1108
+msgid "The playlist isn't up to date yet; try again in a moment"
+msgstr "Плейлист ещё не обновился; повторите попытку через минуту"
+
+#: src/ui/pages/playlist.rs:1163
+msgid "Removed from “{title}”"
+msgstr "Убрано из «{title}»"
+
+#: src/ui/pages/search.rs:93
+#: src/ui/pages/search.rs:97
+#: src/ui/pages/search_views.rs:543
+msgid "Search TIDAL"
+msgstr "Поиск в TIDAL"
+
+#: src/ui/pages/search.rs:111
+#: src/ui/pages/search.rs:170
+msgid "Searching"
+msgstr "Идёт поиск"
+
+#: src/ui/pages/search.rs:207
+#: src/ui/widgets/status.rs:201
+msgid "You're Offline"
+msgstr "Вы не в сети"
+
+#: src/ui/pages/search.rs:208
+msgid "Searching needs an internet connection."
+msgstr "Для поиска нужно подключение к интернету."
+
+#: src/ui/pages/search.rs:219
+msgid "TIDAL Link"
+msgstr "Ссылка TIDAL"
+
+#: src/ui/pages/search.rs:563
+msgid "No Results for “{query}”"
+msgstr "Нет результатов для «{query}»"
+
+#: src/ui/pages/search.rs:565
+msgid "Check the spelling or try other words."
+msgstr "Проверьте написание или попробуйте другие слова."
+
+#: src/ui/pages/search.rs:567
+msgid "Try another filter or other words."
+msgstr "Попробуйте другой фильтр или другие слова."
+
+#: src/ui/pages/search.rs:670
+#: src/ui/pages/search_views.rs:491
+msgid "Couldn't load more results"
+msgstr "Не удалось загрузить дополнительные результаты"
+
+#: src/ui/pages/search.rs:722
+msgid "Couldn't search"
+msgstr "Не удалось выполнить поиск"
+
+#: src/ui/pages/search.rs:791
+msgid "Recent searches cleared"
+msgstr "Недавние запросы очищены"
+
+#: src/ui/pages/search.rs:816
+msgid "This is a link to an album."
+msgstr "Это ссылка на альбом."
+
+#: src/ui/pages/search.rs:817
+msgid "Open Album"
+msgstr "Открыть альбом"
+
+#: src/ui/pages/search.rs:821
+msgid "This is a link to an artist."
+msgstr "Это ссылка на исполнителя."
+
+#: src/ui/pages/search.rs:822
+msgid "Open Artist"
+msgstr "Открыть исполнителя"
+
+#: src/ui/pages/search.rs:826
+msgid "This is a link to a playlist."
+msgstr "Это ссылка на плейлист."
+
+#: src/ui/pages/search.rs:827
+msgid "Open Playlist"
+msgstr "Открыть плейлист"
+
+#: src/ui/pages/search.rs:831
+msgid "This is a link to a mix."
+msgstr "Это ссылка на микс."
+
+#: src/ui/pages/search.rs:832
+msgid "Open Mix"
+msgstr "Открыть микс"
+
+#: src/ui/pages/search.rs:836
+msgid "This is a link to a track."
+msgstr "Это ссылка на трек."
+
+#: src/ui/pages/search.rs:837
+msgid "Play Track"
+msgstr "Воспроизвести трек"
+
+#: src/ui/pages/search.rs:841
+msgid "This is a link to your collection."
+msgstr "Это ссылка на вашу коллекцию."
+
+#: src/ui/pages/search.rs:842
+msgid "Open Collection"
+msgstr "Открыть коллекцию"
+
+#: src/ui/pages/search.rs:846
+msgid "This is a link to a TIDAL page."
+msgstr "Это ссылка на страницу TIDAL."
+
+#: src/ui/pages/search.rs:847
+msgid "Open Link"
+msgstr "Открыть ссылку"
+
+#: src/ui/pages/search_views.rs:31
+msgid "Search “{query}”"
+msgstr "Поиск: «{query}»"
+
+#: src/ui/pages/search_views.rs:74
+msgid "Top Hit"
+msgstr "Лучший результат"
+
+#: src/ui/pages/search_views.rs:245
+msgid "Top hit: {summary}"
+msgstr "Лучший результат: {summary}"
+
+#: src/ui/pages/search_views.rs:272
+msgid "Play {name}"
+msgstr "Воспроизвести: {name}"
+
+#: src/ui/pages/search_views.rs:311
+#: src/ui/widgets/media_card.rs:511
+msgid "{n} video"
+msgid_plural "{n} videos"
+msgstr[0] "{n} видео"
+msgstr[1] "{n} видео"
+msgstr[2] "{n} видео"
+
+#: src/ui/pages/search_views.rs:490
+msgid "Loading more results"
+msgstr "Загрузка дополнительных результатов"
+
+#: src/ui/pages/search_views.rs:544
+msgid "Tracks, albums, artists and playlists"
+msgstr "Треки, альбомы, исполнители и плейлисты"
+
+#: src/ui/pages/search_views.rs:555
+#: src/ui/pages/search_views.rs:569
+msgid "Recent Searches"
+msgstr "Недавние запросы"
+
+#: src/ui/pages/search_views.rs:557
+#: src/ui/widgets/queue_view.rs:97
+msgid "Clear"
+msgstr "Очистить"
+
+#: src/ui/pages/search_views.rs:584
+msgid "Remove “{query}”"
+msgstr "Удалить «{query}»"
+
+#: src/ui/shortcuts.rs:28
+msgid "Focus Search"
+msgstr "Перейти к поиску"
+
+#: src/ui/shortcuts.rs:29
+msgid "Preferences"
+msgstr "Параметры"
+
+#: src/ui/shortcuts.rs:30
+#: src/ui/shortcuts.rs:158
+msgid "Keyboard Shortcuts"
+msgstr "Комбинации клавиш"
+
+#: src/ui/shortcuts.rs:32
+msgid "Reload Page"
+msgstr "Обновить страницу"
+
+#: src/ui/shortcuts.rs:33
+msgid "Close Window"
+msgstr "Закрыть окно"
+
+#: src/ui/shortcuts.rs:34
+msgid "Quit"
+msgstr "Выход"
+
+#: src/ui/shortcuts.rs:38
+msgid "Navigation"
+msgstr "Навигация"
+
+#: src/ui/shortcuts.rs:40
+msgid "Go to Home"
+msgstr "Перейти на главную"
+
+#: src/ui/shortcuts.rs:41
+msgid "Go to Explore"
+msgstr "Перейти к обзору"
+
+#: src/ui/shortcuts.rs:42
+msgid "Go to Search"
+msgstr "Перейти к поиску"
+
+#: src/ui/shortcuts.rs:43
+msgid "Go to Collection"
+msgstr "Перейти к коллекции"
+
+#: src/ui/shortcuts.rs:44
+msgid "Back"
+msgstr "Назад"
+
+#: src/ui/shortcuts.rs:45
+#: src/ui/sidebar.rs:943
+#: src/ui/sidebar.rs:946
+msgid "Show Sidebar"
+msgstr "Показать боковую панель"
+
+#: src/ui/shortcuts.rs:46
+msgid "Next Region"
+msgstr "Следующая область"
+
+#: src/ui/shortcuts.rs:47
+msgid "Previous Region"
+msgstr "Предыдущая область"
+
+#: src/ui/shortcuts.rs:48
+msgid "Close Panel or Popover"
+msgstr "Закрыть панель или всплывающее окно"
+
+#: src/ui/shortcuts.rs:52
+#: src/ui/shortcuts.rs:54
+#: src/ui/widgets/now_playing.rs:305
+#: src/ui/widgets/queue_view.rs:734
+msgid "Now Playing"
+msgstr "Сейчас играет"
+
+#: src/ui/shortcuts.rs:55
+#: src/ui/widgets/lyrics_view.rs:200
+#: src/ui/widgets/now_playing.rs:274
+#: src/ui/widgets/player_bar.rs:109
+msgid "Lyrics"
+msgstr "Текст песни"
+
+#: src/ui/shortcuts.rs:56
+#: src/ui/widgets/now_playing.rs:277
+#: src/ui/widgets/player_bar.rs:110
+#: src/ui/widgets/queue_view.rs:124
+msgid "Queue"
+msgstr "Очередь"
+
+#: src/ui/shortcuts.rs:62
+msgid "Play/Pause"
+msgstr "Воспроизведение/пауза"
+
+#: src/ui/shortcuts.rs:63
+msgid "Play/Pause Anywhere"
+msgstr "Воспроизведение/пауза из любого места"
+
+#: src/ui/shortcuts.rs:64
+#: src/ui/widgets/mini_player.rs:70
+#: src/ui/widgets/mini_player.rs:72
+#: src/ui/widgets/np_controls.rs:150
+msgid "Next Track"
+msgstr "Следующий трек"
+
+#: src/ui/shortcuts.rs:65
+#: src/ui/widgets/np_controls.rs:148
+#: src/ui/widgets/np_controls.rs:240
+msgid "Previous Track"
+msgstr "Предыдущий трек"
+
+#: src/ui/shortcuts.rs:66
+msgid "Seek Forward 10 Seconds"
+msgstr "Перемотать вперёд на 10 секунд"
+
+#: src/ui/shortcuts.rs:67
+msgid "Seek Backward 10 Seconds"
+msgstr "Перемотать назад на 10 секунд"
+
+#: src/ui/shortcuts.rs:68
+msgid "Volume Up"
+msgstr "Увеличить громкость"
+
+#: src/ui/shortcuts.rs:69
+msgid "Volume Down"
+msgstr "Уменьшить громкость"
+
+#: src/ui/shortcuts.rs:70
+#: src/ui/widgets/np_controls.rs:605
+msgid "Mute"
+msgstr "Отключить звук"
+
+#: src/ui/shortcuts.rs:72
+#: src/ui/widgets/np_controls.rs:152
+msgid "Repeat"
+msgstr "Повтор"
+
+#: src/ui/shortcuts.rs:73
+msgid "Toggle Favourite"
+msgstr "Добавить в избранное или убрать"
+
+#: src/ui/shortcuts.rs:77
+msgid "Lists"
+msgstr "Списки"
+
+#: src/ui/shortcuts.rs:79
+msgid "Play or Open"
+msgstr "Воспроизвести или открыть"
+
+#: src/ui/shortcuts.rs:80
+msgid "Context Menu"
+msgstr "Контекстное меню"
+
+#: src/ui/shortcuts.rs:81
+msgid "Remove"
+msgstr "Убрать"
+
+#: src/ui/sidebar.rs:194
+msgid "Sidebar"
+msgstr "Боковая панель"
+
+#: src/ui/sidebar.rs:740
+#: src/ui/widgets/media_card.rs:505
+#: src/ui/widgets/page_header.rs:560
+msgid "by {name}"
+msgstr "автор: {name}"
+
+#: src/ui/sidebar.rs:808
+msgid "COLLECTION"
+msgstr "КОЛЛЕКЦИЯ"
+
+#: src/ui/sidebar.rs:810
+msgid "PLAYLISTS"
+msgstr "ПЛЕЙЛИСТЫ"
+
+#: src/ui/sidebar.rs:853
+#: src/ui/sidebar.rs:856
+#: src/ui/widgets/now_playing.rs:270
+msgid "Playing"
+msgstr "Воспроизводится"
+
+#: src/ui/sidebar.rs:903
+msgid "_Preferences"
+msgstr "_Параметры"
+
+#: src/ui/sidebar.rs:904
+msgid "_Keyboard Shortcuts"
+msgstr "_Комбинации клавиш"
+
+#: src/ui/sidebar.rs:905
+msgid "_About Swell"
+msgstr "_О программе Swell"
+
+#: src/ui/sidebar.rs:908
+msgid "_Sign Out…"
+msgstr "Выйти из _учётной записи…"
+
+#: src/ui/sidebar.rs:911
+msgid "_Quit"
+msgstr "_Выход"
+
+#: src/ui/sidebar.rs:922
+#: src/ui/sidebar.rs:926
+msgid "Main Menu"
+msgstr "Главное меню"
+
+#: src/ui/widgets/carousel.rs:48
+msgid "Scroll Back"
+msgstr "Прокрутить назад"
+
+#: src/ui/widgets/carousel.rs:54
+msgid "Scroll Forward"
+msgstr "Прокрутить вперёд"
+
+#: src/ui/widgets/heart_button.rs:76
+#: src/ui/widgets/np_common.rs:728
+msgid "Favourite"
+msgstr "Избранное"
+
+#: src/ui/widgets/heart_button.rs:182
+msgid "Following"
+msgstr "Вы подписаны"
+
+#: src/ui/widgets/heart_button.rs:191
+msgid "Follow this artist"
+msgstr "Подписаться на исполнителя"
+
+#: src/ui/widgets/lyrics_view.rs:158
+#: src/ui/widgets/now_playing.rs:254
+msgid "Nothing Playing"
+msgstr "Ничего не играет"
+
+#: src/ui/widgets/lyrics_view.rs:175
+msgid "No Lyrics for This Track"
+msgstr "Нет текста песни для этого трека"
+
+#: src/ui/widgets/lyrics_view.rs:188
+msgid "Couldn't Load Lyrics"
+msgstr "Не удалось загрузить текст песни"
+
+#: src/ui/widgets/lyrics_view.rs:216
+msgid "Back to Current Line"
+msgstr "К текущей строке"
+
+#: src/ui/widgets/lyrics_view.rs:439
+msgid "Couldn't load lyrics"
+msgstr "Не удалось загрузить текст песни"
+
+#: src/ui/widgets/lyrics_view.rs:694
+msgid "Lyrics provided by {provider}"
+msgstr "Текст предоставлен: {provider}"
+
+#: src/ui/widgets/media_card.rs:474
+msgid "Track: {title}, by {artists}"
+msgstr "Трек: {title}, {artists}"
+
+#: src/ui/widgets/media_card.rs:493
+msgid "Album: {title}, by {artist}"
+msgstr "Альбом: {title}, {artist}"
+
+#: src/ui/widgets/media_card.rs:501
+msgid "Artist: {name}"
+msgstr "Исполнитель: {name}"
+
+#: src/ui/widgets/media_card.rs:521
+msgid "Playlist: {title}, {details}"
+msgstr "Плейлист: {title}, {details}"
+
+#: src/ui/widgets/media_card.rs:529
+msgid "Mix: {title}, {details}"
+msgstr "Микс: {title}, {details}"
+
+#: src/ui/widgets/media_card.rs:689
+msgid "Play {title}"
+msgstr "Воспроизвести: {title}"
+
+#: src/ui/widgets/mini_player.rs:185
+msgid "Now Playing: {title} by {artists}. Open player"
+msgstr "Сейчас играет: {title}, {artists}. Открыть плеер"
+
+#: src/ui/widgets/now_playing.rs:172
+msgid "Radio"
+msgstr "Радио"
+
+#: src/ui/widgets/now_playing.rs:208
+msgid "Show Queue"
+msgstr "Показать очередь"
+
+#: src/ui/widgets/now_playing.rs:216
+msgid "UP NEXT"
+msgstr "ДАЛЕЕ"
+
+#: src/ui/widgets/now_playing.rs:255
+msgid "Pick something from your collection."
+msgstr "Выберите что-нибудь из своей коллекции."
+
+#: src/ui/widgets/now_playing.rs:281
+#: src/ui/widgets/now_playing.rs:284
+msgid "Close"
+msgstr "Закрыть"
+
+#: src/ui/widgets/np_common.rs:413
+msgid "Lossy"
+msgstr "С потерями"
+
+#: src/ui/widgets/np_common.rs:434
+msgid "normalisation is on"
+msgstr "нормализация включена"
+
+#: src/ui/widgets/np_common.rs:437
+msgid "muted"
+msgstr "звук отключён"
+
+#: src/ui/widgets/np_common.rs:440
+msgid "volume at {percent} %"
+msgstr "громкость {percent} %"
+
+#: src/ui/widgets/np_common.rs:444
+msgid "lossy stream"
+msgstr "поток с потерями"
+
+#: src/ui/widgets/np_common.rs:478
+msgid "Codec"
+msgstr "Кодек"
+
+#: src/ui/widgets/np_common.rs:479
+msgid "Bit depth"
+msgstr "Разрядность"
+
+#: src/ui/widgets/np_common.rs:480
+msgid "Sample rate"
+msgstr "Частота дискретизации"
+
+#: src/ui/widgets/np_common.rs:481
+msgid "Bitrate"
+msgstr "Битрейт"
+
+#: src/ui/widgets/np_common.rs:482
+msgid "ReplayGain"
+msgstr "ReplayGain"
+
+#: src/ui/widgets/np_common.rs:484
+msgid "Output device"
+msgstr "Устройство вывода"
+
+#: src/ui/widgets/np_common.rs:496
+msgid "Audio Format"
+msgstr "Формат аудио"
+
+#: src/ui/widgets/np_common.rs:582
+msgid "Bit-perfect"
+msgstr "Bit-perfect"
+
+#: src/ui/widgets/np_common.rs:584
+msgid "Not bit-perfect: {reasons}"
+msgstr "Не bit-perfect: {reasons}"
+
+#: src/ui/widgets/np_common.rs:588
+msgid "{gain} (album)"
+msgstr "{gain} (альбом)"
+
+#: src/ui/widgets/np_common.rs:589
+msgid "{gain} (track)"
+msgstr "{gain} (трек)"
+
+#: src/ui/widgets/np_common.rs:599
+msgid "{n}-bit"
+msgstr "{n} бит"
+
+#: src/ui/widgets/np_common.rs:618
+msgid "System default"
+msgstr "Системное по умолчанию"
+
+#: src/ui/widgets/np_common.rs:624
+msgid "Lossless delivered: this track has no Hi-Res master"
+msgstr "Передаётся Lossless: у этого трека нет мастера Hi-Res"
+
+#: src/ui/widgets/np_common.rs:625
+msgid "Lossless delivered: Hi-Res is turned off in Preferences"
+msgstr "Передаётся Lossless: Hi-Res отключён в параметрах"
+
+#: src/ui/widgets/np_common.rs:640
+msgid "Audio format: {quality}, {format}. {output}"
+msgstr "Формат аудио: {quality}, {format}. {output}"
+
+#: src/ui/widgets/np_common.rs:683
+msgid "The exact format shows once the track starts playing."
+msgstr "Точный формат появится, когда трек начнёт воспроизводиться."
+
+#: src/ui/widgets/np_common.rs:694
+msgid "Audio quality: {quality}"
+msgstr "Качество аудио: {quality}"
+
+#: src/ui/widgets/np_common.rs:802
+msgid "15 Minutes"
+msgstr "15 минут"
+
+#: src/ui/widgets/np_common.rs:803
+msgid "30 Minutes"
+msgstr "30 минут"
+
+#: src/ui/widgets/np_common.rs:804
+msgid "45 Minutes"
+msgstr "45 минут"
+
+#: src/ui/widgets/np_common.rs:805
+msgid "60 Minutes"
+msgstr "60 минут"
+
+#: src/ui/widgets/np_common.rs:806
+msgid "End of Track"
+msgstr "В конце трека"
+
+#: src/ui/widgets/np_common.rs:918
+msgid "Sleep Timer"
+msgstr "Таймер сна"
+
+#: src/ui/widgets/np_common.rs:926
+msgid "Add to Playlist…"
+msgstr "Добавить в плейлист…"
+
+#: src/ui/widgets/np_common.rs:934
+#: src/ui/widgets/np_common.rs:936
+msgid "More"
+msgstr "Ещё"
+
+#: src/ui/widgets/np_common.rs:996
+msgid "Sleep timer: stops at the end of this track"
+msgstr "Таймер сна: остановка в конце этого трека"
+
+#: src/ui/widgets/np_common.rs:1004
+msgid "{n} min"
+msgstr "{n} мин"
+
+#: src/ui/widgets/np_common.rs:1005
+msgid "Sleep timer: stops in {n} minute"
+msgid_plural "Sleep timer: stops in {n} minutes"
+msgstr[0] "Таймер сна: остановка через {n} минуту"
+msgstr[1] "Таймер сна: остановка через {n} минуты"
+msgstr[2] "Таймер сна: остановка через {n} минут"
+
+#: src/ui/widgets/np_common.rs:1031
+#: src/ui/widgets/track_row.rs:131
+msgid "{n} hour"
+msgid_plural "{n} hours"
+msgstr[0] "{n} час"
+msgstr[1] "{n} часа"
+msgstr[2] "{n} часов"
+
+#: src/ui/widgets/np_common.rs:1034
+#: src/ui/widgets/track_row.rs:134
+msgid "{n} minute"
+msgid_plural "{n} minutes"
+msgstr[0] "{n} минута"
+msgstr[1] "{n} минуты"
+msgstr[2] "{n} минут"
+
+#: src/ui/widgets/np_common.rs:1037
+#: src/ui/widgets/track_row.rs:137
+msgid "{n} second"
+msgid_plural "{n} seconds"
+msgstr[0] "{n} секунда"
+msgstr[1] "{n} секунды"
+msgstr[2] "{n} секунд"
+
+#: src/ui/widgets/np_controls.rs:84
+msgid "Pause"
+msgstr "Пауза"
+
+#: src/ui/widgets/np_controls.rs:151
+#: src/ui/widgets/np_controls.rs:280
+msgid "Repeat: Off"
+msgstr "Повтор: выкл."
+
+#: src/ui/widgets/np_controls.rs:238
+msgid "Restart Track"
+msgstr "Начать трек заново"
+
+#: src/ui/widgets/np_controls.rs:281
+msgid "Repeat: All"
+msgstr "Повтор: все"
+
+#: src/ui/widgets/np_controls.rs:282
+msgid "Repeat: One"
+msgstr "Повтор: один"
+
+#: src/ui/widgets/np_controls.rs:329
+msgid "Seek"
+msgstr "Позиция"
+
+#: src/ui/widgets/np_controls.rs:456
+msgid "{position} of {duration}"
+msgstr "{position} из {duration}"
+
+#: src/ui/widgets/np_controls.rs:487
+#: src/ui/widgets/np_controls.rs:494
+#: src/ui/widgets/np_controls.rs:509
+#: src/ui/widgets/np_controls.rs:513
+msgid "Volume"
+msgstr "Громкость"
+
+#: src/ui/widgets/np_controls.rs:605
+msgid "Unmute"
+msgstr "Включить звук"
+
+#: src/ui/widgets/np_controls.rs:613
+msgid "Muted"
+msgstr "Звук отключён"
+
+#: src/ui/widgets/page_header.rs:503
+#: src/ui/widgets/track_row.rs:388
+msgid "More Options"
+msgstr "Дополнительные параметры"
+
+#: src/ui/widgets/page_header.rs:524
+msgid "EP"
+msgstr "EP"
+
+#: src/ui/widgets/page_header.rs:525
+msgid "Single"
+msgstr "Сингл"
+
+#: src/ui/widgets/page_header.rs:562
+msgid "by TIDAL"
+msgstr "от TIDAL"
+
+#: src/ui/widgets/page_header.rs:573
+msgid "Private"
+msgstr "Приватный"
+
+#: src/ui/widgets/player_bar.rs:54
+#: src/ui/widgets/player_bar.rs:56
+msgid "Show Now Playing"
+msgstr "Показать, что играет"
+
+#: src/ui/widgets/player_bar.rs:136
+msgid "Player"
+msgstr "Плеер"
+
+#: src/ui/widgets/player_bar.rs:233
+msgid "{title} by {artists}"
+msgstr "{title}, {artists}"
+
+#: src/ui/widgets/quality_badge.rs:30
+#: src/ui/widgets/track_row.rs:108
+msgid "Explicit"
+msgstr "Нецензурная лексика"
+
+#: src/ui/widgets/queue_view.rs:100
+msgid "Clear Queue"
+msgstr "Очистить очередь"
+
+#: src/ui/widgets/queue_view.rs:144
+msgid "Queue Is Empty"
+msgstr "Очередь пуста"
+
+#: src/ui/widgets/queue_view.rs:145
+msgid "Use “Add to Queue” on any track, album or playlist."
+msgstr "Используйте «Добавить в очередь» для любого трека, альбома или плейлиста."
+
+#: src/ui/widgets/queue_view.rs:313
+msgid "Playing from {source}"
+msgstr "Воспроизведение из: {source}"
+
+#: src/ui/widgets/queue_view.rs:331
+msgid "Queue cleared"
+msgstr "Очередь очищена"
+
+#: src/ui/widgets/queue_view.rs:513
+msgid "Drag to Reorder"
+msgstr "Перетащите, чтобы изменить порядок"
+
+#: src/ui/widgets/queue_view.rs:520
+#: src/ui/widgets/queue_view.rs:522
+#: src/ui/widgets/track_row.rs:384
+msgid "Remove from Queue"
+msgstr "Убрать из очереди"
+
+#: src/ui/widgets/queue_view.rs:699
+#: src/ui/widgets/track_row.rs:759
+msgid "{track}, playing"
+msgstr "{track}, воспроизводится"
+
+#: src/ui/widgets/queue_view.rs:735
+msgid "Next in Queue"
+msgstr "Далее в очереди"
+
+#: src/ui/widgets/queue_view.rs:737
+msgid "Next"
+msgstr "Далее"
+
+#: src/ui/widgets/queue_view.rs:738
+msgid "Next From: {source}"
+msgstr "Далее из: {source}"
+
+#: src/ui/widgets/status.rs:163
+msgid "Go Back"
+msgstr "Назад"
+
+#: src/ui/widgets/status.rs:178
+msgid "Not Available"
+msgstr "Недоступно"
+
+#: src/ui/widgets/status.rs:202
+msgid "Couldn't Load This Page"
+msgstr "Не удалось загрузить эту страницу"
+
+#: src/ui/widgets/status.rs:225
+msgid "TIDAL doesn't have this, or it isn't available in your country."
+msgstr "У TIDAL этого нет, или оно недоступно в вашей стране."
+
+#: src/ui/widgets/status.rs:226
+msgid "Check your internet connection and try again."
+msgstr "Проверьте подключение к интернету и повторите попытку."
+
+#: src/ui/widgets/status.rs:227
+msgid "Something went wrong. Try again in a moment."
+msgstr "Что-то пошло не так. Повторите попытку через минуту."
+
+#: src/ui/widgets/track_list.rs:372
+#: src/ui/widgets/track_list.rs:408
+msgid "Disc {n}"
+msgstr "Диск {n}"
+
+#: src/ui/widgets/track_list.rs:640
+msgid "played {when}"
+msgstr "воспроизведено: {when}"
+
+#: src/ui/widgets/track_row.rs:98
+msgid "by {artists}"
+msgstr "исполнитель: {artists}"
+
+#: src/ui/widgets/track_row.rs:101
+msgid "from {album}"
+msgstr "из альбома {album}"
+
+#: src/ui/widgets/track_row.rs:105
+msgid "Hi-Res"
+msgstr "Hi-Res"
+
+#: src/ui/widgets/track_row.rs:111
+msgid "not available"
+msgstr "недоступно"
+
+#: src/ui/widgets/track_row.rs:280
+msgid "Drag to Reorder (Alt+↑/↓)"
+msgstr "Перетащите, чтобы изменить порядок (Alt+↑/↓)"
+
+#: src/ui/widgets/track_row.rs:608
+msgid "Not available in your region"
+msgstr "Недоступно в вашем регионе"
+
+#: src/ui/window.rs:398
+msgid "Couldn't remove your session from the keyring."
+msgstr "Не удалось удалить ваш сеанс из связки ключей."
+
+#: src/ui/window.rs:408
+msgid "Sign Out?"
+msgstr "Выйти?"
+
+#: src/ui/window.rs:409
+msgid "You will need to sign in again to listen. Your library cached on this computer is deleted."
+msgstr "Чтобы слушать музыку, нужно будет снова войти. Библиотека, сохранённая на этом компьютере, будет удалена."
+
+#: src/ui/window.rs:413
+msgid "_Sign Out"
+msgstr "_Выйти"
+
+#: src/ui/window.rs:518
+msgid "Couldn't load your library"
+msgstr "Не удалось загрузить вашу библиотеку"
+
+#: src/ui/window.rs:770
+msgid "Couldn't open the track"
+msgstr "Не удалось открыть трек"
