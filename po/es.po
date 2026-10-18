@@ -939,7 +939,7 @@ msgstr "No se pudieron cargar todas las canciones del álbum"
 
 #: src/ui/pages/album.rs:356
 msgid "Released {date}"
-msgstr "Fecha de lanzamiento: {date}"
+msgstr "Lanzamiento: {date}"
 
 #: src/ui/pages/album.rs:437 src/ui/pages/album.rs:460
 msgid "Review"
@@ -1733,7 +1733,7 @@ msgstr "_Preferencias"
 
 #: src/ui/sidebar.rs:904
 msgid "_Keyboard Shortcuts"
-msgstr "_Atajos de teclado"
+msgstr "Atajos de _teclado"
 
 #: src/ui/sidebar.rs:905
 msgid "_About Swell"
@@ -2013,7 +2013,7 @@ msgstr "Repetir todo"
 
 #: src/ui/widgets/np_controls.rs:282
 msgid "Repeat: One"
-msgstr "Repetir una"
+msgstr "Repetir canción"
 
 #: src/ui/widgets/np_controls.rs:329
 msgid "Seek"

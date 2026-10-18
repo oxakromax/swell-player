@@ -346,7 +346,7 @@ msgstr "Transitions douces"
 
 #: src/ui/dialogs/preferences.rs:108
 msgid "Short fades when pausing, seeking and skipping"
-msgstr "Courts fondus lors de la pause, de la recherche et du saut de titre"
+msgstr "Fondus courts à la pause, au déplacement dans le titre et au changement de titre"
 
 #: src/ui/dialogs/preferences.rs:115 src/ui/shortcuts.rs:60
 msgid "Playback"
@@ -1367,7 +1367,7 @@ msgstr "Cette radio est vide"
 
 #: src/ui/pages/mix.rs:444
 msgid "TIDAL has nothing in it right now. Try again later."
-msgstr "TIDAL n’y a rien pour le moment. Réessayez plus tard."
+msgstr "TIDAL n’y propose rien pour le moment. Réessayez plus tard."
 
 #: src/ui/pages/more.rs:366
 msgid "TIDAL has nothing in this list for now."
@@ -2143,7 +2143,7 @@ msgstr "Impossible de charger cette page"
 
 #: src/ui/widgets/status.rs:225
 msgid "TIDAL doesn't have this, or it isn't available in your country."
-msgstr "TIDAL n’a pas ceci, ou ce n’est pas disponible dans votre pays."
+msgstr "TIDAL ne propose pas ceci, ou ce n’est pas disponible dans votre pays."
 
 #: src/ui/widgets/status.rs:226
 msgid "Check your internet connection and try again."

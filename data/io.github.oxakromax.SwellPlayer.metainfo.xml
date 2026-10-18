@@ -122,7 +122,7 @@
       <li xml:lang="es">FLAC hasta 24 bits/192 kHz, reproducción sin pausas y normalización ReplayGain opcional</li>
       <li xml:lang="fr">FLAC jusqu’à 24 bits/192 kHz, lecture sans coupure et normalisation ReplayGain facultative</li>
       <li xml:lang="it">FLAC fino a 24 bit/192 kHz, riproduzione senza interruzioni e normalizzazione ReplayGain facoltativa</li>
-      <li xml:lang="ja">最大 24 ビット/192 kHz の FLAC、ギャップレス再生、オプションの ReplayGain 正規化</li>
+      <li xml:lang="ja">最大 24ビット/192 kHz の FLAC、ギャップレス再生、オプションの ReplayGain 正規化</li>
       <li xml:lang="ko">최대 24비트/192 kHz의 FLAC, 끊김 없는 재생, 선택 사항인 ReplayGain 정규화</li>
       <li xml:lang="pt_BR">FLAC de até 24 bits/192 kHz, reprodução sem pausas e normalização ReplayGain opcional</li>
       <li xml:lang="ru">FLAC до 24 бит/192 кГц, воспроизведение без пауз и необязательная нормализация ReplayGain</li>
@@ -190,11 +190,11 @@
       Swell은 TIDAL과 제휴 관계가 없으며 TIDAL의 승인이나 지원을 받지 않았습니다. TIDAL 유료 구독이 필요합니다.
     </p>
     <p xml:lang="pt_BR">
-      O Swell não é afiliado, endossado nem suportado pelo TIDAL. É necessária
+      O Swell não é afiliado, endossado nem apoiado pelo TIDAL. É necessária
       uma assinatura paga do TIDAL.
     </p>
     <p xml:lang="ru">
-      Swell не связан с TIDAL и не одобрен и не поддерживается TIDAL.
+      Swell не связан с TIDAL, не одобрен и не поддерживается компанией TIDAL.
       Требуется платная подписка TIDAL.
     </p>
     <p xml:lang="zh_CN">
@@ -248,7 +248,7 @@
       <image>https://raw.githubusercontent.com/oxakromax/swell-player/v1.0.0/docs/screenshots/now-playing.png</image>
       <caption>Now playing, with the queue</caption>
       <caption xml:lang="de">Aktuelle Wiedergabe, mit der Warteschlange</caption>
-      <caption xml:lang="es">En reproducción, con la cola</caption>
+      <caption xml:lang="es">Sonando ahora, con la cola</caption>
       <caption xml:lang="fr">En cours de lecture, avec la file d’attente</caption>
       <caption xml:lang="it">In riproduzione, con la coda</caption>
       <caption xml:lang="ja">再生中の画面とキュー</caption>

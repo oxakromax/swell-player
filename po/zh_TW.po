@@ -469,7 +469,7 @@ msgstr "正在計算…"
 
 #: src/ui/dialogs/preferences.rs:414 src/ui/dialogs/preferences.rs:460
 msgid "_Clear"
-msgstr "清除(_C)"
+msgstr "清除(_L)"
 
 #: src/ui/dialogs/preferences.rs:460 src/ui/window.rs:413
 msgid "_Cancel"
@@ -773,7 +773,7 @@ msgstr "無法播放此曲目"
 #: src/ui/menus.rs:428 src/ui/widgets/heart_button.rs:173
 #: src/ui/widgets/np_common.rs:791
 msgid "Remove from Favourites"
-msgstr "取消加入最愛"
+msgstr "從最愛中移除"
 
 #: src/ui/menus.rs:430 src/ui/widgets/heart_button.rs:175
 #: src/ui/widgets/np_common.rs:725 src/ui/widgets/np_common.rs:793

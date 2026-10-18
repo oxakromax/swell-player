@@ -1262,7 +1262,7 @@ msgstr "Ciò che hai ascoltato di recente, su qualsiasi dispositivo"
 
 #: src/ui/pages/history.rs:242
 msgid "Nothing Played Yet"
-msgstr "Ancora niente di riprodotto"
+msgstr "Non hai ancora ascoltato nulla"
 
 #: src/ui/pages/history.rs:243
 msgid "Music you play appears here."
@@ -2019,7 +2019,7 @@ msgstr "Ripeti: tutto"
 
 #: src/ui/widgets/np_controls.rs:282
 msgid "Repeat: One"
-msgstr "Ripeti: uno"
+msgstr "Ripeti: brano"
 
 #: src/ui/widgets/np_controls.rs:329
 msgid "Seek"
@@ -2113,11 +2113,11 @@ msgstr "{track}, in riproduzione"
 
 #: src/ui/widgets/queue_view.rs:735
 msgid "Next in Queue"
-msgstr "Prossimo in coda"
+msgstr "A seguire in coda"
 
 #: src/ui/widgets/queue_view.rs:737
 msgid "Next"
-msgstr "Successivo"
+msgstr "A seguire"
 
 #: src/ui/widgets/queue_view.rs:738
 msgid "Next From: {source}"

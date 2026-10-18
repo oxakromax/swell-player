@@ -362,7 +362,7 @@ msgstr "{n} с"
 
 #: src/ui/dialogs/preferences.rs:136
 msgid "Crossfade"
-msgstr "Плавный переход"
+msgstr "Кроссфейд"
 
 #: src/ui/dialogs/preferences.rs:144
 msgid "Not available while the output is bit-perfect: turn on Volume Normalisation"
@@ -622,33 +622,35 @@ msgstr "ноября"
 msgid "December"
 msgstr "декабря"
 
+# The short names are the first 3 characters (src/ui/format.rs), so the
+# weekdays are written as the Russian abbreviations; %A is not used.
 #: src/ui/format.rs:126
 msgid "Monday"
-msgstr "понедельник"
+msgstr "пн"
 
 #: src/ui/format.rs:127
 msgid "Tuesday"
-msgstr "вторник"
+msgstr "вт"
 
 #: src/ui/format.rs:128
 msgid "Wednesday"
-msgstr "среда"
+msgstr "ср"
 
 #: src/ui/format.rs:129
 msgid "Thursday"
-msgstr "четверг"
+msgstr "чт"
 
 #: src/ui/format.rs:130
 msgid "Friday"
-msgstr "пятница"
+msgstr "пт"
 
 #: src/ui/format.rs:131
 msgid "Saturday"
-msgstr "суббота"
+msgstr "сб"
 
 #: src/ui/format.rs:132
 msgid "Sunday"
-msgstr "воскресенье"
+msgstr "вс"
 
 #: src/ui/login.rs:29 src/ui/login.rs:88
 msgid "Sign In with Browser"
@@ -766,7 +768,7 @@ msgstr "В вашем регионе недоступно: «{title}»"
 
 #: src/ui/menus.rs:243 src/ui/menus.rs:256 src/ui/menus.rs:269
 msgid "None of these tracks are available in your region"
-msgstr "Ни один из этих треков не доступен в вашем регионе"
+msgstr "Ни один из этих треков недоступен в вашем регионе"
 
 #: src/ui/menus.rs:272
 msgid "“{title}” will play next"
@@ -803,7 +805,7 @@ msgstr "Добавить в избранное"
 
 #: src/ui/menus.rs:437 src/ui/menus.rs:784
 msgid "Play Next"
-msgstr "Играть следующим"
+msgstr "Воспроизвести следующим"
 
 #: src/ui/menus.rs:438 src/ui/menus.rs:785
 msgid "Add to Queue"
@@ -1250,7 +1252,7 @@ msgstr "%-d %b"
 #: src/ui/pages/history.rs:183 src/ui/pages/history.rs:248
 #: src/ui/pages/history.rs:255 src/ui/sidebar.rs:146 src/ui/window.rs:1229
 msgid "Recently Played"
-msgstr "Недавние"
+msgstr "Недавно слушали"
 
 #: src/ui/pages/history.rs:194
 msgid "This Session"
@@ -1325,7 +1327,7 @@ msgstr "Не удалось загрузить ещё. {reason}"
 
 #: src/ui/pages/home_sections.rs:239
 msgid "Loading more"
-msgstr "Загрузка ещё"
+msgstr "Загрузка остальных элементов"
 
 #: src/ui/pages/mix.rs:50 src/ui/pages/mix.rs:294
 #: src/ui/pages/search_views.rs:349
@@ -1738,7 +1740,7 @@ msgstr "ПЛЕЙЛИСТЫ"
 #: src/ui/sidebar.rs:853 src/ui/sidebar.rs:856
 #: src/ui/widgets/now_playing.rs:270
 msgid "Playing"
-msgstr "Воспроизводится"
+msgstr "Играет"
 
 #: src/ui/sidebar.rs:903
 msgid "_Preferences"
@@ -1870,7 +1872,7 @@ msgstr "звук отключён"
 
 #: src/ui/widgets/np_common.rs:440
 msgid "volume at {percent} %"
-msgstr "громкость {percent} %"
+msgstr "громкость {percent} %"
 
 #: src/ui/widgets/np_common.rs:444
 msgid "lossy stream"
@@ -2030,7 +2032,7 @@ msgstr "Повтор: все"
 
 #: src/ui/widgets/np_controls.rs:282
 msgid "Repeat: One"
-msgstr "Повтор: один"
+msgstr "Повтор: один трек"
 
 #: src/ui/widgets/np_controls.rs:329
 msgid "Seek"
@@ -2067,7 +2069,7 @@ msgstr "Сингл"
 
 #: src/ui/widgets/page_header.rs:562
 msgid "by TIDAL"
-msgstr "от TIDAL"
+msgstr "автор: TIDAL"
 
 #: src/ui/widgets/page_header.rs:573
 msgid "Private"

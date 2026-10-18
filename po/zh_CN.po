@@ -386,7 +386,7 @@ msgstr "切歌通知"
 
 #: src/ui/dialogs/preferences.rs:242
 msgid "When the window is not focused"
-msgstr "窗口未处于焦点时"
+msgstr "窗口未获得焦点时"
 
 #: src/ui/dialogs/preferences.rs:248
 msgid "Restore Queue on Start"
@@ -420,7 +420,7 @@ msgstr "存储"
 msgid ""
 "Downloaded artwork and saved answers from TIDAL, so pages open instantly and "
 "work offline."
-msgstr "已下载的封面图片和 TIDAL 的已保存应答，让页面即时打开，并可离线使用。"
+msgstr "已下载的封面图片和 TIDAL 的已保存响应数据，让页面即时打开，并可离线使用。"
 
 #: src/ui/dialogs/preferences.rs:328
 msgid "Cover Cache"
@@ -444,11 +444,11 @@ msgstr "无法清除封面缓存"
 
 #: src/ui/dialogs/preferences.rs:353
 msgid "Library Cache"
-msgstr "资料库缓存"
+msgstr "音乐库缓存"
 
 #: src/ui/dialogs/preferences.rs:354
 msgid "Clear the Library Cache?"
-msgstr "清除资料库缓存？"
+msgstr "清除音乐库缓存？"
 
 #: src/ui/dialogs/preferences.rs:355
 msgid "Pages are loaded again from TIDAL. Your collection is not affected."
@@ -456,11 +456,11 @@ msgstr "页面将重新从 TIDAL 加载。你的收藏不会受到影响。"
 
 #: src/ui/dialogs/preferences.rs:356
 msgid "Library Cache cleared"
-msgstr "资料库缓存已清除"
+msgstr "音乐库缓存已清除"
 
 #: src/ui/dialogs/preferences.rs:357
 msgid "Couldn’t clear the Library Cache"
-msgstr "无法清除资料库缓存"
+msgstr "无法清除音乐库缓存"
 
 #: src/ui/dialogs/preferences.rs:411
 msgid "Calculating…"
@@ -468,7 +468,7 @@ msgstr "正在计算…"
 
 #: src/ui/dialogs/preferences.rs:414 src/ui/dialogs/preferences.rs:460
 msgid "_Clear"
-msgstr "清除(_C)"
+msgstr "清除(_L)"
 
 #: src/ui/dialogs/preferences.rs:460 src/ui/window.rs:413
 msgid "_Cancel"
@@ -2160,7 +2160,7 @@ msgstr "退出登录？"
 msgid ""
 "You will need to sign in again to listen. Your library cached on this "
 "computer is deleted."
-msgstr "你需要重新登录才能收听。缓存在此计算机上的资料库将被删除。"
+msgstr "你需要重新登录才能收听。缓存在此计算机上的音乐库数据将被删除。"
 
 #: src/ui/window.rs:413
 msgid "_Sign Out"
@@ -2168,7 +2168,7 @@ msgstr "退出登录(_S)"
 
 #: src/ui/window.rs:518
 msgid "Couldn't load your library"
-msgstr "无法加载你的资料库"
+msgstr "无法加载你的音乐库"
 
 #: src/ui/window.rs:770
 msgid "Couldn't open the track"

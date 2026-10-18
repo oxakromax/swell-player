@@ -25,8 +25,8 @@ msgstr "Formato desconhecido"
 #: src/playback/mod.rs:1534
 msgid "Skipped a track that is not available"
 msgid_plural "Skipped {n} tracks that are not available"
-msgstr[0] "{n} faixa indisponível foi ignorada"
-msgstr[1] "{n} faixas indisponíveis foram ignoradas"
+msgstr[0] "{n} faixa indisponível foi pulada"
+msgstr[1] "{n} faixas indisponíveis foram puladas"
 
 #: src/playback/mod.rs:1564
 msgid "Playback needs GStreamer's playbin3"
@@ -48,7 +48,7 @@ msgstr ""
 
 #: src/playback/mod.rs:1764
 msgid "Could not play “{title}”, skipped"
-msgstr "Não foi possível reproduzir “{title}”; a faixa foi ignorada"
+msgstr "Não foi possível reproduzir “{title}”; a faixa foi pulada"
 
 #: src/playback/mod.rs:1959
 msgid "Playback failed: {error}"
@@ -64,7 +64,7 @@ msgstr "{artists} — {album}"
 
 #: src/playback/plugins.rs:24
 msgid "Playback needs GStreamer’s “{element}”. Install {package}."
-msgstr "A reprodução requer “{element}” do GStreamer. Instale {package}."
+msgstr "A reprodução requer o “{element}” do GStreamer. Instale {package}."
 
 #: src/session.rs:73
 msgid "Couldn't open the system's credential store."
@@ -344,7 +344,7 @@ msgstr "Transições suaves"
 
 #: src/ui/dialogs/preferences.rs:108
 msgid "Short fades when pausing, seeking and skipping"
-msgstr "Fades curtos ao pausar, avançar e pular"
+msgstr "Fades curtos ao pausar, mudar a posição e pular"
 
 #: src/ui/dialogs/preferences.rs:115 src/ui/shortcuts.rs:60
 msgid "Playback"
@@ -356,7 +356,7 @@ msgstr "{n} s"
 
 #: src/ui/dialogs/preferences.rs:136
 msgid "Crossfade"
-msgstr "Transição cruzada"
+msgstr "Crossfade"
 
 #: src/ui/dialogs/preferences.rs:144
 msgid "Not available while the output is bit-perfect: turn on Volume Normalisation"
@@ -522,7 +522,7 @@ msgstr "Não foi possível desbloquear o artista"
 
 #: src/ui/dialogs/preferences.rs:606
 msgid "Signed in with the browser"
-msgstr "Conectado pelo navegador"
+msgstr "Sessão iniciada pelo navegador"
 
 #: src/ui/dialogs/preferences.rs:607
 msgid "Up to Hi-Res Lossless"
@@ -530,7 +530,7 @@ msgstr "Até Hi-Res Lossless"
 
 #: src/ui/dialogs/preferences.rs:610
 msgid "Signed in with a device code"
-msgstr "Conectado com um código de dispositivo"
+msgstr "Sessão iniciada com um código de dispositivo"
 
 #: src/ui/dialogs/preferences.rs:611
 msgid "Up to Lossless (16-bit/44.1 kHz)"
@@ -538,7 +538,7 @@ msgstr "Até Lossless (16 bits/44,1 kHz)"
 
 #: src/ui/dialogs/preferences.rs:639
 msgid "Sign _Out…"
-msgstr "_Desconectar…"
+msgstr "Sair da _conta…"
 
 #: src/ui/dialogs/preferences.rs:660
 msgid "Account"
@@ -1744,7 +1744,7 @@ msgstr "So_bre o Swell"
 
 #: src/ui/sidebar.rs:908
 msgid "_Sign Out…"
-msgstr "_Desconectar…"
+msgstr "Sair da _conta…"
 
 #: src/ui/sidebar.rs:911
 msgid "_Quit"
@@ -1860,7 +1860,7 @@ msgstr "silenciado"
 
 #: src/ui/widgets/np_common.rs:440
 msgid "volume at {percent} %"
-msgstr "volume em {percent} %"
+msgstr "volume em {percent}%"
 
 #: src/ui/widgets/np_common.rs:444
 msgid "lossy stream"
@@ -2016,7 +2016,7 @@ msgstr "Repetir: tudo"
 
 #: src/ui/widgets/np_controls.rs:282
 msgid "Repeat: One"
-msgstr "Repetir: uma"
+msgstr "Repetir: uma faixa"
 
 #: src/ui/widgets/np_controls.rs:329
 msgid "Seek"
@@ -2182,7 +2182,7 @@ msgstr "Não foi possível remover sua sessão do chaveiro."
 
 #: src/ui/window.rs:408
 msgid "Sign Out?"
-msgstr "Desconectar?"
+msgstr "Sair da conta?"
 
 #: src/ui/window.rs:409
 msgid ""
@@ -2194,7 +2194,7 @@ msgstr ""
 
 #: src/ui/window.rs:413
 msgid "_Sign Out"
-msgstr "_Desconectar"
+msgstr "_Sair"
 
 #: src/ui/window.rs:518
 msgid "Couldn't load your library"

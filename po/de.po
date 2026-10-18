@@ -127,7 +127,7 @@ msgid ""
 msgstr ""
 "Ein nativer TIDAL-Client für Linux.\n"
 "\n"
-"Nicht mit TIDAL verbunden."
+"Steht in keiner Verbindung zu TIDAL."
 
 #: src/ui/dialogs/credits.rs:26 src/ui/menus.rs:473 src/ui/pages/album.rs:362
 #: src/ui/pages/album.rs:489
@@ -350,7 +350,7 @@ msgstr "Sanfte Übergänge"
 
 #: src/ui/dialogs/preferences.rs:108
 msgid "Short fades when pausing, seeking and skipping"
-msgstr "Kurze Blenden beim Pausieren, Spulen und Überspringen"
+msgstr "Kurzes Aus- und Einblenden beim Pausieren, Spulen und Überspringen"
 
 #: src/ui/dialogs/preferences.rs:115 src/ui/shortcuts.rs:60
 msgid "Playback"
@@ -622,33 +622,35 @@ msgstr "November"
 msgid "December"
 msgstr "Dezember"
 
+# The short names are the first 3 characters (src/ui/format.rs), so the
+# weekdays are written as the German abbreviations; %A is not used.
 #: src/ui/format.rs:126
 msgid "Monday"
-msgstr "Montag"
+msgstr "Mo."
 
 #: src/ui/format.rs:127
 msgid "Tuesday"
-msgstr "Dienstag"
+msgstr "Di."
 
 #: src/ui/format.rs:128
 msgid "Wednesday"
-msgstr "Mittwoch"
+msgstr "Mi."
 
 #: src/ui/format.rs:129
 msgid "Thursday"
-msgstr "Donnerstag"
+msgstr "Do."
 
 #: src/ui/format.rs:130
 msgid "Friday"
-msgstr "Freitag"
+msgstr "Fr."
 
 #: src/ui/format.rs:131
 msgid "Saturday"
-msgstr "Samstag"
+msgstr "Sa."
 
 #: src/ui/format.rs:132
 msgid "Sunday"
-msgstr "Sonntag"
+msgstr "So."
 
 #: src/ui/login.rs:29 src/ui/login.rs:88
 msgid "Sign In with Browser"
@@ -1159,7 +1161,7 @@ msgstr "Keine gespeicherten Mixe"
 
 #: src/ui/pages/collection_grid.rs:329
 msgid "Use the heart on a mix or radio to save it here."
-msgstr "Speichern Sie Mixe und Radios mit dem Herz, damit sie hier erscheinen."
+msgstr "Speichern Sie Mixe und Radios mit dem Herzen, damit sie hier erscheinen."
 
 #: src/ui/pages/collection_grid.rs:351 src/ui/pages/search_data.rs:79
 msgid "All"
@@ -1197,7 +1199,7 @@ msgstr[1] "{n} Mixe"
 
 #: src/ui/pages/collection_grid.rs:682
 msgid "Unfollowed {name}"
-msgstr "{name} nicht mehr gefolgt"
+msgstr "Sie folgen {name} nicht mehr"
 
 #: src/ui/pages/collection_grid.rs:684
 msgid "Removed from Favourites: {name}"
@@ -1741,7 +1743,7 @@ msgstr "PLAYLISTS"
 #: src/ui/sidebar.rs:853 src/ui/sidebar.rs:856
 #: src/ui/widgets/now_playing.rs:270
 msgid "Playing"
-msgstr "Wird abgespielt"
+msgstr "Läuft"
 
 #: src/ui/sidebar.rs:903
 msgid "_Preferences"

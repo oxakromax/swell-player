@@ -536,7 +536,7 @@ msgstr "デバイスコードでログイン済み"
 
 #: src/ui/dialogs/preferences.rs:611
 msgid "Up to Lossless (16-bit/44.1 kHz)"
-msgstr "Lossless (16 ビット/44.1 kHz) まで再生できます"
+msgstr "Lossless (16ビット/44.1 kHz) まで再生できます"
 
 #: src/ui/dialogs/preferences.rs:639
 msgid "Sign _Out…"
@@ -656,11 +656,11 @@ msgstr "デバイスコードを使う"
 
 #: src/ui/login.rs:42
 msgid "Hi-Res Lossless, up to 24-bit/192 kHz"
-msgstr "Hi-Res Lossless、最大 24 ビット/192 kHz"
+msgstr "Hi-Res Lossless、最大 24ビット/192 kHz"
 
 #: src/ui/login.rs:46
 msgid "Lossless, up to 16-bit/44.1 kHz"
-msgstr "Lossless、最大 16 ビット/44.1 kHz"
+msgstr "Lossless、最大 16ビット/44.1 kHz"
 
 #: src/ui/login.rs:51
 msgid "Welcome to Swell"
@@ -1170,7 +1170,7 @@ msgstr "コレクションを更新できませんでした"
 #: src/ui/pages/collection_grid.rs:576
 msgid "{n} artist"
 msgid_plural "{n} artists"
-msgstr[0] "{n}組のアーティスト"
+msgstr[0] "{n}人のアーティスト"
 
 #: src/ui/pages/collection_grid.rs:577
 msgid "{n} playlist"
@@ -1665,11 +1665,11 @@ msgstr "前の曲"
 
 #: src/ui/shortcuts.rs:66
 msgid "Seek Forward 10 Seconds"
-msgstr "10 秒先へシーク"
+msgstr "10秒先へシーク"
 
 #: src/ui/shortcuts.rs:67
 msgid "Seek Backward 10 Seconds"
-msgstr "10 秒前へシーク"
+msgstr "10秒前へシーク"
 
 #: src/ui/shortcuts.rs:68
 msgid "Volume Up"
@@ -1911,7 +1911,7 @@ msgstr "{gain} (曲)"
 
 #: src/ui/widgets/np_common.rs:599
 msgid "{n}-bit"
-msgstr "{n} ビット"
+msgstr "{n}ビット"
 
 #: src/ui/widgets/np_common.rs:618
 msgid "System default"
@@ -1939,19 +1939,19 @@ msgstr "音質：{quality}"
 
 #: src/ui/widgets/np_common.rs:802
 msgid "15 Minutes"
-msgstr "15 分"
+msgstr "15分"
 
 #: src/ui/widgets/np_common.rs:803
 msgid "30 Minutes"
-msgstr "30 分"
+msgstr "30分"
 
 #: src/ui/widgets/np_common.rs:804
 msgid "45 Minutes"
-msgstr "45 分"
+msgstr "45分"
 
 #: src/ui/widgets/np_common.rs:805
 msgid "60 Minutes"
-msgstr "60 分"
+msgstr "60分"
 
 #: src/ui/widgets/np_common.rs:806
 msgid "End of Track"
@@ -2011,7 +2011,7 @@ msgstr "リピート：すべて"
 
 #: src/ui/widgets/np_controls.rs:282
 msgid "Repeat: One"
-msgstr "リピート：1 曲"
+msgstr "リピート：1曲"
 
 #: src/ui/widgets/np_controls.rs:329
 msgid "Seek"
@@ -2184,8 +2184,8 @@ msgid ""
 "You will need to sign in again to listen. Your library cached on this "
 "computer is deleted."
 msgstr ""
-"再び聴くにはもう一度ログインする必要があります。このコンピューターにキャッ"
-"シュされたライブラリは削除されます。"
+"再生するには、もう一度ログインする必要があります。このコンピューターに"
+"キャッシュされたライブラリは削除されます。"
 
 #: src/ui/window.rs:413
 msgid "_Sign Out"

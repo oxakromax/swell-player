@@ -42,7 +42,7 @@ msgstr "연결이 끊어졌습니다 — 다시 시도하는 중"
 #: src/playback/mod.rs:1758
 msgid "Could not play “{title}”. Playback stopped after {n} tracks failed"
 msgstr ""
-"“{title}” 재생에 실패했습니다. 곡 {n}개의 재생에 실패하여 재생을 중지했습니다"
+"“{title}” 재생에 실패했습니다. {n}곡의 재생에 실패하여 재생을 중지했습니다"
 
 #: src/playback/mod.rs:1764
 msgid "Could not play “{title}”, skipped"
@@ -360,7 +360,7 @@ msgstr "출력이 비트퍼펙트인 동안에는 사용할 수 없습니다. �
 
 #: src/ui/dialogs/preferences.rs:146
 msgid "When a track ends by itself; consecutive album tracks stay gapless"
-msgstr "곡이 저절로 끝날 때 적용됩니다. 앨범의 연속된 곡은 끊김 없이 재생됩니다"
+msgstr "곡이 자연스럽게 끝날 때 적용됩니다. 앨범의 연속된 곡은 끊김 없이 재생됩니다"
 
 #: src/ui/dialogs/preferences.rs:159
 msgid "System Default"
@@ -970,7 +970,7 @@ msgstr "아직 아무것도 없습니다"
 
 #: src/ui/pages/artist.rs:236
 msgid "TIDAL has no music from this artist in your country."
-msgstr "TIDAL에 사용자 국가의 이 아티스트 음악이 없습니다."
+msgstr "사용자의 국가에서는 TIDAL에 이 아티스트의 음악이 없습니다."
 
 #: src/ui/pages/artist.rs:301
 msgid "Couldn't load the artist's tracks"
@@ -1180,7 +1180,7 @@ msgstr "{name} 아티스트 팔로우를 취소했습니다"
 
 #: src/ui/pages/collection_grid.rs:684
 msgid "Removed from Favourites: {name}"
-msgstr "즐겨찾기에서 제거됨: {name}"
+msgstr "즐겨찾기에서 제거했습니다: {name}"
 
 #: src/ui/pages/collection_grid.rs:693
 msgid "Couldn't undo that"
@@ -1192,7 +1192,7 @@ msgstr "페이지를 불러올 수 없습니다"
 
 #: src/ui/pages/explore.rs:156 src/ui/pages/more.rs:510
 msgid "TIDAL has nothing on this page in your country."
-msgstr "TIDAL에 사용자 국가의 이 페이지 항목이 없습니다."
+msgstr "사용자의 국가에서는 TIDAL에 이 페이지의 콘텐츠가 없습니다."
 
 #: src/ui/pages/history.rs:107
 msgid "Today"
@@ -1350,11 +1350,11 @@ msgstr "이 라디오가 비어 있습니다"
 
 #: src/ui/pages/mix.rs:444
 msgid "TIDAL has nothing in it right now. Try again later."
-msgstr "TIDAL에 현재 아무것도 없습니다. 나중에 다시 시도하세요."
+msgstr "지금은 TIDAL에 표시할 항목이 없습니다. 나중에 다시 시도하세요."
 
 #: src/ui/pages/more.rs:366
 msgid "TIDAL has nothing in this list for now."
-msgstr "TIDAL에 지금은 이 목록에 아무것도 없습니다."
+msgstr "지금은 이 목록에 표시할 항목이 없습니다."
 
 #: src/ui/pages/more.rs:606
 msgid "Couldn't load more"
@@ -1553,7 +1553,7 @@ msgstr "지우기"
 
 #: src/ui/pages/search_views.rs:584
 msgid "Remove “{query}”"
-msgstr "“{query}” 삭제"
+msgstr "“{query}” 제거"
 
 #: src/ui/shortcuts.rs:28
 msgid "Focus Search"
@@ -1908,11 +1908,11 @@ msgstr "시스템 기본값"
 
 #: src/ui/widgets/np_common.rs:624
 msgid "Lossless delivered: this track has no Hi-Res master"
-msgstr "Lossless로 전달됨: 이 곡에는 Hi-Res 마스터가 없습니다"
+msgstr "Lossless로 제공됨: 이 곡에는 Hi-Res 마스터가 없습니다"
 
 #: src/ui/widgets/np_common.rs:625
 msgid "Lossless delivered: Hi-Res is turned off in Preferences"
-msgstr "Lossless로 전달됨: 환경 설정에서 Hi-Res가 꺼져 있습니다"
+msgstr "Lossless로 제공됨: 환경 설정에서 Hi-Res가 꺼져 있습니다"
 
 #: src/ui/widgets/np_common.rs:640
 msgid "Audio format: {quality}, {format}. {output}"
@@ -2173,7 +2173,7 @@ msgid ""
 "You will need to sign in again to listen. Your library cached on this "
 "computer is deleted."
 msgstr ""
-"다시 들으려면 다시 로그인해야 합니다. 이 컴퓨터에 캐시된 라이브러리는 삭제됩"
+"음악을 들으려면 다시 로그인해야 합니다. 이 컴퓨터에 캐시된 라이브러리는 삭제됩"
 "니다."
 
 #: src/ui/window.rs:413
