@@ -60,7 +60,7 @@ short:
 - Match the surrounding style: doc comments on modules and non-obvious
   items, no noise comments. Prefer no new crates; if one is needed, use its
   latest stable version.
-- The interface follows [docs/design.md](docs/design.md) (in Spanish).
+- The interface follows [docs/design.md](docs/design.md).
 - Don't copy code from other TIDAL clients or libraries (High Tide,
   tidalapi…); knowledge of the protocol is fine.
 

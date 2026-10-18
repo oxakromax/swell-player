@@ -302,7 +302,7 @@ environment variables (open a page, play a track, or render the window to a
 PNG without a display) and how to send changes.
 [docs/architecture.md](docs/architecture.md) explains how the code is
 organised; [docs/features.md](docs/features.md) is the feature scope and
-[docs/design.md](docs/design.md) the interface specification (in Spanish).
+[docs/design.md](docs/design.md) the interface specification.
 Release notes are in [CHANGELOG.md](CHANGELOG.md).
 
 Found a security problem? Please report it privately: see

@@ -2,7 +2,7 @@
 
 How Swell is put together, for people reading or changing the code. The
 feature scope is in [`features.md`](features.md) and the interface
-specification in [`design.md`](design.md) (written in Spanish).
+specification in [`design.md`](design.md).
 
 Swell is a single Rust binary (edition 2024) built on gtk4-rs,
 libadwaita, GStreamer, Tokio and reqwest. Icons and translations are

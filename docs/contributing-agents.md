@@ -3,7 +3,7 @@
 Swell is a native TIDAL client for Linux: Rust edition 2024, gtk4-rs 0.11
 (GTK 4.20 API), libadwaita 0.9 (API 1.8), GStreamer 0.25, tokio, reqwest.
 GPL-3.0-or-later. Read first: `docs/features.md` (scope), `docs/design.md`
-(the UI spec, in Spanish: follow it), and the code you build on.
+(the UI spec: follow it), and the code you build on.
 
 ## Architecture (already in place)
 - `src/tidal/`: our own TIDAL API client. `Client` methods in
