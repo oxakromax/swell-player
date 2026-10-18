@@ -1,6 +1,7 @@
 //! The Preferences dialog (docs/design.md §3.14), bound to the settings
 //! store: changes apply (and save) as they are made.
 
+use std::cell::RefCell;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::time::Duration;
@@ -9,7 +10,7 @@ use adw::prelude::*;
 use gtk::glib;
 
 use super::super::context::Ctx;
-use crate::i18n::tr;
+use crate::i18n::{self, tr};
 use crate::runtime;
 use crate::session::LoginFlow;
 use crate::settings::{Normalization, QualityPreference, Settings};
@@ -210,6 +211,7 @@ fn general_page(ctx: &Rc<Ctx>, dialog: &adw::PreferencesDialog) -> adw::Preferen
         current.restore_session,
         |s, on| s.restore_session = on,
     ));
+    group.add(&language_row(ctx, dialog));
     let page = adw::PreferencesPage::builder()
         .name("general")
         .title(tr("General"))
@@ -218,6 +220,54 @@ fn general_page(ctx: &Rc<Ctx>, dialog: &adw::PreferencesDialog) -> adw::Preferen
     page.add(&group);
     page.add(&storage_group(ctx, dialog));
     page
+}
+
+/// "Language": Automatic, English or Español (each language named in
+/// itself). It takes effect at the next start, which the toast offers.
+fn language_row(ctx: &Rc<Ctx>, dialog: &adw::PreferencesDialog) -> adw::ComboRow {
+    let choices = i18n::PREFERENCES;
+    let current = ctx.settings.get().language;
+    let row = combo_row(
+        tr("Language"),
+        &[tr("Automatic"), "English", "Español"],
+        choices.iter().position(|c| *c == current).unwrap_or(0),
+    );
+    let toast: Rc<RefCell<Option<adw::Toast>>> = Rc::default();
+    let settings = ctx.settings.clone();
+    let window = ctx.window.downgrade();
+    let dialog = dialog.downgrade();
+    row.connect_selected_notify(move |row| {
+        let choice = choices[(row.selected() as usize).min(choices.len() - 1)];
+        settings.update(|s| s.language = choice.to_owned());
+        if let Some(old) = toast.take() {
+            old.dismiss();
+        }
+        // Back to the language this run started with: nothing to restart.
+        if choice == i18n::preference() {
+            return;
+        }
+        let Some(dialog) = dialog.upgrade() else {
+            return;
+        };
+        let restart = adw::Toast::builder()
+            .title(tr("Restart Swell to change the language"))
+            .button_label(tr("Restart"))
+            .timeout(0)
+            .build();
+        let window = window.clone();
+        restart.connect_button_clicked(move |_| {
+            let app = window
+                .upgrade()
+                .and_then(|window| window.application())
+                .and_downcast::<adw::Application>();
+            if let Some(app) = app {
+                super::super::window::restart(&app);
+            }
+        });
+        dialog.add_toast(restart.clone());
+        toast.replace(Some(restart));
+    });
+    row
 }
 
 fn cache_dir() -> PathBuf {

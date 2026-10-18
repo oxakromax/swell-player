@@ -2105,3 +2105,39 @@ msgstr "sábado"
 #: src/ui/format.rs
 msgid "Sunday"
 msgstr "domingo"
+
+#: src/session.rs
+msgid "Couldn't open the system's credential store."
+msgstr "No se pudo abrir el almacén de credenciales del sistema."
+
+#: src/session.rs
+msgid ""
+"Couldn't open the keyring. Make sure a keyring service (GNOME Keyring, "
+"KWallet) is running."
+msgstr ""
+"No se pudo abrir el llavero. Asegúrate de que haya un servicio de llavero "
+"(GNOME Keyring, KWallet) en ejecución."
+
+#: src/session.rs
+msgid "Couldn't save the session in the system's credential store."
+msgstr "No se pudo guardar la sesión en el almacén de credenciales del sistema."
+
+#: src/ui/dialogs/preferences.rs
+msgid "Language"
+msgstr "Idioma"
+
+#: src/ui/dialogs/preferences.rs
+msgid "Automatic"
+msgstr "Automático"
+
+#: src/ui/dialogs/preferences.rs
+msgid "Restart Swell to change the language"
+msgstr "Reinicia Swell para cambiar el idioma"
+
+#: src/ui/dialogs/preferences.rs
+msgid "Restart"
+msgstr "Reiniciar"
+
+#: src/playback/plugins.rs
+msgid "Playback needs GStreamer’s “{element}”. Install {package}."
+msgstr "La reproducción necesita “{element}” de GStreamer. Instala {package}."

@@ -160,13 +160,7 @@ pub fn page(
                     Err(err) => {
                         done.set(false);
                         log::warn!("could not save the session in the keyring: {err:#}");
-                        show_error(
-                            tr(
-                                "Couldn't save the session in the keyring. Make sure a keyring \
-                                service (GNOME Keyring, KWallet) is running.",
-                            )
-                            .to_owned(),
-                        );
+                        show_error(crate::session::save_error().to_owned());
                     }
                 }
             });

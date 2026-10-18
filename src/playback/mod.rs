@@ -23,8 +23,9 @@
 //!   last queue comes back paused (when the preference is on);
 //! - [`Playback::save_session`] before signing out (quitting is covered).
 //!
-//! MPRIS (`org.mpris.MediaPlayer2.SwellPlayer`) and the logind sleep lock
-//! while playing work by themselves.
+//! The media controls (MPRIS `org.mpris.MediaPlayer2.SwellPlayer` on Linux
+//! and the BSDs, the system's own on Windows and macOS: see `controls.rs`)
+//! and keeping the system awake while playing work by themselves.
 //!
 //! Failures: when the network is to blame (no connection, timeouts, 5xx),
 //! the current track and position stay, the state goes to
@@ -47,11 +48,16 @@
 
 use crate::i18n::{tr, trn};
 
+mod controls;
 pub mod engine;
 mod failure;
 pub mod format;
+#[cfg(all(unix, not(target_os = "macos")))]
 mod mpris;
 mod notify;
+#[cfg(any(windows, target_os = "macos"))]
+mod os_controls;
+pub mod plugins;
 pub mod queue;
 mod rundir;
 mod session;
@@ -239,7 +245,7 @@ pub struct Playback {
     /// `SWELL_DEBUG_ENGINE_FAIL`: seconds into the track, HTTP status.
     debug_engine_fail: Cell<Option<(f64, u32)>>,
     desktop: notify::Desktop,
-    mpris: Option<mpris::Mpris>,
+    controls: Option<controls::MediaControls>,
     save_pending: Cell<bool>,
     position_saved_at: Cell<Instant>,
     /// Output device from the settings (display name).
@@ -325,7 +331,7 @@ impl Playback {
                         }),
                 ),
                 desktop: notify::Desktop::default(),
-                mpris: Some(mpris::Mpris::start(commands)),
+                controls: Some(controls::MediaControls::start(commands)),
                 save_pending: Cell::new(false),
                 position_saved_at: Cell::new(Instant::now()),
                 settings_listener: Cell::new(None),
@@ -379,7 +385,7 @@ impl Playback {
         this.network.replace(Some((monitor, handler)));
         runtime::runtime().spawn_blocking(rundir::prune_stale);
 
-        this.sync_mpris();
+        this.sync_controls();
         this.debug_autoplay();
         this
     }
@@ -440,7 +446,10 @@ impl Playback {
         });
         self.desktop
             .set_playing(self.state.get() == PlayState::Playing);
-        self.sync_mpris();
+        if let Some(controls) = &self.controls {
+            controls.attach(app);
+        }
+        self.sync_controls();
     }
 
     /// Replaces what MPRIS Raise and Quit do (by default: present the
@@ -448,7 +457,7 @@ impl Playback {
     #[allow(dead_code)] // Public API for the shell and the UI.
     pub fn set_app_hooks(&self, raise: impl Fn() + 'static, quit: impl Fn() + 'static) {
         self.desktop.set_hooks(Rc::new(raise), Rc::new(quit));
-        self.sync_mpris();
+        self.sync_controls();
     }
 
     // ---- Starting playback ----
@@ -516,7 +525,7 @@ impl Playback {
             let start = (state != PlayState::Stopped).then(|| self.last_position.get());
             self.load_current(true, start, state == PlayState::Stopped);
         }
-        self.sync_mpris();
+        self.sync_controls();
     }
 
     /// Pauses, whatever is going on: a stream still resolving or buffering
@@ -531,7 +540,7 @@ impl Playback {
         if matches!(self.state.get(), PlayState::Loading | PlayState::Playing) {
             self.set_state(PlayState::Paused);
         }
-        self.sync_mpris();
+        self.sync_controls();
     }
 
     pub fn stop(&self) {
@@ -1056,14 +1065,14 @@ impl Playback {
             Event::State(state) => self.desktop.set_playing(*state == PlayState::Playing),
             Event::Track(_) | Event::Queue | Event::Options => self.schedule_save(),
             Event::Seeked(position) => {
-                if let Some(mpris) = &self.mpris {
-                    mpris.seeked(*position);
+                if let Some(controls) = &self.controls {
+                    controls.seeked(*position);
                 }
             }
             _ => {}
         }
         if !matches!(event, Event::Seeked(_) | Event::Error(_)) {
-            self.sync_mpris();
+            self.sync_controls();
         }
     }
 
@@ -1075,23 +1084,25 @@ impl Playback {
         }
     }
 
-    fn sync_mpris(&self) {
-        let Some(mpris) = &self.mpris else { return };
+    fn sync_controls(&self) {
+        let Some(controls) = &self.controls else {
+            return;
+        };
         let queue = self.queue.borrow();
         let current = queue.current();
         let status = match self.state.get() {
-            PlayState::Playing => mpris::Status::Playing,
-            PlayState::Loading if self.want_play.get() => mpris::Status::Playing,
-            PlayState::Loading | PlayState::Paused => mpris::Status::Paused,
-            PlayState::Stopped => mpris::Status::Stopped,
+            PlayState::Playing => controls::Status::Playing,
+            PlayState::Loading if self.want_play.get() => controls::Status::Playing,
+            PlayState::Loading | PlayState::Paused => controls::Status::Paused,
+            PlayState::Stopped => controls::Status::Stopped,
         };
         let settings = self.settings.get();
-        let snapshot = mpris::Snapshot {
+        let snapshot = controls::Snapshot {
             status,
             repeat: queue.repeat(),
             shuffle: queue.shuffle(),
             volume: settings.volume,
-            track: current.map(|track| mpris::Metadata {
+            track: current.map(|track| controls::Metadata {
                 track_id: track.id,
                 title: track.title.clone(),
                 artists: track.artists.iter().map(|a| a.name.clone()).collect(),
@@ -1112,11 +1123,11 @@ impl Playback {
             can_quit: self.desktop.can_quit(),
         };
         drop(queue);
-        mpris.update(snapshot);
+        controls.update(snapshot);
     }
 
-    fn on_command(self: &Rc<Self>, command: mpris::Command) {
-        use mpris::Command;
+    fn on_command(self: &Rc<Self>, command: controls::Command) {
+        use controls::Command;
         match command {
             Command::Play => self.play(),
             Command::Pause => self.pause(),
@@ -1690,8 +1701,8 @@ impl Playback {
             return;
         };
         self.last_position.set(position);
-        if let Some(mpris) = &self.mpris {
-            mpris.set_position(position);
+        if let Some(controls) = &self.controls {
+            controls.set_position(position);
         }
         if position >= self.healthy_at.get() {
             self.failures.set(0);

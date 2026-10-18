@@ -1,9 +1,12 @@
 //! Translations of the user interface.
 //!
 //! The catalogues are standard gettext `.po` files in `po/`, embedded in the
-//! binary, so Swell is translated without being installed. The language
-//! comes from `LANGUAGE`, `LC_ALL`, `LC_MESSAGES` or `LANG`, like gettext.
-//! TIDAL's content is requested in the same language (see
+//! binary, so Swell is translated without being installed. The language is
+//! the one chosen in Preferences ([`init`]) or, by default, the system's:
+//! `LANGUAGE`, `LC_ALL`, `LC_MESSAGES` or `LANG`, like gettext, and without
+//! those (Windows, macOS apps opened from the Finder) the system's
+//! preferred languages. English is the source language and the fallback
+//! for any language without a catalogue. TIDAL's content is requested in the same language (see
 //! [`tidal_locale`]), so a screen never mixes two languages.
 //!
 //! Use [`tr`] for plain strings, [`trn`] for plurals, and named
@@ -28,33 +31,108 @@ struct Catalogue {
     plural: HashMap<&'static str, [&'static str; 2]>,
 }
 
+/// The choices of the Language preference (`settings.language`).
+pub const PREFERENCES: [&str; 3] = ["auto", "en", "es"];
+
+/// The preference this process started with (see [`init`]).
+static PREFERENCE: OnceLock<&'static str> = OnceLock::new();
+/// `LANGUAGE` as the user had it, before [`init`] changed it.
+static ORIGINAL_LANGUAGE: OnceLock<Option<std::ffi::OsString>> = OnceLock::new();
+
+/// Sets the language for this run from the saved preference: `"auto"`
+/// (the system's), `"en"` or `"es"`; anything else counts as `"auto"`.
+/// Call once at startup, before the first [`tr`]. Returns the gettext
+/// language GTK's and libadwaita's own strings should use (to put in
+/// `LANGUAGE`), when the preference forces one.
+pub fn init(preference: &str) -> Option<&'static str> {
+    let preference = PREFERENCES
+        .into_iter()
+        .find(|p| *p == preference)
+        .unwrap_or("auto");
+    let _ = PREFERENCE.set(preference);
+    let _ = ORIGINAL_LANGUAGE.set(std::env::var_os("LANGUAGE"));
+    (preference != "auto").then_some(preference)
+}
+
+/// The preference this process started with.
+pub fn preference() -> &'static str {
+    PREFERENCE.get().copied().unwrap_or("auto")
+}
+
+/// Restores the user's own `LANGUAGE` for a process started from this one
+/// (a restart must detect the system language afresh).
+pub fn restore_environment(command: &mut std::process::Command) {
+    match ORIGINAL_LANGUAGE.get() {
+        Some(Some(value)) => command.env("LANGUAGE", value),
+        Some(None) => command.env_remove("LANGUAGE"),
+        None => command,
+    };
+}
+
+/// The catalogue language for a code or locale (`es`, `es_CL.UTF-8`,
+/// `es-419`), if there is one.
+fn supported(tag: &str) -> Option<&'static str> {
+    let code = tag.split(['_', '-', '.', '@']).next()?;
+    CATALOGUES
+        .iter()
+        .map(|(language, _)| *language)
+        .find(|language| language.eq_ignore_ascii_case(code))
+}
+
 fn language() -> Option<&'static str> {
     // Tests check the English strings whatever the machine's locale is.
     if cfg!(test) {
         return None;
     }
     static LANGUAGE: OnceLock<Option<&'static str>> = OnceLock::new();
-    *LANGUAGE.get_or_init(|| {
-        let var = |key| std::env::var(key).ok().filter(|v: &String| !v.is_empty());
-        // Like gettext: the locale (LC_ALL, then LC_MESSAGES, then LANG)
-        // decides first; "C"/"POSIX" means untranslated even if LANGUAGE
-        // is set, and only then does LANGUAGE pick among languages.
-        let locale = var("LC_ALL")
-            .or_else(|| var("LC_MESSAGES"))
-            .or_else(|| var("LANG"))?;
-        if locale == "C" || locale == "POSIX" || locale.starts_with("C.") {
-            return None;
-        }
-        let wanted = var("LANGUAGE").unwrap_or(locale);
-        // LANGUAGE may list several ("es_CL:es:en"); take the first we have.
-        wanted.split(':').find_map(|entry| {
-            let code = entry.split(['_', '.', '@']).next()?;
-            CATALOGUES
-                .iter()
-                .map(|(language, _)| *language)
-                .find(|language| *language == code)
-        })
+    *LANGUAGE.get_or_init(|| match preference() {
+        "auto" => system_language(),
+        forced => supported(forced),
     })
+}
+
+/// A non-empty environment variable.
+fn var(key: &str) -> Option<String> {
+    std::env::var(key).ok().filter(|v| !v.is_empty())
+}
+
+/// The locale from the environment (`LC_ALL`, then `LC_MESSAGES`, then
+/// `LANG`), like gettext.
+fn env_locale() -> Option<String> {
+    var("LC_ALL")
+        .or_else(|| var("LC_MESSAGES"))
+        .or_else(|| var("LANG"))
+}
+
+fn system_language() -> Option<&'static str> {
+    // The user's LANGUAGE, not one set by `init` for GTK.
+    let language_var = match ORIGINAL_LANGUAGE.get() {
+        Some(original) => original
+            .as_ref()
+            .and_then(|v| v.to_str())
+            .filter(|v| !v.is_empty())
+            .map(str::to_owned),
+        None => var("LANGUAGE"),
+    };
+    match env_locale() {
+        // Like gettext: the locale decides first; "C"/"POSIX" means
+        // untranslated even if LANGUAGE is set, and only then does
+        // LANGUAGE pick among languages ("es_CL:es:en": the first we have).
+        Some(locale) => {
+            if locale == "C" || locale == "POSIX" || locale.starts_with("C.") {
+                return None;
+            }
+            let wanted = language_var.unwrap_or(locale);
+            wanted.split(':').find_map(supported)
+        }
+        // No locale variables (usual on Windows and for macOS apps): the
+        // system's preferred languages, in order.
+        None => language_var
+            .iter()
+            .flat_map(|list| list.split(':').map(str::to_owned).collect::<Vec<_>>())
+            .chain(sys_locale::get_locales())
+            .find_map(|tag| supported(&tag)),
+    }
 }
 
 fn catalogue() -> Option<&'static Catalogue> {
@@ -81,12 +159,20 @@ pub fn tidal_locale() -> String {
     let Some(language) = language() else {
         return "en_US".to_owned();
     };
-    let regional = ["LC_ALL", "LC_MESSAGES", "LANG"]
+    // The environment's locale, then the system's preferred ones (BCP 47
+    // on Windows and macOS: "es-CL").
+    let regional = env_locale()
+        .filter(|value| value != "C" && value != "POSIX")
         .into_iter()
-        .filter_map(|key| std::env::var(key).ok())
-        .find(|value| !value.is_empty() && value != "C" && value != "POSIX")
-        .map(|value| value.split(['.', '@']).next().unwrap_or("").to_owned())
-        .filter(|tag| tag.len() == 5 && tag.starts_with(language) && tag.as_bytes()[2] == b'_');
+        .chain(sys_locale::get_locales())
+        .map(|value| {
+            value
+                .split(['.', '@'])
+                .next()
+                .unwrap_or("")
+                .replace('-', "_")
+        })
+        .find(|tag| tag.len() == 5 && tag.starts_with(language) && tag.as_bytes()[2] == b'_');
     regional.unwrap_or_else(|| match language {
         "es" => "es_ES".to_owned(),
         other => format!("{other}_{}", other.to_ascii_uppercase()),
@@ -279,18 +365,19 @@ msgstr "Di \"hola\""
     }
 
     /// The Rust string literal starting at `text` (just after its opening
-    /// quote), unescaped, with `\` line continuations removed.
-    fn literal(text: &str) -> Option<String> {
+    /// quote), unescaped, with `\` line continuations removed, and the text
+    /// after its closing quote.
+    fn literal(text: &str) -> Option<(String, &str)> {
         let mut out = String::new();
-        let mut chars = text.chars().peekable();
-        while let Some(c) = chars.next() {
+        let mut chars = text.char_indices().peekable();
+        while let Some((at, c)) = chars.next() {
             match c {
-                '"' => return Some(out),
-                '\\' => match chars.next()? {
+                '"' => return Some((out, &text[at + 1..])),
+                '\\' => match chars.next()?.1 {
                     'n' => out.push('\n'),
                     't' => out.push('\t'),
                     '\n' => {
-                        while chars.peek().is_some_and(|c| c.is_whitespace()) {
+                        while chars.peek().is_some_and(|(_, c)| c.is_whitespace()) {
                             chars.next();
                         }
                     }
@@ -302,9 +389,72 @@ msgstr "Di \"hola\""
         None
     }
 
-    /// Every `tr("…")`, `trn("…", "…"` and `n_("…")` literal in the
-    /// sources (also when it starts on the line after the parenthesis) has
-    /// a Spanish translation.
+    /// The literal at the start of `text` (after whitespace) and the rest.
+    fn string_at(text: &str) -> Option<(String, &str)> {
+        literal(text.trim_start().strip_prefix('"')?)
+    }
+
+    /// Two comma-separated literals at the start of `text`.
+    fn plural_pair(text: &str) -> Option<(String, String)> {
+        let (one, rest) = string_at(text)?;
+        let (many, _) = string_at(rest.trim_start().strip_prefix(',')?)?;
+        Some((one, many))
+    }
+
+    /// The text after the comma that ends the argument `text` starts with
+    /// (skipping nested brackets and strings), or `None` if the call ends
+    /// first.
+    fn skip_argument(text: &str) -> Option<&str> {
+        let mut depth = 0usize;
+        let mut rest = text;
+        while let Some(c) = rest.chars().next() {
+            let after = &rest[c.len_utf8()..];
+            match c {
+                '"' => {
+                    rest = literal(after)?.1;
+                    continue;
+                }
+                '(' | '[' | '{' => depth += 1,
+                ')' | ']' | '}' => depth = depth.checked_sub(1)?,
+                ',' if depth == 0 => return Some(after),
+                _ => {}
+            }
+            rest = after;
+        }
+        None
+    }
+
+    /// The text after each `marker` that is not the tail of a longer
+    /// identifier (`from_str(` is not `tr(`).
+    fn calls<'a>(source: &'a str, marker: &'a str) -> impl Iterator<Item = &'a str> + 'a {
+        source.match_indices(marker).filter_map(move |(at, _)| {
+            let before = source[..at].chars().next_back();
+            let ident = before.is_some_and(|c| c.is_alphanumeric() || c == '_');
+            (!ident).then(|| &source[at + marker.len()..])
+        })
+    }
+
+    /// The label of a `SortOption` tuple, `("id", "Label", true|false)`,
+    /// starting at `text` (just after the opening parenthesis).
+    fn sort_option(text: &str) -> Option<String> {
+        let (id, rest) = string_at(text)?;
+        if id.is_empty() || !id.chars().all(|c| c.is_ascii_lowercase() || c == '_') {
+            return None;
+        }
+        let (label, rest) = string_at(rest.trim_start().strip_prefix(',')?)?;
+        let rest = rest.trim_start().strip_prefix(',')?.trim_start();
+        let rest = rest
+            .strip_prefix("true")
+            .or_else(|| rest.strip_prefix("false"))?;
+        rest.trim_start().starts_with(')').then_some(label)
+    }
+
+    /// Every message in the sources has a Spanish translation, found with
+    /// the same rules as `po/update-pot`: the literals of `tr("…")`,
+    /// `trn("…", "…")` and `n_("…")` (also when they start on the line
+    /// after the parenthesis), the plural pairs passed to the
+    /// `counted(n, "…", "…")` and `unit(n, "…", "…")` helpers, and the
+    /// labels of `SortOption` tuples.
     #[test]
     fn every_string_is_translated() {
         let catalogue = parse(CATALOGUES[0].1);
@@ -321,27 +471,38 @@ msgstr "Di \"hola\""
                     continue;
                 }
                 let source = std::fs::read_to_string(&path).unwrap();
-                for marker in ["tr(", "trn(", "n_("] {
-                    for (at, _) in source.match_indices(marker) {
-                        // Skip identifiers that merely end in the marker.
-                        let before = source[..at].chars().next_back();
-                        if before.is_some_and(|c| c.is_alphanumeric() || c == '_') {
-                            continue;
+                let mut check = |id: String, plural: bool| {
+                    let found = if plural {
+                        catalogue.plural.contains_key(id.as_str())
+                    } else {
+                        catalogue.singular.contains_key(id.as_str())
+                    };
+                    if !found {
+                        missing.push(format!("{}: {id:?}", path.display()));
+                    }
+                };
+                for marker in ["tr(", "n_("] {
+                    for rest in calls(&source, marker) {
+                        if let Some((id, _)) = string_at(rest) {
+                            check(id, false);
                         }
-                        // The literal may start on the next line.
-                        let rest = source[at + marker.len()..].trim_start();
-                        let Some(rest) = rest.strip_prefix('"') else {
-                            continue;
-                        };
-                        let Some(id) = literal(rest) else { continue };
-                        let found = if marker == "trn(" {
-                            catalogue.plural.contains_key(id.as_str())
-                        } else {
-                            catalogue.singular.contains_key(id.as_str())
-                        };
-                        if !found {
-                            missing.push(format!("{}: {id:?}", path.display()));
+                    }
+                }
+                for rest in calls(&source, "trn(") {
+                    if let Some((id, _)) = plural_pair(rest) {
+                        check(id, true);
+                    }
+                }
+                for helper in ["counted(", "unit("] {
+                    for rest in calls(&source, helper) {
+                        if let Some((id, _)) = skip_argument(rest).and_then(plural_pair) {
+                            check(id, true);
                         }
+                    }
+                }
+                for (at, _) in source.match_indices('(') {
+                    if let Some(label) = sort_option(&source[at + 1..]) {
+                        check(label, false);
                     }
                 }
             }
@@ -351,6 +512,26 @@ msgstr "Di \"hola\""
             "untranslated strings:\n{}",
             missing.join("\n")
         );
+    }
+
+    #[test]
+    fn finds_messages_passed_through_helpers() {
+        let call = skip_argument(r#"tracks.len(), "{n} track", "{n} tracks")"#);
+        assert_eq!(
+            call.and_then(plural_pair),
+            Some(("{n} track".to_owned(), "{n} tracks".to_owned()))
+        );
+        assert_eq!(
+            skip_argument("n: usize, one: &str)").and_then(plural_pair),
+            None
+        );
+        assert_eq!(
+            sort_option(r#""added", "Date Added", true)"#).as_deref(),
+            Some("Date Added")
+        );
+        assert_eq!(sort_option(r#""Added", "Date Added", true)"#), None);
+        assert_eq!(sort_option(r#""a", "b", c)"#), None);
+        assert_eq!(calls("from_str(x) tr(y)", "tr(").count(), 1);
     }
 
     #[test]
