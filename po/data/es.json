@@ -1,0 +1,23 @@
+{
+  "Music Player": "Reproductor de música",
+  "Listen to TIDAL in a native app": "Escucha TIDAL en una app nativa",
+  "music;tidal;streaming;hi-res;lossless;flac;player;audio;": "música;tidal;streaming;hi-res;sin pérdida;flac;reproductor;audio;",
+  "Swell is a fast, lightweight TIDAL client built with GTK and libadwaita. It plays up to Hi-Res Lossless, bit-perfect, keeps your collection, playlists and mixes one click away, and follows your desktop’s light or dark style and accent colour.": "Swell es un cliente de TIDAL rápido y ligero, hecho con GTK y libadwaita. Reproduce hasta Hi-Res Lossless sin alterar el audio, deja tu colección, playlists y mixes a un clic, y sigue el estilo claro u oscuro y el color de acento de tu escritorio.",
+  "Home, Explore and search as you type, with album, artist, playlist and mix pages": "Inicio, Explorar y búsqueda mientras escribes, con páginas de álbumes, artistas, playlists y mixes",
+  "Your favourite tracks, albums, artists, playlists and mixes, opened instantly from a local cache": "Tus canciones, álbumes, artistas, playlists y mixes favoritos, abiertos al instante desde una caché local",
+  "Create and edit playlists, with drag and drop and undo": "Crea y edita playlists, con arrastrar y soltar y deshacer",
+  "FLAC up to 24-bit/192 kHz, gapless playback and optional ReplayGain normalisation": "FLAC hasta 24 bits/192 kHz, reproducción sin pausas y normalización ReplayGain opcional",
+  "A real queue, shuffle and repeat, synced lyrics and a sleep timer": "Una cola de verdad, aleatorio y repetición, letras sincronizadas y temporizador",
+  "Media keys and desktop widgets through MPRIS": "Teclas multimedia y widgets del escritorio mediante MPRIS",
+  "Adaptive layout, from phone-sized windows to wide screens, with full keyboard control": "Diseño adaptable, de ventanas del tamaño de un teléfono a pantallas anchas, con control total por teclado",
+  "Swell is not affiliated with, endorsed by or supported by TIDAL. A paid TIDAL subscription is needed.": "Swell no está afiliado a TIDAL ni cuenta con su respaldo. Necesitas una suscripción de pago a TIDAL.",
+  "Home, your personalised TIDAL feed": "Inicio, tu portada personalizada de TIDAL",
+  "An album page": "La página de un álbum",
+  "Now playing, with the queue": "En reproducción, con la cola",
+  "The narrow layout, for small windows and phones": "El diseño estrecho, para ventanas pequeñas y teléfonos",
+  "First release.": "Primera versión.",
+  "Hi-Res Lossless playback, bit-perfect to PipeWire, with gapless playback and ReplayGain": "Reproducción Hi-Res Lossless sin alterar el audio hasta PipeWire, sin pausas y con ReplayGain",
+  "Home, Explore, search, and album, artist, playlist and mix pages": "Inicio, Explorar, búsqueda y páginas de álbumes, artistas, playlists y mixes",
+  "Your collection from a local cache, playlist editing, queue, lyrics and MPRIS": "Tu colección desde una caché local, edición de playlists, cola, letras y MPRIS",
+  "English and Spanish": "Inglés y español"
+}

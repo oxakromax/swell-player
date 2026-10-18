@@ -1,0 +1,312 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Writes the translations of po/data/*.json into the desktop file and the
+AppStream metainfo in data/.
+
+Each po/data/<lang>.json is one flat JSON object that maps an English text of
+those files to its translation in <lang> (the file name: es, pt_BR, zh_TW…):
+
+- the desktop file's GenericName, Comment and Keywords (the whole
+  "music;tidal;…;" list as one text);
+- the metainfo's summary, every description paragraph and list item, the
+  screenshot captions and the release descriptions' paragraphs and items.
+  A paragraph's text is written on one line, with the line breaks and
+  indentation of the XML collapsed into single spaces.
+
+The metainfo's translated <keyword>s are not listed: they are the words of
+the translated desktop Keywords that are not English desktop keywords
+("música", "sin pérdida"…).
+
+Every translated entry (Comment[es]=, xml:lang="es") is regenerated: the
+English text first, then one entry per language in file-name order. A text
+missing from a language's file gets no entry, so it stays English for that
+language; a warning lists those and any entries that no longer match an
+English text.
+
+Usage:
+    po/apply-data-translations             rewrite the two files
+    po/apply-data-translations --check     exit with status 1 if they are not
+                                           what the JSON files give
+    po/apply-data-translations --extract LANG
+                                           print LANG's translations found in
+                                           the two files as JSON (to start a
+                                           po/data file from them)
+
+Needs Python 3.8 or later and nothing else.
+"""
+
+import json
+import re
+import sys
+import textwrap
+from pathlib import Path
+from xml.sax.saxutils import escape, unescape
+
+ROOT = Path(__file__).resolve().parent.parent
+DATA = ROOT / "po" / "data"
+DESKTOP = ROOT / "data" / "io.github.oxakromax.SwellPlayer.desktop"
+METAINFO = ROOT / "data" / "io.github.oxakromax.SwellPlayer.metainfo.xml"
+
+DESKTOP_KEYS = ("GenericName", "Comment", "Keywords")
+# Metainfo elements whose text is translated.
+METAINFO_TAGS = ("summary", "p", "li", "caption")
+# Paragraph lines are wrapped at this width (translations only; the English
+# text is kept as written).
+WIDTH = 78
+
+LANG_NAME = re.compile(r"^[a-z]{2,3}(_[A-Z]{2})?$")
+DESKTOP_LINE = re.compile(r"^(%s)(?:\[([^\]]+)\])?=(.*)$" % "|".join(DESKTOP_KEYS))
+# An element opening a line: indentation, tag, xml:lang (if any), the rest.
+OPEN = re.compile(r'^(\s*)<(%s|keyword)( xml:lang="([^"]+)")?>(.*)$' % "|".join(METAINFO_TAGS))
+
+
+def normalize(text):
+    return " ".join(text.split())
+
+
+def load_translations():
+    """{lang: {english: translation}} from po/data/*.json, by file name."""
+    languages = {}
+    for path in sorted(DATA.glob("*.json")):
+        lang = path.stem
+        if not LANG_NAME.match(lang):
+            sys.exit(f"{path.relative_to(ROOT)}: the file name is not a language code (es, pt_BR…)")
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except ValueError as err:
+            sys.exit(f"{path.relative_to(ROOT)}: {err}")
+        if not isinstance(data, dict) or not all(
+            isinstance(k, str) and isinstance(v, str) for k, v in data.items()
+        ):
+            sys.exit(f"{path.relative_to(ROOT)}: must be one object of strings to strings")
+        languages[lang] = {
+            normalize(k): normalize(v) for k, v in data.items() if v.strip()
+        }
+    return languages
+
+
+def keyword_list(value):
+    return [word.strip() for word in value.split(";") if word.strip()]
+
+
+# Desktop file
+
+
+def desktop_entries(lines):
+    """[(key, english value)] in file order."""
+    return [
+        (m.group(1), m.group(3))
+        for m in map(DESKTOP_LINE.match, lines)
+        if m and m.group(2) is None
+    ]
+
+
+def apply_desktop(text, languages, used):
+    out = []
+    for line in text.splitlines():
+        m = DESKTOP_LINE.match(line)
+        if m and m.group(2) is not None:
+            continue  # regenerated below
+        out.append(line)
+        if not m:
+            continue
+        key, english = m.group(1), m.group(3)
+        for lang, table in languages.items():
+            translated = table.get(normalize(english))
+            if translated is None:
+                continue
+            used[lang].add(normalize(english))
+            if key == "Keywords":
+                translated = "".join(word + ";" for word in keyword_list(translated))
+            out.append(f"{key}[{lang}]={translated}")
+    return "\n".join(out) + "\n"
+
+
+# Metainfo
+
+
+def element_end(lines, start, tag):
+    """The index of the line that closes the element opened at lines[start]."""
+    close = f"</{tag}>"
+    for i in range(start, len(lines)):
+        if close in lines[i]:
+            return i
+    sys.exit(f"{METAINFO.relative_to(ROOT)}:{start + 1}: <{tag}> is not closed")
+
+
+def elements(lines):
+    """Yields (first line, last line, indent, tag, lang, text) for each
+    translatable element, in file order."""
+    i = 0
+    while i < len(lines):
+        m = OPEN.match(lines[i])
+        if not m:
+            i += 1
+            continue
+        indent, tag, lang = m.group(1), m.group(2), m.group(4)
+        end = element_end(lines, i, tag)
+        inner = "\n".join([m.group(5)] + lines[i + 1 : end + 1])
+        inner = inner[: inner.rindex(f"</{tag}>")]
+        if "<" in inner:
+            sys.exit(f"{METAINFO.relative_to(ROOT)}:{i + 1}: markup inside <{tag}> is not supported")
+        yield i, end, indent, tag, lang, normalize(unescape(inner))
+        i = end + 1
+
+
+def render(indent, tag, lang, text, multiline):
+    attr = f' xml:lang="{lang}"' if lang else ""
+    body = escape(text)
+    if not multiline:
+        return [f"{indent}<{tag}{attr}>{body}</{tag}>"]
+    inner = indent + "  "
+    wrapped = textwrap.wrap(
+        body,
+        width=WIDTH,
+        initial_indent=inner,
+        subsequent_indent=inner,
+        # Break at spaces only: a line break inside a word (or in Chinese or
+        # Japanese text, which has no spaces) would read as a space.
+        break_long_words=False,
+        break_on_hyphens=False,
+    )
+    return [f"{indent}<{tag}{attr}>"] + wrapped + [f"{indent}</{tag}>"]
+
+
+def apply_metainfo(text, languages, used, desktop_keywords):
+    lines = text.splitlines()
+    out = []
+    pending_keywords = None  # (indent) of the last English <keyword>
+    position = 0
+    for first, last, indent, tag, lang, english in elements(lines):
+        # Lines between elements, as they are; a </keywords> there ends the
+        # keyword list, so the translated keywords go before it.
+        for line in lines[position:first]:
+            if pending_keywords is not None and "</keywords>" in line:
+                out.extend(translated_keywords(pending_keywords, languages, used, desktop_keywords))
+                pending_keywords = None
+            out.append(line)
+        position = last + 1
+        if lang is not None:
+            continue  # regenerated
+        out.extend(lines[first : last + 1])
+        if tag == "keyword":
+            pending_keywords = indent
+            continue
+        for code, table in languages.items():
+            translated = table.get(english)
+            if translated is None:
+                continue
+            used[code].add(english)
+            out.extend(render(indent, tag, code, translated, last > first))
+    for line in lines[position:]:
+        if pending_keywords is not None and "</keywords>" in line:
+            out.extend(translated_keywords(pending_keywords, languages, used, desktop_keywords))
+            pending_keywords = None
+        out.append(line)
+    return "\n".join(out) + "\n"
+
+
+def translated_keywords(indent, languages, used, desktop_keywords):
+    """The <keyword xml:lang> lines: each language's desktop Keywords that
+    are not English ones."""
+    out = []
+    english = desktop_keywords
+    if english is None:
+        return out
+    known = {word.casefold() for word in keyword_list(english)}
+    for code, table in languages.items():
+        translated = table.get(normalize(english))
+        if translated is None:
+            continue
+        seen = set()
+        for word in keyword_list(translated):
+            if word.casefold() in known or word.casefold() in seen:
+                continue
+            seen.add(word.casefold())
+            out.extend(render(indent, "keyword", code, word, False))
+    return out
+
+
+def generate():
+    languages = load_translations()
+    used = {lang: set() for lang in languages}
+    desktop_text = DESKTOP.read_text(encoding="utf-8")
+    keywords = dict(desktop_entries(desktop_text.splitlines())).get("Keywords")
+    desktop = apply_desktop(desktop_text, languages, used)
+    metainfo = apply_metainfo(METAINFO.read_text(encoding="utf-8"), languages, used, keywords)
+
+    # What each language lacks, and what it has that nothing uses.
+    sources = {normalize(v) for _, v in desktop_entries(desktop_text.splitlines())}
+    lines = METAINFO.read_text(encoding="utf-8").splitlines()
+    sources |= {
+        text for _, _, _, tag, lang, text in elements(lines) if lang is None and tag != "keyword"
+    }
+    for lang, table in languages.items():
+        missing = sorted(sources - set(table))
+        unused = sorted(set(table) - used[lang])
+        for problem, texts in (
+            ("untranslated (they stay English)", missing),
+            ("matching no English text (did it change?)", unused),
+        ):
+            if texts:
+                print(f"warning: {lang}: {len(texts)} {problem}:", file=sys.stderr)
+                for text in texts:
+                    short = text if len(text) <= 70 else text[:69] + "…"
+                    print(f"    {short}", file=sys.stderr)
+    return {DESKTOP: desktop, METAINFO: metainfo}, languages
+
+
+def extract(lang):
+    """LANG's existing translations in the two files, as {english: text}."""
+    table = {}
+    english = {}
+    for line in DESKTOP.read_text(encoding="utf-8").splitlines():
+        m = DESKTOP_LINE.match(line)
+        if not m:
+            continue
+        if m.group(2) is None:
+            english[m.group(1)] = m.group(3)
+        elif m.group(2) == lang and m.group(1) in english:
+            table[normalize(english[m.group(1)])] = normalize(m.group(3))
+    last = {}
+    lines = METAINFO.read_text(encoding="utf-8").splitlines()
+    for _, _, _, tag, code, text in elements(lines):
+        if tag == "keyword":
+            continue
+        if code is None:
+            last[tag] = text
+        elif code == lang and tag in last:
+            table.setdefault(last[tag], text)
+    return table
+
+
+def main():
+    args = sys.argv[1:]
+    if args[:1] == ["--extract"] and len(args) == 2:
+        json.dump(extract(args[1]), sys.stdout, ensure_ascii=False, indent=2)
+        print()
+        return 0
+    if args not in ([], ["--check"]):
+        print(__doc__, file=sys.stderr)
+        return 2
+    outputs, languages = generate()
+    stale = [path for path, text in outputs.items() if path.read_text(encoding="utf-8") != text]
+    names = ", ".join(sorted(languages)) or "none"
+    if args == ["--check"]:
+        if stale:
+            for path in stale:
+                print(f"{path.relative_to(ROOT)} is out of date: run po/apply-data-translations",
+                      file=sys.stderr)
+            return 1
+        print(f"data files are up to date (languages: {names})")
+        return 0
+    for path in stale:
+        path.write_text(outputs[path], encoding="utf-8")
+        print(f"wrote {path.relative_to(ROOT)}")
+    if not stale:
+        print(f"data files already up to date (languages: {names})")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

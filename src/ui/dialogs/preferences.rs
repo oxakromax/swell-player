@@ -222,14 +222,18 @@ fn general_page(ctx: &Rc<Ctx>, dialog: &adw::PreferencesDialog) -> adw::Preferen
     page
 }
 
-/// "Language": Automatic, English or Español (each language named in
-/// itself). It takes effect at the next start, which the toast offers.
+/// "Language": Automatic, English and every translation (each language
+/// named in itself: Español, 日本語…). It takes effect at the next start,
+/// which the toast offers.
 fn language_row(ctx: &Rc<Ctx>, dialog: &adw::PreferencesDialog) -> adw::ComboRow {
-    let choices = i18n::PREFERENCES;
+    let (choices, labels): (Vec<&'static str>, Vec<&'static str>) =
+        std::iter::once(("auto", tr("Automatic")))
+            .chain(i18n::languages())
+            .unzip();
     let current = ctx.settings.get().language;
     let row = combo_row(
         tr("Language"),
-        &[tr("Automatic"), "English", "Español"],
+        &labels,
         choices.iter().position(|c| *c == current).unwrap_or(0),
     );
     let toast: Rc<RefCell<Option<adw::Toast>>> = Rc::default();

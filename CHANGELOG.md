@@ -8,6 +8,14 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- French, German, Italian, Brazilian Portuguese, Russian, Japanese, Korean
+  and Simplified and Traditional Chinese in the Language preference, with
+  each language's plural rules; TIDAL's content follows the chosen
+  language. The desktop entry and the software-centre description are
+  translated too, and the README is available in each language.
+
 ## [1.0.0] - 2026-10-18
 
 The first public release.

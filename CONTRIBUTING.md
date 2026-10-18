@@ -34,11 +34,17 @@ cargo fmt --all
 cargo clippy --release --all-targets   # no new warnings
 cargo test --release
 po/update-pot                          # if you added or changed UI strings
+po/apply-data-translations --check     # if you changed data/ or po/data/
 ```
 
 The tests include `every_string_is_translated` (in `src/i18n.rs`), which
-fails when a `tr("…")` string has no Spanish translation: add one to
-`po/es.po` (or ask in the pull request and someone will).
+fails when a `tr("…")` string is missing from a complete catalogue: add it
+to `po/es.po` and the other catalogues (`msgmerge`, see
+[docs/translating.md](docs/translating.md#updating-after-the-code-changes)),
+translated if you speak the language, or ask in the pull request and
+someone will. If you change the desktop file's or the metainfo's English
+texts, also update the keys in `po/data/*.json` and run
+`po/apply-data-translations`.
 
 ## Code guidelines
 
