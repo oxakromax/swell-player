@@ -78,6 +78,9 @@ pub struct Settings {
     /// display name (`Audio/Sink` devices of a `gst::DeviceMonitor`);
     /// `None` follows the system default.
     pub output_device: Option<String>,
+    /// The most audio kept on disk (the first seconds of tracks, so they
+    /// start at once), in MB; 0 keeps none. No preference shows it.
+    pub audio_cache_mb: u32,
     /// Interface language: "auto" (the system's) or a code of
     /// `i18n::languages()` ("en", "es", "pt_BR"…). Read at startup only
     /// (see `i18n::init`).
@@ -105,6 +108,7 @@ impl Default for Settings {
             panel_open: false,
             panel_tab: "playing".to_owned(),
             output_device: None,
+            audio_cache_mb: 512,
             language: "auto".to_owned(),
         }
     }

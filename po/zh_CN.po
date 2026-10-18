@@ -22,32 +22,32 @@ msgstr "{codec} {bits} 位/{rate} kHz"
 msgid "Unknown format"
 msgstr "未知格式"
 
-#: src/playback/mod.rs:1534
+#: src/playback/mod.rs:1555
 msgid "Skipped a track that is not available"
 msgid_plural "Skipped {n} tracks that are not available"
 msgstr[0] "已跳过 {n} 首不可用的曲目"
 
-#: src/playback/mod.rs:1564
+#: src/playback/mod.rs:1585
 msgid "Playback needs GStreamer's playbin3"
 msgstr "播放需要 GStreamer 的 playbin3"
 
-#: src/playback/mod.rs:1665
+#: src/playback/mod.rs:1686
 msgid "The TIDAL session has expired: sign in again to play"
 msgstr "TIDAL 会话已过期：请重新登录后再播放"
 
-#: src/playback/mod.rs:1690
+#: src/playback/mod.rs:1711
 msgid "Connection lost — retrying"
 msgstr "连接已断开，正在重试"
 
-#: src/playback/mod.rs:1758
+#: src/playback/mod.rs:1779
 msgid "Could not play “{title}”. Playback stopped after {n} tracks failed"
 msgstr "无法播放“{title}”。{n} 首曲目播放失败，已停止播放"
 
-#: src/playback/mod.rs:1764
+#: src/playback/mod.rs:1785
 msgid "Could not play “{title}”, skipped"
 msgstr "无法播放“{title}”，已跳过"
 
-#: src/playback/mod.rs:1959
+#: src/playback/mod.rs:1980
 msgid "Playback failed: {error}"
 msgstr "播放失败：{error}"
 
@@ -418,10 +418,11 @@ msgstr "存储"
 
 #: src/ui/dialogs/preferences.rs:311
 msgid ""
-"Downloaded artwork and saved answers from TIDAL, so pages open instantly and "
-"work offline."
+"Downloaded artwork, the first seconds of tracks and saved answers from "
+"TIDAL, so pages open instantly and work offline, and tracks start at once."
 msgstr ""
-"已下载的封面图片和 TIDAL 的已保存响应数据，让页面即时打开，并可离线使用。"
+"已下载的封面图片、曲目开头的几秒和 TIDAL 的已保存响应数据，让页面即时打开并可"
+"离线使用，曲目也能立即开始播放。"
 
 #: src/ui/dialogs/preferences.rs:316
 msgid "Cover Cache"
@@ -463,71 +464,92 @@ msgstr "音乐库缓存已清除"
 msgid "Couldn’t clear the Library Cache"
 msgstr "无法清除音乐库缓存"
 
-#: src/ui/dialogs/preferences.rs:399
+#: src/ui/dialogs/preferences.rs:374
+msgid "Audio Cache"
+msgstr "音频缓存"
+
+#: src/ui/dialogs/preferences.rs:375
+msgid "Clear the Audio Cache?"
+msgstr "清除音频缓存？"
+
+#: src/ui/dialogs/preferences.rs:376
+msgid ""
+"The first seconds of upcoming tracks are downloaded again as you listen."
+msgstr "收听时会重新下载接下来曲目开头的几秒。"
+
+#: src/ui/dialogs/preferences.rs:379
+msgid "Audio Cache cleared"
+msgstr "音频缓存已清除"
+
+#: src/ui/dialogs/preferences.rs:380
+msgid "Couldn’t clear the Audio Cache"
+msgstr "无法清除音频缓存"
+
+#: src/ui/dialogs/preferences.rs:414
 msgid "Calculating…"
 msgstr "正在计算…"
 
-#: src/ui/dialogs/preferences.rs:402 src/ui/dialogs/preferences.rs:448
+#: src/ui/dialogs/preferences.rs:417 src/ui/dialogs/preferences.rs:463
 msgid "_Clear"
 msgstr "清除(_L)"
 
-#: src/ui/dialogs/preferences.rs:448 src/ui/window.rs:413
+#: src/ui/dialogs/preferences.rs:463 src/ui/window.rs:413
 msgid "_Cancel"
 msgstr "取消(_C)"
 
-#: src/ui/dialogs/preferences.rs:503
+#: src/ui/dialogs/preferences.rs:518
 msgid "Blocked Artists"
 msgstr "已屏蔽的艺人"
 
-#: src/ui/dialogs/preferences.rs:504
+#: src/ui/dialogs/preferences.rs:519
 msgid "Loading…"
 msgstr "正在加载…"
 
-#: src/ui/dialogs/preferences.rs:520
+#: src/ui/dialogs/preferences.rs:535
 msgid "Couldn’t load blocked artists."
 msgstr "无法加载已屏蔽的艺人。"
 
-#: src/ui/dialogs/preferences.rs:525
+#: src/ui/dialogs/preferences.rs:540
 msgid "Nothing blocked. Blocked artists are skipped in radios and mixes."
 msgstr "没有屏蔽任何艺人。被屏蔽的艺人会在电台和 Mix 中被跳过。"
 
-#: src/ui/dialogs/preferences.rs:527
+#: src/ui/dialogs/preferences.rs:542
 msgid "Skipped in radios and mixes."
 msgstr "在电台和 Mix 中被跳过。"
 
-#: src/ui/dialogs/preferences.rs:536
+#: src/ui/dialogs/preferences.rs:551
 msgid "Unblock"
 msgstr "取消屏蔽"
 
-#: src/ui/dialogs/preferences.rs:569 src/ui/menus.rs:870
+#: src/ui/dialogs/preferences.rs:584 src/ui/menus.rs:870
 msgid "Unblocked {name}"
 msgstr "已取消屏蔽 {name}"
 
-#: src/ui/dialogs/preferences.rs:579
+#: src/ui/dialogs/preferences.rs:594
 msgid "Couldn’t unblock the artist"
 msgstr "无法取消屏蔽该艺人"
 
-#: src/ui/dialogs/preferences.rs:594
+#: src/ui/dialogs/preferences.rs:609
 msgid "Signed in with the browser"
 msgstr "已通过浏览器登录"
 
-#: src/ui/dialogs/preferences.rs:595
+#: src/ui/dialogs/preferences.rs:610
 msgid "Up to Hi-Res Lossless"
 msgstr "最高支持 Hi-Res Lossless"
 
-#: src/ui/dialogs/preferences.rs:598
+#: src/ui/dialogs/preferences.rs:613
 msgid "Signed in with a device code"
 msgstr "已通过设备代码登录"
 
-#: src/ui/dialogs/preferences.rs:599
+#: src/ui/dialogs/preferences.rs:614
 msgid "Up to Lossless (16-bit/44.1 kHz)"
 msgstr "最高支持 Lossless（16 位/44.1 kHz）"
 
-#: src/ui/dialogs/preferences.rs:627
+#: src/ui/dialogs/preferences.rs:642
 msgid "Sign _Out…"
 msgstr "退出登录(_O)…"
 
-#: src/ui/dialogs/preferences.rs:648
+#: src/ui/dialogs/preferences.rs:663
 msgid "Account"
 msgstr "账户"
 
@@ -2178,4 +2200,3 @@ msgstr "无法加载你的音乐库"
 #: src/ui/window.rs:770
 msgid "Couldn't open the track"
 msgstr "无法打开该曲目"
-

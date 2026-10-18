@@ -22,35 +22,35 @@ msgstr "{codec} {bits} bits/{rate} kHz"
 msgid "Unknown format"
 msgstr "Formato desconocido"
 
-#: src/playback/mod.rs:1534
+#: src/playback/mod.rs:1555
 msgid "Skipped a track that is not available"
 msgid_plural "Skipped {n} tracks that are not available"
 msgstr[0] "Se saltó una canción que no está disponible"
 msgstr[1] "Se saltaron {n} canciones que no están disponibles"
 
-#: src/playback/mod.rs:1564
+#: src/playback/mod.rs:1585
 msgid "Playback needs GStreamer's playbin3"
 msgstr "La reproducción necesita playbin3 de GStreamer"
 
-#: src/playback/mod.rs:1665
+#: src/playback/mod.rs:1686
 msgid "The TIDAL session has expired: sign in again to play"
 msgstr "La sesión de TIDAL caducó: vuelve a iniciar sesión para reproducir"
 
-#: src/playback/mod.rs:1690
+#: src/playback/mod.rs:1711
 msgid "Connection lost — retrying"
 msgstr "Se perdió la conexión — reintentando"
 
-#: src/playback/mod.rs:1758
+#: src/playback/mod.rs:1779
 msgid "Could not play “{title}”. Playback stopped after {n} tracks failed"
 msgstr ""
 "No se pudo reproducir “{title}”. La reproducción se detuvo tras fallar {n} "
 "canciones"
 
-#: src/playback/mod.rs:1764
+#: src/playback/mod.rs:1785
 msgid "Could not play “{title}”, skipped"
 msgstr "No se pudo reproducir “{title}”; se saltó"
 
-#: src/playback/mod.rs:1959
+#: src/playback/mod.rs:1980
 msgid "Playback failed: {error}"
 msgstr "Falló la reproducción: {error}"
 
@@ -427,11 +427,12 @@ msgstr "Almacenamiento"
 
 #: src/ui/dialogs/preferences.rs:311
 msgid ""
-"Downloaded artwork and saved answers from TIDAL, so pages open instantly and "
-"work offline."
+"Downloaded artwork, the first seconds of tracks and saved answers from "
+"TIDAL, so pages open instantly and work offline, and tracks start at once."
 msgstr ""
-"Portadas descargadas y respuestas de TIDAL guardadas, para que las páginas "
-"abran al instante y funcionen sin conexión."
+"Portadas descargadas, los primeros segundos de las canciones y respuestas de "
+"TIDAL guardadas, para que las páginas abran al instante y funcionen sin "
+"conexión, y las canciones empiecen enseguida."
 
 #: src/ui/dialogs/preferences.rs:316
 msgid "Cover Cache"
@@ -474,72 +475,95 @@ msgstr "Se vació la caché de la biblioteca"
 msgid "Couldn’t clear the Library Cache"
 msgstr "No se pudo vaciar la caché de la biblioteca"
 
-#: src/ui/dialogs/preferences.rs:399
+#: src/ui/dialogs/preferences.rs:374
+msgid "Audio Cache"
+msgstr "Caché de audio"
+
+#: src/ui/dialogs/preferences.rs:375
+msgid "Clear the Audio Cache?"
+msgstr "¿Vaciar la caché de audio?"
+
+#: src/ui/dialogs/preferences.rs:376
+msgid ""
+"The first seconds of upcoming tracks are downloaded again as you listen."
+msgstr ""
+"Los primeros segundos de las próximas canciones se vuelven a descargar "
+"mientras escuchas."
+
+#: src/ui/dialogs/preferences.rs:379
+msgid "Audio Cache cleared"
+msgstr "Se vació la caché de audio"
+
+#: src/ui/dialogs/preferences.rs:380
+msgid "Couldn’t clear the Audio Cache"
+msgstr "No se pudo vaciar la caché de audio"
+
+#: src/ui/dialogs/preferences.rs:414
 msgid "Calculating…"
 msgstr "Calculando…"
 
-#: src/ui/dialogs/preferences.rs:402 src/ui/dialogs/preferences.rs:448
+#: src/ui/dialogs/preferences.rs:417 src/ui/dialogs/preferences.rs:463
 msgid "_Clear"
 msgstr "_Vaciar"
 
-#: src/ui/dialogs/preferences.rs:448 src/ui/window.rs:413
+#: src/ui/dialogs/preferences.rs:463 src/ui/window.rs:413
 msgid "_Cancel"
 msgstr "_Cancelar"
 
-#: src/ui/dialogs/preferences.rs:503
+#: src/ui/dialogs/preferences.rs:518
 msgid "Blocked Artists"
 msgstr "Artistas bloqueados"
 
-#: src/ui/dialogs/preferences.rs:504
+#: src/ui/dialogs/preferences.rs:519
 msgid "Loading…"
 msgstr "Cargando…"
 
-#: src/ui/dialogs/preferences.rs:520
+#: src/ui/dialogs/preferences.rs:535
 msgid "Couldn’t load blocked artists."
 msgstr "No se pudieron cargar los artistas bloqueados."
 
-#: src/ui/dialogs/preferences.rs:525
+#: src/ui/dialogs/preferences.rs:540
 msgid "Nothing blocked. Blocked artists are skipped in radios and mixes."
 msgstr ""
 "No hay nada bloqueado. Los artistas bloqueados se saltan en radios y mixes."
 
-#: src/ui/dialogs/preferences.rs:527
+#: src/ui/dialogs/preferences.rs:542
 msgid "Skipped in radios and mixes."
 msgstr "Se saltan en radios y mixes."
 
-#: src/ui/dialogs/preferences.rs:536
+#: src/ui/dialogs/preferences.rs:551
 msgid "Unblock"
 msgstr "Desbloquear"
 
-#: src/ui/dialogs/preferences.rs:569 src/ui/menus.rs:870
+#: src/ui/dialogs/preferences.rs:584 src/ui/menus.rs:870
 msgid "Unblocked {name}"
 msgstr "Se desbloqueó a {name}"
 
-#: src/ui/dialogs/preferences.rs:579
+#: src/ui/dialogs/preferences.rs:594
 msgid "Couldn’t unblock the artist"
 msgstr "No se pudo desbloquear al artista"
 
-#: src/ui/dialogs/preferences.rs:594
+#: src/ui/dialogs/preferences.rs:609
 msgid "Signed in with the browser"
 msgstr "Sesión iniciada con el navegador"
 
-#: src/ui/dialogs/preferences.rs:595
+#: src/ui/dialogs/preferences.rs:610
 msgid "Up to Hi-Res Lossless"
 msgstr "Hasta Hi-Res Lossless"
 
-#: src/ui/dialogs/preferences.rs:598
+#: src/ui/dialogs/preferences.rs:613
 msgid "Signed in with a device code"
 msgstr "Sesión iniciada con un código de dispositivo"
 
-#: src/ui/dialogs/preferences.rs:599
+#: src/ui/dialogs/preferences.rs:614
 msgid "Up to Lossless (16-bit/44.1 kHz)"
 msgstr "Hasta Lossless (16 bits/44,1 kHz)"
 
-#: src/ui/dialogs/preferences.rs:627
+#: src/ui/dialogs/preferences.rs:642
 msgid "Sign _Out…"
 msgstr "_Cerrar sesión…"
 
-#: src/ui/dialogs/preferences.rs:648
+#: src/ui/dialogs/preferences.rs:663
 msgid "Account"
 msgstr "Cuenta"
 
@@ -2204,4 +2228,3 @@ msgstr "No se pudo cargar tu biblioteca"
 #: src/ui/window.rs:770
 msgid "Couldn't open the track"
 msgstr "No se pudo abrir la canción"
-

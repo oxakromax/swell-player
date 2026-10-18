@@ -1,18 +1,26 @@
-//! A local HTTP proxy that plays the prefetched start of upcoming tracks
-//! from memory.
+//! A local HTTP proxy that plays the prefetched start of tracks from disk
+//! or memory.
 //!
 //! Every stream Swell plays goes through it: `playbin3` (`souphttpsrc`) and
 //! `dashdemux2` fetch `http://127.0.0.1:<port>/…`, and the proxy answers
 //! from what `prefetch.rs` downloaded ahead, continuing from TIDAL with a
 //! `Range` request where the cached bytes end:
 //! - lossless files (one signed URL) are routed as `/p/<key>`: requests
-//!   inside the cached prefix are answered from memory at once while the
-//!   rest is requested from the CDN in parallel; seeks past it are passed
-//!   through with their `Range`;
+//!   inside the cached prefix are answered at once while the rest is
+//!   requested from the CDN in parallel; seeks past it are passed through
+//!   with their `Range`;
 //! - Hi-Res DASH manifests are rewritten so the initialisation and media
 //!   segments are fetched as `/d/<key>/i/<name>` and `/d/<key>/m/<name>`:
-//!   the init segment and the first media segments come from memory, the
-//!   others are passed through.
+//!   the init segment and the first media segments come from the cache,
+//!   the others are passed through.
+//!
+//! The cached starts live on disk (`diskcache.rs`, keyed by the track and
+//! its media, so they survive restarts and new signed URLs) and, for the
+//! next track only, in memory within the budget of `budget.rs`; the OS's
+//! page cache does the rest. A start that is not cached yet is kept as it
+//! streams from the CDN (no extra download), so a track played once starts
+//! from disk the next time. Without a usable disk cache, every prefetched
+//! start stays in memory, within a larger budget, as before.
 //!
 //! Why a proxy and not an `appsrc`: it serves both kinds of stream the same
 //! way while `souphttpsrc` and `dashdemux2` keep doing what they do well
@@ -24,24 +32,25 @@
 //!
 //! Only 127.0.0.1 is listened on, routes are unguessable random keys (128
 //! bits from the OS's CSPRNG), and signed URLs never leave the process
-//! (logs redact them). A route only ever fetches the URLs it was made for:
-//! a lossless file's one URL, or a DASH stream's init segment and media
-//! segments of its template, in the template's own directory. Requests
-//! must name `127.0.0.1:<port>` as their `Host` (a web page reaching the
-//! port through DNS rebinding names its own host) and must not come from
-//! a browser (`Origin`, `Sec-Fetch-*`); the request head is bounded in
-//! size and time, and so is the number of connections. The cached bytes
-//! live in memory within the budget of `budget.rs`. If the proxy cannot
-//! start (or `SWELL_NO_PROXY=1`), streams play straight from TIDAL as
-//! before.
+//! (logs redact them; the disk cache stores media bytes only). A route
+//! only ever fetches the URLs it was made for: a lossless file's one URL,
+//! or a DASH stream's init segment and media segments of its template, in
+//! the template's own directory. Requests must name `127.0.0.1:<port>` as
+//! their `Host` (a web page reaching the port through DNS rebinding names
+//! its own host) and must not come from a browser (`Origin`,
+//! `Sec-Fetch-*`); the request head is bounded in size and time, and so is
+//! the number of connections. If the proxy cannot start (or
+//! `SWELL_NO_PROXY=1`), streams play straight from TIDAL as before.
 //!
 //! Proxies from the environment (`http_proxy`…) must not apply to the
 //! proxy's own address: see [`exempt_loopback_from_proxies`] and
 //! [`bypass_env_proxy`].
 
 use std::cell::Cell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Write as _;
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 use std::time::{Duration, Instant};
 
@@ -51,6 +60,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 
 use super::budget::{self, Item};
+use super::diskcache::{self, DiskCache, Key};
 use super::failure;
 
 /// Biggest request head accepted.
@@ -77,6 +87,58 @@ pub struct Route {
     pub dash: bool,
 }
 
+/// What a route keeps of its stream's start: how much, and under what
+/// identity on disk.
+#[derive(Clone, Debug, Default)]
+pub struct Start {
+    /// Seconds of audio.
+    pub seconds: f64,
+    /// About how many bytes a second takes (the size of a lossless file's
+    /// prefix).
+    pub bytes_per_second: f64,
+    /// The stream's format (quality, codec, rate…), for the disk cache's
+    /// keys, with no URL or token in it; `None`: memory only.
+    pub format: Option<String>,
+}
+
+/// The audio cache's cap in MB, from the settings (see [`set_disk_cap_mb`]).
+static DISK_CAP_MB: AtomicU64 = AtomicU64::new(diskcache::DEFAULT_CAP_MB as u64);
+
+/// The audio cache's cap in bytes now (`SWELL_AUDIO_CACHE_MB` overrides the
+/// settings, for testing; 0 turns the disk cache off).
+fn disk_cap() -> u64 {
+    let mb = std::env::var("SWELL_AUDIO_CACHE_MB")
+        .ok()
+        .and_then(|mb| mb.parse::<u64>().ok())
+        .unwrap_or_else(|| DISK_CAP_MB.load(Ordering::Relaxed));
+    mb.saturating_mul(1 << 20)
+}
+
+/// Sets the audio cache's cap (the `audio_cache_mb` setting); a lower one
+/// evicts at once, off the calling thread.
+pub fn set_disk_cap_mb(mb: u32) {
+    DISK_CAP_MB.store(u64::from(mb), Ordering::Relaxed);
+    if let Some(disk) = running().and_then(|proxy| proxy.disk.get().cloned().flatten()) {
+        let cap = disk_cap();
+        if cap != disk.cap() {
+            crate::runtime::runtime().spawn_blocking(move || disk.set_cap(cap));
+        }
+    }
+}
+
+/// Deletes the audio cache on disk (sign-out, Preferences): through the
+/// running proxy's cache when it is open (writes under way are dropped),
+/// or the directory itself. Call from the I/O runtime.
+pub async fn clear_disk_cache() -> Result<()> {
+    let open = running().and_then(|proxy| proxy.disk.get().cloned().flatten());
+    tokio::task::spawn_blocking(move || match open {
+        Some(disk) => disk.clear(),
+        None => diskcache::remove_dir(&diskcache::default_dir()),
+    })
+    .await??;
+    Ok(())
+}
+
 /// The proxy, started on first use; `None` when it cannot run.
 pub fn get() -> Option<Arc<Proxy>> {
     static PROXY: OnceLock<Option<Arc<Proxy>>> = OnceLock::new();
@@ -86,7 +148,7 @@ pub fn get() -> Option<Arc<Proxy>> {
                 log::info!("SWELL_NO_PROXY: streaming straight from TIDAL");
                 return None;
             }
-            match Proxy::start() {
+            match Proxy::start(Some(diskcache::default_dir())) {
                 Ok(proxy) => Some(proxy),
                 Err(err) => {
                     log::warn!("the local stream proxy is unavailable: {err:#}");
@@ -189,6 +251,11 @@ pub struct Proxy {
     port: u16,
     store: Mutex<Store>,
     http: reqwest::Client,
+    /// Where the disk cache lives (`None`: memory only).
+    disk_dir: Option<PathBuf>,
+    /// The disk cache, opened in the background when the proxy starts;
+    /// `None` inside when it cannot be used.
+    disk: tokio::sync::OnceCell<Option<Arc<DiskCache>>>,
 }
 
 #[derive(Debug)]
@@ -229,29 +296,113 @@ impl Cached {
     }
 }
 
+impl Cached {
+    fn has(&self, file: &str) -> bool {
+        match self {
+            Cached::Nothing => false,
+            Cached::Prefix { .. } => file.is_empty(),
+            Cached::Files(files) => files.contains_key(file),
+        }
+    }
+}
+
 #[derive(Debug)]
 struct Entry {
     track_id: u64,
     upstream: Upstream,
+    /// In memory.
     cached: Cached,
     /// Requests being served now.
     active: usize,
     last_used: u64,
     touched: Instant,
+    /// The identity of its media for the disk cache's keys (format and a
+    /// hash of what identifies the file); `None`: memory only.
+    media: Option<String>,
+    /// The files of its start (`""`: a lossless file's prefix), and the
+    /// prefix's size in bytes.
+    start_files: Vec<String>,
+    start_bytes: usize,
+    /// Files of `cached` known to be on disk too (memory may let them go).
+    persisted: HashSet<String>,
+    /// Its start is being read from disk into memory.
+    promoting: bool,
+}
+
+impl Entry {
+    fn new(track_id: u64, upstream: Upstream, tick: u64) -> Self {
+        Self {
+            track_id,
+            upstream,
+            cached: Cached::Nothing,
+            active: 0,
+            last_used: tick,
+            touched: Instant::now(),
+            media: None,
+            start_files: Vec::new(),
+            start_bytes: 0,
+            persisted: HashSet::new(),
+            promoting: false,
+        }
+    }
+
+    /// The disk cache's key for its `file`, when it is part of its start.
+    fn disk_key(&self, file: &str) -> Option<Key> {
+        let media = self.media.as_ref()?;
+        self.start_files
+            .iter()
+            .any(|f| f == file)
+            .then(|| Key::new(self.track_id, media, file))
+    }
 }
 
 #[derive(Default)]
 struct Store {
     routes: HashMap<String, Entry>,
-    /// Wanted tracks by rank (0: playing now), from the prefetcher.
+    /// Wanted tracks by rank (0: the next one), from the prefetcher.
     ranks: HashMap<u64, usize>,
     budget: usize,
     /// Bytes reserved for downloads in flight.
     reserved: usize,
     clock: u64,
+    /// The disk cache is in use: memory keeps only the start of the next
+    /// track and the one playing (and what could not be written to disk).
+    disk_mode: bool,
+    /// The track playing now.
+    playing: Option<u64>,
 }
 
 impl Store {
+    fn rank(&self, entry: &Entry) -> Option<usize> {
+        self.ranks.get(&entry.track_id).copied()
+    }
+
+    /// With the disk cache in use, lets the memory copies go of what is on
+    /// disk, except for the next track and the one playing (being served).
+    fn trim_memory(&mut self) {
+        if !self.disk_mode {
+            return;
+        }
+        for entry in self.routes.values_mut() {
+            if self.ranks.get(&entry.track_id) == Some(&0) || self.playing == Some(entry.track_id) {
+                continue;
+            }
+            let Entry {
+                cached, persisted, ..
+            } = entry;
+            match cached {
+                Cached::Prefix { .. } if persisted.contains("") => *cached = Cached::Nothing,
+                Cached::Files(files) => {
+                    files.retain(|path, _| !persisted.contains(path));
+                    if files.is_empty() {
+                        *cached = Cached::Nothing;
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
     fn used(&self) -> usize {
         self.cached() + self.reserved
     }
@@ -384,16 +535,21 @@ impl Drop for Serving<'_> {
     }
 }
 
-/// The prefetch budget now (`SWELL_PREFETCH_BUDGET_MB` overrides it, for
-/// testing).
-fn current_budget() -> usize {
-    std::env::var("SWELL_PREFETCH_BUDGET_MB")
+/// The memory budget now (`SWELL_PREFETCH_BUDGET_MB` overrides it, for
+/// testing); smaller when the disk cache is in use.
+fn current_budget(with_disk: bool) -> usize {
+    let budget = std::env::var("SWELL_PREFETCH_BUDGET_MB")
         .ok()
         .and_then(|mb| mb.parse::<usize>().ok())
         .map_or_else(
             || budget::budget(budget::available_memory()),
             |mb| (mb << 20).min(budget::MAX_BUDGET),
-        )
+        );
+    if with_disk {
+        budget.min(budget::MAX_WITH_DISK)
+    } else {
+        budget
+    }
 }
 
 /// A random, unguessable route key: 128 bits from the OS's CSPRNG, or
@@ -426,20 +582,55 @@ fn cdn_client() -> Result<reqwest::Client> {
         .build()?)
 }
 
+/// The path of `url`, without its scheme, host and query: what identifies
+/// the media file (the signature is in the query; the host varies).
+fn url_path(url: &str) -> &str {
+    let rest = url.split_once("://").map_or(url, |(_, rest)| rest);
+    let path = rest.find('/').map_or("", |at| &rest[at..]);
+    path.split(['?', '#']).next().unwrap_or(path)
+}
+
+/// A start being kept as it streams from the CDN.
+struct Capture<'a> {
+    disk: Arc<DiskCache>,
+    key: Key,
+    bytes: BytesMut,
+    /// Bytes to keep.
+    want: usize,
+    total: u64,
+    content_type: Option<String>,
+    /// Lossless prefix (stored once `want` bytes are in), or a whole DASH
+    /// segment (stored when its body ends, complete).
+    prefix: bool,
+    _memory: Reservation<'a>,
+}
+
+/// What [`Proxy::serve`] may keep of an answer from upstream, for the disk.
+struct Tee {
+    disk: Arc<DiskCache>,
+    key: Key,
+    /// Lossless files: the prefix's size; `None`: a whole DASH segment.
+    prefix: Option<usize>,
+}
+
 impl Proxy {
-    fn start() -> Result<Arc<Self>> {
+    /// Starts the proxy; with `disk_dir`, the disk cache there is opened in
+    /// the background.
+    fn start(disk_dir: Option<PathBuf>) -> Result<Arc<Self>> {
         let listener = std::net::TcpListener::bind(("127.0.0.1", 0))
             .context("could not listen on 127.0.0.1")?;
         listener.set_nonblocking(true)?;
         let port = listener.local_addr()?.port();
         let store = Store {
-            budget: current_budget(),
+            budget: current_budget(false),
             ..Store::default()
         };
         let proxy = Arc::new(Self {
             port,
             store: Mutex::new(store),
             http: cdn_client()?,
+            disk_dir,
+            disk: tokio::sync::OnceCell::new(),
         });
         let weak = Arc::downgrade(&proxy);
         let connections = Arc::new(tokio::sync::Semaphore::new(MAX_CONNECTIONS));
@@ -470,6 +661,16 @@ impl Proxy {
                 });
             }
         });
+        if proxy.disk_dir.is_some() {
+            // Read the directory (and prune it) now, off the main thread,
+            // so the first track of the session can start from it.
+            let weak = Arc::downgrade(&proxy);
+            crate::runtime::runtime().spawn(async move {
+                if let Some(proxy) = weak.upgrade() {
+                    proxy.disk().await;
+                }
+            });
+        }
         log::info!(
             "stream proxy on 127.0.0.1:{port}, prefetch budget {} MiB",
             proxy.lock().budget >> 20
@@ -489,33 +690,85 @@ impl Proxy {
         format!("http://127.0.0.1:{}", self.port)
     }
 
-    fn insert(&self, key: String, track_id: u64, upstream: Upstream) {
+    /// The disk cache, opening it on first use; `None` when there is none,
+    /// it cannot be used or its cap is 0.
+    async fn disk(&self) -> Option<Arc<DiskCache>> {
+        let opened = self
+            .disk
+            .get_or_init(|| async {
+                let dir = self.disk_dir.clone()?;
+                let cap = disk_cap();
+                match tokio::task::spawn_blocking(move || DiskCache::open(dir, cap)).await {
+                    Ok(Ok(cache)) => Some(Arc::new(cache)),
+                    Ok(Err(err)) => {
+                        log::warn!("the audio cache on disk is unavailable: {err}");
+                        None
+                    }
+                    Err(err) => {
+                        log::warn!("the audio cache on disk is unavailable: {err}");
+                        None
+                    }
+                }
+            })
+            .await
+            .clone();
+        let enabled = opened.filter(|disk| disk.cap() > 0);
         let mut store = self.lock();
-        let tick = store.tick();
-        store.routes.insert(
-            key.clone(),
-            Entry {
-                track_id,
-                upstream,
-                cached: Cached::Nothing,
-                active: 0,
-                last_used: tick,
-                touched: Instant::now(),
-            },
-        );
+        if store.disk_mode != enabled.is_some() {
+            store.disk_mode = enabled.is_some();
+            let budget = current_budget(store.disk_mode);
+            store.set_budget(budget);
+            store.trim_memory();
+            log::debug!(
+                "prefetch: audio cache on disk {}, memory budget {} MiB",
+                if store.disk_mode { "on" } else { "off" },
+                store.budget >> 20
+            );
+        }
+        enabled
     }
 
-    /// Routes a lossless file (one signed URL). No network. `None`: play
-    /// it without the proxy.
-    pub fn route_progressive(&self, track_id: u64, url: &str) -> Option<Route> {
+    /// The disk cache if it is open already (never waits).
+    fn disk_now(&self) -> Option<Arc<DiskCache>> {
+        self.disk
+            .get()
+            .cloned()
+            .flatten()
+            .filter(|disk| disk.cap() > 0)
+    }
+
+    /// The disk cache's bytes and cap, when it is in use.
+    pub fn disk_usage(&self) -> Option<(u64, u64)> {
+        self.disk_now().map(|disk| (disk.used(), disk.cap()))
+    }
+
+    fn insert(&self, key: String, entry: impl FnOnce(u64) -> Entry) {
+        let mut store = self.lock();
+        let tick = store.tick();
+        store.routes.insert(key, entry(tick));
+    }
+
+    /// Routes a lossless file (one signed URL), keeping `start` of it. No
+    /// network. `None`: play it without the proxy.
+    pub fn route_progressive(&self, track_id: u64, url: &str, start: &Start) -> Option<Route> {
         let key = new_key()?;
-        self.insert(
-            key.clone(),
-            track_id,
-            Upstream::Progressive {
-                url: url.to_owned(),
-            },
-        );
+        let media = start
+            .format
+            .as_ref()
+            .map(|format| format!("{format}|p={}", diskcache::short_hash(url_path(url))));
+        log::trace!("proxy: track {track_id} is media {media:?}");
+        self.insert(key.clone(), |tick| Entry {
+            media,
+            start_files: vec![String::new()],
+            start_bytes: prefix_bytes(start.seconds, start.bytes_per_second),
+            ..Entry::new(
+                track_id,
+                Upstream::Progressive {
+                    url: url.to_owned(),
+                },
+                tick,
+            )
+        });
         Some(Route {
             uri: format!("{}/p/{key}", self.base()),
             key,
@@ -523,21 +776,43 @@ impl Proxy {
         })
     }
 
-    /// Routes a DASH manifest: returns it rewritten to fetch its segments
-    /// through the proxy. Fails (the caller plays the original) for
-    /// manifests of a shape it does not know.
-    pub fn route_dash(&self, track_id: u64, mpd: &str) -> Result<(String, Route)> {
+    /// Routes a DASH manifest, keeping `start` of it: returns it rewritten
+    /// to fetch its segments through the proxy. Fails (the caller plays
+    /// the original) for manifests of a shape it does not know.
+    pub fn route_dash(&self, track_id: u64, mpd: &str, start: &Start) -> Result<(String, Route)> {
         let parsed = parse_mpd(mpd)?;
         let key = new_key().context("no random route key")?;
         let base = format!("{}/d/{key}", self.base());
         let rewritten = parsed.rewrite(mpd, &base);
+        // The manifest without its URLs: the representation (codec, rate,
+        // bandwidth), the segments' timeline and names. The same for every
+        // resolution of the same media; never a signature.
+        let media = start.format.as_ref().map(|format| {
+            format!(
+                "{format}|d={}",
+                diskcache::short_hash(&parsed.rewrite(mpd, ""))
+            )
+        });
+        let mut start_files = vec![format!("i/{}", parsed.init_name)];
+        start_files.extend(
+            parsed
+                .info
+                .first_segments(start.seconds)
+                .into_iter()
+                .map(|name| format!("m/{name}")),
+        );
         let upstream = Upstream::Dash {
             init: parsed.init_url.clone(),
             media_dir: parsed.media_dir.clone(),
             media_query: parsed.media_query.clone(),
             info: parsed.info,
         };
-        self.insert(key.clone(), track_id, upstream);
+        log::trace!("proxy: track {track_id} is media {media:?}");
+        self.insert(key.clone(), |tick| Entry {
+            media,
+            start_files,
+            ..Entry::new(track_id, upstream, tick)
+        });
         Ok((
             rewritten,
             Route {
@@ -548,14 +823,97 @@ impl Proxy {
         ))
     }
 
-    /// Which tracks are wanted, most wanted first (the one playing now,
-    /// then the upcoming ones); others' bytes are evicted first and their
-    /// routes forgotten once unused (see [`Self::collect`]).
-    pub fn set_ranks(&self, tracks: &[u64]) {
+    /// Which tracks are wanted, most wanted first (the next one, then the
+    /// others upcoming, then the one `playing` now); others' bytes are
+    /// evicted first and their routes forgotten once unused (see
+    /// [`Self::collect`]). With the disk cache, memory keeps only the
+    /// start of the next track (read from disk if needed) and of the one
+    /// playing.
+    pub fn set_ranks(self: &Arc<Self>, tracks: &[u64], playing: Option<u64>) {
+        let promote: Vec<String> = {
+            let mut store = self.lock();
+            store.playing = playing;
+            store.ranks.clear();
+            for (rank, &id) in tracks.iter().enumerate() {
+                store.ranks.entry(id).or_insert(rank);
+            }
+            store.trim_memory();
+            if !store.disk_mode {
+                return;
+            }
+            let ranks = std::mem::take(&mut store.ranks);
+            let promote = store
+                .routes
+                .iter_mut()
+                .filter(|(_, entry)| {
+                    ranks.get(&entry.track_id) == Some(&0)
+                        && entry.media.is_some()
+                        && !entry.promoting
+                        && entry.start_files.iter().any(|f| !entry.cached.has(f))
+                })
+                .map(|(key, entry)| {
+                    entry.promoting = true;
+                    key.clone()
+                })
+                .collect();
+            store.ranks = ranks;
+            promote
+        };
+        for key in promote {
+            let proxy = self.clone();
+            crate::runtime::runtime().spawn(async move { proxy.promote(&key).await });
+        }
+    }
+
+    /// Reads the start of the route `key` (the next track) from disk into
+    /// memory, within the budget.
+    async fn promote(&self, key: &str) {
+        let disk = self.disk_now();
+        let wanted: Vec<(String, Key)> = {
+            let store = self.lock();
+            store.routes.get(key).map_or_else(Vec::new, |entry| {
+                entry
+                    .start_files
+                    .iter()
+                    .filter(|file| !entry.cached.has(file))
+                    .filter_map(|file| Some((file.clone(), entry.disk_key(file)?)))
+                    .collect()
+            })
+        };
+        let mut loaded = 0;
+        for (file, disk_key) in wanted {
+            let Some(disk) = disk.clone() else { break };
+            let read = tokio::task::spawn_blocking(move || disk.get(&disk_key)).await;
+            let Ok(Some(blob)) = read else { continue };
+            let len = blob.bytes.len();
+            let mut store = self.lock();
+            let next = store
+                .routes
+                .get(key)
+                .is_some_and(|entry| store.rank(entry) == Some(0) && !entry.cached.has(&file));
+            // Room is made (evicting what is less wanted) and taken in one
+            // critical section.
+            if !next || !store.reserve(key, len) {
+                break;
+            }
+            store.release(len);
+            let Some(entry) = store.routes.get_mut(key) else {
+                break;
+            };
+            insert_cached(&mut entry.cached, &file, blob);
+            entry.persisted.insert(file);
+            loaded += len;
+        }
         let mut store = self.lock();
-        store.ranks.clear();
-        for (rank, &id) in tracks.iter().enumerate() {
-            store.ranks.entry(id).or_insert(rank);
+        if let Some(entry) = store.routes.get_mut(key) {
+            entry.promoting = false;
+            if loaded > 0 {
+                log::debug!(
+                    "prefetch: {} KiB of track {} read from disk into memory",
+                    loaded >> 10,
+                    entry.track_id
+                );
+            }
         }
     }
 
@@ -580,38 +938,49 @@ impl Proxy {
         store.ranks = ranks;
     }
 
-    /// Drops every route and cached byte (sign-out).
+    /// Drops every route and cached byte in memory (sign-out; the disk
+    /// cache is cleared by [`clear_disk_cache`]).
     pub fn clear(&self) {
         let mut store = self.lock();
         store.routes.clear();
         store.ranks.clear();
     }
 
-    /// Cached bytes and the budget.
+    /// Bytes in memory and the memory budget.
     pub fn usage(&self) -> (usize, usize) {
         let store = self.lock();
         (store.used(), store.budget)
     }
 
-    /// Bytes cached for the route `key`.
+    /// Bytes of the route `key`'s start cached in memory or on disk.
     pub fn cached(&self, key: &str) -> usize {
-        self.lock().routes.get(key).map_or(0, |e| e.cached.len())
+        let disk = self.disk_now();
+        let store = self.lock();
+        let Some(entry) = store.routes.get(key) else {
+            return 0;
+        };
+        let on_disk: usize = disk.map_or(0, |disk| {
+            entry
+                .start_files
+                .iter()
+                .filter(|file| !entry.cached.has(file))
+                .filter_map(|file| entry.disk_key(file))
+                .map(|key| disk.size_of(&key))
+                .sum()
+        });
+        entry.cached.len() + on_disk
     }
 
     // ---- Prefetching ----
 
-    /// Downloads the first `seconds` of the route `key` into memory,
-    /// within the budget (what is cached already is kept);
-    /// `bytes_per_second` estimates the size of a lossless file's prefix.
-    pub async fn prefetch(
-        &self,
-        key: &str,
-        seconds: f64,
-        bytes_per_second: f64,
-    ) -> Result<Prefetched> {
+    /// Downloads the start of the route `key` (see [`Start`]), unless it is
+    /// cached already: to disk (and memory for the next track), or to
+    /// memory only, within its budget, without a disk cache.
+    pub async fn prefetch(&self, key: &str) -> Result<Prefetched> {
+        let disk = self.disk().await;
         {
             let mut store = self.lock();
-            store.set_budget(current_budget());
+            store.set_budget(current_budget(disk.is_some()));
             if store.budget == 0 {
                 return Ok(Prefetched::default());
             }
@@ -619,43 +988,62 @@ impl Proxy {
         let plan = {
             let store = self.lock();
             let entry = store.routes.get(key).context("the route is gone")?;
+            let disk_key = |file: &str| disk.clone().zip(entry.disk_key(file));
             match &entry.upstream {
                 Upstream::Progressive { url } => Plan::Prefix {
                     url: url.clone(),
-                    bytes: prefix_bytes(seconds, bytes_per_second),
+                    bytes: entry.start_bytes,
+                    disk: disk_key(""),
                 },
                 Upstream::Dash {
                     init,
                     media_dir,
                     media_query,
-                    info,
-                } => {
-                    let mut files = vec![(format!("i/{}", file_name(init)), init.clone())];
-                    for name in info.first_segments(seconds) {
-                        let url = with_query(&format!("{media_dir}{name}"), media_query);
-                        files.push((format!("m/{name}"), url));
-                    }
-                    Plan::Files(files)
-                }
+                    ..
+                } => Plan::Files(
+                    entry
+                        .start_files
+                        .iter()
+                        .map(|path| {
+                            let url = match path.split_once('/') {
+                                Some(("m", name)) => {
+                                    with_query(&format!("{media_dir}{name}"), media_query)
+                                }
+                                _ => init.clone(),
+                            };
+                            (path.clone(), url, disk_key(path))
+                        })
+                        .collect(),
+                ),
             }
         };
         match plan {
-            Plan::Prefix { url, bytes } => self.prefetch_prefix(key, &url, bytes).await,
+            Plan::Prefix { url, bytes, disk } => self.prefetch_prefix(key, &url, bytes, disk).await,
             Plan::Files(files) => self.prefetch_files(key, files).await,
         }
     }
 
-    async fn prefetch_prefix(&self, key: &str, url: &str, want: usize) -> Result<Prefetched> {
+    async fn prefetch_prefix(
+        &self,
+        key: &str,
+        url: &str,
+        want: usize,
+        disk: OnDisk,
+    ) -> Result<Prefetched> {
+        let complete = Prefetched {
+            bytes: 0,
+            complete: true,
+        };
         if self
             .lock()
             .routes
             .get(key)
             .is_some_and(|e| e.cached.len() > 0)
         {
-            return Ok(Prefetched {
-                bytes: 0,
-                complete: true,
-            });
+            return Ok(complete);
+        }
+        if disk.as_ref().is_some_and(|(disk, key)| disk.contains(key)) {
+            return Ok(complete);
         }
         let Some(reservation) = self.reserve(key, want) else {
             log::debug!("prefetch: no room for {} KiB", want >> 10);
@@ -686,40 +1074,65 @@ impl Proxy {
             bytes.extend_from_slice(&chunk[..chunk.len().min(room)]);
         }
         let len = bytes.len();
-        let mut store = self.lock();
-        // Released in the same critical section the bytes are counted in.
-        reservation.release(&mut store);
-        let Some(entry) = store.routes.get_mut(key) else {
-            return Ok(Prefetched::default());
-        };
         if len == 0 || len as u64 > total {
             return Ok(Prefetched::default());
         }
-        entry.cached = Cached::Prefix {
-            bytes: bytes.freeze(),
-            total,
-            content_type,
+        let bytes = bytes.freeze();
+        // Still reserved while it is written.
+        let persisted = self
+            .persist(key, disk, bytes.clone(), total, content_type.clone())
+            .await;
+        let mut store = self.lock();
+        // Released in the same critical section the bytes are counted in.
+        reservation.release(&mut store);
+        let keep = !persisted
+            || !store.disk_mode
+            || store
+                .routes
+                .get(key)
+                .is_some_and(|e| store.rank(e) == Some(0));
+        let Some(entry) = store.routes.get_mut(key) else {
+            return Ok(Prefetched::default());
         };
+        if keep {
+            entry.cached = Cached::Prefix {
+                bytes,
+                total,
+                content_type,
+            };
+        }
+        if persisted {
+            entry.persisted.insert(String::new());
+        }
         Ok(Prefetched {
             bytes: len,
             complete: true,
         })
     }
 
-    async fn prefetch_files(&self, key: &str, files: Vec<(String, String)>) -> Result<Prefetched> {
+    async fn prefetch_files(
+        &self,
+        key: &str,
+        files: Vec<(String, String, OnDisk)>,
+    ) -> Result<Prefetched> {
         let mut done = Prefetched {
             bytes: 0,
             complete: true,
         };
-        for (path, url) in files {
+        let mut planned = 0;
+        for (path, url, disk) in files {
             let have = self
                 .lock()
                 .routes
                 .get(key)
-                .is_some_and(|e| match &e.cached {
-                    Cached::Files(files) => files.contains_key(&path),
-                    _ => false,
-                });
+                .is_some_and(|e| e.cached.has(&path));
+            if let Some((disk, disk_key)) = &disk
+                && !have
+                && disk.contains(disk_key)
+            {
+                planned += disk.size_of(disk_key);
+                continue;
+            }
             if have {
                 continue;
             }
@@ -731,7 +1144,7 @@ impl Proxy {
                 done.complete = false;
                 break;
             };
-            let reservation = (done.bytes + len <= MAX_ENTRY)
+            let reservation = (planned + done.bytes + len <= MAX_ENTRY)
                 .then(|| self.reserve(key, len))
                 .flatten();
             let Some(reservation) = reservation else {
@@ -746,23 +1159,63 @@ impl Proxy {
                 }
                 bytes.extend_from_slice(&chunk);
             }
+            if bytes.len() != len {
+                bail!("fewer bytes than announced");
+            }
+            let body = bytes.freeze();
+            let persisted = self
+                .persist(key, disk, body.clone(), len as u64, None)
+                .await;
             let mut store = self.lock();
             reservation.release(&mut store);
+            let keep = !persisted
+                || !store.disk_mode
+                || store
+                    .routes
+                    .get(key)
+                    .is_some_and(|e| store.rank(e) == Some(0));
             let Some(entry) = store.routes.get_mut(key) else {
                 return Ok(done);
             };
-            done.bytes += bytes.len();
-            let body = bytes.freeze();
-            match &mut entry.cached {
-                Cached::Files(files) => {
-                    files.insert(path, body);
-                }
-                other => {
-                    *other = Cached::Files(HashMap::from([(path, body)]));
-                }
+            done.bytes += body.len();
+            if keep {
+                insert_file(&mut entry.cached, path.clone(), body);
+            }
+            if persisted {
+                entry.persisted.insert(path);
             }
         }
         Ok(done)
+    }
+
+    /// Writes a start to the disk cache (off the runtime's threads), if
+    /// its route still exists (not after sign-out). Whether it is there.
+    async fn persist(
+        &self,
+        route: &str,
+        disk: OnDisk,
+        bytes: Bytes,
+        total: u64,
+        content_type: Option<String>,
+    ) -> bool {
+        let Some((disk, key)) = disk else {
+            return false;
+        };
+        if !self.lock().routes.contains_key(route) {
+            return false;
+        }
+        let written = tokio::task::spawn_blocking(move || {
+            disk.put(&key, &bytes, total, content_type.as_deref())
+        })
+        .await;
+        match written {
+            Ok(Ok(stored)) => stored,
+            Ok(Err(err)) => {
+                log::debug!("audio cache: could not write: {err}");
+                false
+            }
+            Err(_) => false,
+        }
     }
 
     /// Reserves `bytes` of the budget for the route `key` (see
@@ -838,10 +1291,23 @@ impl Proxy {
                     }
                     _ => Hit::Miss,
                 };
-                (entry.track_id, upstream, cached)
+                // Its start may be on disk; a seek past it is not.
+                let disk_key = entry.disk_key(file).filter(|_| {
+                    !file.is_empty()
+                        || request
+                            .range
+                            .is_none_or(|(start, _)| start < entry.start_bytes as u64)
+                });
+                (
+                    entry.track_id,
+                    upstream,
+                    cached,
+                    disk_key,
+                    entry.start_bytes,
+                )
             })
         };
-        let Some((track_id, upstream, hit)) = found else {
+        let Some((track_id, upstream, mut hit, disk_key, start_bytes)) = found else {
             return respond_empty(&mut socket, 404).await;
         };
         let _serving = Serving {
@@ -851,13 +1317,30 @@ impl Proxy {
         if upstream.is_empty() {
             return respond_empty(&mut socket, 404).await;
         }
+        let on_disk: OnDisk = disk_key.and_then(|key| Some((self.disk_now()?, key)));
+        let mut source = "memory";
+        if matches!(hit, Hit::Miss)
+            && let Some((disk, disk_key)) = &on_disk
+            && disk.contains(disk_key)
+        {
+            let (disk, disk_key) = (disk.clone(), disk_key.clone());
+            let read = tokio::task::spawn_blocking(move || disk.get(&disk_key)).await;
+            if let Ok(Some(blob)) = read {
+                source = "disk";
+                hit = if file.is_empty() {
+                    Hit::Prefix(blob.bytes, blob.total, blob.content_type)
+                } else {
+                    Hit::File(blob.bytes)
+                };
+            }
+        }
         log::trace!(
             "proxy: track {track_id} {} {:?} ({})",
             if file.is_empty() { "file" } else { file },
             request.range,
             match &hit {
                 Hit::Miss => "upstream",
-                _ => "cached",
+                _ => source,
             }
         );
         match hit {
@@ -872,19 +1355,32 @@ impl Proxy {
                     &upstream,
                     (bytes, total, content_type),
                     head_only,
+                    on_disk,
                 )
                 .await
             }
             Hit::File(bytes) => serve_bytes(&mut socket, &request, &bytes, head_only).await,
             _ => {
-                self.pass_through(&mut socket, &request, &upstream, head_only)
+                // Kept as it streams, when it is the start (from its first
+                // byte) and not on disk yet.
+                let from_start = request.range.is_none_or(|(start, _)| start == 0);
+                let tee = on_disk
+                    .filter(|_| !head_only && from_start)
+                    .filter(|(disk, key)| !disk.contains(key))
+                    .map(|(disk, key)| Tee {
+                        disk,
+                        key,
+                        prefix: file.is_empty().then_some(start_bytes),
+                    });
+                self.pass_through(&mut socket, &request, &upstream, head_only, key, tee)
                     .await
             }
         }
     }
 
     /// Answers from the cached prefix, then streams the rest from
-    /// upstream, requested in parallel.
+    /// upstream, requested in parallel. The prefix is dropped from the disk
+    /// cache if upstream turns out to hold another file.
     async fn serve_prefix(
         &self,
         socket: &mut TcpStream,
@@ -892,6 +1388,7 @@ impl Proxy {
         upstream: &str,
         (prefix, total, content_type): (Bytes, u64, Option<String>),
         head_only: bool,
+        on_disk: OnDisk,
     ) -> Result<()> {
         let (start, end) = request.range.unwrap_or((0, None));
         if total == 0 || start >= total {
@@ -935,6 +1432,14 @@ impl Proxy {
         if response.status().as_u16() != 206
             || range.is_none_or(|(from, to, size)| from != cached_end || to != end || size != total)
         {
+            if response.status().as_u16() == 206
+                && let Some((disk, key)) = on_disk
+            {
+                // Another file now (TIDAL replaced it): its old start must
+                // not be played again.
+                log::debug!("audio cache: dropping the start of an outdated file");
+                tokio::task::spawn_blocking(move || disk.remove(&key));
+            }
             // Not the same file any more: close, so the source fails
             // (and the track is reloaded) instead of playing garbage.
             bail!(
@@ -948,13 +1453,17 @@ impl Proxy {
         Ok(())
     }
 
-    /// Forwards the request to `upstream` and streams the answer back.
+    /// Forwards the request to `upstream` and streams the answer back;
+    /// with `tee`, keeps the start of it on disk as it goes (the route
+    /// `key`'s memory budget holds it meanwhile).
     async fn pass_through(
         &self,
         socket: &mut TcpStream,
         request: &Request,
         upstream: &str,
         head_only: bool,
+        key: &str,
+        tee: Option<Tee>,
     ) -> Result<()> {
         let mut forward = if head_only {
             self.http.head(upstream)
@@ -992,10 +1501,92 @@ impl Proxy {
         if head_only {
             return Ok(());
         }
+        let mut capture = tee.and_then(|tee| self.capture(key, tee, &response));
         while let Some(chunk) = response.chunk().await? {
             socket.write_all(&chunk).await?;
+            if let Some(kept) = &mut capture {
+                if kept.bytes.len() + chunk.len() > kept.want && !kept.prefix {
+                    // More than announced: not kept.
+                    capture = None;
+                    continue;
+                }
+                let room = kept.want - kept.bytes.len();
+                kept.bytes
+                    .extend_from_slice(&chunk[..chunk.len().min(room)]);
+                if kept.prefix && kept.bytes.len() == kept.want {
+                    let kept = capture.take();
+                    self.keep(key, kept).await;
+                }
+            }
+        }
+        if capture
+            .as_ref()
+            .is_some_and(|kept| kept.bytes.len() == kept.want)
+        {
+            self.keep(key, capture).await;
         }
         Ok(())
+    }
+
+    /// What of `response` [`Self::pass_through`] keeps for `tee`: a lossless
+    /// file's prefix (the answer must start at its first byte and say the
+    /// file's size) or a whole DASH segment of a known length.
+    fn capture(&self, key: &str, tee: Tee, response: &reqwest::Response) -> Option<Capture<'_>> {
+        let status = response.status().as_u16();
+        let range = header(response, "content-range").and_then(|r| parse_content_range(&r));
+        let total = match (status, range) {
+            (200, _) => response.content_length()?,
+            (206, Some((0, _, total))) => total,
+            _ => return None,
+        };
+        let want = match tee.prefix {
+            Some(prefix) => usize::try_from(total).ok()?.min(prefix),
+            None => {
+                let len = usize::try_from(response.content_length()?).ok()?;
+                (len as u64 == total).then_some(len)?
+            }
+        };
+        if want == 0 || want > MAX_ENTRY {
+            return None;
+        }
+        let memory = self.reserve(key, want)?;
+        Some(Capture {
+            disk: tee.disk,
+            key: tee.key,
+            bytes: BytesMut::with_capacity(want),
+            want,
+            total,
+            content_type: header(response, "content-type"),
+            prefix: tee.prefix.is_some(),
+            _memory: memory,
+        })
+    }
+
+    /// Writes what was captured to the disk cache.
+    async fn keep(&self, route: &str, capture: Option<Capture<'_>>) {
+        let Some(capture) = capture else { return };
+        let len = capture.bytes.len();
+        let bytes = capture.bytes.freeze();
+        let total = if capture.prefix {
+            capture.total
+        } else {
+            len as u64
+        };
+        let kept = self
+            .persist(
+                route,
+                Some((capture.disk.clone(), capture.key.clone())),
+                bytes,
+                total,
+                capture.content_type.clone(),
+            )
+            .await;
+        if kept {
+            log::debug!(
+                "audio cache: kept {} KiB of a start as it streamed",
+                len >> 10
+            );
+        }
     }
 }
 
@@ -1008,9 +1599,41 @@ impl<T> Drop for AbortOnDrop<T> {
     }
 }
 
+/// A disk cache and the key a file has in it.
+type OnDisk = Option<(Arc<DiskCache>, Key)>;
+
 enum Plan {
-    Prefix { url: String, bytes: usize },
-    Files(Vec<(String, String)>),
+    Prefix {
+        url: String,
+        bytes: usize,
+        disk: OnDisk,
+    },
+    /// Path, URL, and key on disk.
+    Files(Vec<(String, String, OnDisk)>),
+}
+
+/// Puts a file read from disk into an entry's memory.
+fn insert_cached(cached: &mut Cached, file: &str, blob: diskcache::Blob) {
+    if file.is_empty() {
+        *cached = Cached::Prefix {
+            bytes: blob.bytes,
+            total: blob.total,
+            content_type: blob.content_type,
+        };
+    } else {
+        insert_file(cached, file.to_owned(), blob.bytes);
+    }
+}
+
+fn insert_file(cached: &mut Cached, path: String, body: Bytes) {
+    match cached {
+        Cached::Files(files) => {
+            files.insert(path, body);
+        }
+        other => {
+            *other = Cached::Files(HashMap::from([(path, body)]));
+        }
+    }
 }
 
 enum Hit {
@@ -1443,6 +2066,15 @@ fn xml_escape(text: &str) -> String {
 mod tests {
     use super::*;
 
+    /// Keeps `seconds` of a lossless file at 100 kB/s, in memory only.
+    fn start(seconds: f64) -> Start {
+        Start {
+            seconds,
+            bytes_per_second: 100_000.0,
+            format: None,
+        }
+    }
+
     const MPD: &str = r#"<?xml version='1.0' encoding='UTF-8'?><MPD xmlns="urn:mpeg:dash:schema:mpd:2011" type="static" mediaPresentationDuration="PT5M15.602S"><Period id="0"><AdaptationSet id="0" contentType="audio" mimeType="audio/mp4"><Representation id="FLAC_HIRES,48000,24" codecs="flac" bandwidth="1675219" audioSamplingRate="48000"><SegmentTemplate timescale="48000" initialization="https://sp-ad-cf.audio.tidal.com/mediatracks/AbC/0.mp4?Policy=P&amp;Signature=S~x&amp;Key-Pair-Id=K" media="https://sp-ad-cf.audio.tidal.com/mediatracks/AbC/$Number$.mp4?Policy=P&amp;Signature=S~x&amp;Key-Pair-Id=K" startNumber="1"><SegmentTimeline><S d="188416" r="79"/><S d="75651"/></SegmentTimeline></SegmentTemplate></Representation></AdaptationSet></Period></MPD>"#;
 
     #[test]
@@ -1542,6 +2174,16 @@ mod tests {
     }
 
     #[test]
+    fn media_is_identified_by_the_url_path() {
+        assert_eq!(
+            url_path("https://sp-pr-cf.audio.tidal.com/mediatracks/AbC/0.flac?token=1~2"),
+            "/mediatracks/AbC/0.flac"
+        );
+        assert_eq!(url_path("https://h/a/b#x"), "/a/b");
+        assert_eq!(url_path("https://h"), "");
+    }
+
+    #[test]
     fn prefix_sizes_are_bounded() {
         // CD quality, about 110 KB/s of FLAC: 8 s plus headers.
         assert_eq!(prefix_bytes(8.0, 110_000.0), 880_000 + (64 << 10));
@@ -1554,8 +2196,11 @@ mod tests {
         logging_cdn(file).await.0
     }
 
+    /// What a fake CDN was asked for: paths and ranges.
+    type Asked = Arc<Mutex<Vec<(String, Option<(u64, Option<u64>)>)>>>;
+
     /// [`fake_cdn`], also giving the paths it was asked for.
-    async fn logging_cdn(file: Bytes) -> (String, Arc<Mutex<Vec<String>>>) {
+    async fn logging_cdn(file: Bytes) -> (String, Asked) {
         let listener = TcpListener::bind(("127.0.0.1", 0)).await.unwrap();
         let port = listener.local_addr().unwrap().port();
         let paths = Arc::new(Mutex::new(Vec::new()));
@@ -1570,7 +2215,9 @@ mod tests {
                 tokio::spawn(async move {
                     let head = read_head(&mut socket).await.unwrap();
                     let request = parse_request(&head).unwrap();
-                    log.lock().unwrap().push(request.path.clone());
+                    log.lock()
+                        .unwrap()
+                        .push((request.path.clone(), request.range));
                     let total = file.len() as u64;
                     let (start, end) = request.range.unwrap_or((0, None));
                     let end = end.unwrap_or(total - 1).min(total - 1);
@@ -1615,16 +2262,16 @@ mod tests {
         let file: Bytes = (0..3_000_000u32).map(|i| (i * 7 % 251) as u8).collect();
         crate::runtime::runtime().block_on(async {
             let upstream = fake_cdn(file.clone()).await;
-            let proxy = Proxy::start().unwrap();
-            let route = proxy.route_progressive(42, &upstream).unwrap();
+            let proxy = Proxy::start(None).unwrap();
+            let route = proxy.route_progressive(42, &upstream, &start(1.0)).unwrap();
             assert!(!route.uri.contains("secret"));
-            proxy.set_ranks(&[42]);
-            let done = proxy.prefetch(&route.key, 1.0, 100_000.0).await.unwrap();
+            proxy.set_ranks(&[42], None);
+            let done = proxy.prefetch(&route.key).await.unwrap();
             assert!(done.complete);
             let cached = done.bytes;
             assert_eq!(cached, prefix_bytes(1.0, 100_000.0));
             // Again: nothing more to download.
-            let again = proxy.prefetch(&route.key, 1.0, 100_000.0).await.unwrap();
+            let again = proxy.prefetch(&route.key).await.unwrap();
             assert_eq!((again.bytes, again.complete), (0, true));
             assert!(cached < file.len());
             assert!(proxy.usage().0 <= proxy.usage().1);
@@ -1658,7 +2305,7 @@ mod tests {
             let (status, _, _) = fetch(&route.uri.replace(&route.key, "nope"), None).await;
             assert_eq!(status, 404);
             // Forgotten once not wanted and unused.
-            proxy.set_ranks(&[]);
+            proxy.set_ranks(&[], None);
             proxy.collect(Duration::ZERO, &[]);
             let (status, _, _) = fetch(&route.uri, None).await;
             assert_eq!(status, 404);
@@ -1678,16 +2325,16 @@ mod tests {
                     held.push(socket);
                 }
             });
-            let proxy = Proxy::start().unwrap();
+            let proxy = Proxy::start(None).unwrap();
             let route = proxy
-                .route_progressive(7, &format!("http://127.0.0.1:{port}/x.flac"))
+                .route_progressive(7, &format!("http://127.0.0.1:{port}/x.flac"), &start(8.0))
                 .unwrap();
-            proxy.set_ranks(&[7]);
+            proxy.set_ranks(&[7], None);
             let before = proxy.usage().0;
             let task = tokio::spawn({
                 let proxy = proxy.clone();
                 let key = route.key.clone();
-                async move { proxy.prefetch(&key, 8.0, 100_000.0).await }
+                async move { proxy.prefetch(&key).await }
             });
             tokio::time::sleep(Duration::from_millis(200)).await;
             assert!(proxy.usage().0 > before, "reserved while downloading");
@@ -1724,9 +2371,9 @@ mod tests {
             let mpd = MPD
                 .replace("https://sp-ad-cf.audio.tidal.com", &cdn)
                 .replace("mediatracks/AbC/", "secure/AbC/");
-            let proxy = Proxy::start().unwrap();
+            let proxy = Proxy::start(None).unwrap();
             let port = proxy.port;
-            let (_, route) = proxy.route_dash(9, &mpd).unwrap();
+            let (_, route) = proxy.route_dash(9, &mpd, &Start::default()).unwrap();
             let key = &route.key;
             let host = format!("127.0.0.1:{port}");
             let get = |path: &str, host: &str, extra: &str| {
@@ -1779,7 +2426,7 @@ mod tests {
                 );
             }
             // A lossless route has no files.
-            let progressive = proxy.route_progressive(10, &upstream).unwrap();
+            let progressive = proxy.route_progressive(10, &upstream, &start(1.0)).unwrap();
             assert_eq!(
                 raw_status(
                     port,
@@ -1788,7 +2435,12 @@ mod tests {
                 .await,
                 404
             );
-            let asked = paths.lock().unwrap().clone();
+            let asked: Vec<String> = paths
+                .lock()
+                .unwrap()
+                .iter()
+                .map(|(p, _)| p.clone())
+                .collect();
             assert_eq!(
                 asked,
                 [
@@ -1880,10 +2532,10 @@ mod tests {
         let file: Bytes = (0..2_000_000u32).map(|i| (i % 253) as u8).collect();
         let (proxy, route) = crate::runtime::runtime().block_on(async {
             let upstream = fake_cdn(file.clone()).await;
-            let proxy = Proxy::start().unwrap();
-            let route = proxy.route_progressive(77, &upstream).unwrap();
-            proxy.set_ranks(&[77]);
-            proxy.prefetch(&route.key, 1.0, 100_000.0).await.unwrap();
+            let proxy = Proxy::start(None).unwrap();
+            let route = proxy.route_progressive(77, &upstream, &start(1.0)).unwrap();
+            proxy.set_ranks(&[77], None);
+            proxy.prefetch(&route.key).await.unwrap();
             (proxy, route)
         });
         assert!(proxy.cached(&route.key) > 0);
@@ -1917,6 +2569,213 @@ mod tests {
         assert_eq!(*received.lock().unwrap(), file.len());
     }
 
+    /// A fresh directory for a disk cache.
+    fn disk_dir(name: &str) -> PathBuf {
+        let dir =
+            std::env::temp_dir().join(format!("swell-proxy-test-{}-{name}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        dir
+    }
+
+    fn kept(seconds: f64) -> Start {
+        Start {
+            format: Some("LOSSLESS/STEREO/16/44100/flac".into()),
+            ..start(seconds)
+        }
+    }
+
+    /// A lossless start prefetched to disk survives the proxy (a restart)
+    /// and a new signed URL: the next proxy plays it from disk and asks the
+    /// CDN only for the rest. Memory keeps it only for the next track.
+    #[test]
+    fn prefetched_starts_survive_a_restart() {
+        let file: Bytes = (0..3_000_000u32).map(|i| (i * 13 % 251) as u8).collect();
+        let dir = disk_dir("restart");
+        crate::runtime::runtime().block_on(async {
+            let (upstream, asked) = logging_cdn(file.clone()).await;
+            let first = Proxy::start(Some(dir.clone())).unwrap();
+            let route = first.route_progressive(5, &upstream, &kept(1.0)).unwrap();
+            first.set_ranks(&[5], None);
+            let done = first.prefetch(&route.key).await.unwrap();
+            assert!(done.complete);
+            let prefix = prefix_bytes(1.0, 100_000.0);
+            assert_eq!(done.bytes, prefix);
+            // On disk, and in memory as the next track's.
+            let disk = first.disk().await.unwrap();
+            assert!(disk.used() > prefix as u64);
+            assert_eq!(first.usage().0, prefix);
+            // Not wanted next any more: memory lets it go, disk keeps it.
+            first.set_ranks(&[6, 5], None);
+            assert_eq!(first.usage().0, 0);
+            // (About: the index knows the files' sizes.)
+            assert!((prefix..prefix + 64).contains(&first.cached(&route.key)));
+            // Prefetching again downloads nothing.
+            let again = first.prefetch(&route.key).await.unwrap();
+            assert_eq!((again.bytes, again.complete), (0, true));
+            first.clear();
+            drop(first);
+
+            // "Restart", with the URL signed anew.
+            asked.lock().unwrap().clear();
+            let second = Proxy::start(Some(dir.clone())).unwrap();
+            second.disk().await.unwrap();
+            let resigned = upstream.replace("token=secret", "token=other");
+            let route = second.route_progressive(5, &resigned, &kept(1.0)).unwrap();
+            assert!((prefix..prefix + 64).contains(&second.cached(&route.key)));
+            let (status, _, body) = fetch(&route.uri, None).await;
+            assert_eq!(status, 200);
+            assert!(body == file[..], "whole file");
+            let ranges: Vec<_> = asked.lock().unwrap().iter().map(|(_, r)| *r).collect();
+            assert_eq!(
+                ranges,
+                [Some((prefix as u64, Some(file.len() as u64 - 1)))],
+                "only the rest from the CDN"
+            );
+            // Another format of the same track is another entry.
+            let other = Start {
+                format: Some("HI_RES_LOSSLESS/STEREO/24/96000/flac".into()),
+                ..start(1.0)
+            };
+            let route = second.route_progressive(5, &resigned, &other).unwrap();
+            assert_eq!(second.cached(&route.key), 0);
+            // No URL or token on disk.
+            for entry in std::fs::read_dir(&dir).unwrap() {
+                let data = std::fs::read(entry.unwrap().path()).unwrap();
+                assert!(!data.windows(5).any(|w| w == b"token" || w == b"http:"));
+            }
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A start that was not prefetched is kept as it streams (no second
+    /// download); a start on disk that upstream no longer matches (another
+    /// file now) is dropped; a corrupt one is ignored.
+    #[test]
+    fn keeps_starts_as_they_stream() {
+        let file: Bytes = (0..2_000_000u32).map(|i| (i * 7 % 253) as u8).collect();
+        let dir = disk_dir("tee");
+        crate::runtime::runtime().block_on(async {
+            let (upstream, asked) = logging_cdn(file.clone()).await;
+            let proxy = Proxy::start(Some(dir.clone())).unwrap();
+            let disk = proxy.disk().await.unwrap();
+            let route = proxy.route_progressive(8, &upstream, &kept(1.0)).unwrap();
+            let (status, _, body) = fetch(&route.uri, None).await;
+            assert_eq!(status, 200);
+            assert!(body == file[..]);
+            let key = Key::new(
+                8,
+                proxy.lock().routes[&route.key].media.as_ref().unwrap(),
+                "",
+            );
+            let blob = disk.get(&key).expect("kept as it streamed");
+            assert!(blob.bytes == file[..prefix_bytes(1.0, 100_000.0)]);
+            assert_eq!(blob.total, file.len() as u64);
+            assert_eq!(proxy.usage().0, 0, "its memory given back");
+            // A seek (not from the start) keeps nothing.
+            disk.remove(&key);
+            let (status, _, _) = fetch(&route.uri, Some("bytes=1000-")).await;
+            assert_eq!(status, 206);
+            assert!(!disk.contains(&key));
+
+            // Played again: from disk, then the rest from upstream.
+            let (_, _, _) = fetch(&route.uri, None).await;
+            assert!(disk.contains(&key));
+            asked.lock().unwrap().clear();
+            let (_, _, body) = fetch(&route.uri, Some("bytes=0-")).await;
+            assert!(body == file[..]);
+            assert_eq!(
+                asked.lock().unwrap()[0].1.map(|(start, _)| start),
+                Some(prefix_bytes(1.0, 100_000.0) as u64)
+            );
+
+            // Corrupt on disk: deleted, and the file still plays right.
+            let path = dir.join(key.file_name());
+            let mut data = std::fs::read(&path).unwrap();
+            let at = data.len() / 2;
+            data[at] ^= 0xff;
+            std::fs::write(&path, &data).unwrap();
+            let (_, _, body) = fetch(&route.uri, None).await;
+            assert!(body == file[..]);
+
+            // Upstream now has another file (another size): the start on
+            // disk is not played again.
+            assert!(disk.contains(&key));
+            let other: Bytes = (0..2_500_000u32).map(|i| (i % 7) as u8).collect();
+            let replaced = fake_cdn(other).await;
+            let route = proxy.route_progressive(8, &replaced, &kept(1.0)).unwrap();
+            let response = reqwest::get(&route.uri).await.unwrap();
+            assert_eq!(response.status(), 200);
+            assert!(
+                response.bytes().await.is_err(),
+                "the stream fails instead of playing garbage"
+            );
+            for _ in 0..50 {
+                if !disk.contains(&key) {
+                    break;
+                }
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+            assert!(!disk.contains(&key));
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A DASH stream's init segment and first media segments go to disk
+    /// keyed by the track and the manifest's media (not its URLs), and are
+    /// played from there by the next proxy.
+    #[test]
+    fn dash_starts_survive_a_restart() {
+        let dir = disk_dir("dash");
+        crate::runtime::runtime().block_on(async {
+            let (upstream, asked) = logging_cdn(Bytes::from_static(b"segment bytes")).await;
+            let cdn = upstream.split("/track.flac").next().unwrap().to_owned();
+            let mpd = MPD.replace("https://sp-ad-cf.audio.tidal.com", &cdn);
+            let hires = Start {
+                format: Some("HI_RES_LOSSLESS/STEREO/24/48000/flac".into()),
+                ..start(8.0)
+            };
+            let first = Proxy::start(Some(dir.clone())).unwrap();
+            let (_, route) = first.route_dash(9, &mpd, &hires).unwrap();
+            first.set_ranks(&[9], None);
+            let done = first.prefetch(&route.key).await.unwrap();
+            assert!(done.complete);
+            assert_eq!(asked.lock().unwrap().len(), 4, "init and three segments");
+            drop(first);
+
+            asked.lock().unwrap().clear();
+            let second = Proxy::start(Some(dir.clone())).unwrap();
+            second.disk().await.unwrap();
+            let resigned = mpd.replace("Signature=S~x", "Signature=T~y");
+            let (rewritten, route) = second.route_dash(9, &resigned, &hires).unwrap();
+            assert!(!rewritten.contains("Signature"));
+            second.set_ranks(&[9], None);
+            let again = second.prefetch(&route.key).await.unwrap();
+            assert_eq!((again.bytes, again.complete), (0, true));
+            let base = format!("{}/d/{}", second.base(), route.key);
+            for file in ["i/0.mp4", "m/1.mp4", "m/3.mp4", "m/4.mp4"] {
+                let (status, _, body) = fetch(&format!("{base}/{file}"), None).await;
+                assert_eq!(status, 200, "{file}");
+                assert_eq!(body, b"segment bytes");
+            }
+            let asked: Vec<String> = asked
+                .lock()
+                .unwrap()
+                .iter()
+                .map(|(p, _)| p.clone())
+                .collect();
+            assert_eq!(
+                asked,
+                ["/mediatracks/AbC/4.mp4?Policy=P&Signature=T~y&Key-Pair-Id=K"],
+                "only what is past the start"
+            );
+            // Another representation of the same track: other entries.
+            let other = resigned.replace("bandwidth=\"1675219\"", "bandwidth=\"999\"");
+            let (_, route) = second.route_dash(9, &other, &hires).unwrap();
+            assert_eq!(second.cached(&route.key), 0);
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
     #[test]
     fn store_never_exceeds_its_budget() {
         let mut store = Store {
@@ -1926,14 +2785,7 @@ mod tests {
         for (i, key) in ["a", "b", "c"].iter().enumerate() {
             store.routes.insert(
                 (*key).to_owned(),
-                Entry {
-                    track_id: i as u64,
-                    upstream: Upstream::Progressive { url: String::new() },
-                    cached: Cached::Nothing,
-                    active: 0,
-                    last_used: 0,
-                    touched: Instant::now(),
-                },
+                Entry::new(i as u64, Upstream::Progressive { url: String::new() }, 0),
             );
         }
         store.ranks = HashMap::from([(0, 0), (1, 1), (2, 2)]);

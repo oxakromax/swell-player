@@ -308,7 +308,7 @@ fn cache_dir() -> PathBuf {
 fn storage_group(ctx: &Rc<Ctx>, dialog: &adw::PreferencesDialog) -> adw::PreferencesGroup {
     let group = adw::PreferencesGroup::builder()
         .title(tr("Storage"))
-        .description(tr("Downloaded artwork and saved answers from TIDAL, so pages open instantly and work offline."))
+        .description(tr("Downloaded artwork, the first seconds of tracks and saved answers from TIDAL, so pages open instantly and work offline, and tracks start at once."))
         .build();
     let covers = cache_row(
         dialog,
@@ -368,8 +368,23 @@ fn storage_group(ctx: &Rc<Ctx>, dialog: &adw::PreferencesDialog) -> adw::Prefere
             }
         },
     );
+    let audio = cache_row(
+        dialog,
+        CacheTexts {
+            title: tr("Audio Cache"),
+            question: tr("Clear the Audio Cache?"),
+            consequence: tr(
+                "The first seconds of upcoming tracks are downloaded again as you listen.",
+            ),
+            cleared: tr("Audio Cache cleared"),
+            failed: tr("Couldn’t clear the Audio Cache"),
+        },
+        || vec![crate::playback::audio_cache_dir()],
+        || async { runtime::spawn(crate::playback::clear_audio_cache()).await },
+    );
     group.add(&covers);
     group.add(&library);
+    group.add(&audio);
     group
 }
 

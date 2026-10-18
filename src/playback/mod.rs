@@ -49,19 +49,22 @@
 //! the log says how long each start took: "first audio … ms");
 //! `SWELL_NO_PROXY=1` plays straight from TIDAL, without the local proxy
 //! and prefetched audio; `SWELL_PREFETCH_BUDGET_MB=<n>` caps the prefetched
-//! audio (to watch eviction).
+//! audio in memory and `SWELL_AUDIO_CACHE_MB=<n>` the audio cache on disk
+//! (0: none), to watch eviction.
 //!
 //! Transitions: a track that ends by itself hands over gaplessly, or
 //! crossfades (see `transition.rs` for when); manual changes, pausing and
 //! seeking fade briefly (`fade.rs`); both on the engine's two decks
-//! (`engine.rs`). The next few tracks are prefetched (`prefetch.rs`) and
-//! played from memory through a local proxy (`proxy.rs`), within a budget
-//! (`budget.rs`), until their signed URLs expire (`expiry.rs`).
+//! (`engine.rs`). The next few tracks are prefetched (`prefetch.rs`): their
+//! streams until their signed URLs expire (`expiry.rs`), and their first
+//! seconds on disk (`diskcache.rs`, kept across restarts) and, for the next
+//! one, in memory (`budget.rs`), played through a local proxy (`proxy.rs`).
 
 use crate::i18n::{tr, trn};
 
 mod budget;
 mod controls;
+mod diskcache;
 pub mod engine;
 mod expiry;
 mod fade;
@@ -106,6 +109,17 @@ use queue::Queue;
 pub use queue::QueueSnapshot;
 pub use sleep::SleepTimer;
 pub use transition::MAX_CROSSFADE_SECS;
+
+/// Where the audio cache lives (for its size in Preferences).
+pub fn audio_cache_dir() -> std::path::PathBuf {
+    diskcache::default_dir()
+}
+
+/// Deletes the audio cache: the first seconds of tracks kept on disk
+/// (Preferences, sign-out). Call from the I/O runtime.
+pub async fn clear_audio_cache() -> anyhow::Result<()> {
+    proxy::clear_disk_cache().await
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PlayState {
@@ -274,6 +288,12 @@ pub struct Playback {
 impl Playback {
     pub fn new(api: Arc<Api>, settings: Rc<settings::Store>) -> Rc<Self> {
         let current = settings.get();
+        proxy::set_disk_cap_mb(current.audio_cache_mb);
+        // Started now, off the main thread, with its disk cache read, so
+        // the first track can start from it.
+        runtime::runtime().spawn_blocking(|| {
+            proxy::get();
+        });
         let (commands, mut receiver) = tokio::sync::mpsc::unbounded_channel();
         let this = Rc::new_cyclic(|weak: &Weak<Self>| {
             let engine_weak = weak.clone();
@@ -1206,6 +1226,7 @@ impl Playback {
         if self.gapless.replace(settings.gapless) != settings.gapless {
             self.refresh_next();
         }
+        proxy::set_disk_cap_mb(settings.audio_cache_mb);
         if self.crossfade_secs.replace(settings.crossfade_secs) != settings.crossfade_secs {
             self.refresh_next();
         }

@@ -1,16 +1,18 @@
 //! Prefetching: while a track plays, the streams of the next few tracks
 //! (in the queue's own play order, so shuffle and repeat are respected)
-//! are resolved, and their first seconds of audio downloaded into the
-//! local proxy's memory (`proxy.rs`), so skipping to one starts at once.
+//! are resolved, and their first seconds of audio cached by the local
+//! proxy (`proxy.rs`): on disk (`diskcache.rs`), and the next track's in
+//! memory too, so skipping to one starts at once, also after a restart.
 //!
 //! - At most [`PREFETCH_TRACKS`] tracks, one download at a time, nearest
 //!   first; a download for a track that stopped being upcoming is
-//!   cancelled, and what was cached for it dropped.
+//!   cancelled. A start already on disk is not downloaded again: only the
+//!   stream is resolved (one small API request).
 //! - Only while playing (and a moment after a track starts, not to compete
 //!   with it), never on a metered network or without one.
 //! - Signed URLs expire (`expiry.rs`): a stream past its freshness is
-//!   resolved and downloaded again when still wanted.
-//! - The bytes stay within the budget of `budget.rs`.
+//!   resolved again when still wanted; the bytes on disk stay valid.
+//! - The bytes stay within the budgets of `diskcache.rs` and `budget.rs`.
 
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
@@ -29,8 +31,9 @@ use crate::api::Api;
 use crate::runtime;
 use crate::tidal::Quality;
 
-/// Upcoming tracks prefetched.
-pub const PREFETCH_TRACKS: usize = 3;
+/// Upcoming tracks prefetched (their starts take a few MB each on disk;
+/// the API is asked once per track).
+pub const PREFETCH_TRACKS: usize = 5;
 /// Seconds of audio cached per upcoming track.
 pub const PREFETCH_SECONDS: f64 = 8.0;
 /// Prefetching waits until the current track has played this long.
@@ -271,7 +274,7 @@ impl Prefetcher {
             // seconds only matter again for a restart.
             let mut ranks = targets.clone();
             ranks.extend(wanted.current);
-            proxy.set_ranks(&ranks);
+            proxy.set_ranks(&ranks, wanted.current);
             proxy.collect(ROUTE_GRACE, &stale);
         }
 
@@ -323,25 +326,24 @@ impl Prefetcher {
             .slots
             .borrow()
             .get(&track_id)
-            .and_then(|slot| Some((slot.stream.route.clone()?, slot.stream.details.clone())));
+            .and_then(|slot| slot.stream.route.clone());
         let api = self.api.clone();
         let weak = self.weak_self.clone();
         let started = Instant::now();
         let handle = glib::spawn_future_local(async move {
             let result = runtime::spawn(async move {
-                let (stream, route, details) = match (quality, route) {
+                let (stream, route) = match (quality, route) {
                     (Some(quality), _) => {
                         let stream = api.stream_with_quality(track_id, quality).await?;
-                        let (route, details) = (stream.route.clone(), stream.details.clone());
-                        (Some(stream), route, details)
+                        let route = stream.route.clone();
+                        (Some(stream), route)
                     }
-                    (None, Some((route, details))) => (None, Some(route), details),
+                    (None, Some(route)) => (None, Some(route)),
                     (None, None) => anyhow::bail!("nothing to fill"),
                 };
                 let mut cached = proxy::Prefetched::default();
                 if let (Some(route), Some(proxy)) = (route, proxy::running()) {
-                    let rate = bytes_per_second(&details);
-                    match proxy.prefetch(&route.key, PREFETCH_SECONDS, rate).await {
+                    match proxy.prefetch(&route.key).await {
                         Ok(prefetched) => cached = prefetched,
                         Err(err) => log::debug!(
                             "prefetch: no audio cached for track {track_id}: {}",
@@ -373,14 +375,17 @@ impl Prefetcher {
         match result {
             Ok((stream, cached)) => {
                 let usage = proxy::running().map(|p| p.usage());
+                let disk = proxy::running().and_then(|p| p.disk_usage());
                 log::debug!(
-                    "prefetched track {track_id} ({}): {} KiB{} in {} ms; cache {:?} KiB of {:?}",
+                    "prefetched track {track_id} ({}): {} KiB downloaded{} in {} ms; memory {:?} KiB of {:?}; disk {:?} KiB of {:?}",
                     stream.as_ref().map_or("audio only", |s| s.format.as_str()),
                     cached.bytes >> 10,
                     if cached.complete { "" } else { " (partly)" },
                     started.elapsed().as_millis(),
                     usage.map(|(used, _)| used >> 10),
                     usage.map(|(_, budget)| budget >> 10),
+                    disk.map(|(used, _)| used >> 10),
+                    disk.map(|(_, cap)| cap >> 10),
                 );
                 let mut slots = self.slots.borrow_mut();
                 match stream {

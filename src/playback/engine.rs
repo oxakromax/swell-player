@@ -69,6 +69,7 @@ use super::expiry;
 use super::fade::{self, Ramp, Shape};
 use super::failure::{self, EngineError, Failure};
 use super::format::{FormatDetails, ReplayGain};
+use super::prefetch;
 use super::proxy;
 use super::transition;
 use crate::tidal::models::PlaybackInfo;
@@ -104,18 +105,31 @@ impl Stream {
         let mime = info.manifest_mime_type.to_ascii_lowercase();
         let now = expiry::now_unix();
 
+        // What the proxy keeps of the start, and the format it is kept
+        // under on disk (with the media's identity, which the proxy adds).
+        let start = |codecs: Option<&str>| {
+            let details = FormatDetails::new(&info, codecs);
+            proxy::Start {
+                seconds: prefetch::PREFETCH_SECONDS,
+                bytes_per_second: prefetch::bytes_per_second(&details),
+                format: Some(media_format(&info, codecs)),
+            }
+        };
+
         let (uri, codecs, lifetime, route) = if mime.starts_with("application/dash+xml") {
             let mpd = String::from_utf8_lossy(&manifest).into_owned();
             let codecs = dash_codecs(&mpd);
             let urls = proxy::dash_urls(&mpd);
             let lifetime = expiry::lifetime(urls.iter().map(String::as_str), now);
-            let routed = proxy::get().and_then(|proxy| match proxy.route_dash(track_id, &mpd) {
-                Ok(routed) => Some(routed),
-                Err(err) => {
-                    log::debug!("track {track_id} streams without the proxy: {err:#}");
-                    None
-                }
-            });
+            let start = start(codecs.as_deref());
+            let routed =
+                proxy::get().and_then(|proxy| match proxy.route_dash(track_id, &mpd, &start) {
+                    Ok(routed) => Some(routed),
+                    Err(err) => {
+                        log::debug!("track {track_id} streams without the proxy: {err:#}");
+                        None
+                    }
+                });
             let (mpd, route) = match routed {
                 Some((mpd, route)) => (mpd, Some(route)),
                 None => (mpd, None),
@@ -138,7 +152,8 @@ impl Stream {
                 .next()
                 .context("the manifest lists no URL")?;
             let lifetime = expiry::lifetime([url.as_str()], now);
-            match proxy::get().and_then(|proxy| proxy.route_progressive(track_id, &url)) {
+            let start = start(bts.codecs.as_deref());
+            match proxy::get().and_then(|proxy| proxy.route_progressive(track_id, &url, &start)) {
                 Some(route) => (route.uri.clone(), bts.codecs, lifetime, Some(route)),
                 None => (url, bts.codecs, lifetime, None),
             }
@@ -170,6 +185,19 @@ struct BtsManifest {
     urls: Vec<String>,
     #[serde(default)]
     codecs: Option<String>,
+}
+
+/// The format of a stream as the disk cache keys it: what TIDAL says of
+/// it, never a URL.
+fn media_format(info: &PlaybackInfo, codecs: Option<&str>) -> String {
+    format!(
+        "{}/{}/{}/{}/{}",
+        info.audio_quality.as_deref().unwrap_or("-"),
+        info.audio_mode.as_deref().unwrap_or("-"),
+        info.bit_depth.unwrap_or(0),
+        info.sample_rate.unwrap_or(0),
+        codecs.unwrap_or("-")
+    )
 }
 
 /// The first `codecs="…"` of an MPD.

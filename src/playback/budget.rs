@@ -1,8 +1,10 @@
 //! The memory budget for prefetched audio, as pure accounting.
 //!
-//! Prefetched bytes stay in memory (never on disk: nothing to clean up, no
-//! wear, nothing left behind after a crash). The budget is a fixed cap,
-//! lowered when the system is short of memory; it is never exceeded:
+//! With the audio cache on disk (`diskcache.rs`), memory holds only the
+//! next track's start and downloads in flight, within [`MAX_WITH_DISK`];
+//! without it, every prefetched start, within [`MAX_BUDGET`]. The budget is
+//! a fixed cap, lowered when the system is short of memory; it is never
+//! exceeded:
 //! space is reserved before bytes are downloaded, and when it does not fit,
 //! entries that are less wanted are evicted (tracks no longer upcoming
 //! first, then those furthest ahead, least recently used first among
@@ -13,6 +15,10 @@ use std::hash::Hash;
 
 /// The most prefetched audio kept, in bytes.
 pub const MAX_BUDGET: usize = 64 << 20;
+/// The most kept in memory when the starts are on disk: the next track's
+/// (a lossless or DASH start is at most [`super::proxy::MAX_ENTRY`]) and
+/// one download or start being kept as it streams.
+pub const MAX_WITH_DISK: usize = 32 << 20;
 /// Below this, prefetching audio is not worth it.
 const MIN_BUDGET: usize = 4 << 20;
 /// The budget is at most this fraction of the memory available.

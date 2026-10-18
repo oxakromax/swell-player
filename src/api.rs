@@ -251,8 +251,9 @@ impl Api {
     }
 
     /// Removes the tokens from the keyring, then (best effort) the user's
-    /// cached library and the downloaded artwork. Running work must be
-    /// stopped first; anything still in flight can no longer write.
+    /// cached library, the downloaded artwork and the audio cache. Running
+    /// work must be stopped first; anything still in flight can no longer
+    /// write.
     pub async fn sign_out(&self) -> Result<()> {
         let cleared = {
             // Waits for a refresh in flight to save its tokens, so they are
@@ -274,6 +275,10 @@ impl Api {
         }
         if let Err(err) = crate::covers::forget_disk_cache().await {
             log::warn!("could not clear the cover cache: {err:#}");
+        }
+        // The starts of tracks on disk tell what was listened to.
+        if let Err(err) = crate::playback::clear_audio_cache().await {
+            log::warn!("could not clear the audio cache: {err:#}");
         }
         cleared
     }

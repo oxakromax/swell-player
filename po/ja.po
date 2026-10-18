@@ -22,36 +22,36 @@ msgstr "{codec} {bits}ビット/{rate} kHz"
 msgid "Unknown format"
 msgstr "不明な形式"
 
-#: src/playback/mod.rs:1534
+#: src/playback/mod.rs:1555
 msgid "Skipped a track that is not available"
 msgid_plural "Skipped {n} tracks that are not available"
 msgstr[0] "利用できない曲を{n}曲スキップしました"
 
-#: src/playback/mod.rs:1564
+#: src/playback/mod.rs:1585
 msgid "Playback needs GStreamer's playbin3"
 msgstr "再生には GStreamer の playbin3 が必要です"
 
-#: src/playback/mod.rs:1665
+#: src/playback/mod.rs:1686
 msgid "The TIDAL session has expired: sign in again to play"
 msgstr ""
 "TIDAL のセッションの有効期限が切れました。再生するには、もう一度ログインして"
 "ください"
 
-#: src/playback/mod.rs:1690
+#: src/playback/mod.rs:1711
 msgid "Connection lost — retrying"
 msgstr "接続が切れました — 再試行しています"
 
-#: src/playback/mod.rs:1758
+#: src/playback/mod.rs:1779
 msgid "Could not play “{title}”. Playback stopped after {n} tracks failed"
 msgstr ""
 "「{title}」を再生できませんでした。{n}曲の再生に失敗したため、再生を停止しま"
 "した"
 
-#: src/playback/mod.rs:1764
+#: src/playback/mod.rs:1785
 msgid "Could not play “{title}”, skipped"
 msgstr "「{title}」を再生できないため、スキップしました"
 
-#: src/playback/mod.rs:1959
+#: src/playback/mod.rs:1980
 msgid "Playback failed: {error}"
 msgstr "再生に失敗しました：{error}"
 
@@ -430,11 +430,11 @@ msgstr "ストレージ"
 
 #: src/ui/dialogs/preferences.rs:311
 msgid ""
-"Downloaded artwork and saved answers from TIDAL, so pages open instantly and "
-"work offline."
+"Downloaded artwork, the first seconds of tracks and saved answers from "
+"TIDAL, so pages open instantly and work offline, and tracks start at once."
 msgstr ""
-"ダウンロードしたアートワークと TIDAL から保存した応答です。ページがすばやく開"
-"き、オフラインでも使えます。"
+"ダウンロードしたアートワーク、曲の冒頭の数秒、TIDAL から保存した応答です。"
+"ページがすばやく開き、オフラインでも使え、曲がすぐに再生されます。"
 
 #: src/ui/dialogs/preferences.rs:316
 msgid "Cover Cache"
@@ -476,73 +476,95 @@ msgstr "ライブラリキャッシュを消去しました"
 msgid "Couldn’t clear the Library Cache"
 msgstr "ライブラリキャッシュを消去できませんでした"
 
-#: src/ui/dialogs/preferences.rs:399
+#: src/ui/dialogs/preferences.rs:374
+msgid "Audio Cache"
+msgstr "オーディオキャッシュ"
+
+#: src/ui/dialogs/preferences.rs:375
+msgid "Clear the Audio Cache?"
+msgstr "オーディオキャッシュを消去しますか？"
+
+#: src/ui/dialogs/preferences.rs:376
+msgid ""
+"The first seconds of upcoming tracks are downloaded again as you listen."
+msgstr ""
+"次に再生する曲の冒頭の数秒は、聴いているあいだに再びダウンロードされます。"
+
+#: src/ui/dialogs/preferences.rs:379
+msgid "Audio Cache cleared"
+msgstr "オーディオキャッシュを消去しました"
+
+#: src/ui/dialogs/preferences.rs:380
+msgid "Couldn’t clear the Audio Cache"
+msgstr "オーディオキャッシュを消去できませんでした"
+
+#: src/ui/dialogs/preferences.rs:414
 msgid "Calculating…"
 msgstr "計算中…"
 
-#: src/ui/dialogs/preferences.rs:402 src/ui/dialogs/preferences.rs:448
+#: src/ui/dialogs/preferences.rs:417 src/ui/dialogs/preferences.rs:463
 msgid "_Clear"
 msgstr "消去(_E)"
 
-#: src/ui/dialogs/preferences.rs:448 src/ui/window.rs:413
+#: src/ui/dialogs/preferences.rs:463 src/ui/window.rs:413
 msgid "_Cancel"
 msgstr "キャンセル(_C)"
 
-#: src/ui/dialogs/preferences.rs:503
+#: src/ui/dialogs/preferences.rs:518
 msgid "Blocked Artists"
 msgstr "ブロックしたアーティスト"
 
-#: src/ui/dialogs/preferences.rs:504
+#: src/ui/dialogs/preferences.rs:519
 msgid "Loading…"
 msgstr "読み込み中…"
 
-#: src/ui/dialogs/preferences.rs:520
+#: src/ui/dialogs/preferences.rs:535
 msgid "Couldn’t load blocked artists."
 msgstr "ブロックしたアーティストを読み込めませんでした。"
 
-#: src/ui/dialogs/preferences.rs:525
+#: src/ui/dialogs/preferences.rs:540
 msgid "Nothing blocked. Blocked artists are skipped in radios and mixes."
 msgstr ""
 "ブロックしているアーティストはいません。ブロックしたアーティストは、ラジオや"
 "ミックスでスキップされます。"
 
-#: src/ui/dialogs/preferences.rs:527
+#: src/ui/dialogs/preferences.rs:542
 msgid "Skipped in radios and mixes."
 msgstr "ラジオやミックスでスキップされます。"
 
-#: src/ui/dialogs/preferences.rs:536
+#: src/ui/dialogs/preferences.rs:551
 msgid "Unblock"
 msgstr "ブロック解除"
 
-#: src/ui/dialogs/preferences.rs:569 src/ui/menus.rs:870
+#: src/ui/dialogs/preferences.rs:584 src/ui/menus.rs:870
 msgid "Unblocked {name}"
 msgstr "{name} のブロックを解除しました"
 
-#: src/ui/dialogs/preferences.rs:579
+#: src/ui/dialogs/preferences.rs:594
 msgid "Couldn’t unblock the artist"
 msgstr "アーティストのブロックを解除できませんでした"
 
-#: src/ui/dialogs/preferences.rs:594
+#: src/ui/dialogs/preferences.rs:609
 msgid "Signed in with the browser"
 msgstr "ブラウザーでログイン済み"
 
-#: src/ui/dialogs/preferences.rs:595
+#: src/ui/dialogs/preferences.rs:610
 msgid "Up to Hi-Res Lossless"
 msgstr "Hi-Res Lossless まで再生できます"
 
-#: src/ui/dialogs/preferences.rs:598
+#: src/ui/dialogs/preferences.rs:613
 msgid "Signed in with a device code"
 msgstr "デバイスコードでログイン済み"
 
-#: src/ui/dialogs/preferences.rs:599
+#: src/ui/dialogs/preferences.rs:614
 msgid "Up to Lossless (16-bit/44.1 kHz)"
 msgstr "Lossless (16ビット/44.1 kHz) まで再生できます"
 
-#: src/ui/dialogs/preferences.rs:627
+#: src/ui/dialogs/preferences.rs:642
 msgid "Sign _Out…"
 msgstr "ログアウト(_O)…"
 
-#: src/ui/dialogs/preferences.rs:648
+#: src/ui/dialogs/preferences.rs:663
 msgid "Account"
 msgstr "アカウント"
 
@@ -2202,4 +2224,3 @@ msgstr "ライブラリを読み込めませんでした"
 #: src/ui/window.rs:770
 msgid "Couldn't open the track"
 msgstr "曲を開けませんでした"
-
