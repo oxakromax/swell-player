@@ -1,0 +1,23 @@
+{
+  "A real queue, shuffle and repeat, synced lyrics and a sleep timer": "本格的なキュー、シャッフルとリピート、同期歌詞、スリープタイマー",
+  "Adaptive layout, from phone-sized windows to wide screens, with full keyboard control": "スマートフォンサイズの小さなウィンドウからワイド画面まで対応するアダプティブレイアウトと、キーボードだけで完全に操作できる設計",
+  "An album page": "アルバムのページ",
+  "Create and edit playlists, with drag and drop and undo": "ドラッグ＆ドロップと元に戻す操作に対応した、プレイリストの作成と編集",
+  "English and Spanish": "英語とスペイン語",
+  "FLAC up to 24-bit/192 kHz, gapless playback and optional ReplayGain normalisation": "最大 24 ビット/192 kHz の FLAC、ギャップレス再生、オプションの ReplayGain 正規化",
+  "First release.": "初回リリース。",
+  "Hi-Res Lossless playback, bit-perfect to PipeWire, with gapless playback and ReplayGain": "Hi-Res Lossless の再生。PipeWire までビットパーフェクトで、ギャップレス再生と ReplayGain に対応",
+  "Home, Explore and search as you type, with album, artist, playlist and mix pages": "ホーム、探索、入力しながらの検索に対応し、アルバム、アーティスト、プレイリスト、ミックスのページを備えています",
+  "Home, Explore, search, and album, artist, playlist and mix pages": "ホーム、探索、検索、アルバム・アーティスト・プレイリスト・ミックスのページ",
+  "Home, your personalised TIDAL feed": "ホーム：パーソナライズされた TIDAL フィード",
+  "Listen to TIDAL in a native app": "ネイティブアプリで TIDAL を聴く",
+  "Media keys and desktop widgets through MPRIS": "MPRIS によるメディアキーとデスクトップウィジェットのサポート",
+  "Music Player": "ミュージックプレーヤー",
+  "Now playing, with the queue": "再生中の画面とキュー",
+  "Swell is a fast, lightweight TIDAL client built with GTK and libadwaita. It plays up to Hi-Res Lossless, bit-perfect, keeps your collection, playlists and mixes one click away, and follows your desktop’s light or dark style and accent colour.": "Swell は、GTK と libadwaita で作られた、高速で軽量な TIDAL クライアントです。Hi-Res Lossless までビットパーフェクトで再生でき、コレクション、プレイリスト、ミックスにワンクリックでアクセスできます。デスクトップのライトスタイル／ダークスタイルとアクセントカラーにも従います。",
+  "Swell is not affiliated with, endorsed by or supported by TIDAL. A paid TIDAL subscription is needed.": "Swell は TIDAL と提携しておらず、TIDAL による承認やサポートも受けていません。TIDAL の有料サブスクリプションが必要です。",
+  "The narrow layout, for small windows and phones": "小さなウィンドウやスマートフォン向けの、幅の狭いレイアウト",
+  "Your collection from a local cache, playlist editing, queue, lyrics and MPRIS": "ローカルキャッシュからのコレクション、プレイリストの編集、キュー、歌詞、MPRIS",
+  "Your favourite tracks, albums, artists, playlists and mixes, opened instantly from a local cache": "お気に入りの曲、アルバム、アーティスト、プレイリスト、ミックスを、ローカルキャッシュからすぐに開けます",
+  "music;tidal;streaming;hi-res;lossless;flac;player;audio;": "音楽;ミュージック;tidal;ストリーミング;ハイレゾ;hi-res;ロスレス;lossless;flac;プレーヤー;プレイヤー;オーディオ;音声;"
+}

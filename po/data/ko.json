@@ -1,0 +1,23 @@
+{
+  "A real queue, shuffle and repeat, synced lyrics and a sleep timer": "제대로 된 대기열, 셔플과 반복, 동기화 가사, 수면 타이머",
+  "Adaptive layout, from phone-sized windows to wide screens, with full keyboard control": "휴대전화 크기의 창부터 와이드 화면까지 대응하는 적응형 레이아웃과 완전한 키보드 조작",
+  "An album page": "앨범 페이지",
+  "Create and edit playlists, with drag and drop and undo": "끌어서 놓기와 실행 취소를 지원하는 재생 목록 만들기 및 편집",
+  "English and Spanish": "영어와 스페인어",
+  "FLAC up to 24-bit/192 kHz, gapless playback and optional ReplayGain normalisation": "최대 24비트/192 kHz의 FLAC, 끊김 없는 재생, 선택 사항인 ReplayGain 정규화",
+  "First release.": "첫 번째 릴리스.",
+  "Hi-Res Lossless playback, bit-perfect to PipeWire, with gapless playback and ReplayGain": "Hi-Res Lossless 재생, PipeWire까지 비트퍼펙트, 끊김 없는 재생 및 ReplayGain 지원",
+  "Home, Explore and search as you type, with album, artist, playlist and mix pages": "홈, 둘러보기, 입력하는 즉시 표시되는 검색, 그리고 앨범, 아티스트, 재생 목록, 믹스 페이지",
+  "Home, Explore, search, and album, artist, playlist and mix pages": "홈, 둘러보기, 검색, 앨범·아티스트·재생 목록·믹스 페이지",
+  "Home, your personalised TIDAL feed": "홈, 맞춤형 TIDAL 피드",
+  "Listen to TIDAL in a native app": "네이티브 앱으로 TIDAL 듣기",
+  "Media keys and desktop widgets through MPRIS": "MPRIS를 통한 미디어 키와 데스크톱 위젯 지원",
+  "Music Player": "음악 플레이어",
+  "Now playing, with the queue": "대기열과 함께 보는 지금 재생 중 화면",
+  "Swell is a fast, lightweight TIDAL client built with GTK and libadwaita. It plays up to Hi-Res Lossless, bit-perfect, keeps your collection, playlists and mixes one click away, and follows your desktop’s light or dark style and accent colour.": "Swell은 GTK와 libadwaita로 만든 빠르고 가벼운 TIDAL 클라이언트입니다. Hi-Res Lossless까지 비트퍼펙트로 재생하고, 컬렉션과 재생 목록, 믹스를 한 번의 클릭으로 열 수 있으며, 데스크톱의 밝은 스타일 또는 어두운 스타일과 강조 색상을 따릅니다.",
+  "Swell is not affiliated with, endorsed by or supported by TIDAL. A paid TIDAL subscription is needed.": "Swell은 TIDAL과 제휴 관계가 없으며 TIDAL의 승인이나 지원을 받지 않았습니다. TIDAL 유료 구독이 필요합니다.",
+  "The narrow layout, for small windows and phones": "작은 창과 휴대전화를 위한 좁은 레이아웃",
+  "Your collection from a local cache, playlist editing, queue, lyrics and MPRIS": "로컬 캐시에서 불러오는 컬렉션, 재생 목록 편집, 대기열, 가사, MPRIS",
+  "Your favourite tracks, albums, artists, playlists and mixes, opened instantly from a local cache": "즐겨찾는 곡, 앨범, 아티스트, 재생 목록, 믹스를 로컬 캐시에서 즉시 열기",
+  "music;tidal;streaming;hi-res;lossless;flac;player;audio;": "음악;뮤직;tidal;스트리밍;하이레스;hi-res;무손실;lossless;flac;플레이어;오디오;"
+}
