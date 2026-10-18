@@ -32,7 +32,7 @@ optdepends=(
   'xdg-desktop-portal: open links in the browser and keep the system awake while playing'
 )
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('974b617147d5bdc192f63f5eddd71ec51f568be205abea3a49b063b7b9a0e11d')
+sha256sums=('a7ada84a2b1a7195a55f27e7abc3d18ce7a1278a945d9a0202d8861e00bb66b8')
 
 prepare() {
   cd "$pkgname-$pkgver"

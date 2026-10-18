@@ -25,6 +25,6 @@ pkgbase = swell-player
 	options = !lto
 	options = !debug
 	source = swell-player-1.0.0.tar.gz::https://github.com/oxakromax/swell-player/archive/refs/tags/v1.0.0.tar.gz
-	sha256sums = 974b617147d5bdc192f63f5eddd71ec51f568be205abea3a49b063b7b9a0e11d
+	sha256sums = a7ada84a2b1a7195a55f27e7abc3d18ce7a1278a945d9a0202d8861e00bb66b8
 
 pkgname = swell-player
