@@ -71,7 +71,7 @@ strip = true
 # then `cargo deb --no-build` / `cargo generate-rpm`. See packaging/README.md.
 
 [package.metadata.deb]
-maintainer = "oxakromax <oxakromax@users.noreply.github.com>"
+maintainer = "oxakromax <oxakromax@hotmail.com>"
 copyright = "2026 oxakromax"
 license-file = ["COPYING", "0"]
 section = "sound"

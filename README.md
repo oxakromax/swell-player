@@ -88,7 +88,7 @@ desktops, using a fraction of the memory of other clients
 |---|---|
 | ![Home feed with shortcuts, mixes and recently played](docs/screenshots/home.png) | ![Search results for "yoasobi" with a top hit, tracks and artists](docs/screenshots/search.png) |
 | **Synced lyrics** | **Light style** |
-| ![Now-playing panel showing synced lyrics](docs/screenshots/now-playing.png) | ![The album page in the light style](docs/screenshots/light.png) |
+| ![Now-playing panel showing the play queue](docs/screenshots/now-playing.png) | ![The album page in the light style](docs/screenshots/light.png) |
 
 <p align="center">
   <img src="docs/screenshots/narrow.png" width="300" alt="Narrow layout with the mini player and the bottom navigation bar">
