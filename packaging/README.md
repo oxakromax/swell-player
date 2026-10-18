@@ -116,7 +116,8 @@ A single-file bundle to share: build with `--repo=repo` and then
 
 **Whenever `Cargo.lock` changes**, run `packaging/flatpak/update-cargo-sources.sh`
 (needs `uv`, or python3 with aiohttp, PyYAML and tomlkit) and commit the new
-`cargo-sources.json`.
+`cargo-sources.json`. That includes Dependabot's updates: CI runs
+`update-cargo-sources.sh --check` (offline) and fails while the two differ.
 
 Permissions are kept to display, GPU, network, audio (PulseAudio protocol,
 which PipeWire serves) and the MPRIS bus name; the keyring (Secret portal),
@@ -222,3 +223,33 @@ built with.
 
 Install with `sudo apt install ./swell-player_*.deb` or
 `sudo dnf install ./swell-player-*.rpm`, so the dependencies are pulled in.
+
+## Windows and macOS
+
+The release workflow builds both; the scripts can also run by hand on those
+systems.
+
+- **Windows** (MSYS2 UCRT64): first
+  `packaging/windows/make-ico.sh data/icons/scalable/apps/io.github.oxakromax.SwellPlayer.svg packaging/windows/swell.ico`,
+  so that `build.rs` embeds the icon in `swell-player.exe`; then
+  `cargo build --release --locked`, `packaging/windows/bundle.sh` (a
+  self-contained folder with the GTK, GStreamer and GLib DLLs, plugins and
+  translations) and Inno Setup on `packaging/windows/swell.iss`.
+- **macOS** (Homebrew): `packaging/macos/bundle.sh` makes `Swell.app` and the
+  `.dmg`, signed ad hoc. The Intel disk image is best effort: when that job
+  fails, the release is published without it.
+
+Both bundles include `BUNDLED-PACKAGES.txt` (each MSYS2 or Homebrew package
+with its version, licence and source) and those packages' licence files. Its
+source offer commits the maintainer to provide the sources on request; keep
+the wording in the bundle scripts in line with what you can honour.
+
+## Licence notices
+
+`packaging/release.sh licenses` writes `target/release/THIRD-PARTY-LICENSES.txt`,
+the licences of every Rust crate in the binary (needs
+`cargo install cargo-about --version 0.9.2 --locked --features cli`). The
+tarball, `.deb`, `.rpm` and the Windows and macOS bundles ship it, and each
+release has it as an asset. Accepted licences are listed in `about.toml`: a
+dependency under any other licence fails CI until it is reviewed and added
+there.

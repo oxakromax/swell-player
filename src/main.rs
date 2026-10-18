@@ -183,12 +183,17 @@ mod tests {
     fn spawn_args_match_the_portal_signature() {
         let args = spawn_args("/".as_ref(), "/app/bin/swell-player".as_ref());
         assert_eq!(args.type_().as_str(), "(ayaaya{uh}a{ss}ua{sv})");
-        assert_eq!(args.child_value(1).child_value(0).data(), b"/app/bin/swell-player\0");
+        assert_eq!(
+            args.child_value(1).child_value(0).data(),
+            b"/app/bin/swell-player\0"
+        );
     }
 }
 
 /// Style sheet, icons, app actions and accelerators.
 fn startup(app: &adw::Application) {
+    #[cfg(target_os = "macos")]
+    bundle::bind_translations();
     if let Some(display) = gdk::Display::default() {
         let provider = gtk::CssProvider::new();
         provider.load_from_string(include_str!("../data/style.css"));

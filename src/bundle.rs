@@ -44,21 +44,49 @@ pub fn setup() {
         }
         // SAFETY: as in `set_default`.
         unsafe { std::env::set_var("PATH", path) };
-        set_default("GST_PLUGIN_SYSTEM_PATH_1_0", prefix.join("lib").join("gstreamer-1.0"));
+        set_default(
+            "GST_PLUGIN_SYSTEM_PATH_1_0",
+            prefix.join("lib").join("gstreamer-1.0"),
+        );
         set_default(
             "GST_PLUGIN_SCANNER_1_0",
-            prefix.join("libexec").join("gstreamer-1.0").join("gst-plugin-scanner.exe"),
+            prefix
+                .join("libexec")
+                .join("gstreamer-1.0")
+                .join("gst-plugin-scanner.exe"),
         );
-        set_default("GIO_MODULE_DIR", prefix.join("lib").join("gio").join("modules"));
+        set_default(
+            "GIO_MODULE_DIR",
+            prefix.join("lib").join("gio").join("modules"),
+        );
     } else {
         // Contents/MacOS/Swell (the launcher script) sets these, plus the dyld
         // and gdk-pixbuf ones; repeated for a direct start of the binary.
-        set_default("GST_PLUGIN_SYSTEM_PATH_1_0", prefix.join("PlugIns").join("gstreamer-1.0"));
-        set_default("GST_PLUGIN_SCANNER_1_0", prefix.join("MacOS").join("gst-plugin-scanner"));
+        set_default(
+            "GST_PLUGIN_SYSTEM_PATH_1_0",
+            prefix.join("PlugIns").join("gstreamer-1.0"),
+        );
+        set_default(
+            "GST_PLUGIN_SCANNER_1_0",
+            prefix.join("MacOS").join("gst-plugin-scanner"),
+        );
         set_default("GIO_MODULE_DIR", prefix.join("PlugIns").join("gio-modules"));
         let share = prefix.join("Resources").join("share");
-        set_default("GSETTINGS_SCHEMA_DIR", share.join("glib-2.0").join("schemas"));
+        set_default(
+            "GSETTINGS_SCHEMA_DIR",
+            share.join("glib-2.0").join("schemas"),
+        );
         set_default("XDG_DATA_DIRS", share);
+        // Started from Finder there is no LANG, so the C library's locale is
+        // "C" and libintl ignores LANGUAGE: GTK's and libadwaita's strings
+        // would stay English. Take the system's language instead.
+        if ["LC_ALL", "LC_MESSAGES", "LANG"]
+            .iter()
+            .all(|key| std::env::var_os(key).is_none())
+            && let Some(locale) = sys_locale::get_locale().as_deref().and_then(posix_locale)
+        {
+            set_default("LANG", locale);
+        }
     }
     // A registry of our own: another GStreamer on the machine would make
     // every start rescan the plugins.
@@ -75,10 +103,70 @@ pub fn setup() {
     let ca = if cfg!(windows) {
         prefix.join("etc").join("ssl").join("cert.pem")
     } else {
-        prefix.join("Resources").join("etc").join("ssl").join("cert.pem")
+        prefix
+            .join("Resources")
+            .join("etc")
+            .join("ssl")
+            .join("cert.pem")
     };
     match gio::TlsFileDatabase::new(&ca) {
         Ok(database) => gio::TlsBackend::default().set_default_database(Some(&database)),
-        Err(err) => eprintln!("bundled CA certificates not loaded ({}): {err}", ca.display()),
+        Err(err) => eprintln!(
+            "bundled CA certificates not loaded ({}): {err}",
+            ca.display()
+        ),
+    }
+}
+
+/// `es_CL.UTF-8` for `es-CL` (or `es-Latn-CL`); `None` without a region,
+/// since macOS has no `es.UTF-8` locale.
+fn posix_locale(tag: &str) -> Option<String> {
+    let mut parts = tag.split(['-', '_']);
+    let language = parts.next().filter(|language| !language.is_empty())?;
+    let region = parts.rfind(|part| part.len() == 2)?;
+    Some(format!("{language}_{}.UTF-8", region.to_ascii_uppercase()))
+}
+
+/// macOS: GTK and libadwaita look for their translations at Homebrew's
+/// path on the build machine; points them at the bundle's copies. Call once
+/// they are initialised (from the application's `startup`), since their
+/// own initialisation binds the domains again.
+#[cfg(target_os = "macos")]
+pub fn bind_translations() {
+    use std::ffi::{CString, c_char};
+    use std::os::unix::ffi::OsStrExt;
+
+    // Homebrew's libintl, which GLib and GTK link to; its `bindtextdomain`
+    // is exported under this name.
+    #[link(name = "intl")]
+    unsafe extern "C" {
+        fn libintl_bindtextdomain(domain: *const c_char, dir: *const c_char) -> *mut c_char;
+    }
+    let Some(prefix) = prefix() else {
+        return;
+    };
+    let locale = prefix.join("Resources").join("share").join("locale");
+    let Ok(dir) = CString::new(locale.as_os_str().as_bytes()) else {
+        return;
+    };
+    for domain in [c"gtk40", c"libadwaita"] {
+        // Safety: both are NUL-terminated strings that outlive the call,
+        // which copies them; this runs on the main thread.
+        unsafe { libintl_bindtextdomain(domain.as_ptr(), dir.as_ptr()) };
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn posix_locales() {
+        assert_eq!(super::posix_locale("es-CL").as_deref(), Some("es_CL.UTF-8"));
+        assert_eq!(
+            super::posix_locale("zh-Hans-CN").as_deref(),
+            Some("zh_CN.UTF-8")
+        );
+        assert_eq!(super::posix_locale("en_us").as_deref(), Some("en_US.UTF-8"));
+        assert_eq!(super::posix_locale("es"), None);
+        assert_eq!(super::posix_locale("es-419"), None);
     }
 }

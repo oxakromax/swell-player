@@ -140,8 +140,7 @@ fn alive(pid: u32, _age: Option<Duration>) -> bool {
     // Signal 0 only checks: it fails with EPERM for someone else's process
     // (alive too) and ESRCH for none.
     // Safety: `kill` with signal 0 sends nothing and has no preconditions.
-    (unsafe { kill(pid, 0) == 0 })
-        || std::io::Error::last_os_error().raw_os_error() != Some(ESRCH)
+    (unsafe { kill(pid, 0) == 0 }) || std::io::Error::last_os_error().raw_os_error() != Some(ESRCH)
 }
 
 /// `ESRCH` ("no such process"): 3 on macOS and the BSDs.
@@ -205,10 +204,7 @@ mod tests {
     #[test]
     fn falls_back_to_the_cache_without_a_runtime_dir() {
         let runtime = std::env::temp_dir().join("runtime");
-        assert_eq!(
-            base_in(Some(runtime.clone())),
-            runtime.join("swell-player")
-        );
+        assert_eq!(base_in(Some(runtime.clone())), runtime.join("swell-player"));
         let fallback = glib::user_cache_dir().join("swell-player-run");
         assert_eq!(base_in(None), fallback);
         assert_eq!(base_in(Some(PathBuf::new())), fallback);

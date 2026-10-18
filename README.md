@@ -150,7 +150,8 @@ right-click (or Control-click) it and choose **Open**; on macOS 15 and
 later, open it once, then allow it in **System Settings → Privacy &
 Security → Open Anyway**. Since each release is signed ad hoc, macOS may
 ask again for access to Swell's Keychain item after an update: choose
-**Always Allow**. `tidal://` links don't open Swell on macOS yet.
+**Always Allow**. `tidal://` links don't open Swell on macOS yet, and the
+Intel (x86_64) disk image is best effort, so a release may lack it.
 
 Windows and macOS builds are newer than the Linux one: MPRIS and the
 bit-perfect notes below are Linux-specific.
