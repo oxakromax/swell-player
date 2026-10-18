@@ -1,12 +1,11 @@
 // Reference for src/bundle.rs (not compiled from here): the environment a
 // bundled Windows or macOS run needs. Use from main.rs:
 //
-//     #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 //     #[cfg(any(windows, target_os = "macos"))]
 //     mod bundle;
 //     fn main() -> glib::ExitCode {
 //         #[cfg(any(windows, target_os = "macos"))]
-//         bundle::setup(); // first: before threads, GStreamer and GTK
+//         bundle::setup(); // first: before timing::start, i18n, gst::init
 //         ...
 //
 // Checked with `cargo clippy -- -D warnings` (with the cfg removed, on Linux).

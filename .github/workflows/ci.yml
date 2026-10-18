@@ -80,7 +80,7 @@ jobs:
             libglib2.0-dev-bin libsqlite3-dev
           # Debian's rustc is older than Swell's rust-version.
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs |
-            sh -s -- -y --profile minimal --default-toolchain stable
+            sh -s -- -y --profile minimal --default-toolchain stable --component clippy
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
 
       - uses: actions/checkout@v5
@@ -97,14 +97,17 @@ jobs:
             linux-trixie-${{ hashFiles('Cargo.lock') }}-
             linux-trixie-
 
+      - name: Versions
+        run: pkg-config --modversion gtk4 libadwaita-1 gstreamer-1.0
+
+      - name: clippy without default features
+        run: cargo clippy --locked --all-targets --no-default-features -- -D warnings
+
+      - name: Tests without default features
+        run: cargo test --locked --no-default-features
+
       - name: Build without default features
-        run: |
-          pkg-config --modversion gtk4 libadwaita-1
-          if cargo metadata --no-deps --format-version 1 | grep -q '"adw-1-8"'; then
-            cargo build --locked --no-default-features
-          else
-            echo "::warning::Cargo.toml has no adw-1-8 feature yet; skipping the GTK 4.18 build"
-          fi
+        run: cargo build --locked --no-default-features
 
   windows:
     name: Windows (MSYS2 UCRT64) – build, test
@@ -128,7 +131,7 @@ jobs:
           update: true
           install: >-
             mingw-w64-ucrt-x86_64-rust
-            mingw-w64-ucrt-x86_64-cc
+            mingw-w64-ucrt-x86_64-gcc
             mingw-w64-ucrt-x86_64-cmake
             mingw-w64-ucrt-x86_64-nasm
             mingw-w64-ucrt-x86_64-pkgconf
@@ -175,7 +178,7 @@ jobs:
           HOMEBREW_NO_AUTO_UPDATE: "1"
           HOMEBREW_NO_INSTALL_CLEANUP: "1"
         run: |
-          brew install gtk4 libadwaita gstreamer pkgconf
+          brew install gtk4 libadwaita gstreamer pkgconf sqlite
           rustup toolchain install stable --profile minimal
           rustup default stable
           rustc -vV

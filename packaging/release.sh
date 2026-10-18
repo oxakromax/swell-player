@@ -4,18 +4,21 @@
 #
 #   packaging/release.sh version            prints the version in Cargo.toml
 #   packaging/release.sh check-tag TAG      fails unless TAG is v<version>
-#   packaging/release.sh build              cargo build --release --locked
+#   packaging/release.sh build [ARGS...]    cargo build --release --locked ARGS
+#                                           (e.g. --no-default-features)
 #   packaging/release.sh tarball [OUTDIR]   swell-player-<v>-linux-<arch>.tar.gz
 #   packaging/release.sh deb [OUTDIR]       .deb with cargo-deb (metadata in Cargo.toml)
 #   packaging/release.sh rpm [OUTDIR]       .rpm with cargo-generate-rpm (metadata in Cargo.toml)
 #   packaging/release.sh checksums DIR      writes DIR/SHA256SUMS
 #
 # OUTDIR defaults to dist/. The tarball, .deb and .rpm all package the
-# binary from target/release, so run `build` first.
+# binary from target/release, so run `build` first; the .deb and the tarball
+# of a release come from a `--no-default-features` build (GTK 4.18 and
+# libadwaita 1.7 are enough) on Debian 13, so they run on Debian 13,
+# Ubuntu 25.04 and anything newer.
 set -euo pipefail
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-app_id=io.github.oxakromax.SwellPlayer
 bin_name=swell-player
 
 die() {
@@ -49,7 +52,7 @@ cmd_check_tag() {
 }
 
 cmd_build() {
-    cargo build --release --locked --manifest-path "$root/Cargo.toml"
+    cargo build --release --locked --manifest-path "$root/Cargo.toml" "$@"
 }
 
 # A relocatable tree (bin/, share/) plus install.sh, which copies it into a
@@ -62,15 +65,8 @@ cmd_tarball() {
     stage=$(mktemp -d)
 
     local dir=$stage/$name
-    install -Dm755 "$(binary)" "$dir/bin/$bin_name"
-    install -Dm644 "$root/data/$app_id.desktop" "$dir/share/applications/$app_id.desktop"
-    install -Dm644 "$root/data/$app_id.metainfo.xml" "$dir/share/metainfo/$app_id.metainfo.xml"
-    install -Dm644 "$root/data/icons/scalable/apps/$app_id.svg" \
-        "$dir/share/icons/hicolor/scalable/apps/$app_id.svg"
-    if [[ -f $root/data/icons/symbolic/apps/$app_id-symbolic.svg ]]; then
-        install -Dm644 "$root/data/icons/symbolic/apps/$app_id-symbolic.svg" \
-            "$dir/share/icons/hicolor/symbolic/apps/$app_id-symbolic.svg"
-    fi
+    # The files `make install` puts in place, under bin/ and share/.
+    make -C "$root" --no-print-directory install DESTDIR="$dir" PREFIX= >/dev/null
     install -Dm644 "$root/README.md" "$dir/README.md"
     install -Dm644 "$root/COPYING" "$dir/COPYING"
     write_install_script >"$dir/install.sh"
@@ -91,9 +87,10 @@ write_install_script() {
 #   ./install.sh --prefix DIR    into DIR
 #   add --uninstall to remove what these commands installed
 #
-# Swell needs GTK >= 4.20, libadwaita >= 1.8 and GStreamer with the "base"
-# and "good" plugin sets (gst-plugins-good provides the DASH demuxer used
-# for Hi-Res streams). Install them with your distribution's packages.
+# Swell needs GTK >= 4.18, libadwaita >= 1.7, glibc >= 2.41 (Debian 13,
+# Ubuntu 25.04 or newer) and GStreamer with the "base" and "good" plugin
+# sets (gst-plugins-good has the DASH demuxer used for Hi-Res streams).
+# Install them with your distribution's packages.
 set -eu
 
 here=$(cd "$(dirname "$0")" && pwd)
@@ -182,10 +179,10 @@ command=${1:-}
 case $command in
     version) version ;;
     check-tag) cmd_check_tag "$@" ;;
-    build) cmd_build ;;
+    build) cmd_build "$@" ;;
     tarball) cmd_tarball "$@" ;;
     deb) cmd_deb "$@" ;;
     rpm) cmd_rpm "$@" ;;
     checksums) cmd_checksums "$@" ;;
-    *) sed -n '2,13p' "${BASH_SOURCE[0]}" >&2; exit 2 ;;
+    *) sed -n '2,18p' "${BASH_SOURCE[0]}" >&2; exit 2 ;;
 esac

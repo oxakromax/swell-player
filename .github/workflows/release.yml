@@ -36,13 +36,14 @@ jobs:
             packaging/release.sh check-tag "$GITHUB_REF_NAME"
           fi
 
-  # Ubuntu 26.04 LTS: GTK 4.22, libadwaita 1.9, glibc 2.43. The tarball's
-  # binary is the .deb's, so it needs a distribution at least as new.
+  # Debian 13 (GTK 4.18, libadwaita 1.7, glibc 2.41) without the default
+  # `adw-1-8` feature: the .deb, and the tarball made from the same binary,
+  # then run on Debian 13, Ubuntu 25.04 and anything newer.
   linux-deb:
-    name: Linux – tarball and .deb
+    name: Linux – tarball and .deb (GTK 4.18 build)
     needs: meta
     runs-on: ubuntu-latest
-    container: ubuntu:26.04
+    container: debian:trixie
     defaults:
       run:
         shell: bash
@@ -51,7 +52,7 @@ jobs:
         run: |
           apt-get update
           DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-            build-essential ca-certificates curl git pkgconf \
+            build-essential ca-certificates curl dpkg-dev git pkgconf \
             libgtk-4-dev libadwaita-1-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
             libglib2.0-dev-bin libsqlite3-dev
           # Distribution compilers lag behind what the dependencies need.
@@ -64,7 +65,7 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: Build
-        run: packaging/release.sh build
+        run: packaging/release.sh build --no-default-features
 
       - name: Tarball
         run: packaging/release.sh tarball dist
@@ -160,7 +161,7 @@ jobs:
           install: >-
             zip
             mingw-w64-ucrt-x86_64-rust
-            mingw-w64-ucrt-x86_64-cc
+            mingw-w64-ucrt-x86_64-gcc
             mingw-w64-ucrt-x86_64-cmake
             mingw-w64-ucrt-x86_64-nasm
             mingw-w64-ucrt-x86_64-pkgconf
@@ -231,7 +232,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          brew install gtk4 libadwaita gstreamer pkgconf librsvg glib-networking libsoup \
+          brew install gtk4 libadwaita gstreamer pkgconf sqlite librsvg glib-networking libsoup \
             adwaita-icon-theme hicolor-icon-theme ca-certificates
           rustup toolchain install stable --profile minimal
           rustup default stable
@@ -283,8 +284,8 @@ jobs:
 
           | System | File |
           |---|---|
-          | Linux (any distribution with GTK ≥ 4.20, libadwaita ≥ 1.8, GStreamer good plugins) | \`swell-player-$VERSION-linux-x86_64.tar.gz\` (run \`./install.sh\` or \`./install.sh --user\`) |
-          | Debian / Ubuntu (26.04 or newer) | \`.deb\` |
+          | Linux (any distribution with GTK ≥ 4.18, libadwaita ≥ 1.7, glibc ≥ 2.41, GStreamer good plugins) | \`swell-player-$VERSION-linux-x86_64.tar.gz\` (run \`./install.sh\` or \`./install.sh --user\`) |
+          | Debian 13 / Ubuntu 25.04 or newer | \`.deb\` |
           | Fedora (43 or newer) | \`.rpm\` |
           | Any distribution, sandboxed | \`swell-player-$VERSION-x86_64.flatpak\` (\`flatpak install --user ./swell-player-$VERSION-x86_64.flatpak\`) |
           | Windows 10/11 (x64) | \`…-windows-x86_64-setup.exe\` (installer) or \`…-windows-x86_64-portable.zip\` |
