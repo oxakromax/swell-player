@@ -101,6 +101,7 @@ use engine::{Engine, EngineEvent, NextStream};
 use failure::{Failure, HandoverBlame};
 #[allow(unused_imports)] // Public API for the UI.
 pub use format::{Codec, FormatDetails};
+pub use proxy::exempt_loopback_from_proxies;
 use queue::Queue;
 pub use queue::QueueSnapshot;
 pub use sleep::SleepTimer;
@@ -1337,7 +1338,6 @@ impl Playback {
     fn transition_rules(&self) -> transition::Rules {
         transition::Rules {
             crossfade_secs: self.crossfade_secs.get(),
-            bit_perfect: self.normalization.get() == Normalization::Off,
         }
     }
 

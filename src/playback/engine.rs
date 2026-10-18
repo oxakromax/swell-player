@@ -138,7 +138,7 @@ impl Stream {
                 .next()
                 .context("the manifest lists no URL")?;
             let lifetime = expiry::lifetime([url.as_str()], now);
-            match proxy::get().map(|proxy| proxy.route_progressive(track_id, &url)) {
+            match proxy::get().and_then(|proxy| proxy.route_progressive(track_id, &url)) {
                 Some(route) => (route.uri.clone(), bts.codecs, lifetime, Some(route)),
                 None => (url, bts.codecs, lifetime, None),
             }
@@ -422,6 +422,14 @@ impl Deck {
         playbin.set_property_from_str("flags", "audio+soft-volume+buffering");
         let shared = Arc::new(Mutex::new(Shared::default()));
 
+        // Streams from the local proxy must not go through `http_proxy`.
+        playbin.connect("source-setup", false, |values| {
+            if let Ok(source) = values[1].get::<gst::Element>() {
+                proxy::bypass_env_proxy(&source);
+            }
+            None
+        });
+
         // Runs on a streaming thread: only hand over what is ready.
         playbin.connect("about-to-finish", false, {
             let shared = Arc::downgrade(&shared);
@@ -561,6 +569,13 @@ impl Deck {
         gain: Option<f64>,
         output: Option<String>,
     ) {
+        if self.is_audible() {
+            log::debug!(
+                "{}: stopped while audible (fade factor {:.2})",
+                self.name,
+                self.gain.get()
+            );
+        }
         self.cut();
         self.install_filter(gain);
         self.apply_output_device(output);
@@ -640,6 +655,18 @@ fn audio_sink(playbin: &gst::Element) -> Option<gst::Element> {
         }
     }
     None
+}
+
+/// Whether a load takes the active deck (else the other one), given each
+/// deck's role and fade factor once the active one has let go: a free deck;
+/// with both still fading out (a change during a crossfade), the quieter
+/// one, which is stopped at once while the louder one fades on (cutting the
+/// louder would click).
+fn load_on_active(active: (Role, f64), other: (Role, f64)) -> bool {
+    if active.0 == Role::Idle {
+        return true;
+    }
+    other.0 != Role::Idle && active.1 < other.1
 }
 
 /// A crossfade waiting for its moment.
@@ -915,10 +942,15 @@ impl Inner {
     fn load(self: &Rc<Self>, uri: &str, play: bool, start: Option<f64>, gain: Option<f64>) {
         self.disarm();
         self.preroll_failed.set(None);
+        // What still fades out of a crossfade goes quickly, as the active
+        // deck does.
+        self.quiet_outgoing();
         self.release_active();
-        // The active deck if it is free, else the other one (stopping
-        // whatever that still did: an older fade-out).
-        let index = if self.active().role.get() == Role::Idle {
+        let (active, other) = (self.active(), &self.decks[self.other()]);
+        let index = if load_on_active(
+            (active.role.get(), active.gain.get()),
+            (other.role.get(), other.gain.get()),
+        ) {
             self.active.get()
         } else {
             self.other()
@@ -983,6 +1015,10 @@ impl Inner {
     }
 
     fn seek(self: &Rc<Self>, position: f64) {
+        // A seek during a crossfade is about the new track: the old one
+        // goes quiet quickly instead of fading on under it.
+        self.quiet_outgoing();
+        self.ensure_timer();
         let deck = self.active();
         if deck.start_at.get().is_some() {
             // Not pre-rolled yet: seek there once it is.
@@ -1618,6 +1654,19 @@ mod tests {
         // Still replaceable, e.g. by the gapless fallback.
         assert!(shared.offer(Some(next(4))));
         assert_eq!(shared.hand_over().map(|n| n.track_id), Some(4));
+    }
+
+    /// A load during a crossfade (both decks fading out) stops the quieter
+    /// deck, never the louder one.
+    #[test]
+    fn loads_take_a_free_or_the_quieter_deck() {
+        use Role::{Idle, Outgoing};
+        assert!(load_on_active((Idle, 0.0), (Outgoing, 0.5)));
+        assert!(!load_on_active((Outgoing, 0.9), (Idle, 0.0)));
+        // Skipping early in a crossfade: the old track is still loud.
+        assert!(load_on_active((Outgoing, 0.3), (Outgoing, 0.95)));
+        // Late in it: the new track is the louder one.
+        assert!(!load_on_active((Outgoing, 0.9), (Outgoing, 0.2)));
     }
 
     #[test]

@@ -2,9 +2,10 @@
 //! crossfade, or the gapless handover. Pure rules, unit-tested.
 //!
 //! A crossfade happens only when all of these hold:
-//! - the Crossfade preference is on (1–12 s);
-//! - the output is not bit-perfect: Volume Normalisation is on. Mixing two
-//!   tracks changes the samples, which bit-perfect output promises not to;
+//! - the Crossfade preference is on (1–12 s, off by default). It is its own
+//!   opt-in, whatever Volume Normalisation says: during the overlap the
+//!   sound server mixes the two tracks, so those seconds are not
+//!   bit-perfect (Preferences says so), and the rest of each track is;
 //! - the next track does not continue the album: consecutive tracks of the
 //!   same album (the next track number, or the first track of the next
 //!   disc) play gaplessly, so live albums, DJ mixes and segued concept
@@ -30,14 +31,12 @@ const MIN_CROSSFADE: f64 = 1.0;
 pub struct Rules {
     /// Crossfade length in seconds; 0 is off.
     pub crossfade_secs: u32,
-    /// The output is bit-perfect (no normalisation): never crossfade.
-    pub bit_perfect: bool,
 }
 
 impl Rules {
     /// Whether crossfading can happen at all with these preferences.
     pub fn crossfade_enabled(self) -> bool {
-        self.crossfade_secs > 0 && !self.bit_perfect
+        self.crossfade_secs > 0
     }
 }
 
@@ -95,27 +94,16 @@ mod tests {
         }
     }
 
-    const ON: Rules = Rules {
-        crossfade_secs: 6,
-        bit_perfect: false,
-    };
+    const ON: Rules = Rules { crossfade_secs: 6 };
 
+    /// The preference alone decides (normalisation plays no part).
     #[test]
-    fn off_and_bit_perfect_never_crossfade() {
+    fn off_never_crossfades() {
         let (a, b) = (track(1, 10, 1, 1), track(2, 20, 1, 1));
         assert_eq!(crossfade(ON, &a, 240.0, &b), Some(Duration::from_secs(6)));
-        let off = Rules {
-            crossfade_secs: 0,
-            ..ON
-        };
+        let off = Rules { crossfade_secs: 0 };
         assert_eq!(crossfade(off, &a, 240.0, &b), None);
         assert!(!off.crossfade_enabled());
-        let bit_perfect = Rules {
-            bit_perfect: true,
-            ..ON
-        };
-        assert_eq!(crossfade(bit_perfect, &a, 240.0, &b), None);
-        assert!(!bit_perfect.crossfade_enabled());
         assert!(ON.crossfade_enabled());
     }
 
@@ -144,10 +132,7 @@ mod tests {
 
     #[test]
     fn short_tracks_shorten_the_crossfade() {
-        let rules = Rules {
-            crossfade_secs: 12,
-            ..ON
-        };
+        let rules = Rules { crossfade_secs: 12 };
         let a = track(1, 10, 1, 1);
         let mut b = track(2, 20, 1, 1);
         assert_eq!(
@@ -163,10 +148,7 @@ mod tests {
         b.duration = 2;
         assert_eq!(crossfade(rules, &a, 240.0, &b), None);
         // Out-of-range settings are capped.
-        let huge = Rules {
-            crossfade_secs: 60,
-            ..ON
-        };
+        let huge = Rules { crossfade_secs: 60 };
         assert_eq!(
             crossfade(huge, &a, 600.0, &track(3, 30, 1, 1)),
             Some(Duration::from_secs(12))

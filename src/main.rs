@@ -35,6 +35,9 @@ fn main() -> glib::ExitCode {
     bundle::setup();
     #[cfg(windows)]
     set_app_user_model_id();
+    // Before GStreamer reads the environment, and while no other thread
+    // exists: the local stream proxy is never reached through `http_proxy`.
+    playback::exempt_loopback_from_proxies();
     timing::start();
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn")).init();
     if let Some(language) = i18n::init(&settings::saved_language()) {
