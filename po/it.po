@@ -361,7 +361,7 @@ msgstr "Dissolvenza incrociata"
 
 #: src/ui/dialogs/preferences.rs:144
 msgid "Not available while the output is bit-perfect: turn on Volume Normalisation"
-msgstr "Non disponibile mentre l’uscita è bit-perfect: attiva la normalizzazione del volume"
+msgstr "Non disponibile con uscita bit-perfect: attiva la normalizzazione"
 
 #: src/ui/dialogs/preferences.rs:146
 msgid "When a track ends by itself; consecutive album tracks stay gapless"

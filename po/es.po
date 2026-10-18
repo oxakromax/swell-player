@@ -359,7 +359,7 @@ msgstr "Fundido encadenado"
 
 #: src/ui/dialogs/preferences.rs:144
 msgid "Not available while the output is bit-perfect: turn on Volume Normalisation"
-msgstr "No disponible mientras la salida es bit-perfect: activa la normalización de volumen"
+msgstr "No disponible con salida bit-perfect: activa la normalización"
 
 #: src/ui/dialogs/preferences.rs:146
 msgid "When a track ends by itself; consecutive album tracks stay gapless"

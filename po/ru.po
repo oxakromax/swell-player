@@ -374,7 +374,7 @@ msgstr "Когда трек заканчивается сам; соседние 
 
 #: src/ui/dialogs/preferences.rs:159
 msgid "System Default"
-msgstr "Системное по умолчанию"
+msgstr "По умолчанию"
 
 #: src/ui/dialogs/preferences.rs:161
 msgid "Output Device"
@@ -1103,7 +1103,7 @@ msgstr "Фильтр альбомов"
 #: src/ui/pages/collection_grid.rs:159 src/ui/pages/search_data.rs:82
 #: src/ui/sidebar.rs:131
 msgid "Artists"
-msgstr "Исполнители"
+msgstr "Артисты"
 
 #: src/ui/pages/collection_grid.rs:159
 msgid "Filter artists"
@@ -1928,7 +1928,7 @@ msgstr "{n} бит"
 
 #: src/ui/widgets/np_common.rs:618
 msgid "System default"
-msgstr "Системное по умолчанию"
+msgstr "По умолчанию"
 
 #: src/ui/widgets/np_common.rs:624
 msgid "Lossless delivered: this track has no Hi-Res master"

@@ -362,7 +362,7 @@ msgstr "Fondu enchaîné"
 
 #: src/ui/dialogs/preferences.rs:144
 msgid "Not available while the output is bit-perfect: turn on Volume Normalisation"
-msgstr "Indisponible tant que la sortie est bit-perfect : activez la normalisation du volume"
+msgstr "Indisponible en sortie bit-perfect : activez la normalisation"
 
 #: src/ui/dialogs/preferences.rs:146
 msgid "When a track ends by itself; consecutive album tracks stay gapless"
