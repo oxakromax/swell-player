@@ -358,12 +358,15 @@ msgid "Crossfade"
 msgstr "Fundido encadenado"
 
 #: src/ui/dialogs/preferences.rs:144
-msgid "Not available while the output is bit-perfect: turn on Volume Normalisation"
+msgid ""
+"Not available while the output is bit-perfect: turn on Volume Normalisation"
 msgstr "No disponible con salida bit-perfect: activa la normalización"
 
 #: src/ui/dialogs/preferences.rs:146
 msgid "When a track ends by itself; consecutive album tracks stay gapless"
-msgstr "Cuando una canción termina sola; las canciones seguidas de un álbum siguen sin pausas"
+msgstr ""
+"Cuando una canción termina sola; las canciones seguidas de un álbum siguen "
+"sin pausas"
 
 #: src/ui/dialogs/preferences.rs:159
 msgid "System Default"
@@ -1894,6 +1897,10 @@ msgstr "Formato de audio"
 #: src/ui/widgets/np_common.rs:582
 msgid "Bit-perfect"
 msgstr "Bit-perfect"
+
+#: src/ui/widgets/np_common.rs:584
+msgid ", "
+msgstr ", "
 
 #: src/ui/widgets/np_common.rs:584
 msgid "Not bit-perfect: {reasons}"

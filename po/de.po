@@ -365,12 +365,17 @@ msgid "Crossfade"
 msgstr "Überblendung"
 
 #: src/ui/dialogs/preferences.rs:144
-msgid "Not available while the output is bit-perfect: turn on Volume Normalisation"
-msgstr "Nicht verfügbar, solange die Ausgabe bit-perfect ist: Schalten Sie die Lautstärke-Normalisierung ein"
+msgid ""
+"Not available while the output is bit-perfect: turn on Volume Normalisation"
+msgstr ""
+"Nicht verfügbar, solange die Ausgabe bit-perfect ist: Schalten Sie die "
+"Lautstärke-Normalisierung ein"
 
 #: src/ui/dialogs/preferences.rs:146
 msgid "When a track ends by itself; consecutive album tracks stay gapless"
-msgstr "Wenn ein Titel von selbst endet; aufeinanderfolgende Albumtitel bleiben lückenlos"
+msgstr ""
+"Wenn ein Titel von selbst endet; aufeinanderfolgende Albumtitel bleiben "
+"lückenlos"
 
 #: src/ui/dialogs/preferences.rs:159
 msgid "System Default"
@@ -1161,7 +1166,8 @@ msgstr "Keine gespeicherten Mixe"
 
 #: src/ui/pages/collection_grid.rs:329
 msgid "Use the heart on a mix or radio to save it here."
-msgstr "Speichern Sie Mixe und Radios mit dem Herzen, damit sie hier erscheinen."
+msgstr ""
+"Speichern Sie Mixe und Radios mit dem Herzen, damit sie hier erscheinen."
 
 #: src/ui/pages/collection_grid.rs:351 src/ui/pages/search_data.rs:79
 msgid "All"
@@ -1912,6 +1918,10 @@ msgstr "Audioformat"
 #: src/ui/widgets/np_common.rs:582
 msgid "Bit-perfect"
 msgstr "Bit-perfect"
+
+#: src/ui/widgets/np_common.rs:584
+msgid ", "
+msgstr ", "
 
 #: src/ui/widgets/np_common.rs:584
 msgid "Not bit-perfect: {reasons}"

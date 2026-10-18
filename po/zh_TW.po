@@ -350,7 +350,8 @@ msgid "Crossfade"
 msgstr "交叉淡化"
 
 #: src/ui/dialogs/preferences.rs:144
-msgid "Not available while the output is bit-perfect: turn on Volume Normalisation"
+msgid ""
+"Not available while the output is bit-perfect: turn on Volume Normalisation"
 msgstr "輸出為 bit-perfect 時無法使用：請開啟音量正規化"
 
 #: src/ui/dialogs/preferences.rs:146
@@ -1874,6 +1875,10 @@ msgstr "音訊格式"
 #: src/ui/widgets/np_common.rs:582
 msgid "Bit-perfect"
 msgstr "Bit-perfect"
+
+#: src/ui/widgets/np_common.rs:584
+msgid ", "
+msgstr "、"
 
 #: src/ui/widgets/np_common.rs:584
 msgid "Not bit-perfect: {reasons}"

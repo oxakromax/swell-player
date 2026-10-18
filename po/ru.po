@@ -365,7 +365,8 @@ msgid "Crossfade"
 msgstr "Кроссфейд"
 
 #: src/ui/dialogs/preferences.rs:144
-msgid "Not available while the output is bit-perfect: turn on Volume Normalisation"
+msgid ""
+"Not available while the output is bit-perfect: turn on Volume Normalisation"
 msgstr "Недоступно, пока вывод bit-perfect: включите нормализацию громкости"
 
 #: src/ui/dialogs/preferences.rs:146
@@ -1909,6 +1910,10 @@ msgstr "Формат аудио"
 #: src/ui/widgets/np_common.rs:582
 msgid "Bit-perfect"
 msgstr "Bit-perfect"
+
+#: src/ui/widgets/np_common.rs:584
+msgid ", "
+msgstr ", "
 
 #: src/ui/widgets/np_common.rs:584
 msgid "Not bit-perfect: {reasons}"

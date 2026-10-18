@@ -355,12 +355,14 @@ msgid "Crossfade"
 msgstr "크로스페이드"
 
 #: src/ui/dialogs/preferences.rs:144
-msgid "Not available while the output is bit-perfect: turn on Volume Normalisation"
+msgid ""
+"Not available while the output is bit-perfect: turn on Volume Normalisation"
 msgstr "출력이 비트퍼펙트인 동안에는 사용할 수 없습니다. 볼륨 정규화를 켜세요"
 
 #: src/ui/dialogs/preferences.rs:146
 msgid "When a track ends by itself; consecutive album tracks stay gapless"
-msgstr "곡이 자연스럽게 끝날 때 적용됩니다. 앨범의 연속된 곡은 끊김 없이 재생됩니다"
+msgstr ""
+"곡이 자연스럽게 끝날 때 적용됩니다. 앨범의 연속된 곡은 끊김 없이 재생됩니다"
 
 #: src/ui/dialogs/preferences.rs:159
 msgid "System Default"
@@ -1887,6 +1889,10 @@ msgid "Bit-perfect"
 msgstr "비트퍼펙트"
 
 #: src/ui/widgets/np_common.rs:584
+msgid ", "
+msgstr ", "
+
+#: src/ui/widgets/np_common.rs:584
 msgid "Not bit-perfect: {reasons}"
 msgstr "비트퍼펙트가 아님: {reasons}"
 
@@ -2173,8 +2179,8 @@ msgid ""
 "You will need to sign in again to listen. Your library cached on this "
 "computer is deleted."
 msgstr ""
-"음악을 들으려면 다시 로그인해야 합니다. 이 컴퓨터에 캐시된 라이브러리는 삭제됩"
-"니다."
+"음악을 들으려면 다시 로그인해야 합니다. 이 컴퓨터에 캐시된 라이브러리는 삭제"
+"됩니다."
 
 #: src/ui/window.rs:413
 msgid "_Sign Out"

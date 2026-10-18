@@ -581,7 +581,7 @@ impl FormatBadge {
         let output = if alterations.is_empty() {
             tr("Bit-perfect").to_owned()
         } else {
-            tr("Not bit-perfect: {reasons}").replace("{reasons}", &alterations.join(", "))
+            tr("Not bit-perfect: {reasons}").replace("{reasons}", &alterations.join(tr(", ")))
         };
         let replay_gain = details.replay_gain_db.map(|db| {
             let text = match settings.normalization {

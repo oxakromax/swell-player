@@ -346,7 +346,9 @@ msgstr "Transitions douces"
 
 #: src/ui/dialogs/preferences.rs:108
 msgid "Short fades when pausing, seeking and skipping"
-msgstr "Fondus courts à la pause, au déplacement dans le titre et au changement de titre"
+msgstr ""
+"Fondus courts à la pause, au déplacement dans le titre et au changement de "
+"titre"
 
 #: src/ui/dialogs/preferences.rs:115 src/ui/shortcuts.rs:60
 msgid "Playback"
@@ -361,12 +363,15 @@ msgid "Crossfade"
 msgstr "Fondu enchaîné"
 
 #: src/ui/dialogs/preferences.rs:144
-msgid "Not available while the output is bit-perfect: turn on Volume Normalisation"
+msgid ""
+"Not available while the output is bit-perfect: turn on Volume Normalisation"
 msgstr "Indisponible en sortie bit-perfect : activez la normalisation"
 
 #: src/ui/dialogs/preferences.rs:146
 msgid "When a track ends by itself; consecutive album tracks stay gapless"
-msgstr "Quand un titre se termine de lui-même ; les titres consécutifs d’un album restent sans coupure"
+msgstr ""
+"Quand un titre se termine de lui-même ; les titres consécutifs d’un album "
+"restent sans coupure"
 
 #: src/ui/dialogs/preferences.rs:159
 msgid "System Default"
@@ -1904,6 +1909,10 @@ msgstr "Format audio"
 #: src/ui/widgets/np_common.rs:582
 msgid "Bit-perfect"
 msgstr "Bit-perfect"
+
+#: src/ui/widgets/np_common.rs:584
+msgid ", "
+msgstr ", "
 
 #: src/ui/widgets/np_common.rs:584
 msgid "Not bit-perfect: {reasons}"

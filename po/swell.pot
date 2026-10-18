@@ -2037,6 +2037,10 @@ msgid "Bit-perfect"
 msgstr ""
 
 #: src/ui/widgets/np_common.rs:584
+msgid ", "
+msgstr ""
+
+#: src/ui/widgets/np_common.rs:584
 msgid "Not bit-perfect: {reasons}"
 msgstr ""
 

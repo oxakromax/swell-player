@@ -360,12 +360,15 @@ msgid "Crossfade"
 msgstr "Dissolvenza incrociata"
 
 #: src/ui/dialogs/preferences.rs:144
-msgid "Not available while the output is bit-perfect: turn on Volume Normalisation"
+msgid ""
+"Not available while the output is bit-perfect: turn on Volume Normalisation"
 msgstr "Non disponibile con uscita bit-perfect: attiva la normalizzazione"
 
 #: src/ui/dialogs/preferences.rs:146
 msgid "When a track ends by itself; consecutive album tracks stay gapless"
-msgstr "Quando un brano finisce da solo; i brani consecutivi di un album restano senza interruzioni"
+msgstr ""
+"Quando un brano finisce da solo; i brani consecutivi di un album restano "
+"senza interruzioni"
 
 #: src/ui/dialogs/preferences.rs:159
 msgid "System Default"
@@ -1900,6 +1903,10 @@ msgstr "Formato audio"
 #: src/ui/widgets/np_common.rs:582
 msgid "Bit-perfect"
 msgstr "Bit-perfect"
+
+#: src/ui/widgets/np_common.rs:584
+msgid ", "
+msgstr ", "
 
 #: src/ui/widgets/np_common.rs:584
 msgid "Not bit-perfect: {reasons}"

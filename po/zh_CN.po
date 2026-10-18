@@ -349,7 +349,8 @@ msgid "Crossfade"
 msgstr "交叉淡化"
 
 #: src/ui/dialogs/preferences.rs:144
-msgid "Not available while the output is bit-perfect: turn on Volume Normalisation"
+msgid ""
+"Not available while the output is bit-perfect: turn on Volume Normalisation"
 msgstr "输出为 bit-perfect 时不可用：请开启音量标准化"
 
 #: src/ui/dialogs/preferences.rs:146
@@ -420,7 +421,8 @@ msgstr "存储"
 msgid ""
 "Downloaded artwork and saved answers from TIDAL, so pages open instantly and "
 "work offline."
-msgstr "已下载的封面图片和 TIDAL 的已保存响应数据，让页面即时打开，并可离线使用。"
+msgstr ""
+"已下载的封面图片和 TIDAL 的已保存响应数据，让页面即时打开，并可离线使用。"
 
 #: src/ui/dialogs/preferences.rs:328
 msgid "Cover Cache"
@@ -1873,6 +1875,10 @@ msgstr "音频格式"
 #: src/ui/widgets/np_common.rs:582
 msgid "Bit-perfect"
 msgstr "Bit-perfect"
+
+#: src/ui/widgets/np_common.rs:584
+msgid ", "
+msgstr "、"
 
 #: src/ui/widgets/np_common.rs:584
 msgid "Not bit-perfect: {reasons}"

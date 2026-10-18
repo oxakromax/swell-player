@@ -361,8 +361,11 @@ msgid "Crossfade"
 msgstr "クロスフェード"
 
 #: src/ui/dialogs/preferences.rs:144
-msgid "Not available while the output is bit-perfect: turn on Volume Normalisation"
-msgstr "出力がビットパーフェクトの間は使用できません。音量の正規化をオンにしてください"
+msgid ""
+"Not available while the output is bit-perfect: turn on Volume Normalisation"
+msgstr ""
+"出力がビットパーフェクトの間は使用できません。音量の正規化をオンにしてくださ"
+"い"
 
 #: src/ui/dialogs/preferences.rs:146
 msgid "When a track ends by itself; consecutive album tracks stay gapless"
@@ -1898,6 +1901,10 @@ msgid "Bit-perfect"
 msgstr "ビットパーフェクト"
 
 #: src/ui/widgets/np_common.rs:584
+msgid ", "
+msgstr "、"
+
+#: src/ui/widgets/np_common.rs:584
 msgid "Not bit-perfect: {reasons}"
 msgstr "ビットパーフェクトではありません：{reasons}"
 
@@ -2184,8 +2191,8 @@ msgid ""
 "You will need to sign in again to listen. Your library cached on this "
 "computer is deleted."
 msgstr ""
-"再生するには、もう一度ログインする必要があります。このコンピューターに"
-"キャッシュされたライブラリは削除されます。"
+"再生するには、もう一度ログインする必要があります。このコンピューターにキャッ"
+"シュされたライブラリは削除されます。"
 
 #: src/ui/window.rs:413
 msgid "_Sign Out"
