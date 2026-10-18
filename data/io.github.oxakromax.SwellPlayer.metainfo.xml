@@ -1,49 +1,140 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright 2026 oxakromax -->
 <component type="desktop-application">
   <id>io.github.oxakromax.SwellPlayer</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
+
   <name>Swell</name>
   <summary>Listen to TIDAL in a native app</summary>
   <summary xml:lang="es">Escucha TIDAL en una app nativa</summary>
+
+  <developer id="io.github.oxakromax">
+    <name>oxakromax</name>
+  </developer>
+
   <description>
     <p>
-      Swell is a lightweight, native TIDAL client for Linux built with GTK 4
-      and libadwaita. It streams up to Hi-Res Lossless, keeps your collection,
-      playlists and mixes one click away, and follows your desktop's light or
-      dark style and accent colour.
+      Swell is a fast, lightweight TIDAL client built with GTK and
+      libadwaita. It plays up to Hi-Res Lossless, bit-perfect, keeps your
+      collection, playlists and mixes one click away, and follows your
+      desktop’s light or dark style and accent colour.
     </p>
     <p xml:lang="es">
-      Swell es un cliente de TIDAL ligero y nativo para Linux, hecho con GTK 4
-      y libadwaita. Reproduce hasta Hi-Res Lossless, deja tu colección,
-      playlists y mixes a un clic, y sigue el estilo claro u oscuro y el color
-      de acento de tu escritorio.
+      Swell es un cliente de TIDAL rápido y ligero, hecho con GTK y
+      libadwaita. Reproduce hasta Hi-Res Lossless sin alterar el audio, deja
+      tu colección, playlists y mixes a un clic, y sigue el estilo claro u
+      oscuro y el color de acento de tu escritorio.
     </p>
-    <p>Swell is not affiliated with TIDAL. An active TIDAL subscription is needed.</p>
-    <p xml:lang="es">Swell no está afiliado a TIDAL. Necesitas una suscripción activa a TIDAL.</p>
+    <ul>
+      <li>Home, Explore and search as you type, with album, artist, playlist and mix pages</li>
+      <li xml:lang="es">Inicio, Explorar y búsqueda mientras escribes, con páginas de álbumes, artistas, playlists y mixes</li>
+      <li>Your favourite tracks, albums, artists, playlists and mixes, opened instantly from a local cache</li>
+      <li xml:lang="es">Tus canciones, álbumes, artistas, playlists y mixes favoritos, abiertos al instante desde una caché local</li>
+      <li>Create and edit playlists, with drag and drop and undo</li>
+      <li xml:lang="es">Crea y edita playlists, con arrastrar y soltar y deshacer</li>
+      <li>FLAC up to 24-bit/192 kHz, gapless playback and optional ReplayGain normalisation</li>
+      <li xml:lang="es">FLAC hasta 24 bits/192 kHz, reproducción sin pausas y normalización ReplayGain opcional</li>
+      <li>A real queue, shuffle and repeat, synced lyrics and a sleep timer</li>
+      <li xml:lang="es">Una cola de verdad, aleatorio y repetición, letras sincronizadas y temporizador</li>
+      <li>Media keys and desktop widgets through MPRIS</li>
+      <li xml:lang="es">Teclas multimedia y widgets del escritorio mediante MPRIS</li>
+      <li>Adaptive layout, from phone-sized windows to wide screens, with full keyboard control</li>
+      <li xml:lang="es">Diseño adaptable, de ventanas del tamaño de un teléfono a pantallas anchas, con control total por teclado</li>
+    </ul>
+    <p>
+      Swell is not affiliated with, endorsed by or supported by TIDAL. A paid
+      TIDAL subscription is needed.
+    </p>
+    <p xml:lang="es">
+      Swell no está afiliado a TIDAL ni cuenta con su respaldo. Necesitas una
+      suscripción de pago a TIDAL.
+    </p>
   </description>
+
   <launchable type="desktop-id">io.github.oxakromax.SwellPlayer.desktop</launchable>
-  <developer id="io.github.oxakromax">
-    <name>Swell contributors</name>
-  </developer>
+  <provides>
+    <binary>swell-player</binary>
+  </provides>
+
+  <url type="homepage">https://github.com/oxakromax/swell-player</url>
+  <url type="bugtracker">https://github.com/oxakromax/swell-player/issues</url>
+  <url type="vcs-browser">https://github.com/oxakromax/swell-player</url>
+  <url type="contribute">https://github.com/oxakromax/swell-player/blob/main/CONTRIBUTING.md</url>
+
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/oxakromax/swell-player/v1.0.0/docs/screenshots/home.png</image>
+      <caption>Home, your personalised TIDAL feed</caption>
+      <caption xml:lang="es">Inicio, tu portada personalizada de TIDAL</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/oxakromax/swell-player/v1.0.0/docs/screenshots/album.png</image>
+      <caption>An album page</caption>
+      <caption xml:lang="es">La página de un álbum</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/oxakromax/swell-player/v1.0.0/docs/screenshots/now-playing.png</image>
+      <caption>Now playing, with synced lyrics and the queue</caption>
+      <caption xml:lang="es">En reproducción, con letras sincronizadas y la cola</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/oxakromax/swell-player/v1.0.0/docs/screenshots/narrow.png</image>
+      <caption>The narrow layout, for small windows and phones</caption>
+      <caption xml:lang="es">El diseño estrecho, para ventanas pequeñas y teléfonos</caption>
+    </screenshot>
+  </screenshots>
+
+  <branding>
+    <color type="primary" scheme_preference="light">#9ccbf4</color>
+    <color type="primary" scheme_preference="dark">#18427f</color>
+  </branding>
+
   <content_rating type="oars-1.1"/>
+
   <requires>
     <display_length compare="ge">360</display_length>
+    <internet>always</internet>
   </requires>
   <supports>
     <control>keyboard</control>
     <control>pointing</control>
     <control>touch</control>
   </supports>
-  <provides>
-    <binary>swell-player</binary>
-  </provides>
+
   <categories>
     <category>AudioVideo</category>
     <category>Audio</category>
     <category>Player</category>
   </categories>
+  <keywords>
+    <keyword>TIDAL</keyword>
+    <keyword>music</keyword>
+    <keyword>streaming</keyword>
+    <keyword>lossless</keyword>
+    <keyword>hi-res</keyword>
+    <keyword xml:lang="es">música</keyword>
+    <keyword xml:lang="es">sin pérdida</keyword>
+    <keyword xml:lang="es">reproductor</keyword>
+  </keywords>
+
   <releases>
-    <release version="0.1.0" date="2026-10-17"/>
+    <release version="1.0.0" date="2026-10-18" type="stable">
+      <url type="details">https://github.com/oxakromax/swell-player/releases/tag/v1.0.0</url>
+      <description>
+        <p>First release.</p>
+        <p xml:lang="es">Primera versión.</p>
+        <ul>
+          <li>Hi-Res Lossless playback, bit-perfect to PipeWire, with gapless playback and ReplayGain</li>
+          <li xml:lang="es">Reproducción Hi-Res Lossless sin alterar el audio hasta PipeWire, sin pausas y con ReplayGain</li>
+          <li>Home, Explore, search, and album, artist, playlist and mix pages</li>
+          <li xml:lang="es">Inicio, Explorar, búsqueda y páginas de álbumes, artistas, playlists y mixes</li>
+          <li>Your collection from a local cache, playlist editing, queue, lyrics and MPRIS</li>
+          <li xml:lang="es">Tu colección desde una caché local, edición de playlists, cola, letras y MPRIS</li>
+          <li>English and Spanish</li>
+          <li xml:lang="es">Inglés y español</li>
+        </ul>
+      </description>
+    </release>
   </releases>
 </component>

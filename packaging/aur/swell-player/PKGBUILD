@@ -1,0 +1,60 @@
+# Maintainer: oxakromax <oxakromax at hotmail dot com>
+
+pkgname=swell-player
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="Fast, lightweight native TIDAL client with bit-perfect Hi-Res playback (GTK 4 + libadwaita)"
+arch=('x86_64' 'aarch64')
+url="https://github.com/oxakromax/swell-player"
+license=('GPL-3.0-or-later')
+depends=(
+  'glib2'
+  'glibc'
+  'graphene'
+  'gst-plugins-base'   # playbin3, audioconvert, volume (loaded at runtime)
+  'gst-plugins-good'   # dashdemux2 (Hi-Res DASH), FLAC, MP4, HTTP source
+  'gstreamer'
+  'gtk4'
+  'hicolor-icon-theme'
+  'libadwaita'
+  'libgcc'
+  'pango'
+  'sqlite'
+)
+makedepends=('cargo')
+optdepends=(
+  'org.freedesktop.secrets: keyring to stay signed in (gnome-keyring, kwallet, keepassxc...)'
+  'gst-libav: AAC playback for the Low and High qualities'
+  'xdg-desktop-portal: open links in the browser and keep the system awake while playing'
+)
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+# PLACEHOLDER (all zeros, so makepkg refuses the tarball): the v1.0.0 tag is
+# not published yet. After tagging, run packaging/aur/update.sh, which
+# downloads the release tarball, writes its real checksum here and
+# regenerates .SRCINFO.
+sha256sums=('0000000000000000000000000000000000000000000000000000000000000000')
+
+prepare() {
+  cd "$pkgname-$pkgver"
+  export RUSTUP_TOOLCHAIN=stable
+  cargo fetch --locked --target "$(rustc -vV | sed -n 's/host: //p')"
+}
+
+build() {
+  cd "$pkgname-$pkgver"
+  export RUSTUP_TOOLCHAIN=stable
+  export CARGO_TARGET_DIR=target
+  cargo build --frozen --release
+}
+
+check() {
+  cd "$pkgname-$pkgver"
+  export RUSTUP_TOOLCHAIN=stable
+  export CARGO_TARGET_DIR=target
+  cargo test --frozen --release
+}
+
+package() {
+  cd "$pkgname-$pkgver"
+  make install PREFIX=/usr DESTDIR="$pkgdir" CARGO_TARGET_DIR=target
+}

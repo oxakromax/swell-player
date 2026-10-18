@@ -12,30 +12,117 @@ license = "GPL-3.0-or-later"
 keywords = ["tidal", "music", "gtk4", "libadwaita", "gstreamer"]
 categories = ["multimedia::audio"]
 
+# Minimum system libraries: GTK 4.18, libadwaita 1.7, GStreamer 1.24 (with
+# playbin3 from gst-plugins-base and dashdemux2 from gst-plugins-good) and
+# GLib 2.80. The default `adw-1-8` feature needs libadwaita 1.8 and GTK
+# 4.20 (Arch, Fedora 43, Ubuntu 25.10); build with `--no-default-features`
+# for GTK 4.18 + libadwaita 1.7 (Debian 13, Ubuntu 25.04), which only
+# swaps AdwShortcutsDialog for a plain dialog listing the same shortcuts.
+[features]
+default = ["adw-1-8"]
+adw-1-8 = ["adw/v1_8", "gtk/v4_20"]
+
 [dependencies]
-adw = { version = "0.9.2", package = "libadwaita", features = ["v1_8"] }
+adw = { version = "0.9.2", package = "libadwaita", features = ["v1_7"] }
 anyhow = "1.0.104"
 base64 = "0.23.1"
 bytes = "1.12.1"
 env_logger = { version = "0.11.11", default-features = false, features = ["auto-color"] }
 futures-util = { version = "0.3.34", default-features = false, features = ["std"] }
 getrandom = "0.4.3"
-glib-unix = "0.22.8"
+# Only for `user_state_dir` (GLib 2.72); the rest comes through `gtk::glib`.
+glib = { version = "0.22.10", features = ["v2_72"] }
 gst = { version = "0.25.4", package = "gstreamer" }
-gtk = { version = "0.11.5", package = "gtk4", features = ["v4_20"] }
+gtk = { version = "0.11.5", package = "gtk4", features = ["v4_18"] }
 log = "0.4.34"
 lru = "0.18.5"
-oo7 = { version = "0.6.0", default-features = false, features = ["tokio", "native_crypto"] }
 reqwest = { version = "0.13.5", default-features = false, features = ["rustls", "http2", "hickory-dns", "query", "form"] }
 rusqlite = { version = "0.40.2", features = ["fallible_uint"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
 sha2 = "0.11.1"
+sys-locale = "0.3.2"
 url = "2.5.8"
 tokio = { version = "1.53.3", features = ["rt-multi-thread", "sync", "time", "fs", "macros"] }
+
+[target.'cfg(unix)'.dependencies]
+glib-unix = "0.22.8"
+
+# Linux and the BSDs: Secret Service (oo7), MPRIS and logind (zbus).
+[target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
+oo7 = { version = "0.6.0", default-features = false, features = ["tokio", "native_crypto"] }
 zbus = { version = "5.19.0", default-features = false, features = ["tokio"] }
+
+# Windows and macOS: Credential Manager / Keychain, and the system media
+# controls (SMTC / Now Playing).
+[target.'cfg(any(windows, target_os = "macos"))'.dependencies]
+keyring = "4.2.0"
+souvlaki = { version = "0.8.3", default-features = false }
+
+[target.'cfg(windows)'.dependencies]
+gdk-win32 = { version = "0.11.5", package = "gdk4-win32" }
 
 [profile.release]
 lto = "thin"
 codegen-units = 1
 strip = true
+
+# Linux packages. Build the binary first (`cargo build --release --locked`),
+# then `cargo deb --no-build` / `cargo generate-rpm`. See packaging/README.md.
+
+[package.metadata.deb]
+maintainer = "oxakromax <oxakromax@users.noreply.github.com>"
+copyright = "2026 oxakromax"
+license-file = ["COPYING", "0"]
+section = "sound"
+priority = "optional"
+extended-description = """\
+Swell is a fast, lightweight TIDAL client built with GTK and libadwaita. \
+It plays up to Hi-Res Lossless, bit-perfect, keeps your collection, \
+playlists and mixes one click away, and follows the desktop's style. \
+A paid TIDAL subscription is needed; Swell is not affiliated with TIDAL."""
+# $auto (dpkg-shlibdeps) adds the shared libraries with the versions their
+# symbols files know; GTK's stops at 4.12, so the minimums are stated here.
+# They match the `--no-default-features` build (GTK 4.18, libadwaita 1.7)
+# the release .deb is made from, so it also installs on Debian 13 and
+# Ubuntu 25.04. dashdemux2, FLAC, MP4 and the HTTP source are in
+# plugins-good.
+depends = "$auto, libgtk-4-1 (>= 4.18), libadwaita-1-0 (>= 1.7), gstreamer1.0-plugins-base, gstreamer1.0-plugins-good"
+recommends = "gstreamer1.0-libav, xdg-desktop-portal"
+suggests = "gnome-keyring | keepassxc | kwalletmanager"
+assets = [
+    ["target/release/swell-player", "usr/bin/", "755"],
+    ["data/io.github.oxakromax.SwellPlayer.desktop", "usr/share/applications/", "644"],
+    ["data/io.github.oxakromax.SwellPlayer.metainfo.xml", "usr/share/metainfo/", "644"],
+    ["data/icons/scalable/apps/io.github.oxakromax.SwellPlayer.svg", "usr/share/icons/hicolor/scalable/apps/", "644"],
+    ["data/icons/symbolic/apps/io.github.oxakromax.SwellPlayer-symbolic.svg", "usr/share/icons/hicolor/symbolic/apps/", "644"],
+    ["README.md", "usr/share/doc/swell-player/", "644"],
+]
+
+[package.metadata.generate-rpm]
+summary = "Fast, lightweight native TIDAL client with bit-perfect Hi-Res playback"
+license = "GPL-3.0-or-later"
+url = "https://github.com/oxakromax/swell-player"
+assets = [
+    { source = "target/release/swell-player", dest = "/usr/bin/swell-player", mode = "755" },
+    { source = "data/io.github.oxakromax.SwellPlayer.desktop", dest = "/usr/share/applications/io.github.oxakromax.SwellPlayer.desktop", mode = "644" },
+    { source = "data/io.github.oxakromax.SwellPlayer.metainfo.xml", dest = "/usr/share/metainfo/io.github.oxakromax.SwellPlayer.metainfo.xml", mode = "644" },
+    { source = "data/icons/scalable/apps/io.github.oxakromax.SwellPlayer.svg", dest = "/usr/share/icons/hicolor/scalable/apps/io.github.oxakromax.SwellPlayer.svg", mode = "644" },
+    { source = "data/icons/symbolic/apps/io.github.oxakromax.SwellPlayer-symbolic.svg", dest = "/usr/share/icons/hicolor/symbolic/apps/io.github.oxakromax.SwellPlayer-symbolic.svg", mode = "644" },
+    { source = "COPYING", dest = "/usr/share/licenses/swell-player/COPYING", mode = "644", doc = true },
+    { source = "README.md", dest = "/usr/share/doc/swell-player/README.md", mode = "644", doc = true },
+]
+
+# Shared-library requirements (libgtk-4.so.1, libadwaita-1.so.0, ...) are
+# added automatically; these pin the minimum versions that the gtk/adw
+# feature levels in [dependencies] need, and the GStreamer plugins that are
+# loaded at runtime (dashdemux2, FLAC, MP4 and HTTP are in plugins-good).
+[package.metadata.generate-rpm.requires]
+gtk4 = ">= 4.20"
+libadwaita = ">= 1.8"
+gstreamer1-plugins-base = "*"
+gstreamer1-plugins-good = "*"
+
+[package.metadata.generate-rpm.recommends]
+gstreamer1-plugin-libav = "*"
+xdg-desktop-portal = "*"

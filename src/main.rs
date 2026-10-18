@@ -1,5 +1,8 @@
-// Swell: a native TIDAL client for Linux.
+// Swell: a native TIDAL client.
 // SPDX-License-Identifier: GPL-3.0-or-later
+
+// No console window behind the app in Windows release builds.
+#![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 
 mod api;
 mod cache;
@@ -27,6 +30,13 @@ const RESOURCE_PATH: &str = "/io/github/oxakromax/SwellPlayer";
 fn main() -> glib::ExitCode {
     timing::start();
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn")).init();
+    if let Some(language) = i18n::init(&settings::saved_language()) {
+        // GTK's and libadwaita's own strings follow the chosen language.
+        // Safety: no other thread exists yet (GStreamer, GTK and the
+        // runtime start below), so nothing reads the environment
+        // concurrently.
+        unsafe { std::env::set_var("LANGUAGE", language) };
+    }
 
     if let Err(err) = gst::init() {
         eprintln!("GStreamer could not be initialised: {err}");
@@ -54,6 +64,7 @@ fn main() -> glib::ExitCode {
         ui::window::open_links(app, &uris);
     });
     // Quit cleanly (stopping playback, flushing the cache) on SIGTERM/SIGINT.
+    #[cfg(unix)]
     for signal in [libc_signal::SIGTERM, libc_signal::SIGINT] {
         let app = app.downgrade();
         glib_unix::unix_signal_add_local(signal, move || {
@@ -63,7 +74,26 @@ fn main() -> glib::ExitCode {
             glib::ControlFlow::Break
         });
     }
-    app.run()
+    let code = app.run();
+    // Let go of the application (and its bus name) before a restart
+    // starts the next instance.
+    drop(app);
+    if ui::window::restart_requested() {
+        relaunch();
+    }
+    code
+}
+
+/// Starts this program again (after the Language preference changed).
+fn relaunch() {
+    let mut command = match std::env::current_exe() {
+        Ok(exe) => std::process::Command::new(exe),
+        Err(err) => return log::warn!("cannot restart: {err}"),
+    };
+    i18n::restore_environment(&mut command);
+    if let Err(err) = command.spawn() {
+        log::warn!("cannot restart: {err}");
+    }
 }
 
 /// Style sheet, icons, app actions and accelerators.
@@ -89,7 +119,8 @@ fn startup(app: &adw::Application) {
     }
 }
 
-/// Signal numbers, identical on every Linux architecture.
+/// Signal numbers, the same on Linux, macOS and the BSDs.
+#[cfg(unix)]
 mod libc_signal {
     pub const SIGINT: i32 = 2;
     pub const SIGTERM: i32 = 15;

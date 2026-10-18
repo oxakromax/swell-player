@@ -1,1 +1,16 @@
 /target
+
+# Flatpak builds
+/.flatpak-builder/
+*.flatpak
+
+# gettext
+*.mo
+po/*.po~
+
+# Local benchmark output and Python caches
+/bench/out/
+__pycache__/
+
+# Claude Code worktrees
+/.claude/worktrees/

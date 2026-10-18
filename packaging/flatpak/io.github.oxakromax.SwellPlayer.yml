@@ -1,0 +1,62 @@
+# Flatpak manifest for Swell.
+#
+# Local build (from the repository root):
+#   flatpak run org.flatpak.Builder --user --install --force-clean \
+#     build-dir packaging/flatpak/io.github.oxakromax.SwellPlayer.yml
+#
+# Crates are vendored offline from cargo-sources.json; regenerate it with
+# packaging/flatpak/update-cargo-sources.sh whenever Cargo.lock changes.
+# For Flathub, the `dir` source below is replaced by the release tarball
+# (see packaging/README.md).
+id: io.github.oxakromax.SwellPlayer
+runtime: org.gnome.Platform
+runtime-version: '49'
+sdk: org.gnome.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+command: swell-player
+
+finish-args:
+  # Display: Wayland, with X11 only when no Wayland compositor is running.
+  - --socket=wayland
+  - --socket=fallback-x11
+  # X11 needs a shared IPC namespace (MIT-SHM).
+  - --share=ipc
+  # GPU rendering for GTK's renderer.
+  - --device=dri
+  # TIDAL's API, streams and artwork.
+  - --share=network
+  # Audio output. On PipeWire systems this is pipewire-pulse, which carries
+  # the stream's sample format and rate, so playback stays bit-perfect.
+  - --socket=pulseaudio
+  # Media keys, desktop widgets and playerctl (MPRIS).
+  - --own-name=org.mpris.MediaPlayer2.SwellPlayer
+  # Nothing else is needed: the keyring is the Secret portal (oo7 detects
+  # the sandbox and keeps an encrypted file under ~/.var/app, so no
+  # org.freedesktop.secrets access), notifications, "keep awake while
+  # playing" (GtkApplication inhibit) and opening links all go through
+  # xdg-desktop-portal. The direct logind sleep lock simply fails inside
+  # the sandbox and the portal inhibit covers it.
+
+build-options:
+  append-path: /usr/lib/sdk/rust-stable/bin
+  env:
+    CARGO_HOME: /run/build/swell-player/cargo
+    CARGO_NET_OFFLINE: 'true'
+
+modules:
+  - name: swell-player
+    buildsystem: simple
+    build-commands:
+      - cargo --offline fetch --manifest-path Cargo.toml --verbose
+      - cargo --offline build --release --locked
+      - make install PREFIX=/app
+    sources:
+      - type: dir
+        path: ../..
+        skip:
+          - target
+          - build-dir
+          - .flatpak-builder
+          - .claude
+      - cargo-sources.json

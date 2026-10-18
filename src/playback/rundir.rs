@@ -1,6 +1,7 @@
 //! Private files of this process: DASH manifests and notification covers go
 //! to `$XDG_RUNTIME_DIR/swell-player/<pid>/` (in memory, mode 0700; without
-//! a runtime directory, `~/.cache/swell-player-run/<pid>/`), so two
+//! a runtime directory, as on Windows, `swell-player-run/<pid>/` in the
+//! user cache directory), so two
 //! instances never prune each other's files. The directory goes away on
 //! sign-out and when playback is dropped; ones left by processes that are
 //! gone are removed at startup.
@@ -16,7 +17,10 @@ use gtk::glib;
 const LEGACY_MAX_AGE: Duration = Duration::from_secs(10 * 60);
 
 fn base() -> PathBuf {
-    base_in(std::env::var_os("XDG_RUNTIME_DIR").map(PathBuf::from))
+    // Without a runtime directory (always on Windows) GLib answers with
+    // the cache directory itself, which `swell-player` there already is.
+    let runtime = glib::user_runtime_dir();
+    base_in(Some(runtime).filter(|dir| *dir != glib::user_cache_dir()))
 }
 
 /// `$XDG_RUNTIME_DIR/swell-player`, or (without a usable runtime
@@ -41,7 +45,15 @@ pub fn create() -> std::io::Result<PathBuf> {
     Ok(dir)
 }
 
+/// Creates `dir` (inside `base`). Windows: the user's profile is private
+/// already.
+#[cfg(not(unix))]
+fn create_private(_base: &Path, dir: &Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(dir)
+}
+
 /// Creates `dir` (inside `base`) with mode 0700 and makes both 0700.
+#[cfg(unix)]
 fn create_private(base: &Path, dir: &Path) -> std::io::Result<()> {
     use std::os::unix::fs::{DirBuilderExt, PermissionsExt};
     std::fs::DirBuilder::new()
@@ -107,13 +119,48 @@ fn judge(
     }
 }
 
+/// Whether process `pid` (whose directory was last changed `age` ago)
+/// still runs.
+#[cfg(target_os = "linux")]
+fn alive(pid: u32, _age: Option<Duration>) -> bool {
+    Path::new("/proc").join(pid.to_string()).exists()
+}
+
+#[cfg(all(unix, not(target_os = "linux")))]
+fn alive(pid: u32, _age: Option<Duration>) -> bool {
+    unsafe extern "C" {
+        fn kill(pid: i32, signal: i32) -> i32;
+    }
+    let Ok(pid) = i32::try_from(pid) else {
+        return false;
+    };
+    if pid <= 0 {
+        return false;
+    }
+    // Signal 0 only checks: it fails with EPERM for someone else's process
+    // (alive too) and ESRCH for none.
+    // Safety: `kill` with signal 0 sends nothing and has no preconditions.
+    unsafe { kill(pid, 0) == 0 }
+    || std::io::Error::last_os_error().raw_os_error() != Some(ESRCH)
+}
+
+/// `ESRCH` ("no such process"): 3 on macOS and the BSDs.
+#[cfg(all(unix, not(target_os = "linux")))]
+const ESRCH: i32 = 3;
+
+/// Windows, without a cheap way to ask: a directory nothing touched for a
+/// day belongs to a process that is gone (or one that would recreate it).
+#[cfg(not(unix))]
+fn alive(_pid: u32, age: Option<Duration>) -> bool {
+    age.is_none_or(|age| age < Duration::from_secs(24 * 60 * 60))
+}
+
 /// Removes the directories of processes that no longer run (blocking).
 pub fn prune_stale() {
     let Ok(entries) = std::fs::read_dir(base()) else {
         return;
     };
     let own = std::process::id();
-    let alive = |pid: u32| Path::new("/proc").join(pid.to_string()).exists();
     for entry in entries.flatten() {
         let Ok(kind) = entry.file_type() else {
             continue;
@@ -125,7 +172,8 @@ pub fn prune_stale() {
             .ok()
             .and_then(|t| t.elapsed().ok());
         let path = entry.path();
-        let result = match judge(&name, kind.is_dir(), age, own, alive) {
+        let is_alive = |pid| alive(pid, age);
+        let result = match judge(&name, kind.is_dir(), age, own, is_alive) {
             Stale::Keep => continue,
             Stale::RemoveDir => std::fs::remove_dir_all(&path),
             Stale::RemoveFile => std::fs::remove_file(&path),
@@ -167,6 +215,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn directories_are_private() {
         use std::os::unix::fs::PermissionsExt;
         let mode = |path: &Path| std::fs::metadata(path).unwrap().permissions().mode() & 0o777;

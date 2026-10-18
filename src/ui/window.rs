@@ -159,8 +159,22 @@ pub fn open_links(app: &adw::Application, uris: &[String]) {
 pub fn quit(app: &adw::Application) {
     if let Some(ui) = current() {
         ui.save_geometry();
+        ui.settings.save_now();
     }
     app.quit();
+}
+
+static RESTART: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Quits, and has `main` start Swell again once this instance is done.
+pub fn restart(app: &adw::Application) {
+    RESTART.store(true, std::sync::atomic::Ordering::SeqCst);
+    quit(app);
+}
+
+/// Whether [`restart`] was asked for.
+pub fn restart_requested() -> bool {
+    RESTART.load(std::sync::atomic::Ordering::SeqCst)
 }
 
 /// Remembers `undo` as the last reversible action, so Ctrl+Z runs it even
@@ -275,11 +289,7 @@ fn build(app: &adw::Application) {
             Ok(None) => ui.show_login(None),
             Err(err) => {
                 log::warn!("could not open the keyring: {err:#}");
-                ui.show_login(Some(
-                    "Couldn't open the keyring. Make sure a keyring service (GNOME Keyring, \
-                     KWallet) is running."
-                        .to_owned(),
-                ))
+                ui.show_login(Some(session::open_error().to_owned()))
             }
         }
     });
@@ -456,6 +466,11 @@ impl Ui {
             shell.multi.set_layout_name("narrow");
         }
         self.set_page("main", &shell.root);
+        // Say what to install rather than fail at the first track.
+        if let Some(message) = crate::playback::plugins::missing_message() {
+            ctx.toasts
+                .add_toast(adw::Toast::builder().title(message).timeout(0).build());
+        }
         shell.navigator.show_section("home");
         if let Some(section) = super::debug::section() {
             shell.navigator.show_section(&section);

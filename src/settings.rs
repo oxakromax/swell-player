@@ -1,4 +1,5 @@
-//! User preferences, kept as JSON in `~/.config/swell-player/settings.json`
+//! User preferences, kept as JSON in `settings.json` in the user config
+//! directory (`~/.config/swell-player/` on Linux)
 //! (no GSettings schema to install, so the binary runs from anywhere).
 //! Saved shortly after each change; listeners are told what changed.
 
@@ -69,6 +70,9 @@ pub struct Settings {
     /// display name (`Audio/Sink` devices of a `gst::DeviceMonitor`);
     /// `None` follows the system default.
     pub output_device: Option<String>,
+    /// Interface language: "auto" (the system's), "en" or "es". Read at
+    /// startup only (see `i18n::init`).
+    pub language: String,
 }
 
 impl Default for Settings {
@@ -90,6 +94,7 @@ impl Default for Settings {
             panel_open: false,
             panel_tab: "playing".to_owned(),
             output_device: None,
+            language: "auto".to_owned(),
         }
     }
 }
@@ -110,6 +115,15 @@ fn path() -> PathBuf {
     glib::user_config_dir()
         .join("swell-player")
         .join("settings.json")
+}
+
+/// The saved Language preference, read before anything is translated
+/// (the store itself is loaded later, with the window).
+pub fn saved_language() -> String {
+    std::fs::read(path())
+        .ok()
+        .map(|data| parse(&data).language)
+        .unwrap_or_else(|| Settings::default().language)
 }
 
 impl Store {
@@ -248,5 +262,6 @@ mod tests {
         assert!(settings.gapless);
         assert!(!settings.panel_open);
         assert_eq!(settings.panel_tab, "playing");
+        assert_eq!(settings.language, "auto");
     }
 }

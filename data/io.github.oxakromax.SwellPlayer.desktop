@@ -1,7 +1,6 @@
 [Desktop Entry]
 Type=Application
 Name=Swell
-Name[es]=Swell
 GenericName=Music Player
 GenericName[es]=Reproductor de música
 Comment=Listen to TIDAL in a native app
@@ -9,9 +8,10 @@ Comment[es]=Escucha TIDAL en una app nativa
 Exec=swell-player %U
 Icon=io.github.oxakromax.SwellPlayer
 Terminal=false
-Categories=AudioVideo;Audio;Player;GTK;GNOME;
-Keywords=music;tidal;streaming;hi-res;flac;player;
-Keywords[es]=música;tidal;streaming;hi-res;flac;reproductor;
+Categories=AudioVideo;Audio;Player;GTK;
+Keywords=music;tidal;streaming;hi-res;lossless;flac;player;audio;
+Keywords[es]=música;tidal;streaming;hi-res;sin pérdida;flac;reproductor;audio;
 MimeType=x-scheme-handler/tidal;
 StartupNotify=true
 StartupWMClass=io.github.oxakromax.SwellPlayer
+X-GNOME-UsesNotifications=true

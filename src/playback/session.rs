@@ -1,4 +1,5 @@
-//! The queue saved between runs, in `$XDG_STATE_HOME/swell-player/`:
+//! The queue saved between runs, in the user state directory
+//! (`$XDG_STATE_HOME/swell-player/` on Linux):
 //! `queue.json` (the queue, source and position, written when the queue
 //! changes and at quit) and `position.json` (just the position, written
 //! every few seconds while playing, so a long queue is not rewritten that
@@ -129,14 +130,10 @@ impl Saved {
     }
 }
 
-/// `$XDG_STATE_HOME/swell-player` (GLib's `g_get_user_state_dir` needs a
-/// newer binding than ours).
+/// `swell-player` in the user state directory (`$XDG_STATE_HOME`,
+/// `~/.local/state` by default; the local app data folder on Windows).
 fn dir() -> PathBuf {
-    std::env::var_os("XDG_STATE_HOME")
-        .map(PathBuf::from)
-        .filter(|path| path.is_absolute())
-        .unwrap_or_else(|| glib::home_dir().join(".local").join("state"))
-        .join("swell-player")
+    glib::user_state_dir().join("swell-player")
 }
 
 fn queue_path() -> PathBuf {
