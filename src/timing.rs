@@ -21,6 +21,7 @@ pub fn start() {
 /// Time since the kernel started this process: system uptime minus the
 /// process start time from `/proc/self/stat` (in USER_HZ ticks, which the
 /// Linux ABI fixes at 100 per second). 10 ms resolution.
+#[cfg(target_os = "linux")]
 fn since_process_start() -> Option<Duration> {
     let stat = std::fs::read_to_string("/proc/self/stat").ok()?;
     // Fields after the parenthesised command name; starttime is field 22.
@@ -29,6 +30,12 @@ fn since_process_start() -> Option<Duration> {
     let uptime = std::fs::read_to_string("/proc/uptime").ok()?;
     let uptime: f64 = uptime.split(' ').next()?.parse().ok()?;
     Duration::try_from_secs_f64(uptime - start_ticks / 100.0).ok()
+}
+
+/// Elsewhere the milestones count from `main`.
+#[cfg(not(target_os = "linux"))]
+fn since_process_start() -> Option<Duration> {
+    None
 }
 
 pub fn mark(what: &str) {

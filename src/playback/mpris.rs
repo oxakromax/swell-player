@@ -15,6 +15,7 @@ use zbus::fdo::{RequestNameFlags, RequestNameReply};
 use zbus::object_server::SignalEmitter;
 use zbus::zvariant::{ObjectPath, OwnedValue, Value};
 
+use super::controls::{Command, Metadata, Snapshot, Status};
 use crate::config;
 use crate::runtime;
 use crate::settings::Repeat;
@@ -24,87 +25,9 @@ const BUS_NAME: &str = "org.mpris.MediaPlayer2.SwellPlayer";
 const NO_TRACK: &str = "/org/mpris/MediaPlayer2/TrackList/NoTrack";
 const TRACK_PATH: &str = "/io/github/oxakromax/SwellPlayer/track";
 
-/// A request from a media controller, for the main thread.
-#[derive(Clone, Debug, PartialEq)]
-pub enum Command {
-    Play,
-    Pause,
-    PlayPause,
-    Stop,
-    Next,
-    Previous,
-    /// Relative, in seconds.
-    Seek(f64),
-    /// Absolute, in seconds, if `track_id` is still current.
-    SetPosition {
-        track_id: u64,
-        position: f64,
-    },
-    Volume(f64),
-    Shuffle(bool),
-    Repeat(Repeat),
-    /// A `tidal://` or TIDAL web link to open in the app.
-    OpenUri(String),
-    Raise,
-    Quit,
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum Status {
-    Playing,
-    Paused,
-    #[default]
-    Stopped,
-}
-
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct Metadata {
-    pub track_id: u64,
-    pub title: String,
-    pub artists: Vec<String>,
-    pub album: String,
-    /// Seconds.
-    pub length: f64,
-    pub art_url: Option<String>,
-    pub url: String,
-    pub track_number: u32,
-    pub disc_number: u32,
-}
-
-/// Everything the bus can read.
-#[derive(Clone, Debug, Default)]
-pub struct Snapshot {
-    pub status: Status,
-    pub repeat: Repeat,
-    pub shuffle: bool,
-    /// Slider position 0–1.
-    pub volume: f64,
-    pub track: Option<Metadata>,
-    /// Seconds, as of `position_at` (advancing from then while playing).
-    pub position: f64,
-    pub position_at: Option<Instant>,
-    pub can_go_next: bool,
-    pub can_go_previous: bool,
-    pub can_play: bool,
-    pub can_seek: bool,
-    pub can_raise: bool,
-    pub can_quit: bool,
-}
-
 impl Snapshot {
     fn position_us(&self) -> i64 {
-        let mut position = self.position;
-        if self.status == Status::Playing
-            && let Some(at) = self.position_at
-        {
-            position += at.elapsed().as_secs_f64();
-        }
-        if let Some(track) = &self.track
-            && track.length > 0.0
-        {
-            position = position.min(track.length);
-        }
-        (position.max(0.0) * 1e6) as i64
+        (self.position_now() * 1e6) as i64
     }
 }
 
@@ -175,6 +98,9 @@ impl Mpris {
         });
         Self { shared, connection }
     }
+
+    /// MPRIS needs no window (the OS controls of Windows do).
+    pub fn attach(&self, _app: &adw::Application) {}
 
     /// Replaces the snapshot and tells the bus what changed.
     pub fn update(&self, snapshot: Snapshot) {

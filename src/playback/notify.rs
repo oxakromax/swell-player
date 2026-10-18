@@ -35,7 +35,46 @@ fn reason() -> &'static str {
     tr("Playing music")
 }
 
+/// Windows: GTK cannot inhibit suspend there, so Swell asks the system
+/// itself. The request belongs to the calling thread: always the main one.
+#[cfg(windows)]
+#[derive(Default)]
+struct SleepLock;
+
+#[cfg(windows)]
+impl SleepLock {
+    fn set(self: &Rc<Self>, wanted: bool) {
+        const ES_CONTINUOUS: u32 = 0x8000_0000;
+        const ES_SYSTEM_REQUIRED: u32 = 0x0000_0001;
+        #[link(name = "kernel32")]
+        unsafe extern "system" {
+            fn SetThreadExecutionState(flags: u32) -> u32;
+        }
+        let flags = if wanted {
+            ES_CONTINUOUS | ES_SYSTEM_REQUIRED
+        } else {
+            ES_CONTINUOUS
+        };
+        // Safety: it only takes flags, and changes this thread's request.
+        if unsafe { SetThreadExecutionState(flags) } == 0 {
+            log::info!("cannot inhibit suspend");
+        }
+    }
+}
+
+/// macOS and the BSDs: GTK's inhibition (an IOKit power assertion on
+/// macOS, the session manager or portal elsewhere) is all there is.
+#[cfg(not(any(target_os = "linux", windows)))]
+#[derive(Default)]
+struct SleepLock;
+
+#[cfg(not(any(target_os = "linux", windows)))]
+impl SleepLock {
+    fn set(self: &Rc<Self>, _wanted: bool) {}
+}
+
 /// A logind "sleep" inhibitor, held as a file descriptor while wanted.
+#[cfg(target_os = "linux")]
 #[derive(Default)]
 struct SleepLock {
     wanted: Cell<bool>,
@@ -44,6 +83,7 @@ struct SleepLock {
     unavailable: Cell<bool>,
 }
 
+#[cfg(target_os = "linux")]
 impl SleepLock {
     fn set(self: &Rc<Self>, wanted: bool) {
         self.wanted.set(wanted);
@@ -75,6 +115,7 @@ impl SleepLock {
     }
 }
 
+#[cfg(target_os = "linux")]
 async fn logind_inhibit() -> Result<zbus::zvariant::OwnedFd> {
     static SYSTEM: tokio::sync::OnceCell<zbus::Connection> = tokio::sync::OnceCell::const_new();
     let connection = SYSTEM.get_or_try_init(zbus::Connection::system).await?;
@@ -154,9 +195,10 @@ impl Desktop {
         }
     }
 
-    /// Keeps the system awake while music plays: a logind sleep lock
-    /// (works on any systemd desktop) plus GTK's inhibition (session
-    /// manager or portal, which also tells the desktop why).
+    /// Keeps the system awake while music plays: a logind sleep lock on
+    /// Linux (any systemd desktop) or an execution-state request on
+    /// Windows, plus GTK's inhibition (session manager, portal or macOS
+    /// power assertion, which also tells the desktop why).
     pub fn set_playing(&self, playing: bool) {
         self.sleep_lock.set(playing);
         let Some(app) = self.app() else {

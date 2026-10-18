@@ -28,33 +28,33 @@ msgstr ""
 msgid "Unknown format"
 msgstr ""
 
-#: src/playback/mod.rs:1428
+#: src/playback/mod.rs:1439
 msgid "Skipped a track that is not available"
 msgid_plural "Skipped {n} tracks that are not available"
 msgstr[0] ""
 msgstr[1] ""
 
-#: src/playback/mod.rs:1458
+#: src/playback/mod.rs:1469
 msgid "Playback needs GStreamer's playbin3"
 msgstr ""
 
-#: src/playback/mod.rs:1555
+#: src/playback/mod.rs:1566
 msgid "The TIDAL session has expired: sign in again to play"
 msgstr ""
 
-#: src/playback/mod.rs:1580
+#: src/playback/mod.rs:1591
 msgid "Connection lost — retrying"
 msgstr ""
 
-#: src/playback/mod.rs:1648
+#: src/playback/mod.rs:1659
 msgid "Could not play “{title}”. Playback stopped after {n} tracks failed"
 msgstr ""
 
-#: src/playback/mod.rs:1654
+#: src/playback/mod.rs:1665
 msgid "Could not play “{title}”, skipped"
 msgstr ""
 
-#: src/playback/mod.rs:1847
+#: src/playback/mod.rs:1858
 msgid "Playback failed: {error}"
 msgstr ""
 
@@ -62,8 +62,28 @@ msgstr ""
 msgid "Playing music"
 msgstr ""
 
-#: src/playback/notify.rs:200
+#: src/playback/notify.rs:242
 msgid "{artists} — {album}"
+msgstr ""
+
+#: src/playback/plugins.rs:24
+msgid "Playback needs GStreamer’s “{element}”. Install {package}."
+msgstr ""
+
+#: src/session.rs:73
+msgid "Couldn't open the system's credential store."
+msgstr ""
+
+#: src/session.rs:75
+msgid "Couldn't open the keyring. Make sure a keyring service (GNOME Keyring, KWallet) is running."
+msgstr ""
+
+#: src/session.rs:84
+msgid "Couldn't save the session in the system's credential store."
+msgstr ""
+
+#: src/session.rs:86
+msgid "Couldn't save the session in the keyring. Make sure a keyring service (GNOME Keyring, KWallet) is running."
 msgstr ""
 
 #: src/ui/context.rs:105
@@ -276,48 +296,48 @@ msgstr ""
 msgid "Couldn't delete the playlist"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:41
+#: src/ui/dialogs/preferences.rs:42
 #: src/ui/widgets/np_common.rs:407
 #: src/ui/widgets/np_common.rs:411
 #: src/ui/widgets/quality_badge.rs:28
 msgid "Hi-Res Lossless"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:44
+#: src/ui/dialogs/preferences.rs:45
 #: src/ui/widgets/np_common.rs:408
 #: src/ui/widgets/np_common.rs:412
 #: src/ui/widgets/quality_badge.rs:29
 msgid "Lossless"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:45
+#: src/ui/dialogs/preferences.rs:46
 #: src/ui/widgets/np_common.rs:409
 msgid "High"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:46
+#: src/ui/dialogs/preferences.rs:47
 #: src/ui/widgets/np_common.rs:410
 msgid "Low"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:56
+#: src/ui/dialogs/preferences.rs:57
 msgid "Streaming Quality"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:64
+#: src/ui/dialogs/preferences.rs:65
 msgid "Hi-Res Lossless requires browser sign-in"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:70
+#: src/ui/dialogs/preferences.rs:71
 #: src/ui/widgets/np_common.rs:477
 msgid "Quality"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:80
+#: src/ui/dialogs/preferences.rs:81
 msgid "Volume Normalisation"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:81
+#: src/ui/dialogs/preferences.rs:82
 #: src/ui/pages/album.rs:68
 #: src/ui/pages/collection.rs:592
 #: src/ui/pages/search_views.rs:339
@@ -325,192 +345,208 @@ msgstr ""
 msgid "Album"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:81
+#: src/ui/dialogs/preferences.rs:82
 #: src/ui/widgets/np_common.rs:610
 #: src/ui/widgets/np_common.rs:801
 msgid "Off"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:81
+#: src/ui/dialogs/preferences.rs:82
 #: src/ui/pages/search_views.rs:343
 msgid "Track"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:87
+#: src/ui/dialogs/preferences.rs:88
 msgid "Off keeps the output bit-perfect"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:93
+#: src/ui/dialogs/preferences.rs:94
 msgid "Gapless Playback"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:99
+#: src/ui/dialogs/preferences.rs:100
 msgid "Processing"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:106
+#: src/ui/dialogs/preferences.rs:107
 #: src/ui/shortcuts.rs:60
 msgid "Playback"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:119
+#: src/ui/dialogs/preferences.rs:120
 msgid "System Default"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:121
+#: src/ui/dialogs/preferences.rs:122
 msgid "Output Device"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:159
+#: src/ui/dialogs/preferences.rs:160
 #: src/ui/widgets/np_common.rs:483
 msgid "Output"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:190
+#: src/ui/dialogs/preferences.rs:191
 msgid "Behaviour"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:194
+#: src/ui/dialogs/preferences.rs:195
 msgid "Run in Background"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:195
+#: src/ui/dialogs/preferences.rs:196
 msgid "Keep playing when the window is closed"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:201
+#: src/ui/dialogs/preferences.rs:202
 msgid "Track Change Notifications"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:202
+#: src/ui/dialogs/preferences.rs:203
 msgid "When the window is not focused"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:208
+#: src/ui/dialogs/preferences.rs:209
 msgid "Restore Queue on Start"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:215
+#: src/ui/dialogs/preferences.rs:217
 #: src/ui/shortcuts.rs:26
 msgid "General"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:229
+#: src/ui/dialogs/preferences.rs:231
+msgid "Language"
+msgstr ""
+
+#: src/ui/dialogs/preferences.rs:232
+msgid "Automatic"
+msgstr ""
+
+#: src/ui/dialogs/preferences.rs:253
+msgid "Restart Swell to change the language"
+msgstr ""
+
+#: src/ui/dialogs/preferences.rs:254
+msgid "Restart"
+msgstr ""
+
+#: src/ui/dialogs/preferences.rs:279
 msgid "Storage"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:230
+#: src/ui/dialogs/preferences.rs:280
 msgid "Downloaded artwork and saved answers from TIDAL, so pages open instantly and work offline."
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:235
+#: src/ui/dialogs/preferences.rs:285
 msgid "Cover Cache"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:236
+#: src/ui/dialogs/preferences.rs:286
 msgid "Clear the Cover Cache?"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:237
+#: src/ui/dialogs/preferences.rs:287
 msgid "Artwork is downloaded again as you browse."
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:238
+#: src/ui/dialogs/preferences.rs:288
 msgid "Cover Cache cleared"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:239
+#: src/ui/dialogs/preferences.rs:289
 msgid "Couldn’t clear the Cover Cache"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:260
+#: src/ui/dialogs/preferences.rs:310
 msgid "Library Cache"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:261
+#: src/ui/dialogs/preferences.rs:311
 msgid "Clear the Library Cache?"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:262
+#: src/ui/dialogs/preferences.rs:312
 msgid "Pages are loaded again from TIDAL. Your collection is not affected."
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:263
+#: src/ui/dialogs/preferences.rs:313
 msgid "Library Cache cleared"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:264
+#: src/ui/dialogs/preferences.rs:314
 msgid "Couldn’t clear the Library Cache"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:318
+#: src/ui/dialogs/preferences.rs:368
 msgid "Calculating…"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:321
-#: src/ui/dialogs/preferences.rs:367
+#: src/ui/dialogs/preferences.rs:371
+#: src/ui/dialogs/preferences.rs:417
 msgid "_Clear"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:367
-#: src/ui/window.rs:403
+#: src/ui/dialogs/preferences.rs:417
+#: src/ui/window.rs:413
 msgid "_Cancel"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:422
+#: src/ui/dialogs/preferences.rs:472
 msgid "Blocked Artists"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:423
+#: src/ui/dialogs/preferences.rs:473
 msgid "Loading…"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:439
+#: src/ui/dialogs/preferences.rs:489
 msgid "Couldn’t load blocked artists."
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:444
+#: src/ui/dialogs/preferences.rs:494
 msgid "Nothing blocked. Blocked artists are skipped in radios and mixes."
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:446
+#: src/ui/dialogs/preferences.rs:496
 msgid "Skipped in radios and mixes."
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:455
+#: src/ui/dialogs/preferences.rs:505
 msgid "Unblock"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:488
+#: src/ui/dialogs/preferences.rs:538
 #: src/ui/menus.rs:870
 msgid "Unblocked {name}"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:498
+#: src/ui/dialogs/preferences.rs:548
 msgid "Couldn’t unblock the artist"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:513
+#: src/ui/dialogs/preferences.rs:563
 msgid "Signed in with the browser"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:514
+#: src/ui/dialogs/preferences.rs:564
 msgid "Up to Hi-Res Lossless"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:517
+#: src/ui/dialogs/preferences.rs:567
 msgid "Signed in with a device code"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:518
+#: src/ui/dialogs/preferences.rs:568
 msgid "Up to Lossless (16-bit/44.1 kHz)"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:546
+#: src/ui/dialogs/preferences.rs:596
 msgid "Sign _Out…"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:567
+#: src/ui/dialogs/preferences.rs:617
 msgid "Account"
 msgstr ""
 
@@ -672,29 +708,25 @@ msgstr ""
 msgid "Device Code"
 msgstr ""
 
-#: src/ui/login.rs:164
-msgid "Couldn't save the session in the keyring. Make sure a keyring service (GNOME Keyring, KWallet) is running."
-msgstr ""
-
-#: src/ui/login.rs:198
+#: src/ui/login.rs:192
 msgid "Couldn't start the sign-in. Please try again."
 msgstr ""
 
-#: src/ui/login.rs:208
+#: src/ui/login.rs:202
 msgid ""
 "Couldn't open the browser ({error}). Open this address yourself:\n"
 "{url}"
 msgstr ""
 
-#: src/ui/login.rs:264
+#: src/ui/login.rs:258
 msgid "Sign-in failed. {error}"
 msgstr ""
 
-#: src/ui/login.rs:319
+#: src/ui/login.rs:313
 msgid "Couldn't get a code. {error}"
 msgstr ""
 
-#: src/ui/login.rs:338
+#: src/ui/login.rs:332
 msgid "This code expired or was not approved."
 msgstr ""
 
@@ -870,7 +902,7 @@ msgstr ""
 #: src/ui/menus.rs:625
 #: src/ui/widgets/heart_button.rs:215
 #: src/ui/widgets/np_common.rs:765
-#: src/ui/window.rs:729
+#: src/ui/window.rs:744
 msgid "Couldn't update favourites"
 msgstr ""
 
@@ -927,7 +959,7 @@ msgstr ""
 #: src/ui/nav.rs:407
 #: src/ui/sidebar.rs:288
 #: src/ui/sidebar.rs:317
-#: src/ui/window.rs:791
+#: src/ui/window.rs:806
 msgid "Collection"
 msgstr ""
 
@@ -1063,7 +1095,7 @@ msgid "Use the heart on a track to save it here."
 msgstr ""
 
 #: src/ui/pages/collection.rs:669
-#: src/ui/pages/search_data.rs:79
+#: src/ui/pages/search_data.rs:80
 #: src/ui/pages/search_views.rs:88
 #: src/ui/sidebar.rs:121
 #: src/ui/widgets/track_list.rs:126
@@ -1099,7 +1131,7 @@ msgid "Last Updated"
 msgstr ""
 
 #: src/ui/pages/collection_grid.rs:158
-#: src/ui/pages/search_data.rs:80
+#: src/ui/pages/search_data.rs:81
 #: src/ui/sidebar.rs:126
 msgid "Albums"
 msgstr ""
@@ -1109,7 +1141,7 @@ msgid "Filter albums"
 msgstr ""
 
 #: src/ui/pages/collection_grid.rs:159
-#: src/ui/pages/search_data.rs:81
+#: src/ui/pages/search_data.rs:82
 #: src/ui/sidebar.rs:131
 msgid "Artists"
 msgstr ""
@@ -1119,7 +1151,7 @@ msgid "Filter artists"
 msgstr ""
 
 #: src/ui/pages/collection_grid.rs:162
-#: src/ui/pages/search_data.rs:82
+#: src/ui/pages/search_data.rs:83
 #: src/ui/sidebar.rs:136
 msgid "Playlists"
 msgstr ""
@@ -1170,7 +1202,7 @@ msgid "Use the heart on a mix or radio to save it here."
 msgstr ""
 
 #: src/ui/pages/collection_grid.rs:351
-#: src/ui/pages/search_data.rs:78
+#: src/ui/pages/search_data.rs:79
 msgid "All"
 msgstr ""
 
@@ -1265,7 +1297,7 @@ msgstr ""
 #: src/ui/pages/history.rs:248
 #: src/ui/pages/history.rs:255
 #: src/ui/sidebar.rs:146
-#: src/ui/window.rs:1214
+#: src/ui/window.rs:1229
 msgid "Recently Played"
 msgstr ""
 
@@ -1616,6 +1648,7 @@ msgid "Preferences"
 msgstr ""
 
 #: src/ui/shortcuts.rs:30
+#: src/ui/shortcuts.rs:158
 msgid "Keyboard Shortcuts"
 msgstr ""
 
@@ -2252,26 +2285,26 @@ msgstr ""
 msgid "Not available in your region"
 msgstr ""
 
-#: src/ui/window.rs:388
+#: src/ui/window.rs:398
 msgid "Couldn't remove your session from the keyring."
 msgstr ""
 
-#: src/ui/window.rs:398
+#: src/ui/window.rs:408
 msgid "Sign Out?"
 msgstr ""
 
-#: src/ui/window.rs:399
+#: src/ui/window.rs:409
 msgid "You will need to sign in again to listen. Your library cached on this computer is deleted."
 msgstr ""
 
-#: src/ui/window.rs:403
+#: src/ui/window.rs:413
 msgid "_Sign Out"
 msgstr ""
 
-#: src/ui/window.rs:503
+#: src/ui/window.rs:518
 msgid "Couldn't load your library"
 msgstr ""
 
-#: src/ui/window.rs:755
+#: src/ui/window.rs:770
 msgid "Couldn't open the track"
 msgstr ""

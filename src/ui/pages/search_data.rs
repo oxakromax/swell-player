@@ -1,7 +1,8 @@
 //! The Search page's data (docs/design.md §3.4): the filters, one answer
 //! from TIDAL's `search` reduced to what the page shows, the answers of the
 //! last few queries (in memory, so going back to a query is instant) and
-//! the recent searches, kept in `$XDG_STATE_HOME/swell-player/searches.json`
+//! the recent searches, kept in `swell-player/searches.json` in the user
+//! state directory (`$XDG_STATE_HOME`)
 //! and read and written on the I/O runtime.
 
 use std::cell::RefCell;
@@ -399,12 +400,9 @@ fn write_atomic(path: &Path, data: &[u8]) -> std::io::Result<()> {
     std::fs::rename(&temporary, path)
 }
 
-/// `$XDG_STATE_HOME/swell-player/searches.json`.
+/// `swell-player/searches.json` in the user state directory.
 fn path() -> PathBuf {
-    std::env::var_os("XDG_STATE_HOME")
-        .map(PathBuf::from)
-        .filter(|path| path.is_absolute())
-        .unwrap_or_else(|| glib::home_dir().join(".local").join("state"))
+    glib::user_state_dir()
         .join("swell-player")
         .join("searches.json")
 }
