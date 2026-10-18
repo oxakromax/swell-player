@@ -224,6 +224,34 @@ impl Queue {
             })
     }
 
+    /// Up to `n` tracks in the order they will play from here, as far as
+    /// that is known now (for prefetching): the first is [`Self::peek_next`]
+    /// (with repeat-one the current track, then what skipping reaches).
+    /// Repeat-all wraps round once, unless the context is shuffled (it is
+    /// reshuffled when it starts over).
+    pub fn peek_upcoming(&self, n: usize) -> Vec<&TrackInfo> {
+        let repeat_one = self
+            .current
+            .as_ref()
+            .filter(|c| self.repeat == Repeat::One && c.track.available)
+            .map(|c| &c.track);
+        let wrap = (self.repeat != Repeat::Off && !self.shuffle)
+            .then(|| self.context_in_play_order())
+            .into_iter()
+            .flatten();
+        repeat_one
+            .into_iter()
+            .chain(
+                self.up_next
+                    .iter()
+                    .chain(self.remaining_context())
+                    .chain(wrap)
+                    .filter(|t| t.available),
+            )
+            .take(n)
+            .collect()
+    }
+
     /// If the current track is unavailable, drops it and moves on to the
     /// first playable one (or to nothing). Returns how many were dropped.
     pub fn skip_unavailable(&mut self) -> usize {
@@ -903,6 +931,56 @@ mod tests {
                     assert_eq!(q.current().unwrap().id, peek, "seed {seed}");
                 }
                 if !advanced {
+                    break;
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn peek_upcoming_follows_play_order() {
+        let mut q = Queue::default();
+        let mut list = tracks(5);
+        list[2].available = false;
+        q.set_context(list, 0, source());
+        q.play_next(vec![track(9)]);
+        let peek = |q: &Queue, n| q.peek_upcoming(n).iter().map(|t| t.id).collect::<Vec<_>>();
+        assert_eq!(peek(&q, 3), [9, 2, 4]);
+        assert_eq!(peek(&q, 10), [9, 2, 4, 5]);
+        assert_eq!(peek(&q, 0), Vec::<u64>::new());
+        // Repeat-all wraps round once.
+        q.set_repeat(Repeat::All);
+        assert_eq!(peek(&q, 10), [9, 2, 4, 5, 1, 2, 4, 5]);
+        // Repeat-one: this track again, then what a skip reaches.
+        q.set_repeat(Repeat::One);
+        assert_eq!(peek(&q, 3), [1, 9, 2]);
+        // A shuffled context is reshuffled when it starts over: unknown.
+        q.set_repeat(Repeat::All);
+        q.set_shuffle(true);
+        assert_eq!(q.peek_upcoming(10).len(), 4);
+    }
+
+    #[test]
+    fn peek_upcoming_starts_with_peek_next() {
+        for seed in 0..200u64 {
+            let mut q = Queue::default();
+            let mut list = tracks(6);
+            for (i, t) in list.iter_mut().enumerate() {
+                if (seed >> i) & 1 == 1 {
+                    t.available = false;
+                }
+            }
+            q.set_shuffle(seed % 5 == 0);
+            q.set_context(list, (seed % 6) as usize, source());
+            q.set_repeat(match seed % 3 {
+                0 => Repeat::All,
+                1 => Repeat::One,
+                _ => Repeat::Off,
+            });
+            for _ in 0..8 {
+                let first = q.peek_upcoming(3).first().map(|t| t.id);
+                assert_eq!(first, q.peek_next().map(|t| t.id), "seed {seed}");
+                if !q.advance(false) {
                     break;
                 }
             }

@@ -2141,3 +2141,27 @@ msgstr "Reiniciar"
 #: src/playback/plugins.rs
 msgid "Playback needs GStreamer’s “{element}”. Install {package}."
 msgstr "La reproducción necesita “{element}” de GStreamer. Instala {package}."
+
+#: src/ui/dialogs/preferences.rs
+msgid "Crossfade"
+msgstr "Fundido encadenado"
+
+#: src/ui/dialogs/preferences.rs
+msgid "{n} s"
+msgstr "{n} s"
+
+#: src/ui/dialogs/preferences.rs
+msgid "Not available while the output is bit-perfect: turn on Volume Normalisation"
+msgstr "No disponible mientras la salida es bit-perfect: activa la normalización de volumen"
+
+#: src/ui/dialogs/preferences.rs
+msgid "When a track ends by itself; consecutive album tracks stay gapless"
+msgstr "Cuando una pista termina sola; las pistas seguidas de un álbum siguen sin pausas"
+
+#: src/ui/dialogs/preferences.rs
+msgid "Smooth Transitions"
+msgstr "Transiciones suaves"
+
+#: src/ui/dialogs/preferences.rs
+msgid "Short fades when pausing, seeking and skipping"
+msgstr "Fundidos breves al pausar, buscar y saltar"

@@ -28,33 +28,33 @@ msgstr ""
 msgid "Unknown format"
 msgstr ""
 
-#: src/playback/mod.rs:1439
+#: src/playback/mod.rs:1532
 msgid "Skipped a track that is not available"
 msgid_plural "Skipped {n} tracks that are not available"
 msgstr[0] ""
 msgstr[1] ""
 
-#: src/playback/mod.rs:1469
+#: src/playback/mod.rs:1562
 msgid "Playback needs GStreamer's playbin3"
 msgstr ""
 
-#: src/playback/mod.rs:1566
+#: src/playback/mod.rs:1663
 msgid "The TIDAL session has expired: sign in again to play"
 msgstr ""
 
-#: src/playback/mod.rs:1591
+#: src/playback/mod.rs:1688
 msgid "Connection lost — retrying"
 msgstr ""
 
-#: src/playback/mod.rs:1659
+#: src/playback/mod.rs:1756
 msgid "Could not play “{title}”. Playback stopped after {n} tracks failed"
 msgstr ""
 
-#: src/playback/mod.rs:1665
+#: src/playback/mod.rs:1762
 msgid "Could not play “{title}”, skipped"
 msgstr ""
 
-#: src/playback/mod.rs:1858
+#: src/playback/mod.rs:1957
 msgid "Playback failed: {error}"
 msgstr ""
 
@@ -346,6 +346,7 @@ msgid "Album"
 msgstr ""
 
 #: src/ui/dialogs/preferences.rs:82
+#: src/ui/dialogs/preferences.rs:132
 #: src/ui/widgets/np_common.rs:610
 #: src/ui/widgets/np_common.rs:801
 msgid "Off"
@@ -369,184 +370,208 @@ msgid "Processing"
 msgstr ""
 
 #: src/ui/dialogs/preferences.rs:107
+msgid "Smooth Transitions"
+msgstr ""
+
+#: src/ui/dialogs/preferences.rs:108
+msgid "Short fades when pausing, seeking and skipping"
+msgstr ""
+
+#: src/ui/dialogs/preferences.rs:115
 #: src/ui/shortcuts.rs:60
 msgid "Playback"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:120
+#: src/ui/dialogs/preferences.rs:130
+msgid "{n} s"
+msgstr ""
+
+#: src/ui/dialogs/preferences.rs:136
+msgid "Crossfade"
+msgstr ""
+
+#: src/ui/dialogs/preferences.rs:144
+msgid "Not available while the output is bit-perfect: turn on Volume Normalisation"
+msgstr ""
+
+#: src/ui/dialogs/preferences.rs:146
+msgid "When a track ends by itself; consecutive album tracks stay gapless"
+msgstr ""
+
+#: src/ui/dialogs/preferences.rs:159
 msgid "System Default"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:122
+#: src/ui/dialogs/preferences.rs:161
 msgid "Output Device"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:160
+#: src/ui/dialogs/preferences.rs:199
 #: src/ui/widgets/np_common.rs:483
 msgid "Output"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:191
+#: src/ui/dialogs/preferences.rs:230
 msgid "Behaviour"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:195
+#: src/ui/dialogs/preferences.rs:234
 msgid "Run in Background"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:196
+#: src/ui/dialogs/preferences.rs:235
 msgid "Keep playing when the window is closed"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:202
+#: src/ui/dialogs/preferences.rs:241
 msgid "Track Change Notifications"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:203
+#: src/ui/dialogs/preferences.rs:242
 msgid "When the window is not focused"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:209
+#: src/ui/dialogs/preferences.rs:248
 msgid "Restore Queue on Start"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:217
+#: src/ui/dialogs/preferences.rs:256
 #: src/ui/shortcuts.rs:26
 msgid "General"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:231
+#: src/ui/dialogs/preferences.rs:270
 msgid "Language"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:232
+#: src/ui/dialogs/preferences.rs:271
 msgid "Automatic"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:253
+#: src/ui/dialogs/preferences.rs:292
 msgid "Restart Swell to change the language"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:254
+#: src/ui/dialogs/preferences.rs:293
 msgid "Restart"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:279
+#: src/ui/dialogs/preferences.rs:318
 msgid "Storage"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:280
+#: src/ui/dialogs/preferences.rs:319
 msgid "Downloaded artwork and saved answers from TIDAL, so pages open instantly and work offline."
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:285
+#: src/ui/dialogs/preferences.rs:324
 msgid "Cover Cache"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:286
+#: src/ui/dialogs/preferences.rs:325
 msgid "Clear the Cover Cache?"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:287
+#: src/ui/dialogs/preferences.rs:326
 msgid "Artwork is downloaded again as you browse."
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:288
+#: src/ui/dialogs/preferences.rs:327
 msgid "Cover Cache cleared"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:289
+#: src/ui/dialogs/preferences.rs:328
 msgid "Couldn’t clear the Cover Cache"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:310
+#: src/ui/dialogs/preferences.rs:349
 msgid "Library Cache"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:311
+#: src/ui/dialogs/preferences.rs:350
 msgid "Clear the Library Cache?"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:312
+#: src/ui/dialogs/preferences.rs:351
 msgid "Pages are loaded again from TIDAL. Your collection is not affected."
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:313
+#: src/ui/dialogs/preferences.rs:352
 msgid "Library Cache cleared"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:314
+#: src/ui/dialogs/preferences.rs:353
 msgid "Couldn’t clear the Library Cache"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:368
+#: src/ui/dialogs/preferences.rs:407
 msgid "Calculating…"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:371
-#: src/ui/dialogs/preferences.rs:417
+#: src/ui/dialogs/preferences.rs:410
+#: src/ui/dialogs/preferences.rs:456
 msgid "_Clear"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:417
+#: src/ui/dialogs/preferences.rs:456
 #: src/ui/window.rs:413
 msgid "_Cancel"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:472
+#: src/ui/dialogs/preferences.rs:511
 msgid "Blocked Artists"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:473
+#: src/ui/dialogs/preferences.rs:512
 msgid "Loading…"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:489
+#: src/ui/dialogs/preferences.rs:528
 msgid "Couldn’t load blocked artists."
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:494
+#: src/ui/dialogs/preferences.rs:533
 msgid "Nothing blocked. Blocked artists are skipped in radios and mixes."
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:496
+#: src/ui/dialogs/preferences.rs:535
 msgid "Skipped in radios and mixes."
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:505
+#: src/ui/dialogs/preferences.rs:544
 msgid "Unblock"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:538
+#: src/ui/dialogs/preferences.rs:577
 #: src/ui/menus.rs:870
 msgid "Unblocked {name}"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:548
+#: src/ui/dialogs/preferences.rs:587
 msgid "Couldn’t unblock the artist"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:563
+#: src/ui/dialogs/preferences.rs:602
 msgid "Signed in with the browser"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:564
+#: src/ui/dialogs/preferences.rs:603
 msgid "Up to Hi-Res Lossless"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:567
+#: src/ui/dialogs/preferences.rs:606
 msgid "Signed in with a device code"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:568
+#: src/ui/dialogs/preferences.rs:607
 msgid "Up to Lossless (16-bit/44.1 kHz)"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:596
+#: src/ui/dialogs/preferences.rs:635
 msgid "Sign _Out…"
 msgstr ""
 
-#: src/ui/dialogs/preferences.rs:617
+#: src/ui/dialogs/preferences.rs:656
 msgid "Account"
 msgstr ""
 

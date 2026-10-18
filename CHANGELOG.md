@@ -8,6 +8,18 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- **Instant skips:** the next three tracks are prefetched while playing
+  (their streams and first seconds of audio, in memory, within 64 MB), so
+  skipping to one starts in a few tens of milliseconds instead of a second
+  or more. Nothing is prefetched on metered connections.
+- **Crossfade** between tracks that end by themselves (Preferences →
+  Playback, 1–12 s, off by default). It is not available while the output
+  is bit-perfect, and consecutive tracks of an album stay gapless.
+- **Smooth Transitions:** short fades when pausing, seeking and changing
+  track, so the sound never stops with a click (on by default).
+
 ## [1.0.0] - 2026-10-18
 
 The first public release.
