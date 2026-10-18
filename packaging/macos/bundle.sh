@@ -507,17 +507,22 @@ plutil -lint "$contents/Info.plist"
 
 # --- Checks ----------------------------------------------------------------------------------
 log "checking links"
-bad=$(macho_files | while IFS= read -r file; do
-    for dep in $(macho_deps "$file"); do
-        case $dep in
-            @loader_path/*)
-                [ -e "$(dirname "$file")/${dep#@loader_path/}" ] || echo "$file: $dep does not exist"
-                ;;
-            /usr/lib/* | /System/*) ;;
-            *) echo "$file: links $dep" ;;
-        esac
+# A function, not inline: bash 3.2 can't parse a `case` inside $(...).
+bad_links() {
+    local file dep
+    macho_files | while IFS= read -r file; do
+        for dep in $(macho_deps "$file"); do
+            case $dep in
+                @loader_path/*)
+                    [ -e "$(dirname "$file")/${dep#@loader_path/}" ] || echo "$file: $dep does not exist"
+                    ;;
+                /usr/lib/* | /System/*) ;;
+                *) echo "$file: links $dep" ;;
+            esac
+        done
     done
-done)
+}
+bad=$(bad_links)
 [ -z "$bad" ] || { printf '%s\n' "$bad" >&2; die "the bundle links libraries outside itself"; }
 log "$(find "$fw" -type f | wc -l | tr -d ' ') libraries in Frameworks"
 

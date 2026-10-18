@@ -266,6 +266,11 @@ jobs:
           restore-keys: |
             macos-arm64-
 
+      # The release runs the bundle script with macOS's own bash 3.2, which
+      # rejects some syntax that newer bash accepts.
+      - name: Bundle script parses with /bin/bash
+        run: /bin/bash -n packaging/macos/bundle.sh
+
       # The macOS-only code (keyring, Now Playing, the bundle setup) is
       # linted nowhere else.
       - name: clippy
