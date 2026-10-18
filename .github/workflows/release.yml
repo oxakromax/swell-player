@@ -44,7 +44,7 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
@@ -64,7 +64,7 @@ jobs:
           cargo +stable install cargo-about --version "$CARGO_ABOUT_VERSION" --locked --features cli
           packaging/release.sh licenses dist/THIRD-PARTY-LICENSES.txt
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: third-party-licenses
           path: dist/THIRD-PARTY-LICENSES.txt
@@ -96,11 +96,11 @@ jobs:
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
           cargo install cargo-deb --version "$CARGO_DEB_VERSION" --locked
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: third-party-licenses
           path: target/release
@@ -114,7 +114,7 @@ jobs:
       - name: .deb
         run: packaging/release.sh deb dist
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: linux-deb
           path: |
@@ -144,11 +144,11 @@ jobs:
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
           cargo install cargo-generate-rpm --version "$CARGO_GENERATE_RPM_VERSION" --locked
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: third-party-licenses
           path: target/release
@@ -159,7 +159,7 @@ jobs:
       - name: .rpm
         run: packaging/release.sh rpm dist
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: linux-rpm
           path: dist/*.rpm
@@ -176,7 +176,7 @@ jobs:
       image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-49@sha256:8a05aca51163a81259cc011302cc5121779c89b8b16f2819cc3fd06817d136e7
       options: --privileged
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
@@ -204,7 +204,7 @@ jobs:
           git config --global core.eol lf
           "CARGO_HOME=$env:RUNNER_TEMP\cargo-home" >> $env:GITHUB_ENV
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
@@ -236,7 +236,7 @@ jobs:
             mingw-w64-ucrt-x86_64-ca-certificates
             mingw-w64-ucrt-x86_64-sqlite3
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: third-party-licenses
           path: target/release
@@ -270,7 +270,7 @@ jobs:
           & $iscc.FullName "/DAppVersion=$env:VERSION" "/DSourceDir=$PWD\dist\windows\Swell" "/DOutputDir=$PWD\dist" packaging\windows\swell.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: windows
           path: |
@@ -291,7 +291,7 @@ jobs:
       HOMEBREW_NO_AUTO_UPDATE: "1"
       HOMEBREW_NO_INSTALL_CLEANUP: "1"
     steps: &macos-steps
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
@@ -302,7 +302,7 @@ jobs:
           rustup toolchain install stable --profile minimal
           rustup default stable
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: third-party-licenses
           path: target/release
@@ -318,7 +318,7 @@ jobs:
           packaging/macos/bundle.sh --out dist/macos \
             --dmg "dist/swell-player-$VERSION-macos-$ARCH.dmg"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: macos-${{ env.ARCH }}
           path: dist/*.dmg
@@ -357,12 +357,12 @@ jobs:
       VERSION: ${{ needs.meta.outputs.version }}
       GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
       # Whatever was built, the Intel disk image included when it exists.
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
