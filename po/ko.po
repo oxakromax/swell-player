@@ -22,33 +22,33 @@ msgstr "{codec} {bits}비트/{rate} kHz"
 msgid "Unknown format"
 msgstr "알 수 없는 형식"
 
-#: src/playback/mod.rs:1439
+#: src/playback/mod.rs:1534
 msgid "Skipped a track that is not available"
 msgid_plural "Skipped {n} tracks that are not available"
 msgstr[0] "사용할 수 없는 곡 {n}곡을 건너뛰었습니다"
 
-#: src/playback/mod.rs:1469
+#: src/playback/mod.rs:1564
 msgid "Playback needs GStreamer's playbin3"
 msgstr "재생하려면 GStreamer playbin3이 필요합니다"
 
-#: src/playback/mod.rs:1566
+#: src/playback/mod.rs:1665
 msgid "The TIDAL session has expired: sign in again to play"
 msgstr "TIDAL 세션이 만료되었습니다. 재생하려면 다시 로그인하세요"
 
-#: src/playback/mod.rs:1591
+#: src/playback/mod.rs:1690
 msgid "Connection lost — retrying"
 msgstr "연결이 끊어졌습니다 — 다시 시도하는 중"
 
-#: src/playback/mod.rs:1659
+#: src/playback/mod.rs:1758
 msgid "Could not play “{title}”. Playback stopped after {n} tracks failed"
 msgstr ""
 "“{title}” 재생에 실패했습니다. 곡 {n}개의 재생에 실패하여 재생을 중지했습니다"
 
-#: src/playback/mod.rs:1665
+#: src/playback/mod.rs:1764
 msgid "Could not play “{title}”, skipped"
 msgstr "“{title}” 재생에 실패하여 건너뛰었습니다"
 
-#: src/playback/mod.rs:1858
+#: src/playback/mod.rs:1959
 msgid "Playback failed: {error}"
 msgstr "재생 실패: {error}"
 
@@ -313,8 +313,8 @@ msgstr "볼륨 정규화"
 msgid "Album"
 msgstr "앨범"
 
-#: src/ui/dialogs/preferences.rs:82 src/ui/widgets/np_common.rs:610
-#: src/ui/widgets/np_common.rs:801
+#: src/ui/dialogs/preferences.rs:82 src/ui/dialogs/preferences.rs:132
+#: src/ui/widgets/np_common.rs:610 src/ui/widgets/np_common.rs:801
 msgid "Off"
 msgstr "끔"
 
@@ -334,71 +334,95 @@ msgstr "끊김 없는 재생"
 msgid "Processing"
 msgstr "처리"
 
-#: src/ui/dialogs/preferences.rs:107 src/ui/shortcuts.rs:60
+#: src/ui/dialogs/preferences.rs:107
+msgid "Smooth Transitions"
+msgstr "부드러운 전환"
+
+#: src/ui/dialogs/preferences.rs:108
+msgid "Short fades when pausing, seeking and skipping"
+msgstr "일시 정지, 탐색, 건너뛰기 때 짧게 페이드합니다"
+
+#: src/ui/dialogs/preferences.rs:115 src/ui/shortcuts.rs:60
 msgid "Playback"
 msgstr "재생"
 
-#: src/ui/dialogs/preferences.rs:120
+#: src/ui/dialogs/preferences.rs:130
+msgid "{n} s"
+msgstr "{n}초"
+
+#: src/ui/dialogs/preferences.rs:136
+msgid "Crossfade"
+msgstr "크로스페이드"
+
+#: src/ui/dialogs/preferences.rs:144
+msgid "Not available while the output is bit-perfect: turn on Volume Normalisation"
+msgstr "출력이 비트퍼펙트인 동안에는 사용할 수 없습니다. 볼륨 정규화를 켜세요"
+
+#: src/ui/dialogs/preferences.rs:146
+msgid "When a track ends by itself; consecutive album tracks stay gapless"
+msgstr "곡이 저절로 끝날 때 적용됩니다. 앨범의 연속된 곡은 끊김 없이 재생됩니다"
+
+#: src/ui/dialogs/preferences.rs:159
 msgid "System Default"
 msgstr "시스템 기본값"
 
-#: src/ui/dialogs/preferences.rs:122
+#: src/ui/dialogs/preferences.rs:161
 msgid "Output Device"
 msgstr "출력 장치"
 
-#: src/ui/dialogs/preferences.rs:160 src/ui/widgets/np_common.rs:483
+#: src/ui/dialogs/preferences.rs:199 src/ui/widgets/np_common.rs:483
 msgid "Output"
 msgstr "출력"
 
-#: src/ui/dialogs/preferences.rs:191
+#: src/ui/dialogs/preferences.rs:230
 msgid "Behaviour"
 msgstr "동작"
 
-#: src/ui/dialogs/preferences.rs:195
+#: src/ui/dialogs/preferences.rs:234
 msgid "Run in Background"
 msgstr "백그라운드에서 실행"
 
-#: src/ui/dialogs/preferences.rs:196
+#: src/ui/dialogs/preferences.rs:235
 msgid "Keep playing when the window is closed"
 msgstr "창을 닫아도 계속 재생합니다"
 
-#: src/ui/dialogs/preferences.rs:202
+#: src/ui/dialogs/preferences.rs:241
 msgid "Track Change Notifications"
 msgstr "곡 변경 알림"
 
-#: src/ui/dialogs/preferences.rs:203
+#: src/ui/dialogs/preferences.rs:242
 msgid "When the window is not focused"
 msgstr "창에 초점이 없을 때"
 
-#: src/ui/dialogs/preferences.rs:209
+#: src/ui/dialogs/preferences.rs:248
 msgid "Restore Queue on Start"
 msgstr "시작할 때 대기열 복원"
 
-#: src/ui/dialogs/preferences.rs:217 src/ui/shortcuts.rs:26
+#: src/ui/dialogs/preferences.rs:256 src/ui/shortcuts.rs:26
 msgid "General"
 msgstr "일반"
 
-#: src/ui/dialogs/preferences.rs:230
+#: src/ui/dialogs/preferences.rs:269
 msgid "Automatic"
 msgstr "자동"
 
-#: src/ui/dialogs/preferences.rs:235
+#: src/ui/dialogs/preferences.rs:274
 msgid "Language"
 msgstr "언어"
 
-#: src/ui/dialogs/preferences.rs:257
+#: src/ui/dialogs/preferences.rs:296
 msgid "Restart Swell to change the language"
 msgstr "언어를 변경하려면 Swell을 다시 시작하세요"
 
-#: src/ui/dialogs/preferences.rs:258
+#: src/ui/dialogs/preferences.rs:297
 msgid "Restart"
 msgstr "다시 시작"
 
-#: src/ui/dialogs/preferences.rs:283
+#: src/ui/dialogs/preferences.rs:322
 msgid "Storage"
 msgstr "저장 공간"
 
-#: src/ui/dialogs/preferences.rs:284
+#: src/ui/dialogs/preferences.rs:323
 msgid ""
 "Downloaded artwork and saved answers from TIDAL, so pages open instantly and "
 "work offline."
@@ -406,112 +430,112 @@ msgstr ""
 "다운로드한 아트워크와 TIDAL에서 저장한 응답입니다. 페이지가 즉시 열리고 오프"
 "라인에서도 작동합니다."
 
-#: src/ui/dialogs/preferences.rs:289
+#: src/ui/dialogs/preferences.rs:328
 msgid "Cover Cache"
 msgstr "커버 캐시"
 
-#: src/ui/dialogs/preferences.rs:290
+#: src/ui/dialogs/preferences.rs:329
 msgid "Clear the Cover Cache?"
 msgstr "커버 캐시를 지우시겠습니까?"
 
-#: src/ui/dialogs/preferences.rs:291
+#: src/ui/dialogs/preferences.rs:330
 msgid "Artwork is downloaded again as you browse."
 msgstr "둘러보는 동안 아트워크를 다시 다운로드합니다."
 
-#: src/ui/dialogs/preferences.rs:292
+#: src/ui/dialogs/preferences.rs:331
 msgid "Cover Cache cleared"
 msgstr "커버 캐시를 지웠습니다"
 
-#: src/ui/dialogs/preferences.rs:293
+#: src/ui/dialogs/preferences.rs:332
 msgid "Couldn’t clear the Cover Cache"
 msgstr "커버 캐시를 지울 수 없습니다"
 
-#: src/ui/dialogs/preferences.rs:314
+#: src/ui/dialogs/preferences.rs:353
 msgid "Library Cache"
 msgstr "라이브러리 캐시"
 
-#: src/ui/dialogs/preferences.rs:315
+#: src/ui/dialogs/preferences.rs:354
 msgid "Clear the Library Cache?"
 msgstr "라이브러리 캐시를 지우시겠습니까?"
 
-#: src/ui/dialogs/preferences.rs:316
+#: src/ui/dialogs/preferences.rs:355
 msgid "Pages are loaded again from TIDAL. Your collection is not affected."
 msgstr "페이지를 TIDAL에서 다시 불러옵니다. 컬렉션에는 영향이 없습니다."
 
-#: src/ui/dialogs/preferences.rs:317
+#: src/ui/dialogs/preferences.rs:356
 msgid "Library Cache cleared"
 msgstr "라이브러리 캐시를 지웠습니다"
 
-#: src/ui/dialogs/preferences.rs:318
+#: src/ui/dialogs/preferences.rs:357
 msgid "Couldn’t clear the Library Cache"
 msgstr "라이브러리 캐시를 지울 수 없습니다"
 
-#: src/ui/dialogs/preferences.rs:372
+#: src/ui/dialogs/preferences.rs:411
 msgid "Calculating…"
 msgstr "계산하는 중…"
 
-#: src/ui/dialogs/preferences.rs:375 src/ui/dialogs/preferences.rs:421
+#: src/ui/dialogs/preferences.rs:414 src/ui/dialogs/preferences.rs:460
 msgid "_Clear"
 msgstr "지우기(_L)"
 
-#: src/ui/dialogs/preferences.rs:421 src/ui/window.rs:413
+#: src/ui/dialogs/preferences.rs:460 src/ui/window.rs:413
 msgid "_Cancel"
 msgstr "취소(_C)"
 
-#: src/ui/dialogs/preferences.rs:476
+#: src/ui/dialogs/preferences.rs:515
 msgid "Blocked Artists"
 msgstr "차단한 아티스트"
 
-#: src/ui/dialogs/preferences.rs:477
+#: src/ui/dialogs/preferences.rs:516
 msgid "Loading…"
 msgstr "불러오는 중…"
 
-#: src/ui/dialogs/preferences.rs:493
+#: src/ui/dialogs/preferences.rs:532
 msgid "Couldn’t load blocked artists."
 msgstr "차단한 아티스트를 불러올 수 없습니다."
 
-#: src/ui/dialogs/preferences.rs:498
+#: src/ui/dialogs/preferences.rs:537
 msgid "Nothing blocked. Blocked artists are skipped in radios and mixes."
 msgstr ""
 "차단한 아티스트가 없습니다. 차단한 아티스트는 라디오와 믹스에서 건너뜁니다."
 
-#: src/ui/dialogs/preferences.rs:500
+#: src/ui/dialogs/preferences.rs:539
 msgid "Skipped in radios and mixes."
 msgstr "라디오와 믹스에서 건너뜁니다."
 
-#: src/ui/dialogs/preferences.rs:509
+#: src/ui/dialogs/preferences.rs:548
 msgid "Unblock"
 msgstr "차단 해제"
 
-#: src/ui/dialogs/preferences.rs:542 src/ui/menus.rs:870
+#: src/ui/dialogs/preferences.rs:581 src/ui/menus.rs:870
 msgid "Unblocked {name}"
 msgstr "{name} 아티스트의 차단을 해제했습니다"
 
-#: src/ui/dialogs/preferences.rs:552
+#: src/ui/dialogs/preferences.rs:591
 msgid "Couldn’t unblock the artist"
 msgstr "아티스트 차단을 해제할 수 없습니다"
 
-#: src/ui/dialogs/preferences.rs:567
+#: src/ui/dialogs/preferences.rs:606
 msgid "Signed in with the browser"
 msgstr "브라우저로 로그인함"
 
-#: src/ui/dialogs/preferences.rs:568
+#: src/ui/dialogs/preferences.rs:607
 msgid "Up to Hi-Res Lossless"
 msgstr "Hi-Res Lossless까지 지원"
 
-#: src/ui/dialogs/preferences.rs:571
+#: src/ui/dialogs/preferences.rs:610
 msgid "Signed in with a device code"
 msgstr "기기 코드로 로그인함"
 
-#: src/ui/dialogs/preferences.rs:572
+#: src/ui/dialogs/preferences.rs:611
 msgid "Up to Lossless (16-bit/44.1 kHz)"
 msgstr "Lossless(16비트/44.1 kHz)까지 지원"
 
-#: src/ui/dialogs/preferences.rs:600
+#: src/ui/dialogs/preferences.rs:639
 msgid "Sign _Out…"
 msgstr "로그아웃(_O)…"
 
-#: src/ui/dialogs/preferences.rs:621
+#: src/ui/dialogs/preferences.rs:660
 msgid "Account"
 msgstr "계정"
 

@@ -22,32 +22,32 @@ msgstr "{codec} {bits} 位/{rate} kHz"
 msgid "Unknown format"
 msgstr "未知格式"
 
-#: src/playback/mod.rs:1439
+#: src/playback/mod.rs:1534
 msgid "Skipped a track that is not available"
 msgid_plural "Skipped {n} tracks that are not available"
 msgstr[0] "已跳过 {n} 首不可用的曲目"
 
-#: src/playback/mod.rs:1469
+#: src/playback/mod.rs:1564
 msgid "Playback needs GStreamer's playbin3"
 msgstr "播放需要 GStreamer 的 playbin3"
 
-#: src/playback/mod.rs:1566
+#: src/playback/mod.rs:1665
 msgid "The TIDAL session has expired: sign in again to play"
 msgstr "TIDAL 会话已过期：请重新登录后再播放"
 
-#: src/playback/mod.rs:1591
+#: src/playback/mod.rs:1690
 msgid "Connection lost — retrying"
 msgstr "连接已断开，正在重试"
 
-#: src/playback/mod.rs:1659
+#: src/playback/mod.rs:1758
 msgid "Could not play “{title}”. Playback stopped after {n} tracks failed"
 msgstr "无法播放“{title}”。{n} 首曲目播放失败，已停止播放"
 
-#: src/playback/mod.rs:1665
+#: src/playback/mod.rs:1764
 msgid "Could not play “{title}”, skipped"
 msgstr "无法播放“{title}”，已跳过"
 
-#: src/playback/mod.rs:1858
+#: src/playback/mod.rs:1959
 msgid "Playback failed: {error}"
 msgstr "播放失败：{error}"
 
@@ -307,8 +307,8 @@ msgstr "音量标准化"
 msgid "Album"
 msgstr "专辑"
 
-#: src/ui/dialogs/preferences.rs:82 src/ui/widgets/np_common.rs:610
-#: src/ui/widgets/np_common.rs:801
+#: src/ui/dialogs/preferences.rs:82 src/ui/dialogs/preferences.rs:132
+#: src/ui/widgets/np_common.rs:610 src/ui/widgets/np_common.rs:801
 msgid "Off"
 msgstr "关闭"
 
@@ -328,181 +328,205 @@ msgstr "无缝播放"
 msgid "Processing"
 msgstr "处理"
 
-#: src/ui/dialogs/preferences.rs:107 src/ui/shortcuts.rs:60
+#: src/ui/dialogs/preferences.rs:107
+msgid "Smooth Transitions"
+msgstr "平滑过渡"
+
+#: src/ui/dialogs/preferences.rs:108
+msgid "Short fades when pausing, seeking and skipping"
+msgstr "暂停、跳转进度和切歌时短暂淡入淡出"
+
+#: src/ui/dialogs/preferences.rs:115 src/ui/shortcuts.rs:60
 msgid "Playback"
 msgstr "播放"
 
-#: src/ui/dialogs/preferences.rs:120
+#: src/ui/dialogs/preferences.rs:130
+msgid "{n} s"
+msgstr "{n} 秒"
+
+#: src/ui/dialogs/preferences.rs:136
+msgid "Crossfade"
+msgstr "交叉淡化"
+
+#: src/ui/dialogs/preferences.rs:144
+msgid "Not available while the output is bit-perfect: turn on Volume Normalisation"
+msgstr "输出为 bit-perfect 时不可用：请开启音量标准化"
+
+#: src/ui/dialogs/preferences.rs:146
+msgid "When a track ends by itself; consecutive album tracks stay gapless"
+msgstr "曲目自然结束时生效；专辑中相邻的曲目仍无缝播放"
+
+#: src/ui/dialogs/preferences.rs:159
 msgid "System Default"
 msgstr "系统默认"
 
-#: src/ui/dialogs/preferences.rs:122
+#: src/ui/dialogs/preferences.rs:161
 msgid "Output Device"
 msgstr "输出设备"
 
-#: src/ui/dialogs/preferences.rs:160 src/ui/widgets/np_common.rs:483
+#: src/ui/dialogs/preferences.rs:199 src/ui/widgets/np_common.rs:483
 msgid "Output"
 msgstr "输出"
 
-#: src/ui/dialogs/preferences.rs:191
+#: src/ui/dialogs/preferences.rs:230
 msgid "Behaviour"
 msgstr "行为"
 
-#: src/ui/dialogs/preferences.rs:195
+#: src/ui/dialogs/preferences.rs:234
 msgid "Run in Background"
 msgstr "在后台运行"
 
-#: src/ui/dialogs/preferences.rs:196
+#: src/ui/dialogs/preferences.rs:235
 msgid "Keep playing when the window is closed"
 msgstr "关闭窗口后继续播放"
 
-#: src/ui/dialogs/preferences.rs:202
+#: src/ui/dialogs/preferences.rs:241
 msgid "Track Change Notifications"
 msgstr "切歌通知"
 
-#: src/ui/dialogs/preferences.rs:203
+#: src/ui/dialogs/preferences.rs:242
 msgid "When the window is not focused"
 msgstr "窗口未处于焦点时"
 
-#: src/ui/dialogs/preferences.rs:209
+#: src/ui/dialogs/preferences.rs:248
 msgid "Restore Queue on Start"
 msgstr "启动时恢复队列"
 
-#: src/ui/dialogs/preferences.rs:217 src/ui/shortcuts.rs:26
+#: src/ui/dialogs/preferences.rs:256 src/ui/shortcuts.rs:26
 msgid "General"
 msgstr "常规"
 
-#: src/ui/dialogs/preferences.rs:230
+#: src/ui/dialogs/preferences.rs:269
 msgid "Automatic"
 msgstr "自动"
 
-#: src/ui/dialogs/preferences.rs:235
+#: src/ui/dialogs/preferences.rs:274
 msgid "Language"
 msgstr "语言"
 
-#: src/ui/dialogs/preferences.rs:257
+#: src/ui/dialogs/preferences.rs:296
 msgid "Restart Swell to change the language"
 msgstr "重启 Swell 以更改语言"
 
-#: src/ui/dialogs/preferences.rs:258
+#: src/ui/dialogs/preferences.rs:297
 msgid "Restart"
 msgstr "重启"
 
-#: src/ui/dialogs/preferences.rs:283
+#: src/ui/dialogs/preferences.rs:322
 msgid "Storage"
 msgstr "存储"
 
-#: src/ui/dialogs/preferences.rs:284
+#: src/ui/dialogs/preferences.rs:323
 msgid ""
 "Downloaded artwork and saved answers from TIDAL, so pages open instantly and "
 "work offline."
 msgstr "已下载的封面图片和 TIDAL 的已保存应答，让页面即时打开，并可离线使用。"
 
-#: src/ui/dialogs/preferences.rs:289
+#: src/ui/dialogs/preferences.rs:328
 msgid "Cover Cache"
 msgstr "封面缓存"
 
-#: src/ui/dialogs/preferences.rs:290
+#: src/ui/dialogs/preferences.rs:329
 msgid "Clear the Cover Cache?"
 msgstr "清除封面缓存？"
 
-#: src/ui/dialogs/preferences.rs:291
+#: src/ui/dialogs/preferences.rs:330
 msgid "Artwork is downloaded again as you browse."
 msgstr "浏览时会重新下载封面图片。"
 
-#: src/ui/dialogs/preferences.rs:292
+#: src/ui/dialogs/preferences.rs:331
 msgid "Cover Cache cleared"
 msgstr "封面缓存已清除"
 
-#: src/ui/dialogs/preferences.rs:293
+#: src/ui/dialogs/preferences.rs:332
 msgid "Couldn’t clear the Cover Cache"
 msgstr "无法清除封面缓存"
 
-#: src/ui/dialogs/preferences.rs:314
+#: src/ui/dialogs/preferences.rs:353
 msgid "Library Cache"
 msgstr "资料库缓存"
 
-#: src/ui/dialogs/preferences.rs:315
+#: src/ui/dialogs/preferences.rs:354
 msgid "Clear the Library Cache?"
 msgstr "清除资料库缓存？"
 
-#: src/ui/dialogs/preferences.rs:316
+#: src/ui/dialogs/preferences.rs:355
 msgid "Pages are loaded again from TIDAL. Your collection is not affected."
 msgstr "页面将重新从 TIDAL 加载。你的收藏不会受到影响。"
 
-#: src/ui/dialogs/preferences.rs:317
+#: src/ui/dialogs/preferences.rs:356
 msgid "Library Cache cleared"
 msgstr "资料库缓存已清除"
 
-#: src/ui/dialogs/preferences.rs:318
+#: src/ui/dialogs/preferences.rs:357
 msgid "Couldn’t clear the Library Cache"
 msgstr "无法清除资料库缓存"
 
-#: src/ui/dialogs/preferences.rs:372
+#: src/ui/dialogs/preferences.rs:411
 msgid "Calculating…"
 msgstr "正在计算…"
 
-#: src/ui/dialogs/preferences.rs:375 src/ui/dialogs/preferences.rs:421
+#: src/ui/dialogs/preferences.rs:414 src/ui/dialogs/preferences.rs:460
 msgid "_Clear"
 msgstr "清除(_C)"
 
-#: src/ui/dialogs/preferences.rs:421 src/ui/window.rs:413
+#: src/ui/dialogs/preferences.rs:460 src/ui/window.rs:413
 msgid "_Cancel"
 msgstr "取消(_C)"
 
-#: src/ui/dialogs/preferences.rs:476
+#: src/ui/dialogs/preferences.rs:515
 msgid "Blocked Artists"
 msgstr "已屏蔽的艺人"
 
-#: src/ui/dialogs/preferences.rs:477
+#: src/ui/dialogs/preferences.rs:516
 msgid "Loading…"
 msgstr "正在加载…"
 
-#: src/ui/dialogs/preferences.rs:493
+#: src/ui/dialogs/preferences.rs:532
 msgid "Couldn’t load blocked artists."
 msgstr "无法加载已屏蔽的艺人。"
 
-#: src/ui/dialogs/preferences.rs:498
+#: src/ui/dialogs/preferences.rs:537
 msgid "Nothing blocked. Blocked artists are skipped in radios and mixes."
 msgstr "没有屏蔽任何艺人。被屏蔽的艺人会在电台和 Mix 中被跳过。"
 
-#: src/ui/dialogs/preferences.rs:500
+#: src/ui/dialogs/preferences.rs:539
 msgid "Skipped in radios and mixes."
 msgstr "在电台和 Mix 中被跳过。"
 
-#: src/ui/dialogs/preferences.rs:509
+#: src/ui/dialogs/preferences.rs:548
 msgid "Unblock"
 msgstr "取消屏蔽"
 
-#: src/ui/dialogs/preferences.rs:542 src/ui/menus.rs:870
+#: src/ui/dialogs/preferences.rs:581 src/ui/menus.rs:870
 msgid "Unblocked {name}"
 msgstr "已取消屏蔽 {name}"
 
-#: src/ui/dialogs/preferences.rs:552
+#: src/ui/dialogs/preferences.rs:591
 msgid "Couldn’t unblock the artist"
 msgstr "无法取消屏蔽该艺人"
 
-#: src/ui/dialogs/preferences.rs:567
+#: src/ui/dialogs/preferences.rs:606
 msgid "Signed in with the browser"
 msgstr "已通过浏览器登录"
 
-#: src/ui/dialogs/preferences.rs:568
+#: src/ui/dialogs/preferences.rs:607
 msgid "Up to Hi-Res Lossless"
 msgstr "最高支持 Hi-Res Lossless"
 
-#: src/ui/dialogs/preferences.rs:571
+#: src/ui/dialogs/preferences.rs:610
 msgid "Signed in with a device code"
 msgstr "已通过设备代码登录"
 
-#: src/ui/dialogs/preferences.rs:572
+#: src/ui/dialogs/preferences.rs:611
 msgid "Up to Lossless (16-bit/44.1 kHz)"
 msgstr "最高支持 Lossless（16 位/44.1 kHz）"
 
-#: src/ui/dialogs/preferences.rs:600
+#: src/ui/dialogs/preferences.rs:639
 msgid "Sign _Out…"
 msgstr "退出登录(_O)…"
 
-#: src/ui/dialogs/preferences.rs:621
+#: src/ui/dialogs/preferences.rs:660
 msgid "Account"
 msgstr "账户"
 

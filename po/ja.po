@@ -22,36 +22,36 @@ msgstr "{codec} {bits}ビット/{rate} kHz"
 msgid "Unknown format"
 msgstr "不明な形式"
 
-#: src/playback/mod.rs:1439
+#: src/playback/mod.rs:1534
 msgid "Skipped a track that is not available"
 msgid_plural "Skipped {n} tracks that are not available"
 msgstr[0] "利用できない曲を{n}曲スキップしました"
 
-#: src/playback/mod.rs:1469
+#: src/playback/mod.rs:1564
 msgid "Playback needs GStreamer's playbin3"
 msgstr "再生には GStreamer の playbin3 が必要です"
 
-#: src/playback/mod.rs:1566
+#: src/playback/mod.rs:1665
 msgid "The TIDAL session has expired: sign in again to play"
 msgstr ""
 "TIDAL のセッションの有効期限が切れました。再生するには、もう一度ログインして"
 "ください"
 
-#: src/playback/mod.rs:1591
+#: src/playback/mod.rs:1690
 msgid "Connection lost — retrying"
 msgstr "接続が切れました — 再試行しています"
 
-#: src/playback/mod.rs:1659
+#: src/playback/mod.rs:1758
 msgid "Could not play “{title}”. Playback stopped after {n} tracks failed"
 msgstr ""
 "「{title}」を再生できませんでした。{n}曲の再生に失敗したため、再生を停止しま"
 "した"
 
-#: src/playback/mod.rs:1665
+#: src/playback/mod.rs:1764
 msgid "Could not play “{title}”, skipped"
 msgstr "「{title}」を再生できないため、スキップしました"
 
-#: src/playback/mod.rs:1858
+#: src/playback/mod.rs:1959
 msgid "Playback failed: {error}"
 msgstr "再生に失敗しました：{error}"
 
@@ -319,8 +319,8 @@ msgstr "音量の正規化"
 msgid "Album"
 msgstr "アルバム"
 
-#: src/ui/dialogs/preferences.rs:82 src/ui/widgets/np_common.rs:610
-#: src/ui/widgets/np_common.rs:801
+#: src/ui/dialogs/preferences.rs:82 src/ui/dialogs/preferences.rs:132
+#: src/ui/widgets/np_common.rs:610 src/ui/widgets/np_common.rs:801
 msgid "Off"
 msgstr "オフ"
 
@@ -340,71 +340,95 @@ msgstr "ギャップレス再生"
 msgid "Processing"
 msgstr "処理"
 
-#: src/ui/dialogs/preferences.rs:107 src/ui/shortcuts.rs:60
+#: src/ui/dialogs/preferences.rs:107
+msgid "Smooth Transitions"
+msgstr "スムーズな切り替え"
+
+#: src/ui/dialogs/preferences.rs:108
+msgid "Short fades when pausing, seeking and skipping"
+msgstr "一時停止、シーク、スキップ時に短いフェードをかけます"
+
+#: src/ui/dialogs/preferences.rs:115 src/ui/shortcuts.rs:60
 msgid "Playback"
 msgstr "再生"
 
-#: src/ui/dialogs/preferences.rs:120
+#: src/ui/dialogs/preferences.rs:130
+msgid "{n} s"
+msgstr "{n}秒"
+
+#: src/ui/dialogs/preferences.rs:136
+msgid "Crossfade"
+msgstr "クロスフェード"
+
+#: src/ui/dialogs/preferences.rs:144
+msgid "Not available while the output is bit-perfect: turn on Volume Normalisation"
+msgstr "出力がビットパーフェクトの間は使用できません。音量の正規化をオンにしてください"
+
+#: src/ui/dialogs/preferences.rs:146
+msgid "When a track ends by itself; consecutive album tracks stay gapless"
+msgstr "曲が自然に終わったとき。アルバムの連続した曲はギャップレスのままです"
+
+#: src/ui/dialogs/preferences.rs:159
 msgid "System Default"
 msgstr "システムのデフォルト"
 
-#: src/ui/dialogs/preferences.rs:122
+#: src/ui/dialogs/preferences.rs:161
 msgid "Output Device"
 msgstr "出力デバイス"
 
-#: src/ui/dialogs/preferences.rs:160 src/ui/widgets/np_common.rs:483
+#: src/ui/dialogs/preferences.rs:199 src/ui/widgets/np_common.rs:483
 msgid "Output"
 msgstr "出力"
 
-#: src/ui/dialogs/preferences.rs:191
+#: src/ui/dialogs/preferences.rs:230
 msgid "Behaviour"
 msgstr "動作"
 
-#: src/ui/dialogs/preferences.rs:195
+#: src/ui/dialogs/preferences.rs:234
 msgid "Run in Background"
 msgstr "バックグラウンドで実行"
 
-#: src/ui/dialogs/preferences.rs:196
+#: src/ui/dialogs/preferences.rs:235
 msgid "Keep playing when the window is closed"
 msgstr "ウィンドウを閉じても再生を続けます"
 
-#: src/ui/dialogs/preferences.rs:202
+#: src/ui/dialogs/preferences.rs:241
 msgid "Track Change Notifications"
 msgstr "曲の変更通知"
 
-#: src/ui/dialogs/preferences.rs:203
+#: src/ui/dialogs/preferences.rs:242
 msgid "When the window is not focused"
 msgstr "ウィンドウがフォーカスされていないとき"
 
-#: src/ui/dialogs/preferences.rs:209
+#: src/ui/dialogs/preferences.rs:248
 msgid "Restore Queue on Start"
 msgstr "起動時にキューを復元"
 
-#: src/ui/dialogs/preferences.rs:217 src/ui/shortcuts.rs:26
+#: src/ui/dialogs/preferences.rs:256 src/ui/shortcuts.rs:26
 msgid "General"
 msgstr "一般"
 
-#: src/ui/dialogs/preferences.rs:230
+#: src/ui/dialogs/preferences.rs:269
 msgid "Automatic"
 msgstr "自動"
 
-#: src/ui/dialogs/preferences.rs:235
+#: src/ui/dialogs/preferences.rs:274
 msgid "Language"
 msgstr "言語"
 
-#: src/ui/dialogs/preferences.rs:257
+#: src/ui/dialogs/preferences.rs:296
 msgid "Restart Swell to change the language"
 msgstr "言語を変更するには Swell を再起動してください"
 
-#: src/ui/dialogs/preferences.rs:258
+#: src/ui/dialogs/preferences.rs:297
 msgid "Restart"
 msgstr "再起動"
 
-#: src/ui/dialogs/preferences.rs:283
+#: src/ui/dialogs/preferences.rs:322
 msgid "Storage"
 msgstr "ストレージ"
 
-#: src/ui/dialogs/preferences.rs:284
+#: src/ui/dialogs/preferences.rs:323
 msgid ""
 "Downloaded artwork and saved answers from TIDAL, so pages open instantly and "
 "work offline."
@@ -412,113 +436,113 @@ msgstr ""
 "ダウンロードしたアートワークと TIDAL から保存した応答です。ページがすばやく開"
 "き、オフラインでも使えます。"
 
-#: src/ui/dialogs/preferences.rs:289
+#: src/ui/dialogs/preferences.rs:328
 msgid "Cover Cache"
 msgstr "カバーキャッシュ"
 
-#: src/ui/dialogs/preferences.rs:290
+#: src/ui/dialogs/preferences.rs:329
 msgid "Clear the Cover Cache?"
 msgstr "カバーキャッシュを消去しますか？"
 
-#: src/ui/dialogs/preferences.rs:291
+#: src/ui/dialogs/preferences.rs:330
 msgid "Artwork is downloaded again as you browse."
 msgstr "アートワークは、閲覧するときに再びダウンロードされます。"
 
-#: src/ui/dialogs/preferences.rs:292
+#: src/ui/dialogs/preferences.rs:331
 msgid "Cover Cache cleared"
 msgstr "カバーキャッシュを消去しました"
 
-#: src/ui/dialogs/preferences.rs:293
+#: src/ui/dialogs/preferences.rs:332
 msgid "Couldn’t clear the Cover Cache"
 msgstr "カバーキャッシュを消去できませんでした"
 
-#: src/ui/dialogs/preferences.rs:314
+#: src/ui/dialogs/preferences.rs:353
 msgid "Library Cache"
 msgstr "ライブラリキャッシュ"
 
-#: src/ui/dialogs/preferences.rs:315
+#: src/ui/dialogs/preferences.rs:354
 msgid "Clear the Library Cache?"
 msgstr "ライブラリキャッシュを消去しますか？"
 
-#: src/ui/dialogs/preferences.rs:316
+#: src/ui/dialogs/preferences.rs:355
 msgid "Pages are loaded again from TIDAL. Your collection is not affected."
 msgstr "ページは TIDAL から再び読み込まれます。コレクションには影響しません。"
 
-#: src/ui/dialogs/preferences.rs:317
+#: src/ui/dialogs/preferences.rs:356
 msgid "Library Cache cleared"
 msgstr "ライブラリキャッシュを消去しました"
 
-#: src/ui/dialogs/preferences.rs:318
+#: src/ui/dialogs/preferences.rs:357
 msgid "Couldn’t clear the Library Cache"
 msgstr "ライブラリキャッシュを消去できませんでした"
 
-#: src/ui/dialogs/preferences.rs:372
+#: src/ui/dialogs/preferences.rs:411
 msgid "Calculating…"
 msgstr "計算中…"
 
-#: src/ui/dialogs/preferences.rs:375 src/ui/dialogs/preferences.rs:421
+#: src/ui/dialogs/preferences.rs:414 src/ui/dialogs/preferences.rs:460
 msgid "_Clear"
 msgstr "消去(_E)"
 
-#: src/ui/dialogs/preferences.rs:421 src/ui/window.rs:413
+#: src/ui/dialogs/preferences.rs:460 src/ui/window.rs:413
 msgid "_Cancel"
 msgstr "キャンセル(_C)"
 
-#: src/ui/dialogs/preferences.rs:476
+#: src/ui/dialogs/preferences.rs:515
 msgid "Blocked Artists"
 msgstr "ブロックしたアーティスト"
 
-#: src/ui/dialogs/preferences.rs:477
+#: src/ui/dialogs/preferences.rs:516
 msgid "Loading…"
 msgstr "読み込み中…"
 
-#: src/ui/dialogs/preferences.rs:493
+#: src/ui/dialogs/preferences.rs:532
 msgid "Couldn’t load blocked artists."
 msgstr "ブロックしたアーティストを読み込めませんでした。"
 
-#: src/ui/dialogs/preferences.rs:498
+#: src/ui/dialogs/preferences.rs:537
 msgid "Nothing blocked. Blocked artists are skipped in radios and mixes."
 msgstr ""
 "ブロックしているアーティストはいません。ブロックしたアーティストは、ラジオや"
 "ミックスでスキップされます。"
 
-#: src/ui/dialogs/preferences.rs:500
+#: src/ui/dialogs/preferences.rs:539
 msgid "Skipped in radios and mixes."
 msgstr "ラジオやミックスでスキップされます。"
 
-#: src/ui/dialogs/preferences.rs:509
+#: src/ui/dialogs/preferences.rs:548
 msgid "Unblock"
 msgstr "ブロック解除"
 
-#: src/ui/dialogs/preferences.rs:542 src/ui/menus.rs:870
+#: src/ui/dialogs/preferences.rs:581 src/ui/menus.rs:870
 msgid "Unblocked {name}"
 msgstr "{name} のブロックを解除しました"
 
-#: src/ui/dialogs/preferences.rs:552
+#: src/ui/dialogs/preferences.rs:591
 msgid "Couldn’t unblock the artist"
 msgstr "アーティストのブロックを解除できませんでした"
 
-#: src/ui/dialogs/preferences.rs:567
+#: src/ui/dialogs/preferences.rs:606
 msgid "Signed in with the browser"
 msgstr "ブラウザーでログイン済み"
 
-#: src/ui/dialogs/preferences.rs:568
+#: src/ui/dialogs/preferences.rs:607
 msgid "Up to Hi-Res Lossless"
 msgstr "Hi-Res Lossless まで再生できます"
 
-#: src/ui/dialogs/preferences.rs:571
+#: src/ui/dialogs/preferences.rs:610
 msgid "Signed in with a device code"
 msgstr "デバイスコードでログイン済み"
 
-#: src/ui/dialogs/preferences.rs:572
+#: src/ui/dialogs/preferences.rs:611
 msgid "Up to Lossless (16-bit/44.1 kHz)"
 msgstr "Lossless (16 ビット/44.1 kHz) まで再生できます"
 
-#: src/ui/dialogs/preferences.rs:600
+#: src/ui/dialogs/preferences.rs:639
 msgid "Sign _Out…"
 msgstr "ログアウト(_O)…"
 
-#: src/ui/dialogs/preferences.rs:621
+#: src/ui/dialogs/preferences.rs:660
 msgid "Account"
 msgstr "アカウント"
 

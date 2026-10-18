@@ -92,6 +92,9 @@ the full list). Screenshot runs don't change your settings, and
 | `SWELL_SCREENSHOT=<file.png>` | Renders the window to a PNG after `SWELL_SCREENSHOT_DELAY_MS` (default 5000) and quits. `SWELL_SCREENSHOT_SIZES=1400x900,400x800` takes one shot per size (`file-WxH.png`). |
 | `SWELL_DEBUG_STREAM_FAIL=<n>[@<skip>]` | Makes `n` stream lookups fail as if the network were down. |
 | `SWELL_DEBUG_ENGINE_FAIL=<at>[@<status>]` | Simulates a playback network error (see `src/playback/mod.rs`). |
+| `SWELL_DEBUG_SKIP=<seconds>[x<count>]` | Skips to the next track every `seconds` of playback; with debug logs, "first audio … ms" says how fast each start was. |
+| `SWELL_NO_PROXY=1` | Streams straight from TIDAL, without the local proxy (and so without prefetched audio). |
+| `SWELL_PREFETCH_BUDGET_MB=<n>` | Caps the prefetched audio at `n` MB (at most 64), to watch eviction. |
 
 Useful ids: album `529955456`, artist `17275`, track `529955457`.
 

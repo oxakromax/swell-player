@@ -101,6 +101,14 @@ fn playback_page(ctx: &Rc<Ctx>) -> adw::PreferencesPage {
         .build();
     processing.add(&normalization);
     processing.add(&gapless);
+    processing.add(&crossfade_row(ctx, &normalization));
+    processing.add(&switch_row(
+        ctx,
+        tr("Smooth Transitions"),
+        Some(tr("Short fades when pausing, seeking and skipping")),
+        current.fade_transitions,
+        |s, on| s.fade_transitions = on,
+    ));
 
     let page = adw::PreferencesPage::builder()
         .name("playback")
@@ -111,6 +119,37 @@ fn playback_page(ctx: &Rc<Ctx>) -> adw::PreferencesPage {
     page.add(&processing);
     page.add(&output_group(ctx));
     page
+}
+
+/// "Crossfade": Off or 1–12 s. Unavailable (insensitive, and said so)
+/// while normalisation is off, since that keeps the output bit-perfect;
+/// follows the normalisation row as it changes.
+fn crossfade_row(ctx: &Rc<Ctx>, normalization: &adw::ComboRow) -> adw::ComboRow {
+    use crate::playback::MAX_CROSSFADE_SECS;
+    let seconds: Vec<String> = (1..=MAX_CROSSFADE_SECS)
+        .map(|n| tr("{n} s").replace("{n}", &n.to_string()))
+        .collect();
+    let labels: Vec<&str> = std::iter::once(tr("Off"))
+        .chain(seconds.iter().map(String::as_str))
+        .collect();
+    let current = ctx.settings.get().crossfade_secs.min(MAX_CROSSFADE_SECS);
+    let row = combo_row(tr("Crossfade"), &labels, current as usize);
+    connect_combo(ctx, &row, |s, index| s.crossfade_secs = index as u32);
+    let update = {
+        let row = row.downgrade();
+        move |bit_perfect: bool| {
+            let Some(row) = row.upgrade() else { return };
+            row.set_sensitive(!bit_perfect);
+            row.set_subtitle(if bit_perfect {
+                tr("Not available while the output is bit-perfect: turn on Volume Normalisation")
+            } else {
+                tr("When a track ends by itself; consecutive album tracks stay gapless")
+            });
+        }
+    };
+    update(ctx.settings.get().normalization == Normalization::Off);
+    normalization.connect_selected_notify(move |row| update(row.selected() == 0));
+    row
 }
 
 /// "Output Device": the system default or one of the audio sinks

@@ -47,6 +47,13 @@ pub struct Settings {
     pub quality: QualityPreference,
     pub normalization: Normalization,
     pub gapless: bool,
+    /// Crossfade between tracks that end by themselves, in seconds (0: off,
+    /// up to 12). Never while the output is bit-perfect, nor between
+    /// consecutive tracks of an album (see `playback/transition.rs`).
+    pub crossfade_secs: u32,
+    /// Short fades when pausing, seeking or changing track by hand, so the
+    /// sound never stops with a click.
+    pub fade_transitions: bool,
     /// Keep playing with the window closed.
     pub background: bool,
     /// Desktop notification when the track changes while the window is not
@@ -82,6 +89,8 @@ impl Default for Settings {
             quality: QualityPreference::Best,
             normalization: Normalization::Off,
             gapless: true,
+            crossfade_secs: 0,
+            fade_transitions: true,
             background: false,
             notifications: true,
             volume: 1.0,
@@ -264,5 +273,7 @@ mod tests {
         assert!(!settings.panel_open);
         assert_eq!(settings.panel_tab, "playing");
         assert_eq!(settings.language, "auto");
+        assert_eq!(settings.crossfade_secs, 0);
+        assert!(settings.fade_transitions);
     }
 }

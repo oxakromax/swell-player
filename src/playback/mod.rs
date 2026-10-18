@@ -44,12 +44,27 @@
 //! the session. `SWELL_DEBUG_STREAM_FAIL=<n>[@<skip>]` (see `api.rs`) and
 //! `SWELL_DEBUG_ENGINE_FAIL=<seconds>[@<status>]` (a dropped connection, or
 //! an HTTP `status` such as 403, that many seconds into the track) simulate
-//! network failures.
+//! network failures. `SWELL_DEBUG_SKIP=<seconds>[x<count>]` skips to the
+//! next track every `seconds` of playback (with `RUST_LOG=swell_player=debug`
+//! the log says how long each start took: "first audio … ms");
+//! `SWELL_NO_PROXY=1` plays straight from TIDAL, without the local proxy
+//! and prefetched audio; `SWELL_PREFETCH_BUDGET_MB=<n>` caps the prefetched
+//! audio (to watch eviction).
+//!
+//! Transitions: a track that ends by itself hands over gaplessly, or
+//! crossfades (see `transition.rs` for when); manual changes, pausing and
+//! seeking fade briefly (`fade.rs`); both on the engine's two decks
+//! (`engine.rs`). The next few tracks are prefetched (`prefetch.rs`) and
+//! played from memory through a local proxy (`proxy.rs`), within a budget
+//! (`budget.rs`), until their signed URLs expire (`expiry.rs`).
 
 use crate::i18n::{tr, trn};
 
+mod budget;
 mod controls;
 pub mod engine;
+mod expiry;
+mod fade;
 mod failure;
 pub mod format;
 #[cfg(all(unix, not(target_os = "macos")))]
@@ -58,10 +73,13 @@ mod notify;
 #[cfg(any(windows, target_os = "macos"))]
 mod os_controls;
 pub mod plugins;
+mod prefetch;
+mod proxy;
 pub mod queue;
 mod rundir;
 mod session;
 mod sleep;
+mod transition;
 
 use std::cell::{Cell, RefCell};
 use std::rc::{Rc, Weak};
@@ -86,6 +104,7 @@ pub use format::{Codec, FormatDetails};
 use queue::Queue;
 pub use queue::QueueSnapshot;
 pub use sleep::SleepTimer;
+pub use transition::MAX_CROSSFADE_SECS;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PlayState {
@@ -133,8 +152,6 @@ type Subscriber = Rc<dyn Fn(&Event)>;
 /// (demuxers finish reading, and playbin3 asks for the next URI, up to
 /// ~30 s before the end).
 const PREFETCH_BEFORE_END: f64 = 60.0;
-/// Signed stream URLs expire; older prepared streams are resolved again.
-const PREPARED_MAX_AGE: Duration = Duration::from_secs(20 * 60);
 /// A track that played this long since (re)loading counts as healthy.
 const HEALTHY_AFTER: f64 = 5.0;
 /// Consecutive tracks that failed before playback stops altogether.
@@ -154,15 +171,10 @@ struct Prepared {
 }
 
 impl Prepared {
+    /// Its signed URLs have not expired (see `expiry.rs`).
     fn is_fresh(&self) -> bool {
-        is_fresh(self.at)
+        self.stream.is_fresh(self.at)
     }
-}
-
-/// Whether a stream resolved at `at` can still be played (its signed URLs
-/// have not expired).
-fn is_fresh(at: Instant) -> bool {
-    at.elapsed() < PREPARED_MAX_AGE
 }
 
 pub struct Playback {
@@ -235,6 +247,10 @@ pub struct Playback {
     normalization: Cell<Normalization>,
     quality: Cell<QualityPreference>,
     gapless: Cell<bool>,
+    /// Crossfade length in seconds (0: off), from the settings.
+    crossfade_secs: Cell<u32>,
+    /// Upcoming tracks resolved and their first seconds cached.
+    prefetcher: Rc<prefetch::Prefetcher>,
     applied_volume: Cell<Option<(f64, bool)>>,
 
     sleep: RefCell<Option<sleep::Armed>>,
@@ -276,7 +292,7 @@ impl Playback {
             queue.set_shuffle(current.shuffle);
             queue.set_repeat(current.repeat);
             Self {
-                api,
+                api: api.clone(),
                 settings: settings.clone(),
                 engine,
                 weak_self: weak.clone(),
@@ -318,6 +334,8 @@ impl Playback {
                 normalization: Cell::new(current.normalization),
                 quality: Cell::new(current.quality),
                 gapless: Cell::new(current.gapless),
+                crossfade_secs: Cell::new(current.crossfade_secs),
+                prefetcher: prefetch::Prefetcher::new(api.clone()),
                 applied_volume: Cell::new(None),
                 sleep: RefCell::default(),
                 saving_off: Arc::new(AtomicBool::new(false)),
@@ -342,7 +360,14 @@ impl Playback {
         this.apply_volume();
         if let Some(engine) = &this.engine {
             engine.set_output_device(this.output_device.borrow().clone());
+            engine.set_fades(current.fade_transitions);
         }
+        let weak = Rc::downgrade(&this);
+        this.prefetcher.connect_ready(move |_| {
+            if let Some(this) = weak.upgrade() {
+                this.refresh_next();
+            }
+        });
 
         let weak = Rc::downgrade(&this);
         let listener = settings.connect_changed(move |settings| {
@@ -387,6 +412,7 @@ impl Playback {
 
         this.sync_controls();
         this.debug_autoplay();
+        this.debug_skips();
         this
     }
 
@@ -546,7 +572,7 @@ impl Playback {
     pub fn stop(&self) {
         self.generation.set(self.generation.get() + 1);
         if let Some(engine) = &self.engine {
-            engine.stop();
+            engine.stop_faded();
         }
         self.cancel_network_retry();
         self.loaded.set(false);
@@ -917,6 +943,10 @@ impl Playback {
         self.details.replace(None);
         self.current_stream.replace(None);
         self.current_resolved.set(None);
+        self.prefetcher.clear();
+        if let Some(proxy) = proxy::running() {
+            proxy.clear();
+        }
         self.desktop.clear();
         session::clear();
         // Manifests (signed URLs) and covers of this session.
@@ -1168,11 +1198,18 @@ impl Playback {
         }
         if self.quality.replace(settings.quality) != settings.quality {
             // The current track keeps playing; the next one uses it.
+            self.prefetcher.clear();
             self.drop_prepared();
             self.refresh_next();
         }
         if self.gapless.replace(settings.gapless) != settings.gapless {
             self.refresh_next();
+        }
+        if self.crossfade_secs.replace(settings.crossfade_secs) != settings.crossfade_secs {
+            self.refresh_next();
+        }
+        if let Some(engine) = &self.engine {
+            engine.set_fades(settings.fade_transitions);
         }
         if *self.output_device.borrow() != settings.output_device {
             self.output_device.replace(settings.output_device.clone());
@@ -1203,7 +1240,7 @@ impl Playback {
             .borrow()
             .clone()
             .filter(|s| Some(s.track_id) == current)
-            .filter(|_| self.current_resolved.get().is_some_and(is_fresh));
+            .filter(|s| self.current_resolved.get().is_some_and(|at| s.is_fresh(at)));
         let Some(stream) = stream else {
             log::info!("the current stream may have expired: resolving it again");
             return self.load_current(self.want_play.get(), Some(position), false);
@@ -1287,13 +1324,36 @@ impl Playback {
         if usable { prepared.take() } else { None }
     }
 
-    /// The track to prepare for a gapless switch, if any.
+    /// The track to prepare for a gapless switch or a crossfade, if any.
     fn wanted_next(&self) -> Option<u64> {
         let end_of_track = self.sleep_timer() == Some(SleepTimer::EndOfTrack);
-        if !self.gapless.get() || !self.loaded.get() || end_of_track {
+        if !self.loaded.get() || end_of_track {
             return None;
         }
-        self.queue.borrow().peek_next().map(|t| t.id)
+        let next = self.queue.borrow().peek_next().map(|t| t.id)?;
+        (self.gapless.get() || self.crossfade_into(next).is_some()).then_some(next)
+    }
+
+    fn transition_rules(&self) -> transition::Rules {
+        transition::Rules {
+            crossfade_secs: self.crossfade_secs.get(),
+            bit_perfect: self.normalization.get() == Normalization::Off,
+        }
+    }
+
+    /// The crossfade from the current track into `next_id` when the current
+    /// one ends by itself, or `None` for the gapless switch (see
+    /// `transition.rs`).
+    fn crossfade_into(&self, next_id: u64) -> Option<Duration> {
+        let rules = self.transition_rules();
+        if !rules.crossfade_enabled() {
+            return None;
+        }
+        let duration = self.duration()?;
+        let queue = self.queue.borrow();
+        let current = queue.current()?;
+        let next = queue.peek_next().filter(|t| t.id == next_id)?;
+        transition::crossfade(rules, current, duration, next)
     }
 
     /// Keeps the stream handed to the engine for the gapless switch in line
@@ -1322,6 +1382,8 @@ impl Playback {
                 track_id: p.stream.track_id,
                 uri: p.stream.uri.clone(),
                 gain: self.gain_for(&p.stream),
+                crossfade: self.crossfade_into(p.stream.track_id),
+                gapless_fallback: self.gapless.get(),
             });
         if !engine.set_next(next) {
             // Handed over already: too late to change; `NextStarted` sorts
@@ -1336,12 +1398,13 @@ impl Playback {
             self.prepare_generation
                 .set(self.prepare_generation.get() + 1);
         }
+        self.update_prefetch();
         self.keep_manifests();
         self.maybe_prefetch();
     }
 
     fn keep_manifests(&self) {
-        let ids: Vec<u64> = [
+        let mut ids: Vec<u64> = [
             self.current().map(|t| t.id),
             self.prepared.borrow().as_ref().map(|p| p.stream.track_id),
             self.preparing.get(),
@@ -1349,7 +1412,27 @@ impl Playback {
         .into_iter()
         .flatten()
         .collect();
+        ids.extend(self.prefetcher.track_ids());
         engine::keep_manifests(&ids);
+    }
+
+    /// Tells the prefetcher what is upcoming, in play order. It downloads
+    /// only while playing, once the current track has settled.
+    fn update_prefetch(&self) {
+        let current = self.current().map(|t| t.id);
+        let upcoming: Vec<u64> = self
+            .queue
+            .borrow()
+            .peek_upcoming(prefetch::PREFETCH_TRACKS + 1)
+            .iter()
+            .map(|t| t.id)
+            .collect();
+        let settled = self.healthy_at.get() - HEALTHY_AFTER + prefetch::SETTLE_SECONDS;
+        let active = self.state.get() == PlayState::Playing
+            && self.loaded.get()
+            && self.position().is_some_and(|p| p >= settled);
+        self.prefetcher
+            .update(current, upcoming, self.quality(), active);
     }
 
     fn maybe_prefetch(self: &Rc<Self>) {
@@ -1366,6 +1449,18 @@ impl Playback {
             .as_ref()
             .is_some_and(|p| p.stream.track_id == next_id && p.is_fresh());
         if ready || self.preparing.get().is_some() || self.prefetch_failed.get() == Some(next_id) {
+            return;
+        }
+        if let Some((stream, at)) = self.prefetcher.ready(next_id) {
+            log::info!(
+                "prepared track {next_id} ({}) for gapless playback, prefetched",
+                stream.format
+            );
+            self.prepared.replace(Some(Prepared { stream, at }));
+            return self.refresh_next();
+        }
+        if self.prefetcher.pending(next_id) || self.prefetcher.will_fetch(next_id) {
+            // It comes with its first seconds cached.
             return;
         }
         if self
@@ -1472,7 +1567,7 @@ impl Playback {
         let generation = self.generation.get() + 1;
         self.generation.set(generation);
         self.requested_at.set(Some(Instant::now()));
-        engine.stop();
+        engine.stop_faded();
         self.set_state(if autoplay {
             PlayState::Loading
         } else {
@@ -1481,6 +1576,10 @@ impl Playback {
 
         if let Some(prepared) = self.take_prepared(track.id) {
             return self.start_stream(prepared.stream, prepared.at, start);
+        }
+        if let Some((stream, at)) = self.prefetcher.ready(track.id) {
+            log::debug!("track {} was prefetched", track.id);
+            return self.start_stream(stream, at, start);
         }
         self.keep_manifests();
         self.resolving.set(true);
@@ -1717,6 +1816,7 @@ impl Playback {
             self.debug_engine_fail.set(None);
             engine.simulate_network_error(status);
         }
+        self.update_prefetch();
         self.maybe_prefetch();
         if self.position_saved_at.get().elapsed() >= POSITION_SAVE_INTERVAL {
             self.save_position(position);
@@ -1731,6 +1831,7 @@ impl Playback {
                         "playback started {} ms after the track was chosen",
                         at.elapsed().as_millis()
                     );
+                    self.watch_first_audio(at);
                 }
                 self.stream_works();
                 if !self.want_play.get() {
@@ -1805,7 +1906,7 @@ impl Playback {
             }
             return;
         };
-        log::info!("gapless switch to track {track_id}");
+        log::info!("switched to track {track_id} (gapless or crossfading)");
         self.loaded_track.set(Some(track_id));
         self.failures.set(0);
         self.net_strikes.set(0);
@@ -1864,6 +1965,9 @@ impl Playback {
             // expired. Finish this track without it; the next one is
             // loaded afresh when it ends.
             let next = self.prepared.take().map(|p| p.stream.track_id);
+            if let Some(next) = next {
+                self.prefetcher.forget(next);
+            }
             log::info!(
                 "the stream handed over after track {} failed ({message}): finishing this one first",
                 track.id
@@ -1875,7 +1979,9 @@ impl Playback {
         }
         // Otherwise (also during the handover: the network, the audio
         // output) it is the current track's; the prepared next one stays.
-        // The prepared stream may be just as stale.
+        // Its prefetched stream (likely expired) is not used again, and the
+        // prepared stream may be just as stale.
+        self.prefetcher.forget(track.id);
         if self
             .prepared
             .borrow()
@@ -1902,6 +2008,72 @@ impl Playback {
             kind
         };
         self.failed(kind, &track, message, Duration::ZERO);
+    }
+
+    /// Debug logging: says when the position first moves after a load
+    /// chosen at `at` (audio is really flowing), polling every 5 ms.
+    fn watch_first_audio(&self, at: Instant) {
+        if !log::log_enabled!(log::Level::Debug) {
+            return;
+        }
+        let Some(from) = self.engine.as_ref().and_then(Engine::position) else {
+            return;
+        };
+        let weak = self.weak_self.clone();
+        glib::timeout_add_local(Duration::from_millis(5), move || {
+            let Some(this) = weak.upgrade() else {
+                return glib::ControlFlow::Break;
+            };
+            let moved = this
+                .engine
+                .as_ref()
+                .and_then(Engine::position)
+                .is_some_and(|p| p > from + 0.001);
+            if moved {
+                log::debug!(
+                    "first audio {} ms after the track was chosen",
+                    at.elapsed().as_millis()
+                );
+                return glib::ControlFlow::Break;
+            }
+            if at.elapsed() > Duration::from_secs(10) {
+                return glib::ControlFlow::Break;
+            }
+            glib::ControlFlow::Continue
+        });
+    }
+
+    /// `SWELL_DEBUG_SKIP=<seconds>[x<count>]`: skips to the next track
+    /// every `seconds` of playback, `count` times (default 5), to measure
+    /// how fast a skip starts.
+    fn debug_skips(self: &Rc<Self>) {
+        let Some((every, count)) = std::env::var("SWELL_DEBUG_SKIP").ok().and_then(|spec| {
+            let (every, count) = spec.split_once('x').unwrap_or((&spec, "5"));
+            Some((every.parse::<f64>().ok()?, count.parse::<u32>().ok()?))
+        }) else {
+            return;
+        };
+        let weak = Rc::downgrade(self);
+        let left = Cell::new(count);
+        let played = Cell::new(0.0);
+        glib::timeout_add_local(Duration::from_millis(100), move || {
+            let Some(this) = weak.upgrade() else {
+                return glib::ControlFlow::Break;
+            };
+            if this.state.get() == PlayState::Playing {
+                played.set(played.get() + 0.1);
+            }
+            if played.get() + 1e-6 >= every {
+                played.set(0.0);
+                log::info!("SWELL_DEBUG_SKIP: next");
+                this.next();
+                left.set(left.get().saturating_sub(1));
+                if left.get() == 0 {
+                    return glib::ControlFlow::Break;
+                }
+            }
+            glib::ControlFlow::Continue
+        });
     }
 
     /// `SWELL_PLAY=<id>[,<id>…][@<seconds>]`: plays tracks at startup;
