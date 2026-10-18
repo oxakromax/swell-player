@@ -156,7 +156,7 @@ int() {
 # needs into Frameworks/, recursively, and points FILE at them through
 # @loader_path/TOFW (TOFW: path from FILE's directory to Frameworks/).
 relink() {
-    local file=$1 orig=$2 tofw=$3 dep src name
+    local file=$1 orig=$2 tofw=$3 dep src name rp
     chmod u+w "$file"
     for dep in $(macho_deps "$orig"); do
         is_system "$dep" && continue
@@ -171,6 +171,13 @@ relink() {
         fi
         int -change "$dep" "@loader_path${tofw:+/$tofw}/$name" "$file"
     done
+    # Only Frameworks/ on the run path: dyld also tries the caller's
+    # LC_RPATHs for a bare-name dlopen() (GStreamer's soup plugins open
+    # libsoup that way), and Homebrew's would pick up its own copies.
+    for rp in $(rpaths "$file"); do
+        int -delete_rpath "$rp" "$file"
+    done
+    int -add_rpath "@loader_path${tofw:+/$tofw}" "$file"
 }
 
 # add SRC DEST TOFW: copies a Mach-O file into the bundle and relinks it.
