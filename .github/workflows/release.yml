@@ -1,9 +1,19 @@
 name: Release
 
-# A tag v<version> (matching Cargo.toml) builds every package and attaches
-# them to a draft GitHub Release, to be reviewed and published by hand.
-# Running it by hand (workflow_dispatch) builds the same packages as
-# workflow artifacts without making a release.
+# Builds every package and, when the run is for a tag v<version> (matching
+# Cargo.toml), attaches them to a draft GitHub Release of that tag, to be
+# reviewed and published by hand:
+#
+# - pushing a tag v<version>: packages and the draft release;
+# - running it by hand (workflow_dispatch) on a branch: the same packages,
+#   as workflow artifacts only, with no release;
+# - running it by hand on a tag ("Use workflow from" a v<version> tag): the
+#   same as pushing that tag, so it creates, or adds to, that tag's draft.
+#
+# The Intel macOS build is best effort: Homebrew may have to build its GTK
+# stack from source on that runner and time out. When it fails the release
+# is still drafted, without the Intel disk image; every other package is
+# required.
 on:
   push:
     tags: ["v*"]
@@ -19,15 +29,25 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: "0"
+  # Packaging tools, pinned so a release does not change with their updates.
+  CARGO_ABOUT_VERSION: 0.9.2
+  CARGO_DEB_VERSION: 3.8.0
+  CARGO_GENERATE_RPM_VERSION: 0.21.0
+  INNO_SETUP_VERSION: 6.7.1
 
+# Third-party actions and the Flatpak container are pinned by digest
+# (Dependabot keeps the actions current). Checkouts keep no credentials.
 jobs:
   meta:
-    name: Version
+    name: Version and licence notices
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
       - id: version
         run: |
           version=$(packaging/release.sh version)
@@ -35,6 +55,20 @@ jobs:
           if [[ $GITHUB_REF == refs/tags/* ]]; then
             packaging/release.sh check-tag "$GITHUB_REF_NAME"
           fi
+
+      # The licences of the Rust crates in the binary, for every target
+      # (about.toml): one file that every package below ships.
+      - name: Third-party licence notices
+        run: |
+          rustup toolchain install stable --profile minimal
+          cargo +stable install cargo-about --version "$CARGO_ABOUT_VERSION" --locked --features cli
+          packaging/release.sh licenses dist/THIRD-PARTY-LICENSES.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: third-party-licenses
+          path: dist/THIRD-PARTY-LICENSES.txt
+          if-no-files-found: error
 
   # Debian 13 (GTK 4.18, libadwaita 1.7, glibc 2.41) without the default
   # `adw-1-8` feature: the .deb, and the tarball made from the same binary,
@@ -60,9 +94,16 @@ jobs:
             sh -s -- -y --profile minimal --default-toolchain stable
           export PATH="$HOME/.cargo/bin:$PATH"
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
-          cargo install cargo-deb --locked
+          cargo install cargo-deb --version "$CARGO_DEB_VERSION" --locked
 
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: third-party-licenses
+          path: target/release
 
       - name: Build
         run: packaging/release.sh build --no-default-features
@@ -101,9 +142,16 @@ jobs:
             sh -s -- -y --profile minimal --default-toolchain stable
           export PATH="$HOME/.cargo/bin:$PATH"
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
-          cargo install cargo-generate-rpm --locked
+          cargo install cargo-generate-rpm --version "$CARGO_GENERATE_RPM_VERSION" --locked
 
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: third-party-licenses
+          path: target/release
 
       - name: Build
         run: packaging/release.sh build
@@ -122,17 +170,21 @@ jobs:
     needs: meta
     runs-on: ubuntu-latest
     container:
-      # Keep the GNOME version in step with runtime-version in the manifest.
-      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-49
+      # Keep the GNOME version in step with runtime-version in the manifest;
+      # the digest is the gnome-49 tag's on 2026-10-18 (look it up again with
+      # `docker buildx imagetools inspect ghcr.io/flathub-infra/flatpak-github-actions:gnome-49`).
+      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-49@sha256:8a05aca51163a81259cc011302cc5121779c89b8b16f2819cc3fd06817d136e7
       options: --privileged
     steps:
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
-      - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+      - uses: flatpak/flatpak-github-actions/flatpak-builder@79327416609af08178ad73b352877e51450790b3 # v6.8
         with:
           manifest-path: packaging/flatpak/io.github.oxakromax.SwellPlayer.yml
           bundle: swell-player-${{ needs.meta.outputs.version }}-x86_64.flatpak
-          cache-key: flatpak-builder-${{ github.sha }}
+          cache-key: flatpak-builder-${{ hashFiles('packaging/flatpak/**', 'Cargo.lock') }}
           upload-artifact: true
 
   windows:
@@ -153,8 +205,10 @@ jobs:
           "CARGO_HOME=$env:RUNNER_TEMP\cargo-home" >> $env:GITHUB_ENV
 
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
-      - uses: msys2/setup-msys2@v2
+      - uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e # v2.33.0
         with:
           msystem: UCRT64
           update: true
@@ -182,6 +236,19 @@ jobs:
             mingw-w64-ucrt-x86_64-ca-certificates
             mingw-w64-ucrt-x86_64-sqlite3
 
+      - uses: actions/download-artifact@v4
+        with:
+          name: third-party-licenses
+          path: target/release
+
+      # build.rs links it into swell-player.exe (window and Explorer icon),
+      # and bundle.sh puts the same file next to it for the installer.
+      - name: Icon
+        run: |
+          packaging/windows/make-ico.sh data/icons/scalable/apps/io.github.oxakromax.SwellPlayer.svg \
+            packaging/windows/swell.ico
+          ls -l packaging/windows/swell.ico
+
       - name: Build
         run: cargo build --release --locked
 
@@ -196,7 +263,7 @@ jobs:
           $candidates = @("${env:ProgramFiles(x86)}\Inno Setup*\ISCC.exe", "$env:ProgramFiles\Inno Setup*\ISCC.exe")
           $iscc = Get-ChildItem $candidates -ErrorAction SilentlyContinue | Select-Object -First 1
           if (-not $iscc) {
-            choco install innosetup --no-progress -y
+            choco install innosetup --version $env:INNO_SETUP_VERSION --no-progress -y
             $iscc = Get-ChildItem $candidates -ErrorAction SilentlyContinue | Select-Object -First 1
           }
           if (-not $iscc) { throw "Inno Setup (ISCC.exe) not found" }
@@ -211,31 +278,34 @@ jobs:
             dist/*-setup.exe
           if-no-files-found: error
 
+  # Apple silicon (required) and Intel (best effort: `continue-on-error`,
+  # and `publish` does not wait for it to succeed). One job with a matrix
+  # would give `publish` a single result for both.
   macos:
-    name: macOS (${{ matrix.arch }}) – app and disk image
+    name: macOS (arm64) – app and disk image
     needs: meta
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - runner: macos-14
-            arch: arm64
-          - runner: macos-15-intel
-            arch: x86_64
-    runs-on: ${{ matrix.runner }}
+    runs-on: macos-14
     env:
       VERSION: ${{ needs.meta.outputs.version }}
+      ARCH: arm64
       HOMEBREW_NO_AUTO_UPDATE: "1"
       HOMEBREW_NO_INSTALL_CLEANUP: "1"
-    steps:
+    steps: &macos-steps
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
       - name: Install dependencies
         run: |
           brew install gtk4 libadwaita gstreamer pkgconf sqlite librsvg glib-networking libsoup \
-            adwaita-icon-theme hicolor-icon-theme ca-certificates
+            adwaita-icon-theme hicolor-icon-theme ca-certificates jq
           rustup toolchain install stable --profile minimal
           rustup default stable
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: third-party-licenses
+          path: target/release
 
       - name: Build
         env:
@@ -246,18 +316,40 @@ jobs:
       - name: Bundle
         run: |
           packaging/macos/bundle.sh --out dist/macos \
-            --dmg "dist/swell-player-$VERSION-macos-${{ matrix.arch }}.dmg"
+            --dmg "dist/swell-player-$VERSION-macos-$ARCH.dmg"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: macos-${{ matrix.arch }}
+          name: macos-${{ env.ARCH }}
           path: dist/*.dmg
           if-no-files-found: error
 
+  macos-intel:
+    name: macOS (x86_64, best effort) – app and disk image
+    needs: meta
+    runs-on: macos-15-intel
+    continue-on-error: true
+    timeout-minutes: 120
+    env:
+      VERSION: ${{ needs.meta.outputs.version }}
+      ARCH: x86_64
+      HOMEBREW_NO_AUTO_UPDATE: "1"
+      HOMEBREW_NO_INSTALL_CLEANUP: "1"
+    steps: *macos-steps
+
   publish:
     name: Draft release
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: [meta, linux-deb, linux-rpm, flatpak, windows, macos]
+    # always(): run even when the best-effort Intel macOS build failed or
+    # was cancelled; every other package must have been built.
+    if: >-
+      always() && startsWith(github.ref, 'refs/tags/v') &&
+      needs.meta.result == 'success' &&
+      needs.linux-deb.result == 'success' &&
+      needs.linux-rpm.result == 'success' &&
+      needs.flatpak.result == 'success' &&
+      needs.windows.result == 'success' &&
+      needs.macos.result == 'success'
+    needs: [meta, linux-deb, linux-rpm, flatpak, windows, macos, macos-intel]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -266,17 +358,30 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
+      # Whatever was built, the Intel disk image included when it exists.
       - uses: actions/download-artifact@v4
         with:
           path: dist
           merge-multiple: true
 
       - name: Checksums
-        run: packaging/release.sh checksums dist
+        run: |
+          ls -l dist
+          packaging/release.sh checksums dist
 
       - name: Release notes
+        env:
+          INTEL_RESULT: ${{ needs.macos-intel.result }}
         run: |
+          if compgen -G "dist/*-macos-x86_64.dmg" >/dev/null; then
+            mac_row="| macOS (Apple silicon / Intel) | \`…-macos-arm64.dmg\` / \`…-macos-x86_64.dmg\` |"
+          else
+            echo "::warning::no Intel macOS disk image (macos-intel: $INTEL_RESULT); drafting the release without it"
+            mac_row="| macOS (Apple silicon) | \`…-macos-arm64.dmg\` |"
+          fi
           cat > "$RUNNER_TEMP/notes.md" <<EOF
           Swell $VERSION
 
@@ -289,9 +394,10 @@ jobs:
           | Fedora (43 or newer) | \`.rpm\` |
           | Any distribution, sandboxed | \`swell-player-$VERSION-x86_64.flatpak\` (\`flatpak install --user ./swell-player-$VERSION-x86_64.flatpak\`) |
           | Windows 10/11 (x64) | \`…-windows-x86_64-setup.exe\` (installer) or \`…-windows-x86_64-portable.zip\` |
-          | macOS (Apple silicon / Intel) | \`…-macos-arm64.dmg\` / \`…-macos-x86_64.dmg\` |
+          $mac_row
 
-          \`SHA256SUMS\` lists the checksums of every file.
+          \`SHA256SUMS\` lists the checksums of every file. \`THIRD-PARTY-LICENSES.txt\` has the licences
+          of the Rust crates built into Swell (every package carries it too).
 
           ## Unsigned builds
 
