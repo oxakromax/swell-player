@@ -1,10 +1,5 @@
-# Simplified Chinese translation of Swell.
+# Simplified Chinese (China) translation of Swell.
 # This file is distributed under the same license as Swell (GPL-3.0-or-later).
-#
-# Placeholder: only the header, so that the catalogue is embedded before
-# its translation lands; every string falls back to English.
-# "X-Swell-Partial: yes" excuses it from the every_string_is_translated
-# test (see docs/translating.md).
 msgid ""
 msgstr ""
 "Project-Id-Version: swell-player\n"
@@ -13,4 +8,2294 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
-"X-Swell-Partial: yes\n"
+
+#: src/playback/format.rs:30
+msgid "Unknown"
+msgstr "未知"
+
+#: src/playback/format.rs:122
+msgid "{bits}-bit/{rate} kHz {codec}"
+msgstr "{codec} {bits} 位/{rate} kHz"
+
+#: src/playback/format.rs:136
+msgid "Unknown format"
+msgstr "未知格式"
+
+#: src/playback/mod.rs:1439
+msgid "Skipped a track that is not available"
+msgid_plural "Skipped {n} tracks that are not available"
+msgstr[0] "已跳过 {n} 首不可用的曲目"
+
+#: src/playback/mod.rs:1469
+msgid "Playback needs GStreamer's playbin3"
+msgstr "播放需要 GStreamer 的 playbin3"
+
+#: src/playback/mod.rs:1566
+msgid "The TIDAL session has expired: sign in again to play"
+msgstr "TIDAL 会话已过期：请重新登录后再播放"
+
+#: src/playback/mod.rs:1591
+msgid "Connection lost — retrying"
+msgstr "连接已断开，正在重试"
+
+#: src/playback/mod.rs:1659
+msgid "Could not play “{title}”. Playback stopped after {n} tracks failed"
+msgstr "无法播放“{title}”。{n} 首曲目播放失败，已停止播放"
+
+#: src/playback/mod.rs:1665
+msgid "Could not play “{title}”, skipped"
+msgstr "无法播放“{title}”，已跳过"
+
+#: src/playback/mod.rs:1858
+msgid "Playback failed: {error}"
+msgstr "播放失败：{error}"
+
+#: src/playback/notify.rs:35
+msgid "Playing music"
+msgstr "正在播放音乐"
+
+#: src/playback/notify.rs:242
+msgid "{artists} — {album}"
+msgstr "{artists} — {album}"
+
+#: src/playback/plugins.rs:24
+msgid "Playback needs GStreamer’s “{element}”. Install {package}."
+msgstr "播放需要 GStreamer 的“{element}”。请安装 {package}。"
+
+#: src/session.rs:73
+msgid "Couldn't open the system's credential store."
+msgstr "无法打开系统凭据存储。"
+
+#: src/session.rs:75
+msgid "Couldn't open the keyring. Make sure a keyring service (GNOME Keyring, KWallet) is running."
+msgstr "无法打开密钥环。请确保密钥环服务（GNOME Keyring、KWallet）正在运行。"
+
+#: src/session.rs:84
+msgid "Couldn't save the session in the system's credential store."
+msgstr "无法将会话保存到系统凭据存储。"
+
+#: src/session.rs:86
+msgid "Couldn't save the session in the keyring. Make sure a keyring service (GNOME Keyring, KWallet) is running."
+msgstr "无法将会话保存到密钥环。请确保密钥环服务（GNOME Keyring、KWallet）正在运行。"
+
+#: src/ui/context.rs:105
+msgid "You’re offline — showing saved data"
+msgstr "你处于离线状态，显示的是已保存的数据"
+
+#: src/ui/context.rs:238
+#: src/ui/shortcuts.rs:31
+msgid "Undo"
+msgstr "撤销"
+
+#: src/ui/context.rs:258
+msgid "Your TIDAL session has expired. Please sign in again."
+msgstr "你的 TIDAL 会话已过期，请重新登录。"
+
+#: src/ui/debug.rs:58
+#: src/ui/pages/artist.rs:271
+#: src/ui/pages/explore.rs:176
+#: src/ui/pages/home_sections.rs:303
+#: src/ui/pages/more.rs:151
+#: src/ui/pages/search_views.rs:156
+#: src/ui/widgets/carousel.rs:56
+#: src/ui/widgets/section.rs:124
+msgid "View All"
+msgstr "查看全部"
+
+#: src/ui/dialogs/about.rs:14
+msgid "Swell contributors"
+msgstr "Swell 贡献者"
+
+#: src/ui/dialogs/about.rs:16
+msgid ""
+"A native TIDAL client for Linux.\n"
+"\n"
+"Not affiliated with TIDAL."
+msgstr ""
+"适用于 Linux 的原生 TIDAL 客户端。\n"
+"\n"
+"与 TIDAL 没有任何关联。"
+
+#: src/ui/dialogs/credits.rs:26
+#: src/ui/menus.rs:473
+#: src/ui/pages/album.rs:362
+#: src/ui/pages/album.rs:489
+msgid "Credits"
+msgstr "制作人员"
+
+#: src/ui/dialogs/credits.rs:50
+#: src/ui/pages/album.rs:510
+msgid "No Credits"
+msgstr "没有制作人员信息"
+
+#: src/ui/dialogs/credits.rs:51
+msgid "TIDAL has no credits for this track."
+msgstr "TIDAL 没有这首曲目的制作人员信息。"
+
+#: src/ui/dialogs/credits.rs:56
+#: src/ui/pages/album.rs:519
+msgid "Couldn't load the credits"
+msgstr "无法加载制作人员信息"
+
+#: src/ui/dialogs/credits.rs:60
+msgid "Couldn't Load the Credits"
+msgstr "无法加载制作人员信息"
+
+#: src/ui/dialogs/playlist.rs:61
+#: src/ui/pages/playlist.rs:1234
+msgid "Added to “{title}”"
+msgstr "已添加到“{title}”"
+
+#: src/ui/dialogs/playlist.rs:63
+#: src/ui/pages/playlist.rs:1236
+msgid "Added {n} track to “{title}”"
+msgid_plural "Added {n} tracks to “{title}”"
+msgstr[0] "已将 {n} 首曲目添加到“{title}”"
+
+#: src/ui/dialogs/playlist.rs:71
+#: src/ui/dialogs/playlist.rs:404
+msgid "Open"
+msgstr "打开"
+
+#: src/ui/dialogs/playlist.rs:75
+msgid "Couldn't add to “{title}”"
+msgstr "无法添加到“{title}”"
+
+#: src/ui/dialogs/playlist.rs:90
+msgid "Search Playlists"
+msgstr "搜索播放列表"
+
+#: src/ui/dialogs/playlist.rs:168
+#: src/ui/format.rs:29
+#: src/ui/format.rs:54
+#: src/ui/format.rs:149
+#: src/ui/format.rs:150
+#: src/ui/pages/collection.rs:914
+#: src/ui/pages/collection.rs:1061
+#: src/ui/widgets/media_card.rs:506
+msgid "{n} track"
+msgid_plural "{n} tracks"
+msgstr[0] "{n} 首曲目"
+
+#: src/ui/dialogs/playlist.rs:210
+msgid "Your Playlists"
+msgstr "你的播放列表"
+
+#: src/ui/dialogs/playlist.rs:221
+#: src/ui/menus.rs:802
+msgid "New Playlist…"
+msgstr "新建播放列表…"
+
+#: src/ui/dialogs/playlist.rs:244
+#: src/ui/menus.rs:442
+#: src/ui/menus.rs:507
+msgid "Add to Playlist"
+msgstr "添加到播放列表"
+
+#: src/ui/dialogs/playlist.rs:294
+#: src/ui/pages/collection.rs:590
+#: src/ui/pages/collection_grid.rs:41
+#: src/ui/pages/collection_grid.rs:46
+#: src/ui/pages/collection_grid.rs:47
+msgid "Title"
+msgstr "标题"
+
+#: src/ui/dialogs/playlist.rs:295
+#: src/ui/widgets/page_header.rs:581
+msgid "Description"
+msgstr "描述"
+
+#: src/ui/dialogs/playlist.rs:297
+#: src/ui/widgets/page_header.rs:571
+msgid "Public"
+msgstr "公开"
+
+#: src/ui/dialogs/playlist.rs:298
+msgid "Anyone can find it and see what's in it"
+msgstr "任何人都可以找到它并查看其中的内容"
+
+#: src/ui/dialogs/playlist.rs:312
+#: src/ui/dialogs/playlist.rs:515
+msgid "Cancel"
+msgstr "取消"
+
+#: src/ui/dialogs/playlist.rs:362
+msgid "Create"
+msgstr "创建"
+
+#: src/ui/dialogs/playlist.rs:362
+#: src/ui/pages/collection_grid.rs:310
+#: src/ui/pages/collection_grid.rs:340
+#: src/ui/sidebar.rs:726
+#: src/ui/sidebar.rs:779
+#: src/ui/sidebar.rs:784
+msgid "New Playlist"
+msgstr "新建播放列表"
+
+#: src/ui/dialogs/playlist.rs:403
+msgid "Created “{title}”"
+msgstr "已创建“{title}”"
+
+#: src/ui/dialogs/playlist.rs:413
+msgid "Couldn't create the playlist"
+msgstr "无法创建播放列表"
+
+#: src/ui/dialogs/playlist.rs:430
+#: src/ui/widgets/page_header.rs:591
+msgid "Edit Details"
+msgstr "编辑详细信息"
+
+#: src/ui/dialogs/playlist.rs:430
+msgid "Save"
+msgstr "保存"
+
+#: src/ui/dialogs/playlist.rs:467
+msgid "Playlist updated"
+msgstr "播放列表已更新"
+
+#: src/ui/dialogs/playlist.rs:474
+msgid "Couldn't update the playlist"
+msgstr "无法更新播放列表"
+
+#: src/ui/dialogs/playlist.rs:493
+msgid "The playlist is now public"
+msgstr "播放列表现已公开"
+
+#: src/ui/dialogs/playlist.rs:495
+msgid "The playlist is now private"
+msgstr "播放列表现已设为私密"
+
+#: src/ui/dialogs/playlist.rs:499
+msgid "Couldn't change the playlist's visibility"
+msgstr "无法更改播放列表的可见性"
+
+#: src/ui/dialogs/playlist.rs:508
+msgid "Delete “{title}”?"
+msgstr "删除“{title}”？"
+
+#: src/ui/dialogs/playlist.rs:509
+msgid "The playlist will be deleted from your TIDAL account. This can't be undone."
+msgstr "该播放列表将从你的 TIDAL 账户中删除，此操作无法撤销。"
+
+#: src/ui/dialogs/playlist.rs:515
+msgid "Delete"
+msgstr "删除"
+
+#: src/ui/dialogs/playlist.rs:534
+msgid "Deleted “{title}”"
+msgstr "已删除“{title}”"
+
+#: src/ui/dialogs/playlist.rs:540
+msgid "Couldn't delete the playlist"
+msgstr "无法删除播放列表"
+
+#: src/ui/dialogs/preferences.rs:42
+#: src/ui/widgets/np_common.rs:407
+#: src/ui/widgets/np_common.rs:411
+#: src/ui/widgets/quality_badge.rs:28
+msgid "Hi-Res Lossless"
+msgstr "Hi-Res Lossless"
+
+#: src/ui/dialogs/preferences.rs:45
+#: src/ui/widgets/np_common.rs:408
+#: src/ui/widgets/np_common.rs:412
+#: src/ui/widgets/quality_badge.rs:29
+msgid "Lossless"
+msgstr "Lossless"
+
+#: src/ui/dialogs/preferences.rs:46
+#: src/ui/widgets/np_common.rs:409
+msgid "High"
+msgstr "高音质"
+
+#: src/ui/dialogs/preferences.rs:47
+#: src/ui/widgets/np_common.rs:410
+msgid "Low"
+msgstr "低音质"
+
+#: src/ui/dialogs/preferences.rs:57
+msgid "Streaming Quality"
+msgstr "流媒体音质"
+
+#: src/ui/dialogs/preferences.rs:65
+msgid "Hi-Res Lossless requires browser sign-in"
+msgstr "Hi-Res Lossless 需要通过浏览器登录"
+
+#: src/ui/dialogs/preferences.rs:71
+#: src/ui/widgets/np_common.rs:477
+msgid "Quality"
+msgstr "音质"
+
+#: src/ui/dialogs/preferences.rs:81
+msgid "Volume Normalisation"
+msgstr "音量标准化"
+
+#: src/ui/dialogs/preferences.rs:82
+#: src/ui/pages/album.rs:68
+#: src/ui/pages/collection.rs:592
+#: src/ui/pages/search_views.rs:339
+#: src/ui/widgets/page_header.rs:526
+msgid "Album"
+msgstr "专辑"
+
+#: src/ui/dialogs/preferences.rs:82
+#: src/ui/widgets/np_common.rs:610
+#: src/ui/widgets/np_common.rs:801
+msgid "Off"
+msgstr "关闭"
+
+#: src/ui/dialogs/preferences.rs:82
+#: src/ui/pages/search_views.rs:343
+msgid "Track"
+msgstr "曲目"
+
+#: src/ui/dialogs/preferences.rs:88
+msgid "Off keeps the output bit-perfect"
+msgstr "关闭后输出保持 bit-perfect"
+
+#: src/ui/dialogs/preferences.rs:94
+msgid "Gapless Playback"
+msgstr "无缝播放"
+
+#: src/ui/dialogs/preferences.rs:100
+msgid "Processing"
+msgstr "处理"
+
+#: src/ui/dialogs/preferences.rs:107
+#: src/ui/shortcuts.rs:60
+msgid "Playback"
+msgstr "播放"
+
+#: src/ui/dialogs/preferences.rs:120
+msgid "System Default"
+msgstr "系统默认"
+
+#: src/ui/dialogs/preferences.rs:122
+msgid "Output Device"
+msgstr "输出设备"
+
+#: src/ui/dialogs/preferences.rs:160
+#: src/ui/widgets/np_common.rs:483
+msgid "Output"
+msgstr "输出"
+
+#: src/ui/dialogs/preferences.rs:191
+msgid "Behaviour"
+msgstr "行为"
+
+#: src/ui/dialogs/preferences.rs:195
+msgid "Run in Background"
+msgstr "在后台运行"
+
+#: src/ui/dialogs/preferences.rs:196
+msgid "Keep playing when the window is closed"
+msgstr "关闭窗口后继续播放"
+
+#: src/ui/dialogs/preferences.rs:202
+msgid "Track Change Notifications"
+msgstr "切歌通知"
+
+#: src/ui/dialogs/preferences.rs:203
+msgid "When the window is not focused"
+msgstr "窗口未处于焦点时"
+
+#: src/ui/dialogs/preferences.rs:209
+msgid "Restore Queue on Start"
+msgstr "启动时恢复队列"
+
+#: src/ui/dialogs/preferences.rs:217
+#: src/ui/shortcuts.rs:26
+msgid "General"
+msgstr "常规"
+
+#: src/ui/dialogs/preferences.rs:231
+msgid "Language"
+msgstr "语言"
+
+#: src/ui/dialogs/preferences.rs:232
+msgid "Automatic"
+msgstr "自动"
+
+#: src/ui/dialogs/preferences.rs:253
+msgid "Restart Swell to change the language"
+msgstr "重启 Swell 以更改语言"
+
+#: src/ui/dialogs/preferences.rs:254
+msgid "Restart"
+msgstr "重启"
+
+#: src/ui/dialogs/preferences.rs:279
+msgid "Storage"
+msgstr "存储"
+
+#: src/ui/dialogs/preferences.rs:280
+msgid "Downloaded artwork and saved answers from TIDAL, so pages open instantly and work offline."
+msgstr "已下载的封面图片和 TIDAL 的已保存应答，让页面即时打开，并可离线使用。"
+
+#: src/ui/dialogs/preferences.rs:285
+msgid "Cover Cache"
+msgstr "封面缓存"
+
+#: src/ui/dialogs/preferences.rs:286
+msgid "Clear the Cover Cache?"
+msgstr "清除封面缓存？"
+
+#: src/ui/dialogs/preferences.rs:287
+msgid "Artwork is downloaded again as you browse."
+msgstr "浏览时会重新下载封面图片。"
+
+#: src/ui/dialogs/preferences.rs:288
+msgid "Cover Cache cleared"
+msgstr "封面缓存已清除"
+
+#: src/ui/dialogs/preferences.rs:289
+msgid "Couldn’t clear the Cover Cache"
+msgstr "无法清除封面缓存"
+
+#: src/ui/dialogs/preferences.rs:310
+msgid "Library Cache"
+msgstr "资料库缓存"
+
+#: src/ui/dialogs/preferences.rs:311
+msgid "Clear the Library Cache?"
+msgstr "清除资料库缓存？"
+
+#: src/ui/dialogs/preferences.rs:312
+msgid "Pages are loaded again from TIDAL. Your collection is not affected."
+msgstr "页面将重新从 TIDAL 加载。你的收藏不会受到影响。"
+
+#: src/ui/dialogs/preferences.rs:313
+msgid "Library Cache cleared"
+msgstr "资料库缓存已清除"
+
+#: src/ui/dialogs/preferences.rs:314
+msgid "Couldn’t clear the Library Cache"
+msgstr "无法清除资料库缓存"
+
+#: src/ui/dialogs/preferences.rs:368
+msgid "Calculating…"
+msgstr "正在计算…"
+
+#: src/ui/dialogs/preferences.rs:371
+#: src/ui/dialogs/preferences.rs:417
+msgid "_Clear"
+msgstr "清除(_C)"
+
+#: src/ui/dialogs/preferences.rs:417
+#: src/ui/window.rs:413
+msgid "_Cancel"
+msgstr "取消(_C)"
+
+#: src/ui/dialogs/preferences.rs:472
+msgid "Blocked Artists"
+msgstr "已屏蔽的艺人"
+
+#: src/ui/dialogs/preferences.rs:473
+msgid "Loading…"
+msgstr "正在加载…"
+
+#: src/ui/dialogs/preferences.rs:489
+msgid "Couldn’t load blocked artists."
+msgstr "无法加载已屏蔽的艺人。"
+
+#: src/ui/dialogs/preferences.rs:494
+msgid "Nothing blocked. Blocked artists are skipped in radios and mixes."
+msgstr "没有屏蔽任何艺人。被屏蔽的艺人会在电台和 Mix 中被跳过。"
+
+#: src/ui/dialogs/preferences.rs:496
+msgid "Skipped in radios and mixes."
+msgstr "在电台和 Mix 中被跳过。"
+
+#: src/ui/dialogs/preferences.rs:505
+msgid "Unblock"
+msgstr "取消屏蔽"
+
+#: src/ui/dialogs/preferences.rs:538
+#: src/ui/menus.rs:870
+msgid "Unblocked {name}"
+msgstr "已取消屏蔽 {name}"
+
+#: src/ui/dialogs/preferences.rs:548
+msgid "Couldn’t unblock the artist"
+msgstr "无法取消屏蔽该艺人"
+
+#: src/ui/dialogs/preferences.rs:563
+msgid "Signed in with the browser"
+msgstr "已通过浏览器登录"
+
+#: src/ui/dialogs/preferences.rs:564
+msgid "Up to Hi-Res Lossless"
+msgstr "最高支持 Hi-Res Lossless"
+
+#: src/ui/dialogs/preferences.rs:567
+msgid "Signed in with a device code"
+msgstr "已通过设备代码登录"
+
+#: src/ui/dialogs/preferences.rs:568
+msgid "Up to Lossless (16-bit/44.1 kHz)"
+msgstr "最高支持 Lossless（16 位/44.1 kHz）"
+
+#: src/ui/dialogs/preferences.rs:596
+msgid "Sign _Out…"
+msgstr "退出登录(_O)…"
+
+#: src/ui/dialogs/preferences.rs:617
+msgid "Account"
+msgstr "账户"
+
+#: src/ui/format.rs:13
+msgid ","
+msgstr ","
+
+#: src/ui/format.rs:107
+msgid "January"
+msgstr "1月"
+
+#: src/ui/format.rs:108
+msgid "February"
+msgstr "2月"
+
+#: src/ui/format.rs:109
+msgid "March"
+msgstr "3月"
+
+#: src/ui/format.rs:110
+msgid "April"
+msgstr "4月"
+
+#: src/ui/format.rs:111
+msgid "May"
+msgstr "5月"
+
+#: src/ui/format.rs:112
+msgid "June"
+msgstr "6月"
+
+#: src/ui/format.rs:113
+msgid "July"
+msgstr "7月"
+
+#: src/ui/format.rs:114
+msgid "August"
+msgstr "8月"
+
+#: src/ui/format.rs:115
+msgid "September"
+msgstr "9月"
+
+#: src/ui/format.rs:116
+msgid "October"
+msgstr "10月"
+
+#: src/ui/format.rs:117
+msgid "November"
+msgstr "11月"
+
+#: src/ui/format.rs:118
+msgid "December"
+msgstr "12月"
+
+#: src/ui/format.rs:125
+msgid "Monday"
+msgstr "星期一"
+
+#: src/ui/format.rs:126
+msgid "Tuesday"
+msgstr "星期二"
+
+#: src/ui/format.rs:127
+msgid "Wednesday"
+msgstr "星期三"
+
+#: src/ui/format.rs:128
+msgid "Thursday"
+msgstr "星期四"
+
+#: src/ui/format.rs:129
+msgid "Friday"
+msgstr "星期五"
+
+#: src/ui/format.rs:130
+msgid "Saturday"
+msgstr "星期六"
+
+#: src/ui/format.rs:131
+msgid "Sunday"
+msgstr "星期日"
+
+#: src/ui/login.rs:29
+#: src/ui/login.rs:88
+msgid "Sign In with Browser"
+msgstr "通过浏览器登录"
+
+#: src/ui/login.rs:30
+#: src/ui/login.rs:138
+msgid "Use a Device Code"
+msgstr "使用设备代码"
+
+#: src/ui/login.rs:42
+msgid "Hi-Res Lossless, up to 24-bit/192 kHz"
+msgstr "Hi-Res Lossless，最高 24 位/192 kHz"
+
+#: src/ui/login.rs:46
+msgid "Lossless, up to 16-bit/44.1 kHz"
+msgstr "Lossless，最高 16 位/44.1 kHz"
+
+#: src/ui/login.rs:51
+msgid "Welcome to Swell"
+msgstr "欢迎使用 Swell"
+
+#: src/ui/login.rs:52
+msgid "Sign in with your TIDAL account."
+msgstr "使用你的 TIDAL 账户登录。"
+
+#: src/ui/login.rs:56
+msgid "Sign In"
+msgstr "登录"
+
+#: src/ui/login.rs:60
+msgid ""
+"1. Sign in on the TIDAL page that opened in your browser.\n"
+"2. TIDAL then shows a page that says “Oops”.\n"
+"3. Copy that page’s address and paste it here."
+msgstr ""
+"1. 在浏览器中打开的 TIDAL 页面上登录。\n"
+"2. 随后 TIDAL 会显示一个写着“Oops”的页面。\n"
+"3. 复制该页面的地址并粘贴到这里。"
+
+#: src/ui/login.rs:65
+msgid "Paste the address of the “Oops” page"
+msgstr "粘贴“Oops”页面的地址"
+
+#: src/ui/login.rs:73
+msgid "Continue"
+msgstr "继续"
+
+#: src/ui/login.rs:75
+msgid "Open Browser Again"
+msgstr "重新打开浏览器"
+
+#: src/ui/login.rs:89
+msgid "Your browser opens TIDAL’s sign-in page."
+msgstr "浏览器将打开 TIDAL 的登录页面。"
+
+#: src/ui/login.rs:92
+msgid "Browser"
+msgstr "浏览器"
+
+#: src/ui/login.rs:102
+#: src/ui/login.rs:106
+msgid "Copy Code"
+msgstr "复制代码"
+
+#: src/ui/login.rs:119
+msgid "Waiting for approval…"
+msgstr "正在等待批准…"
+
+#: src/ui/login.rs:121
+msgid "Get a New Code"
+msgstr "获取新代码"
+
+#: src/ui/login.rs:139
+msgid "Open link.tidal.com on any device and enter this code."
+msgstr "在任意设备上打开 link.tidal.com 并输入此代码。"
+
+#: src/ui/login.rs:142
+msgid "Device Code"
+msgstr "设备代码"
+
+#: src/ui/login.rs:192
+msgid "Couldn't start the sign-in. Please try again."
+msgstr "无法开始登录，请重试。"
+
+#: src/ui/login.rs:202
+msgid ""
+"Couldn't open the browser ({error}). Open this address yourself:\n"
+"{url}"
+msgstr ""
+"无法打开浏览器（{error}）。请自行打开此地址：\n"
+"{url}"
+
+#: src/ui/login.rs:258
+msgid "Sign-in failed. {error}"
+msgstr "登录失败。{error}"
+
+#: src/ui/login.rs:313
+msgid "Couldn't get a code. {error}"
+msgstr "无法获取代码。{error}"
+
+#: src/ui/login.rs:332
+msgid "This code expired or was not approved."
+msgstr "此代码已过期或未获批准。"
+
+#: src/ui/menus.rs:201
+#: src/ui/pages/artist.rs:298
+msgid "There's nothing to play here"
+msgstr "这里没有可播放的内容"
+
+#: src/ui/menus.rs:203
+#: src/ui/menus.rs:842
+msgid "Couldn't load the tracks"
+msgstr "无法加载曲目"
+
+#: src/ui/menus.rs:232
+msgid "“{title}” isn't available in your region"
+msgstr "“{title}”在你所在的地区不可用"
+
+#: src/ui/menus.rs:243
+#: src/ui/menus.rs:256
+#: src/ui/menus.rs:269
+msgid "None of these tracks are available in your region"
+msgstr "这些曲目在你所在的地区均不可用"
+
+#: src/ui/menus.rs:272
+msgid "“{title}” will play next"
+msgstr "“{title}”将接着播放"
+
+#: src/ui/menus.rs:273
+msgid "Added “{title}” to the queue"
+msgstr "已将“{title}”添加到队列"
+
+#: src/ui/menus.rs:274
+msgid "Added {n} track to the queue"
+msgid_plural "Added {n} tracks to the queue"
+msgstr[0] "已将 {n} 首曲目添加到队列"
+
+#: src/ui/menus.rs:287
+#: src/ui/pages/search.rs:130
+msgid "Show"
+msgstr "查看"
+
+#: src/ui/menus.rs:320
+msgid "Couldn't play this track"
+msgstr "无法播放此曲目"
+
+#: src/ui/menus.rs:428
+#: src/ui/widgets/heart_button.rs:173
+#: src/ui/widgets/np_common.rs:791
+msgid "Remove from Favourites"
+msgstr "取消喜欢"
+
+#: src/ui/menus.rs:430
+#: src/ui/widgets/heart_button.rs:175
+#: src/ui/widgets/np_common.rs:725
+#: src/ui/widgets/np_common.rs:793
+msgid "Add to Favourites"
+msgstr "添加到喜欢"
+
+#: src/ui/menus.rs:437
+#: src/ui/menus.rs:784
+msgid "Play Next"
+msgstr "下一首播放"
+
+#: src/ui/menus.rs:438
+#: src/ui/menus.rs:785
+msgid "Add to Queue"
+msgstr "添加到队列"
+
+#: src/ui/menus.rs:447
+#: src/ui/widgets/np_common.rs:921
+msgid "Go to Album"
+msgstr "转到专辑"
+
+#: src/ui/menus.rs:452
+#: src/ui/menus.rs:465
+#: src/ui/menus.rs:512
+#: src/ui/widgets/np_common.rs:922
+msgid "Go to Artist"
+msgstr "转到艺人"
+
+#: src/ui/menus.rs:468
+#: src/ui/pages/mix.rs:51
+#: src/ui/pages/mix.rs:60
+#: src/ui/widgets/now_playing.rs:178
+#: src/ui/widgets/now_playing.rs:180
+#: src/ui/widgets/np_common.rs:923
+msgid "Track Radio"
+msgstr "曲目电台"
+
+#: src/ui/menus.rs:474
+#: src/ui/menus.rs:523
+#: src/ui/menus.rs:542
+#: src/ui/menus.rs:551
+#: src/ui/menus.rs:575
+#: src/ui/widgets/np_common.rs:927
+#: src/ui/widgets/page_header.rs:486
+msgid "Copy Link"
+msgstr "复制链接"
+
+#: src/ui/menus.rs:480
+msgid "Remove from This Playlist"
+msgstr "从此播放列表中移除"
+
+#: src/ui/menus.rs:484
+#: src/ui/shortcuts.rs:82
+msgid "Move Up"
+msgstr "上移"
+
+#: src/ui/menus.rs:487
+#: src/ui/shortcuts.rs:83
+msgid "Move Down"
+msgstr "下移"
+
+#: src/ui/menus.rs:497
+msgid "Block {name}"
+msgstr "屏蔽 {name}"
+
+#: src/ui/menus.rs:517
+#: src/ui/menus.rs:559
+#: src/ui/pages/mix.rs:52
+#: src/ui/pages/mix.rs:61
+#: src/ui/widgets/page_header.rs:631
+msgid "Artist Radio"
+msgstr "艺人电台"
+
+#: src/ui/menus.rs:527
+msgid "Edit Details…"
+msgstr "编辑详细信息…"
+
+#: src/ui/menus.rs:530
+msgid "Make Private"
+msgstr "设为私密"
+
+#: src/ui/menus.rs:532
+msgid "Make Public"
+msgstr "设为公开"
+
+#: src/ui/menus.rs:545
+msgid "Delete Playlist…"
+msgstr "删除播放列表…"
+
+#: src/ui/menus.rs:555
+msgid "Play Top Tracks"
+msgstr "播放热门曲目"
+
+#: src/ui/menus.rs:556
+#: src/ui/menus.rs:783
+#: src/ui/pages/collection.rs:681
+#: src/ui/shortcuts.rs:71
+#: src/ui/widgets/np_controls.rs:147
+#: src/ui/widgets/page_header.rs:153
+#: src/ui/widgets/page_header.rs:316
+#: src/ui/widgets/page_header.rs:320
+#: src/ui/widgets/page_header.rs:323
+msgid "Shuffle"
+msgstr "随机播放"
+
+#: src/ui/menus.rs:568
+#: src/ui/widgets/heart_button.rs:189
+msgid "Unfollow"
+msgstr "取消关注"
+
+#: src/ui/menus.rs:570
+#: src/ui/widgets/heart_button.rs:185
+msgid "Follow"
+msgstr "关注"
+
+#: src/ui/menus.rs:578
+msgid "Block Artist"
+msgstr "屏蔽艺人"
+
+#: src/ui/menus.rs:625
+#: src/ui/widgets/heart_button.rs:215
+#: src/ui/widgets/np_common.rs:765
+#: src/ui/window.rs:744
+msgid "Couldn't update favourites"
+msgstr "无法更新喜欢的内容"
+
+#: src/ui/menus.rs:693
+#: src/ui/widgets/np_common.rs:882
+#: src/ui/widgets/page_header.rs:490
+msgid "Link copied"
+msgstr "链接已复制"
+
+#: src/ui/menus.rs:782
+#: src/ui/pages/collection.rs:680
+#: src/ui/widgets/np_controls.rs:52
+#: src/ui/widgets/np_controls.rs:56
+#: src/ui/widgets/np_controls.rs:86
+#: src/ui/widgets/page_header.rs:309
+msgid "Play"
+msgstr "播放"
+
+#: src/ui/menus.rs:819
+msgid "More…"
+msgstr "更多…"
+
+#: src/ui/menus.rs:861
+msgid "Blocked {name}"
+msgstr "已屏蔽 {name}"
+
+#: src/ui/menus.rs:871
+msgid "Couldn't update blocked artists"
+msgstr "无法更新已屏蔽的艺人"
+
+#: src/ui/nav.rs:174
+#: src/ui/pages/home.rs:39
+#: src/ui/sidebar.rs:112
+msgid "Home"
+msgstr "主页"
+
+#: src/ui/nav.rs:175
+#: src/ui/pages/collection.rs:651
+#: src/ui/pages/explore.rs:43
+#: src/ui/pages/explore.rs:47
+#: src/ui/pages/home.rs:160
+#: src/ui/sidebar.rs:113
+msgid "Explore"
+msgstr "探索"
+
+#: src/ui/nav.rs:176
+#: src/ui/pages/playlist.rs:913
+#: src/ui/pages/search.rs:234
+#: src/ui/sidebar.rs:114
+msgid "Search"
+msgstr "搜索"
+
+#: src/ui/nav.rs:177
+#: src/ui/nav.rs:407
+#: src/ui/sidebar.rs:288
+#: src/ui/sidebar.rs:317
+#: src/ui/window.rs:806
+msgid "Collection"
+msgstr "收藏"
+
+#: src/ui/pages/album.rs:165
+msgid "Couldn't load the album"
+msgstr "无法加载专辑"
+
+#: src/ui/pages/album.rs:300
+msgid "Couldn't load all the album's tracks"
+msgstr "无法加载专辑的所有曲目"
+
+#: src/ui/pages/album.rs:356
+msgid "Released {date}"
+msgstr "发行于 {date}"
+
+#: src/ui/pages/album.rs:437
+#: src/ui/pages/album.rs:460
+msgid "Review"
+msgstr "乐评"
+
+#: src/ui/pages/album.rs:452
+#: src/ui/pages/artist.rs:345
+#: src/ui/widgets/page_header.rs:424
+msgid "Read More"
+msgstr "阅读更多"
+
+#: src/ui/pages/album.rs:473
+#, no-c-format
+msgid "%B %-d, %Y"
+msgstr "%Y年%B%-d日"
+
+#: src/ui/pages/album.rs:511
+msgid "TIDAL has no credits for this album."
+msgstr "TIDAL 没有这张专辑的制作人员信息。"
+
+#: src/ui/pages/artist.rs:78
+#: src/ui/pages/collection.rs:591
+#: src/ui/pages/collection_grid.rs:42
+#: src/ui/pages/search_views.rs:336
+#: src/ui/widgets/media_card.rs:500
+#: src/ui/widgets/page_header.rs:617
+msgid "Artist"
+msgstr "艺人"
+
+#: src/ui/pages/artist.rs:174
+msgid "Couldn't load the artist"
+msgstr "无法加载艺人"
+
+#: src/ui/pages/artist.rs:235
+#: src/ui/pages/explore.rs:155
+#: src/ui/pages/home.rs:156
+#: src/ui/pages/more.rs:365
+#: src/ui/pages/more.rs:509
+msgid "Nothing Here Yet"
+msgstr "这里还没有内容"
+
+#: src/ui/pages/artist.rs:236
+msgid "TIDAL has no music from this artist in your country."
+msgstr "TIDAL 在你所在的国家/地区没有该艺人的音乐。"
+
+#: src/ui/pages/artist.rs:301
+msgid "Couldn't load the artist's tracks"
+msgstr "无法加载艺人的曲目"
+
+#: src/ui/pages/artist.rs:353
+msgid "Biography"
+msgstr "简介"
+
+#: src/ui/pages/collection.rs:123
+msgid "Sort"
+msgstr "排序"
+
+#: src/ui/pages/collection.rs:271
+msgid "Ascending"
+msgstr "升序"
+
+#: src/ui/pages/collection.rs:272
+msgid "Descending"
+msgstr "降序"
+
+#: src/ui/pages/collection.rs:291
+msgid "Sort by {label}, descending"
+msgstr "按{label}降序排序"
+
+#: src/ui/pages/collection.rs:293
+msgid "Sort by {label}, ascending"
+msgstr "按{label}升序排序"
+
+#: src/ui/pages/collection.rs:403
+msgid "No Matches for “{query}”"
+msgstr "没有与“{query}”匹配的结果"
+
+#: src/ui/pages/collection.rs:437
+#: src/ui/pages/collection_grid.rs:575
+msgid "{n} album"
+msgid_plural "{n} albums"
+msgstr[0] "{n} 张专辑"
+
+#: src/ui/pages/collection.rs:451
+msgid "{shown} of {count}"
+msgstr "{shown} / {count}"
+
+#: src/ui/pages/collection.rs:483
+#: src/ui/pages/collection.rs:507
+#: src/ui/pages/home_sections.rs:525
+#: src/ui/pages/more.rs:140
+#: src/ui/widgets/np_controls.rs:103
+#: src/ui/widgets/skeleton.rs:109
+msgid "Loading"
+msgstr "正在加载"
+
+#: src/ui/pages/collection.rs:589
+#: src/ui/pages/collection_grid.rs:40
+#: src/ui/pages/collection_grid.rs:45
+#: src/ui/pages/collection_grid.rs:47
+msgid "Date Added"
+msgstr "添加日期"
+
+#: src/ui/pages/collection.rs:593
+msgid "Duration"
+msgstr "时长"
+
+#: src/ui/pages/collection.rs:642
+msgid "Favourite Tracks"
+msgstr "喜欢的曲目"
+
+#: src/ui/pages/collection.rs:662
+msgid "No Favourite Tracks"
+msgstr "没有喜欢的曲目"
+
+#: src/ui/pages/collection.rs:663
+msgid "Use the heart on a track to save it here."
+msgstr "点击曲目上的心形即可保存到这里。"
+
+#: src/ui/pages/collection.rs:669
+#: src/ui/pages/search_data.rs:80
+#: src/ui/pages/search_views.rs:88
+#: src/ui/sidebar.rs:121
+#: src/ui/widgets/track_list.rs:126
+msgid "Tracks"
+msgstr "曲目"
+
+#: src/ui/pages/collection.rs:670
+msgid "Filter tracks"
+msgstr "筛选曲目"
+
+#: src/ui/pages/collection.rs:833
+msgid "Couldn't update your favourite tracks"
+msgstr "无法更新你喜欢的曲目"
+
+#: src/ui/pages/collection.rs:956
+msgid "Removed “{title}” from Favourites"
+msgstr "已将“{title}”从喜欢中移除"
+
+#: src/ui/pages/collection.rs:964
+msgid "Couldn't add the track back"
+msgstr "无法重新添加该曲目"
+
+#: src/ui/pages/collection_grid.rs:43
+msgid "Release Date"
+msgstr "发行日期"
+
+#: src/ui/pages/collection_grid.rs:45
+msgid "Name"
+msgstr "名称"
+
+#: src/ui/pages/collection_grid.rs:46
+msgid "Last Updated"
+msgstr "最近更新"
+
+#: src/ui/pages/collection_grid.rs:158
+#: src/ui/pages/search_data.rs:81
+#: src/ui/sidebar.rs:126
+msgid "Albums"
+msgstr "专辑"
+
+#: src/ui/pages/collection_grid.rs:158
+msgid "Filter albums"
+msgstr "筛选专辑"
+
+#: src/ui/pages/collection_grid.rs:159
+#: src/ui/pages/search_data.rs:82
+#: src/ui/sidebar.rs:131
+msgid "Artists"
+msgstr "艺人"
+
+#: src/ui/pages/collection_grid.rs:159
+msgid "Filter artists"
+msgstr "筛选艺人"
+
+#: src/ui/pages/collection_grid.rs:162
+#: src/ui/pages/search_data.rs:83
+#: src/ui/sidebar.rs:136
+msgid "Playlists"
+msgstr "播放列表"
+
+#: src/ui/pages/collection_grid.rs:163
+msgid "Filter playlists"
+msgstr "筛选播放列表"
+
+#: src/ui/pages/collection_grid.rs:166
+msgid "Filter mixes"
+msgstr "筛选 Mix"
+
+#: src/ui/pages/collection_grid.rs:166
+#: src/ui/sidebar.rs:141
+msgid "Mixes & Radios"
+msgstr "Mix 和电台"
+
+#: src/ui/pages/collection_grid.rs:298
+msgid "No Favourite Albums"
+msgstr "没有喜欢的专辑"
+
+#: src/ui/pages/collection_grid.rs:299
+msgid "Use the heart on an album to save it here."
+msgstr "点击专辑上的心形即可保存到这里。"
+
+#: src/ui/pages/collection_grid.rs:304
+msgid "No Followed Artists"
+msgstr "没有关注的艺人"
+
+#: src/ui/pages/collection_grid.rs:305
+msgid "Follow artists you like to find them here."
+msgstr "关注你喜欢的艺人，即可在这里找到他们。"
+
+#: src/ui/pages/collection_grid.rs:321
+msgid "No Playlists"
+msgstr "没有播放列表"
+
+#: src/ui/pages/collection_grid.rs:322
+msgid "Create a playlist, or use the heart on someone else's to save it here."
+msgstr "创建一个播放列表，或点击他人播放列表上的心形将其保存到这里。"
+
+#: src/ui/pages/collection_grid.rs:328
+msgid "No Saved Mixes"
+msgstr "没有保存的 Mix"
+
+#: src/ui/pages/collection_grid.rs:329
+msgid "Use the heart on a mix or radio to save it here."
+msgstr "点击 Mix 或电台上的心形即可保存到这里。"
+
+#: src/ui/pages/collection_grid.rs:351
+#: src/ui/pages/search_data.rs:79
+msgid "All"
+msgstr "全部"
+
+#: src/ui/pages/collection_grid.rs:352
+msgid "Created by Me"
+msgstr "我创建的"
+
+#: src/ui/pages/collection_grid.rs:353
+msgid "Favourited"
+msgstr "已喜欢"
+
+#: src/ui/pages/collection_grid.rs:482
+msgid "Couldn't update your collection"
+msgstr "无法更新你的收藏"
+
+#: src/ui/pages/collection_grid.rs:576
+msgid "{n} artist"
+msgid_plural "{n} artists"
+msgstr[0] "{n} 位艺人"
+
+#: src/ui/pages/collection_grid.rs:577
+msgid "{n} playlist"
+msgid_plural "{n} playlists"
+msgstr[0] "{n} 个播放列表"
+
+#: src/ui/pages/collection_grid.rs:578
+msgid "{n} mix"
+msgid_plural "{n} mixes"
+msgstr[0] "{n} 个 Mix"
+
+#: src/ui/pages/collection_grid.rs:682
+msgid "Unfollowed {name}"
+msgstr "已取消关注 {name}"
+
+#: src/ui/pages/collection_grid.rs:684
+msgid "Removed from Favourites: {name}"
+msgstr "已取消喜欢：{name}"
+
+#: src/ui/pages/collection_grid.rs:693
+msgid "Couldn't undo that"
+msgstr "无法撤销该操作"
+
+#: src/ui/pages/explore.rs:110
+#: src/ui/pages/more.rs:289
+msgid "Couldn't load the page"
+msgstr "无法加载此页面"
+
+#: src/ui/pages/explore.rs:156
+#: src/ui/pages/more.rs:510
+msgid "TIDAL has nothing on this page in your country."
+msgstr "TIDAL 在你所在的国家/地区没有此页面的内容。"
+
+#: src/ui/pages/history.rs:107
+msgid "Today"
+msgstr "今天"
+
+#: src/ui/pages/history.rs:108
+msgid "Yesterday"
+msgstr "昨天"
+
+#: src/ui/pages/history.rs:109
+msgid "This Week"
+msgstr "本周"
+
+#: src/ui/pages/history.rs:110
+msgid "Earlier"
+msgstr "更早"
+
+#: src/ui/pages/history.rs:132
+#: src/ui/pages/history.rs:468
+msgid "Just now"
+msgstr "刚刚"
+
+#: src/ui/pages/history.rs:134
+#: src/ui/pages/history.rs:472
+msgid "{n} min ago"
+msgstr "{n} 分钟前"
+
+#: src/ui/pages/history.rs:136
+#: src/ui/pages/history.rs:476
+msgid "{n} h ago"
+msgstr "{n} 小时前"
+
+#: src/ui/pages/history.rs:143
+#, no-c-format
+msgid "%b %-d"
+msgstr "%b%-d日"
+
+#: src/ui/pages/history.rs:183
+#: src/ui/pages/history.rs:248
+#: src/ui/pages/history.rs:255
+#: src/ui/sidebar.rs:146
+#: src/ui/window.rs:1229
+msgid "Recently Played"
+msgstr "最近播放"
+
+#: src/ui/pages/history.rs:194
+msgid "This Session"
+msgstr "本次会话"
+
+#: src/ui/pages/history.rs:196
+msgid "Tracks you play in Swell appear here."
+msgstr "你在 Swell 中播放的曲目会显示在这里。"
+
+#: src/ui/pages/history.rs:227
+msgid "On TIDAL"
+msgstr "在 TIDAL 上"
+
+#: src/ui/pages/history.rs:228
+msgid "What you played lately, on any device"
+msgstr "你最近在任意设备上播放的内容"
+
+#: src/ui/pages/history.rs:242
+msgid "Nothing Played Yet"
+msgstr "还没有播放过任何内容"
+
+#: src/ui/pages/history.rs:243
+msgid "Music you play appears here."
+msgstr "你播放的音乐会显示在这里。"
+
+#: src/ui/pages/history.rs:397
+msgid "Nothing yet."
+msgstr "暂无内容。"
+
+#: src/ui/pages/history.rs:411
+msgid "Couldn't load what you played"
+msgstr "无法加载你播放过的内容"
+
+#: src/ui/pages/history.rs:415
+msgid "Couldn't load this. {reason}"
+msgstr "无法加载。{reason}"
+
+#: src/ui/pages/history.rs:419
+#: src/ui/pages/home_sections.rs:257
+#: src/ui/pages/playlist.rs:886
+#: src/ui/pages/search.rs:201
+#: src/ui/pages/search_views.rs:493
+#: src/ui/widgets/lyrics_view.rs:181
+#: src/ui/widgets/status.rs:191
+msgid "Retry"
+msgstr "重试"
+
+#: src/ui/pages/home.rs:78
+msgid "Good Morning"
+msgstr "早上好"
+
+#: src/ui/pages/home.rs:79
+msgid "Good Afternoon"
+msgstr "下午好"
+
+#: src/ui/pages/home.rs:80
+msgid "Good Evening"
+msgstr "晚上好"
+
+#: src/ui/pages/home.rs:128
+msgid "Couldn't load Home"
+msgstr "无法加载主页"
+
+#: src/ui/pages/home.rs:157
+msgid "Play some music and TIDAL will suggest more here."
+msgstr "播放一些音乐，TIDAL 就会在这里推荐更多内容。"
+
+#: src/ui/pages/home.rs:225
+msgid "Couldn't load more of Home"
+msgstr "无法加载更多主页内容"
+
+#: src/ui/pages/home.rs:230
+#: src/ui/pages/more.rs:611
+msgid "Couldn't load more. {reason}"
+msgstr "无法加载更多内容。{reason}"
+
+#: src/ui/pages/home_sections.rs:239
+msgid "Loading more"
+msgstr "正在加载更多"
+
+#: src/ui/pages/mix.rs:50
+#: src/ui/pages/mix.rs:294
+#: src/ui/pages/search_views.rs:349
+msgid "Mix"
+msgstr "Mix"
+
+#: src/ui/pages/mix.rs:241
+msgid "No Radio for This Artist"
+msgstr "该艺人没有电台"
+
+#: src/ui/pages/mix.rs:242
+msgid "TIDAL has no radio for this artist yet."
+msgstr "TIDAL 暂时没有该艺人的电台。"
+
+#: src/ui/pages/mix.rs:245
+msgid "No Radio for This Track"
+msgstr "该曲目没有电台"
+
+#: src/ui/pages/mix.rs:246
+msgid "TIDAL has no radio for this track yet. Try the artist's radio instead."
+msgstr "TIDAL 暂时没有该曲目的电台。试试该艺人的电台吧。"
+
+#: src/ui/pages/mix.rs:264
+msgid "Couldn't load the mix"
+msgstr "无法加载 Mix"
+
+#: src/ui/pages/mix.rs:386
+msgid "Couldn't load all the mix's tracks"
+msgstr "无法加载 Mix 的所有曲目"
+
+#: src/ui/pages/mix.rs:420
+msgid "{title} Radio"
+msgstr "{title} 电台"
+
+#: src/ui/pages/mix.rs:441
+msgid "This Mix Is Empty"
+msgstr "此 Mix 为空"
+
+#: src/ui/pages/mix.rs:442
+msgid "This Radio Is Empty"
+msgstr "此电台为空"
+
+#: src/ui/pages/mix.rs:444
+msgid "TIDAL has nothing in it right now. Try again later."
+msgstr "TIDAL 目前没有任何内容，请稍后再试。"
+
+#: src/ui/pages/more.rs:366
+msgid "TIDAL has nothing in this list for now."
+msgstr "TIDAL 暂时没有此列表的内容。"
+
+#: src/ui/pages/more.rs:606
+msgid "Couldn't load more"
+msgstr "无法加载更多内容"
+
+#: src/ui/pages/playlist.rs:118
+msgid "Couldn't remove the track"
+msgstr "无法移除该曲目"
+
+#: src/ui/pages/playlist.rs:119
+msgid "Couldn't put the track back"
+msgstr "无法放回该曲目"
+
+#: src/ui/pages/playlist.rs:120
+msgid "Couldn't move the track"
+msgstr "无法移动该曲目"
+
+#: src/ui/pages/playlist.rs:121
+msgid "Couldn't add to the playlist"
+msgstr "无法添加到播放列表"
+
+#: src/ui/pages/playlist.rs:246
+msgid "The playlist changed; your last edit was not applied"
+msgstr "播放列表已发生变化，你的上一次编辑未被应用"
+
+#: src/ui/pages/playlist.rs:490
+#: src/ui/pages/search_views.rs:347
+#: src/ui/widgets/media_card.rs:516
+#: src/ui/widgets/page_header.rs:556
+msgid "Playlist"
+msgstr "播放列表"
+
+#: src/ui/pages/playlist.rs:784
+msgid "Couldn't load the playlist"
+msgstr "无法加载播放列表"
+
+#: src/ui/pages/playlist.rs:877
+msgid "Couldn't load the rest of the playlist. {reason}"
+msgstr "无法加载播放列表的其余部分。{reason}"
+
+#: src/ui/pages/playlist.rs:904
+msgid "This Playlist Is Empty"
+msgstr "此播放列表为空"
+
+#: src/ui/pages/playlist.rs:906
+msgid "Add tracks from their menu or drag them here."
+msgstr "从曲目的菜单中添加，或将曲目拖到这里。"
+
+#: src/ui/pages/playlist.rs:908
+msgid "There's nothing in it yet."
+msgstr "里面还没有内容。"
+
+#: src/ui/pages/playlist.rs:1108
+msgid "The playlist isn't up to date yet; try again in a moment"
+msgstr "播放列表尚未同步，请稍后再试"
+
+#: src/ui/pages/playlist.rs:1163
+msgid "Removed from “{title}”"
+msgstr "已从“{title}”中移除"
+
+#: src/ui/pages/search.rs:93
+#: src/ui/pages/search.rs:97
+#: src/ui/pages/search_views.rs:543
+msgid "Search TIDAL"
+msgstr "搜索 TIDAL"
+
+#: src/ui/pages/search.rs:111
+#: src/ui/pages/search.rs:170
+msgid "Searching"
+msgstr "正在搜索"
+
+#: src/ui/pages/search.rs:207
+#: src/ui/widgets/status.rs:201
+msgid "You're Offline"
+msgstr "你处于离线状态"
+
+#: src/ui/pages/search.rs:208
+msgid "Searching needs an internet connection."
+msgstr "搜索需要联网。"
+
+#: src/ui/pages/search.rs:219
+msgid "TIDAL Link"
+msgstr "TIDAL 链接"
+
+#: src/ui/pages/search.rs:563
+msgid "No Results for “{query}”"
+msgstr "没有“{query}”的搜索结果"
+
+#: src/ui/pages/search.rs:565
+msgid "Check the spelling or try other words."
+msgstr "请检查拼写或尝试其他词语。"
+
+#: src/ui/pages/search.rs:567
+msgid "Try another filter or other words."
+msgstr "请尝试其他筛选条件或其他词语。"
+
+#: src/ui/pages/search.rs:670
+#: src/ui/pages/search_views.rs:491
+msgid "Couldn't load more results"
+msgstr "无法加载更多结果"
+
+#: src/ui/pages/search.rs:722
+msgid "Couldn't search"
+msgstr "无法搜索"
+
+#: src/ui/pages/search.rs:791
+msgid "Recent searches cleared"
+msgstr "最近搜索已清除"
+
+#: src/ui/pages/search.rs:816
+msgid "This is a link to an album."
+msgstr "这是一个专辑链接。"
+
+#: src/ui/pages/search.rs:817
+msgid "Open Album"
+msgstr "打开专辑"
+
+#: src/ui/pages/search.rs:821
+msgid "This is a link to an artist."
+msgstr "这是一个艺人链接。"
+
+#: src/ui/pages/search.rs:822
+msgid "Open Artist"
+msgstr "打开艺人"
+
+#: src/ui/pages/search.rs:826
+msgid "This is a link to a playlist."
+msgstr "这是一个播放列表链接。"
+
+#: src/ui/pages/search.rs:827
+msgid "Open Playlist"
+msgstr "打开播放列表"
+
+#: src/ui/pages/search.rs:831
+msgid "This is a link to a mix."
+msgstr "这是一个 Mix 链接。"
+
+#: src/ui/pages/search.rs:832
+msgid "Open Mix"
+msgstr "打开 Mix"
+
+#: src/ui/pages/search.rs:836
+msgid "This is a link to a track."
+msgstr "这是一个曲目链接。"
+
+#: src/ui/pages/search.rs:837
+msgid "Play Track"
+msgstr "播放曲目"
+
+#: src/ui/pages/search.rs:841
+msgid "This is a link to your collection."
+msgstr "这是指向你的收藏的链接。"
+
+#: src/ui/pages/search.rs:842
+msgid "Open Collection"
+msgstr "打开收藏"
+
+#: src/ui/pages/search.rs:846
+msgid "This is a link to a TIDAL page."
+msgstr "这是一个 TIDAL 页面的链接。"
+
+#: src/ui/pages/search.rs:847
+msgid "Open Link"
+msgstr "打开链接"
+
+#: src/ui/pages/search_views.rs:31
+msgid "Search “{query}”"
+msgstr "搜索“{query}”"
+
+#: src/ui/pages/search_views.rs:74
+msgid "Top Hit"
+msgstr "最佳匹配"
+
+#: src/ui/pages/search_views.rs:245
+msgid "Top hit: {summary}"
+msgstr "最佳匹配：{summary}"
+
+#: src/ui/pages/search_views.rs:272
+msgid "Play {name}"
+msgstr "播放 {name}"
+
+#: src/ui/pages/search_views.rs:311
+#: src/ui/widgets/media_card.rs:511
+msgid "{n} video"
+msgid_plural "{n} videos"
+msgstr[0] "{n} 个视频"
+
+#: src/ui/pages/search_views.rs:490
+msgid "Loading more results"
+msgstr "正在加载更多结果"
+
+#: src/ui/pages/search_views.rs:544
+msgid "Tracks, albums, artists and playlists"
+msgstr "曲目、专辑、艺人和播放列表"
+
+#: src/ui/pages/search_views.rs:555
+#: src/ui/pages/search_views.rs:569
+msgid "Recent Searches"
+msgstr "最近搜索"
+
+#: src/ui/pages/search_views.rs:557
+#: src/ui/widgets/queue_view.rs:97
+msgid "Clear"
+msgstr "清除"
+
+#: src/ui/pages/search_views.rs:584
+msgid "Remove “{query}”"
+msgstr "移除“{query}”"
+
+#: src/ui/shortcuts.rs:28
+msgid "Focus Search"
+msgstr "聚焦搜索栏"
+
+#: src/ui/shortcuts.rs:29
+msgid "Preferences"
+msgstr "首选项"
+
+#: src/ui/shortcuts.rs:30
+#: src/ui/shortcuts.rs:158
+msgid "Keyboard Shortcuts"
+msgstr "键盘快捷键"
+
+#: src/ui/shortcuts.rs:32
+msgid "Reload Page"
+msgstr "重新加载页面"
+
+#: src/ui/shortcuts.rs:33
+msgid "Close Window"
+msgstr "关闭窗口"
+
+#: src/ui/shortcuts.rs:34
+msgid "Quit"
+msgstr "退出"
+
+#: src/ui/shortcuts.rs:38
+msgid "Navigation"
+msgstr "导航"
+
+#: src/ui/shortcuts.rs:40
+msgid "Go to Home"
+msgstr "转到主页"
+
+#: src/ui/shortcuts.rs:41
+msgid "Go to Explore"
+msgstr "转到探索"
+
+#: src/ui/shortcuts.rs:42
+msgid "Go to Search"
+msgstr "转到搜索"
+
+#: src/ui/shortcuts.rs:43
+msgid "Go to Collection"
+msgstr "转到收藏"
+
+#: src/ui/shortcuts.rs:44
+msgid "Back"
+msgstr "返回"
+
+#: src/ui/shortcuts.rs:45
+#: src/ui/sidebar.rs:943
+#: src/ui/sidebar.rs:946
+msgid "Show Sidebar"
+msgstr "显示侧边栏"
+
+#: src/ui/shortcuts.rs:46
+msgid "Next Region"
+msgstr "下一区域"
+
+#: src/ui/shortcuts.rs:47
+msgid "Previous Region"
+msgstr "上一区域"
+
+#: src/ui/shortcuts.rs:48
+msgid "Close Panel or Popover"
+msgstr "关闭面板或弹出窗口"
+
+#: src/ui/shortcuts.rs:52
+#: src/ui/shortcuts.rs:54
+#: src/ui/widgets/now_playing.rs:305
+#: src/ui/widgets/queue_view.rs:734
+msgid "Now Playing"
+msgstr "正在播放"
+
+#: src/ui/shortcuts.rs:55
+#: src/ui/widgets/lyrics_view.rs:200
+#: src/ui/widgets/now_playing.rs:274
+#: src/ui/widgets/player_bar.rs:109
+msgid "Lyrics"
+msgstr "歌词"
+
+#: src/ui/shortcuts.rs:56
+#: src/ui/widgets/now_playing.rs:277
+#: src/ui/widgets/player_bar.rs:110
+#: src/ui/widgets/queue_view.rs:124
+msgid "Queue"
+msgstr "队列"
+
+#: src/ui/shortcuts.rs:62
+msgid "Play/Pause"
+msgstr "播放/暂停"
+
+#: src/ui/shortcuts.rs:63
+msgid "Play/Pause Anywhere"
+msgstr "在任何位置播放/暂停"
+
+#: src/ui/shortcuts.rs:64
+#: src/ui/widgets/mini_player.rs:70
+#: src/ui/widgets/mini_player.rs:72
+#: src/ui/widgets/np_controls.rs:150
+msgid "Next Track"
+msgstr "下一首"
+
+#: src/ui/shortcuts.rs:65
+#: src/ui/widgets/np_controls.rs:148
+#: src/ui/widgets/np_controls.rs:240
+msgid "Previous Track"
+msgstr "上一首"
+
+#: src/ui/shortcuts.rs:66
+msgid "Seek Forward 10 Seconds"
+msgstr "快进 10 秒"
+
+#: src/ui/shortcuts.rs:67
+msgid "Seek Backward 10 Seconds"
+msgstr "快退 10 秒"
+
+#: src/ui/shortcuts.rs:68
+msgid "Volume Up"
+msgstr "增大音量"
+
+#: src/ui/shortcuts.rs:69
+msgid "Volume Down"
+msgstr "减小音量"
+
+#: src/ui/shortcuts.rs:70
+#: src/ui/widgets/np_controls.rs:605
+msgid "Mute"
+msgstr "静音"
+
+#: src/ui/shortcuts.rs:72
+#: src/ui/widgets/np_controls.rs:152
+msgid "Repeat"
+msgstr "循环播放"
+
+#: src/ui/shortcuts.rs:73
+msgid "Toggle Favourite"
+msgstr "切换喜欢状态"
+
+#: src/ui/shortcuts.rs:77
+msgid "Lists"
+msgstr "列表"
+
+#: src/ui/shortcuts.rs:79
+msgid "Play or Open"
+msgstr "播放或打开"
+
+#: src/ui/shortcuts.rs:80
+msgid "Context Menu"
+msgstr "上下文菜单"
+
+#: src/ui/shortcuts.rs:81
+msgid "Remove"
+msgstr "移除"
+
+#: src/ui/sidebar.rs:194
+msgid "Sidebar"
+msgstr "侧边栏"
+
+#: src/ui/sidebar.rs:740
+#: src/ui/widgets/media_card.rs:505
+#: src/ui/widgets/page_header.rs:560
+msgid "by {name}"
+msgstr "创建者：{name}"
+
+#: src/ui/sidebar.rs:808
+msgid "COLLECTION"
+msgstr "收藏"
+
+#: src/ui/sidebar.rs:810
+msgid "PLAYLISTS"
+msgstr "播放列表"
+
+#: src/ui/sidebar.rs:853
+#: src/ui/sidebar.rs:856
+#: src/ui/widgets/now_playing.rs:270
+msgid "Playing"
+msgstr "正在播放"
+
+#: src/ui/sidebar.rs:903
+msgid "_Preferences"
+msgstr "首选项(_P)"
+
+#: src/ui/sidebar.rs:904
+msgid "_Keyboard Shortcuts"
+msgstr "键盘快捷键(_K)"
+
+#: src/ui/sidebar.rs:905
+msgid "_About Swell"
+msgstr "关于 Swell(_A)"
+
+#: src/ui/sidebar.rs:908
+msgid "_Sign Out…"
+msgstr "退出登录(_S)…"
+
+#: src/ui/sidebar.rs:911
+msgid "_Quit"
+msgstr "退出(_Q)"
+
+#: src/ui/sidebar.rs:922
+#: src/ui/sidebar.rs:926
+msgid "Main Menu"
+msgstr "主菜单"
+
+#: src/ui/widgets/carousel.rs:48
+msgid "Scroll Back"
+msgstr "向后滚动"
+
+#: src/ui/widgets/carousel.rs:54
+msgid "Scroll Forward"
+msgstr "向前滚动"
+
+#: src/ui/widgets/heart_button.rs:76
+#: src/ui/widgets/np_common.rs:728
+msgid "Favourite"
+msgstr "喜欢"
+
+#: src/ui/widgets/heart_button.rs:182
+msgid "Following"
+msgstr "已关注"
+
+#: src/ui/widgets/heart_button.rs:191
+msgid "Follow this artist"
+msgstr "关注此艺人"
+
+#: src/ui/widgets/lyrics_view.rs:158
+#: src/ui/widgets/now_playing.rs:254
+msgid "Nothing Playing"
+msgstr "未在播放"
+
+#: src/ui/widgets/lyrics_view.rs:175
+msgid "No Lyrics for This Track"
+msgstr "此曲目没有歌词"
+
+#: src/ui/widgets/lyrics_view.rs:188
+msgid "Couldn't Load Lyrics"
+msgstr "无法加载歌词"
+
+#: src/ui/widgets/lyrics_view.rs:216
+msgid "Back to Current Line"
+msgstr "回到当前行"
+
+#: src/ui/widgets/lyrics_view.rs:439
+msgid "Couldn't load lyrics"
+msgstr "无法加载歌词"
+
+#: src/ui/widgets/lyrics_view.rs:694
+msgid "Lyrics provided by {provider}"
+msgstr "歌词由 {provider} 提供"
+
+#: src/ui/widgets/media_card.rs:474
+msgid "Track: {title}, by {artists}"
+msgstr "曲目：{title}，艺人：{artists}"
+
+#: src/ui/widgets/media_card.rs:493
+msgid "Album: {title}, by {artist}"
+msgstr "专辑：{title}，艺人：{artist}"
+
+#: src/ui/widgets/media_card.rs:501
+msgid "Artist: {name}"
+msgstr "艺人：{name}"
+
+#: src/ui/widgets/media_card.rs:521
+msgid "Playlist: {title}, {details}"
+msgstr "播放列表：{title}，{details}"
+
+#: src/ui/widgets/media_card.rs:529
+msgid "Mix: {title}, {details}"
+msgstr "Mix：{title}，{details}"
+
+#: src/ui/widgets/media_card.rs:689
+msgid "Play {title}"
+msgstr "播放 {title}"
+
+#: src/ui/widgets/mini_player.rs:185
+msgid "Now Playing: {title} by {artists}. Open player"
+msgstr "正在播放：{title}，艺人：{artists}。打开播放器"
+
+#: src/ui/widgets/now_playing.rs:172
+msgid "Radio"
+msgstr "电台"
+
+#: src/ui/widgets/now_playing.rs:208
+msgid "Show Queue"
+msgstr "显示队列"
+
+#: src/ui/widgets/now_playing.rs:216
+msgid "UP NEXT"
+msgstr "接下来播放"
+
+#: src/ui/widgets/now_playing.rs:255
+msgid "Pick something from your collection."
+msgstr "从你的收藏中挑选一些内容吧。"
+
+#: src/ui/widgets/now_playing.rs:281
+#: src/ui/widgets/now_playing.rs:284
+msgid "Close"
+msgstr "关闭"
+
+#: src/ui/widgets/np_common.rs:413
+msgid "Lossy"
+msgstr "有损"
+
+#: src/ui/widgets/np_common.rs:434
+msgid "normalisation is on"
+msgstr "已启用音量标准化"
+
+#: src/ui/widgets/np_common.rs:437
+msgid "muted"
+msgstr "已静音"
+
+#: src/ui/widgets/np_common.rs:440
+#, no-c-format
+msgid "volume at {percent} %"
+msgstr "音量为 {percent}%"
+
+#: src/ui/widgets/np_common.rs:444
+msgid "lossy stream"
+msgstr "有损音频流"
+
+#: src/ui/widgets/np_common.rs:478
+msgid "Codec"
+msgstr "编解码器"
+
+#: src/ui/widgets/np_common.rs:479
+msgid "Bit depth"
+msgstr "位深度"
+
+#: src/ui/widgets/np_common.rs:480
+msgid "Sample rate"
+msgstr "采样率"
+
+#: src/ui/widgets/np_common.rs:481
+msgid "Bitrate"
+msgstr "比特率"
+
+#: src/ui/widgets/np_common.rs:482
+msgid "ReplayGain"
+msgstr "ReplayGain"
+
+#: src/ui/widgets/np_common.rs:484
+msgid "Output device"
+msgstr "输出设备"
+
+#: src/ui/widgets/np_common.rs:496
+msgid "Audio Format"
+msgstr "音频格式"
+
+#: src/ui/widgets/np_common.rs:582
+msgid "Bit-perfect"
+msgstr "Bit-perfect"
+
+#: src/ui/widgets/np_common.rs:584
+msgid "Not bit-perfect: {reasons}"
+msgstr "非 Bit-perfect：{reasons}"
+
+#: src/ui/widgets/np_common.rs:588
+msgid "{gain} (album)"
+msgstr "{gain}（专辑）"
+
+#: src/ui/widgets/np_common.rs:589
+msgid "{gain} (track)"
+msgstr "{gain}（曲目）"
+
+#: src/ui/widgets/np_common.rs:599
+msgid "{n}-bit"
+msgstr "{n} 位"
+
+#: src/ui/widgets/np_common.rs:618
+msgid "System default"
+msgstr "系统默认"
+
+#: src/ui/widgets/np_common.rs:624
+msgid "Lossless delivered: this track has no Hi-Res master"
+msgstr "已提供 Lossless：此曲目没有 Hi-Res 母带"
+
+#: src/ui/widgets/np_common.rs:625
+msgid "Lossless delivered: Hi-Res is turned off in Preferences"
+msgstr "已提供 Lossless：已在首选项中关闭 Hi-Res"
+
+#: src/ui/widgets/np_common.rs:640
+msgid "Audio format: {quality}, {format}. {output}"
+msgstr "音频格式：{quality}，{format}。{output}"
+
+#: src/ui/widgets/np_common.rs:683
+msgid "The exact format shows once the track starts playing."
+msgstr "开始播放曲目后才会显示确切的格式。"
+
+#: src/ui/widgets/np_common.rs:694
+msgid "Audio quality: {quality}"
+msgstr "音质：{quality}"
+
+#: src/ui/widgets/np_common.rs:802
+msgid "15 Minutes"
+msgstr "15 分钟"
+
+#: src/ui/widgets/np_common.rs:803
+msgid "30 Minutes"
+msgstr "30 分钟"
+
+#: src/ui/widgets/np_common.rs:804
+msgid "45 Minutes"
+msgstr "45 分钟"
+
+#: src/ui/widgets/np_common.rs:805
+msgid "60 Minutes"
+msgstr "60 分钟"
+
+#: src/ui/widgets/np_common.rs:806
+msgid "End of Track"
+msgstr "曲目结束时"
+
+#: src/ui/widgets/np_common.rs:918
+msgid "Sleep Timer"
+msgstr "睡眠定时器"
+
+#: src/ui/widgets/np_common.rs:926
+msgid "Add to Playlist…"
+msgstr "添加到播放列表…"
+
+#: src/ui/widgets/np_common.rs:934
+#: src/ui/widgets/np_common.rs:936
+msgid "More"
+msgstr "更多"
+
+#: src/ui/widgets/np_common.rs:996
+msgid "Sleep timer: stops at the end of this track"
+msgstr "睡眠定时器：将在此曲目结束时停止"
+
+#: src/ui/widgets/np_common.rs:1004
+msgid "{n} min"
+msgstr "{n} 分钟"
+
+#: src/ui/widgets/np_common.rs:1005
+msgid "Sleep timer: stops in {n} minute"
+msgid_plural "Sleep timer: stops in {n} minutes"
+msgstr[0] "睡眠定时器：将在 {n} 分钟后停止"
+
+#: src/ui/widgets/np_common.rs:1031
+#: src/ui/widgets/track_row.rs:131
+msgid "{n} hour"
+msgid_plural "{n} hours"
+msgstr[0] "{n} 小时"
+
+#: src/ui/widgets/np_common.rs:1034
+#: src/ui/widgets/track_row.rs:134
+msgid "{n} minute"
+msgid_plural "{n} minutes"
+msgstr[0] "{n} 分钟"
+
+#: src/ui/widgets/np_common.rs:1037
+#: src/ui/widgets/track_row.rs:137
+msgid "{n} second"
+msgid_plural "{n} seconds"
+msgstr[0] "{n} 秒"
+
+#: src/ui/widgets/np_controls.rs:84
+msgid "Pause"
+msgstr "暂停"
+
+#: src/ui/widgets/np_controls.rs:151
+#: src/ui/widgets/np_controls.rs:280
+msgid "Repeat: Off"
+msgstr "循环：关闭"
+
+#: src/ui/widgets/np_controls.rs:238
+msgid "Restart Track"
+msgstr "从头播放"
+
+#: src/ui/widgets/np_controls.rs:281
+msgid "Repeat: All"
+msgstr "循环：全部"
+
+#: src/ui/widgets/np_controls.rs:282
+msgid "Repeat: One"
+msgstr "循环：单曲"
+
+#: src/ui/widgets/np_controls.rs:329
+msgid "Seek"
+msgstr "进度"
+
+#: src/ui/widgets/np_controls.rs:456
+msgid "{position} of {duration}"
+msgstr "{position} / {duration}"
+
+#: src/ui/widgets/np_controls.rs:487
+#: src/ui/widgets/np_controls.rs:494
+#: src/ui/widgets/np_controls.rs:509
+#: src/ui/widgets/np_controls.rs:513
+msgid "Volume"
+msgstr "音量"
+
+#: src/ui/widgets/np_controls.rs:605
+msgid "Unmute"
+msgstr "取消静音"
+
+#: src/ui/widgets/np_controls.rs:613
+msgid "Muted"
+msgstr "已静音"
+
+#: src/ui/widgets/page_header.rs:503
+#: src/ui/widgets/track_row.rs:388
+msgid "More Options"
+msgstr "更多选项"
+
+#: src/ui/widgets/page_header.rs:524
+msgid "EP"
+msgstr "EP"
+
+#: src/ui/widgets/page_header.rs:525
+msgid "Single"
+msgstr "单曲"
+
+#: src/ui/widgets/page_header.rs:562
+msgid "by TIDAL"
+msgstr "TIDAL 出品"
+
+#: src/ui/widgets/page_header.rs:573
+msgid "Private"
+msgstr "私密"
+
+#: src/ui/widgets/player_bar.rs:54
+#: src/ui/widgets/player_bar.rs:56
+msgid "Show Now Playing"
+msgstr "显示正在播放"
+
+#: src/ui/widgets/player_bar.rs:136
+msgid "Player"
+msgstr "播放器"
+
+#: src/ui/widgets/player_bar.rs:233
+msgid "{title} by {artists}"
+msgstr "{title}，{artists}"
+
+#: src/ui/widgets/quality_badge.rs:30
+#: src/ui/widgets/track_row.rs:108
+msgid "Explicit"
+msgstr "明确内容"
+
+#: src/ui/widgets/queue_view.rs:100
+msgid "Clear Queue"
+msgstr "清空队列"
+
+#: src/ui/widgets/queue_view.rs:144
+msgid "Queue Is Empty"
+msgstr "队列为空"
+
+#: src/ui/widgets/queue_view.rs:145
+msgid "Use “Add to Queue” on any track, album or playlist."
+msgstr "对任意曲目、专辑或播放列表使用“添加到队列”。"
+
+#: src/ui/widgets/queue_view.rs:313
+msgid "Playing from {source}"
+msgstr "播放来源：{source}"
+
+#: src/ui/widgets/queue_view.rs:331
+msgid "Queue cleared"
+msgstr "队列已清空"
+
+#: src/ui/widgets/queue_view.rs:513
+msgid "Drag to Reorder"
+msgstr "拖动以重新排序"
+
+#: src/ui/widgets/queue_view.rs:520
+#: src/ui/widgets/queue_view.rs:522
+#: src/ui/widgets/track_row.rs:384
+msgid "Remove from Queue"
+msgstr "从队列中移除"
+
+#: src/ui/widgets/queue_view.rs:699
+#: src/ui/widgets/track_row.rs:759
+msgid "{track}, playing"
+msgstr "{track}，正在播放"
+
+#: src/ui/widgets/queue_view.rs:735
+msgid "Next in Queue"
+msgstr "队列中的下一首"
+
+#: src/ui/widgets/queue_view.rs:737
+msgid "Next"
+msgstr "下一首"
+
+#: src/ui/widgets/queue_view.rs:738
+msgid "Next From: {source}"
+msgstr "下一首来自：{source}"
+
+#: src/ui/widgets/status.rs:163
+msgid "Go Back"
+msgstr "返回"
+
+#: src/ui/widgets/status.rs:178
+msgid "Not Available"
+msgstr "不可用"
+
+#: src/ui/widgets/status.rs:202
+msgid "Couldn't Load This Page"
+msgstr "无法加载此页面"
+
+#: src/ui/widgets/status.rs:225
+msgid "TIDAL doesn't have this, or it isn't available in your country."
+msgstr "TIDAL 没有此内容，或其在你所在的国家/地区不可用。"
+
+#: src/ui/widgets/status.rs:226
+msgid "Check your internet connection and try again."
+msgstr "请检查网络连接后重试。"
+
+#: src/ui/widgets/status.rs:227
+msgid "Something went wrong. Try again in a moment."
+msgstr "出了点问题，请稍后再试。"
+
+#: src/ui/widgets/track_list.rs:372
+#: src/ui/widgets/track_list.rs:408
+msgid "Disc {n}"
+msgstr "光盘 {n}"
+
+#: src/ui/widgets/track_list.rs:640
+msgid "played {when}"
+msgstr "{when}播放"
+
+#: src/ui/widgets/track_row.rs:98
+msgid "by {artists}"
+msgstr "艺人 {artists}"
+
+#: src/ui/widgets/track_row.rs:101
+msgid "from {album}"
+msgstr "专辑 {album}"
+
+#: src/ui/widgets/track_row.rs:105
+msgid "Hi-Res"
+msgstr "Hi-Res"
+
+#: src/ui/widgets/track_row.rs:111
+msgid "not available"
+msgstr "不可用"
+
+#: src/ui/widgets/track_row.rs:280
+msgid "Drag to Reorder (Alt+↑/↓)"
+msgstr "拖动以重新排序（Alt+↑/↓）"
+
+#: src/ui/widgets/track_row.rs:608
+msgid "Not available in your region"
+msgstr "在你所在的地区不可用"
+
+#: src/ui/window.rs:398
+msgid "Couldn't remove your session from the keyring."
+msgstr "无法从密钥环中移除你的会话。"
+
+#: src/ui/window.rs:408
+msgid "Sign Out?"
+msgstr "退出登录？"
+
+#: src/ui/window.rs:409
+msgid "You will need to sign in again to listen. Your library cached on this computer is deleted."
+msgstr "你需要重新登录才能收听。缓存在此计算机上的资料库将被删除。"
+
+#: src/ui/window.rs:413
+msgid "_Sign Out"
+msgstr "退出登录(_S)"
+
+#: src/ui/window.rs:518
+msgid "Couldn't load your library"
+msgstr "无法加载你的资料库"
+
+#: src/ui/window.rs:770
+msgid "Couldn't open the track"
+msgstr "无法打开该曲目"
