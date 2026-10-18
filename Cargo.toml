@@ -1,8 +1,13 @@
 [package]
 name = "swell-player"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2024"
-description = "A lightweight native TIDAL client for Linux (GTK 4 + libadwaita + GStreamer)"
+description = "A fast, lightweight native TIDAL client with bit-perfect Hi-Res playback (GTK 4 + libadwaita + GStreamer)"
+authors = ["oxakromax"]
+repository = "https://github.com/oxakromax/swell-player"
+homepage = "https://github.com/oxakromax/swell-player"
+readme = "README.md"
+rust-version = "1.88"
 license = "GPL-3.0-or-later"
 keywords = ["tidal", "music", "gtk4", "libadwaita", "gstreamer"]
 categories = ["multimedia::audio"]
