@@ -1,15 +1,3 @@
-// Reference for src/bundle.rs (not compiled from here): the environment a
-// bundled Windows or macOS run needs. Use from main.rs:
-//
-//     #[cfg(any(windows, target_os = "macos"))]
-//     mod bundle;
-//     fn main() -> glib::ExitCode {
-//         #[cfg(any(windows, target_os = "macos"))]
-//         bundle::setup(); // first: before timing::start, i18n, gst::init
-//         ...
-//
-// Checked with `cargo clippy -- -D warnings` (with the cfg removed, on Linux).
-
 //! Windows and macOS packages (packaging/windows, packaging/macos) carry
 //! GStreamer's plugins, GIO's TLS modules and a CA bundle next to the
 //! executable. Points the libraries at them; does nothing when Swell runs

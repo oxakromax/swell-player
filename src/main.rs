@@ -5,6 +5,8 @@
 #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 
 mod api;
+#[cfg(any(windows, target_os = "macos"))]
+mod bundle;
 mod cache;
 mod config;
 mod covers;
@@ -28,6 +30,9 @@ const RESOURCES: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/swell.gresour
 const RESOURCE_PATH: &str = "/io/github/oxakromax/SwellPlayer";
 
 fn main() -> glib::ExitCode {
+    // First: before anything reads the environment or starts a thread.
+    #[cfg(any(windows, target_os = "macos"))]
+    bundle::setup();
     timing::start();
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn")).init();
     if let Some(language) = i18n::init(&settings::saved_language()) {
