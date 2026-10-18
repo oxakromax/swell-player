@@ -33,7 +33,9 @@ msgstr "再生には GStreamer の playbin3 が必要です"
 
 #: src/playback/mod.rs:1566
 msgid "The TIDAL session has expired: sign in again to play"
-msgstr "TIDAL のセッションの有効期限が切れました。再生するには、もう一度ログインしてください"
+msgstr ""
+"TIDAL のセッションの有効期限が切れました。再生するには、もう一度ログインして"
+"ください"
 
 #: src/playback/mod.rs:1591
 msgid "Connection lost — retrying"
@@ -41,7 +43,9 @@ msgstr "接続が切れました — 再試行しています"
 
 #: src/playback/mod.rs:1659
 msgid "Could not play “{title}”. Playback stopped after {n} tracks failed"
-msgstr "「{title}」を再生できませんでした。{n}曲の再生に失敗したため、再生を停止しました"
+msgstr ""
+"「{title}」を再生できませんでした。{n}曲の再生に失敗したため、再生を停止しま"
+"した"
 
 #: src/playback/mod.rs:1665
 msgid "Could not play “{title}”, skipped"
@@ -61,23 +65,33 @@ msgstr "{artists} — {album}"
 
 #: src/playback/plugins.rs:24
 msgid "Playback needs GStreamer’s “{element}”. Install {package}."
-msgstr "再生には GStreamer の「{element}」が必要です。{package} をインストールしてください。"
+msgstr ""
+"再生には GStreamer の「{element}」が必要です。{package} をインストールしてく"
+"ださい。"
 
 #: src/session.rs:73
 msgid "Couldn't open the system's credential store."
 msgstr "システムの認証情報ストアを開けませんでした。"
 
 #: src/session.rs:75
-msgid "Couldn't open the keyring. Make sure a keyring service (GNOME Keyring, KWallet) is running."
-msgstr "キーリングを開けませんでした。キーリングサービス (GNOME キーリング、KWallet など) が実行されていることを確認してください。"
+msgid ""
+"Couldn't open the keyring. Make sure a keyring service (GNOME Keyring, "
+"KWallet) is running."
+msgstr ""
+"キーリングを開けませんでした。キーリングサービス (GNOME キーリング、KWallet "
+"など) が実行されていることを確認してください。"
 
 #: src/session.rs:84
 msgid "Couldn't save the session in the system's credential store."
 msgstr "システムの認証情報ストアにセッションを保存できませんでした。"
 
 #: src/session.rs:86
-msgid "Couldn't save the session in the keyring. Make sure a keyring service (GNOME Keyring, KWallet) is running."
-msgstr "キーリングにセッションを保存できませんでした。キーリングサービス (GNOME キーリング、KWallet など) が実行されていることを確認してください。"
+msgid ""
+"Couldn't save the session in the keyring. Make sure a keyring service (GNOME "
+"Keyring, KWallet) is running."
+msgstr ""
+"キーリングにセッションを保存できませんでした。キーリングサービス (GNOME キー"
+"リング、KWallet など) が実行されていることを確認してください。"
 
 #: src/ui/context.rs:105
 msgid "You’re offline — showing saved data"
@@ -89,7 +103,8 @@ msgstr "元に戻す"
 
 #: src/ui/context.rs:258
 msgid "Your TIDAL session has expired. Please sign in again."
-msgstr "TIDAL のセッションの有効期限が切れました。もう一度ログインしてください。"
+msgstr ""
+"TIDAL のセッションの有効期限が切れました。もう一度ログインしてください。"
 
 #: src/ui/debug.rs:58 src/ui/pages/artist.rs:271 src/ui/pages/explore.rs:176
 #: src/ui/pages/home_sections.rs:303 src/ui/pages/more.rs:151
@@ -154,8 +169,8 @@ msgstr "「{title}」に追加できませんでした"
 msgid "Search Playlists"
 msgstr "プレイリストを検索"
 
-#: src/ui/dialogs/playlist.rs:168 src/ui/format.rs:29 src/ui/format.rs:54
-#: src/ui/format.rs:149 src/ui/format.rs:150 src/ui/pages/collection.rs:914
+#: src/ui/dialogs/playlist.rs:168 src/ui/format.rs:29 src/ui/format.rs:55
+#: src/ui/format.rs:150 src/ui/format.rs:151 src/ui/pages/collection.rs:914
 #: src/ui/pages/collection.rs:1061 src/ui/widgets/media_card.rs:506
 msgid "{n} track"
 msgid_plural "{n} tracks"
@@ -246,8 +261,11 @@ msgid "Delete “{title}”?"
 msgstr "「{title}」を削除しますか？"
 
 #: src/ui/dialogs/playlist.rs:509
-msgid "The playlist will be deleted from your TIDAL account. This can't be undone."
-msgstr "このプレイリストは TIDAL アカウントから削除されます。この操作は元に戻せません。"
+msgid ""
+"The playlist will be deleted from your TIDAL account. This can't be undone."
+msgstr ""
+"このプレイリストは TIDAL アカウントから削除されます。この操作は元に戻せませ"
+"ん。"
 
 #: src/ui/dialogs/playlist.rs:515
 msgid "Delete"
@@ -387,8 +405,12 @@ msgid "Storage"
 msgstr "ストレージ"
 
 #: src/ui/dialogs/preferences.rs:284
-msgid "Downloaded artwork and saved answers from TIDAL, so pages open instantly and work offline."
-msgstr "ダウンロードしたアートワークと TIDAL から保存した応答です。ページがすばやく開き、オフラインでも使えます。"
+msgid ""
+"Downloaded artwork and saved answers from TIDAL, so pages open instantly and "
+"work offline."
+msgstr ""
+"ダウンロードしたアートワークと TIDAL から保存した応答です。ページがすばやく開"
+"き、オフラインでも使えます。"
 
 #: src/ui/dialogs/preferences.rs:289
 msgid "Cover Cache"
@@ -456,7 +478,9 @@ msgstr "ブロックしたアーティストを読み込めませんでした。
 
 #: src/ui/dialogs/preferences.rs:498
 msgid "Nothing blocked. Blocked artists are skipped in radios and mixes."
-msgstr "ブロックしているアーティストはいません。ブロックしたアーティストは、ラジオやミックスでスキップされます。"
+msgstr ""
+"ブロックしているアーティストはいません。ブロックしたアーティストは、ラジオや"
+"ミックスでスキップされます。"
 
 #: src/ui/dialogs/preferences.rs:500
 msgid "Skipped in radios and mixes."
@@ -502,79 +526,99 @@ msgstr "アカウント"
 msgid ","
 msgstr ","
 
-#: src/ui/format.rs:107
+#: src/ui/format.rs:42 src/ui/widgets/np_common.rs:1004
+msgid "{n} min"
+msgstr "{n}分"
+
+#: src/ui/format.rs:43
+msgid "{n} h"
+msgstr "{n}時間"
+
+#: src/ui/format.rs:44
+msgid "{h} h {m} min"
+msgstr "{h}時間{m}分"
+
+#: src/ui/format.rs:45
+msgid "{n} d"
+msgstr "{n}日"
+
+#: src/ui/format.rs:46
+msgid "{d} d {h} h"
+msgstr "{d}日{h}時間"
+
+#: src/ui/format.rs:108
 msgid "January"
 msgstr "1月"
 
-#: src/ui/format.rs:108
+#: src/ui/format.rs:109
 msgid "February"
 msgstr "2月"
 
-#: src/ui/format.rs:109
+#: src/ui/format.rs:110
 msgid "March"
 msgstr "3月"
 
-#: src/ui/format.rs:110
+#: src/ui/format.rs:111
 msgid "April"
 msgstr "4月"
 
-#: src/ui/format.rs:111
+#: src/ui/format.rs:112
 msgid "May"
 msgstr "5月"
 
-#: src/ui/format.rs:112
+#: src/ui/format.rs:113
 msgid "June"
 msgstr "6月"
 
-#: src/ui/format.rs:113
+#: src/ui/format.rs:114
 msgid "July"
 msgstr "7月"
 
-#: src/ui/format.rs:114
+#: src/ui/format.rs:115
 msgid "August"
 msgstr "8月"
 
-#: src/ui/format.rs:115
+#: src/ui/format.rs:116
 msgid "September"
 msgstr "9月"
 
-#: src/ui/format.rs:116
+#: src/ui/format.rs:117
 msgid "October"
 msgstr "10月"
 
-#: src/ui/format.rs:117
+#: src/ui/format.rs:118
 msgid "November"
 msgstr "11月"
 
-#: src/ui/format.rs:118
+#: src/ui/format.rs:119
 msgid "December"
 msgstr "12月"
 
-#: src/ui/format.rs:125
+#: src/ui/format.rs:126
 msgid "Monday"
 msgstr "月曜日"
 
-#: src/ui/format.rs:126
+#: src/ui/format.rs:127
 msgid "Tuesday"
 msgstr "火曜日"
 
-#: src/ui/format.rs:127
+#: src/ui/format.rs:128
 msgid "Wednesday"
 msgstr "水曜日"
 
-#: src/ui/format.rs:128
+#: src/ui/format.rs:129
 msgid "Thursday"
 msgstr "木曜日"
 
-#: src/ui/format.rs:129
+#: src/ui/format.rs:130
 msgid "Friday"
 msgstr "金曜日"
 
-#: src/ui/format.rs:130
+#: src/ui/format.rs:131
 msgid "Saturday"
 msgstr "土曜日"
 
-#: src/ui/format.rs:131
+#: src/ui/format.rs:132
 msgid "Sunday"
 msgstr "日曜日"
 
@@ -665,7 +709,8 @@ msgid ""
 "Couldn't open the browser ({error}). Open this address yourself:\n"
 "{url}"
 msgstr ""
-"ブラウザーを開けませんでした ({error})。次のアドレスを自分で開いてください：\n"
+"ブラウザーを開けませんでした ({error})。次のアドレスを自分で開いてくださ"
+"い：\n"
 "{url}"
 
 #: src/ui/login.rs:258
@@ -1070,7 +1115,9 @@ msgstr "プレイリストはありません"
 
 #: src/ui/pages/collection_grid.rs:322
 msgid "Create a playlist, or use the heart on someone else's to save it here."
-msgstr "プレイリストを作成するか、ほかの人のプレイリストのハートを押すと、ここに保存されます。"
+msgstr ""
+"プレイリストを作成するか、ほかの人のプレイリストのハートを押すと、ここに保存"
+"されます。"
 
 #: src/ui/pages/collection_grid.rs:328
 msgid "No Saved Mixes"
@@ -1262,7 +1309,9 @@ msgstr "この曲のラジオはありません"
 
 #: src/ui/pages/mix.rs:246
 msgid "TIDAL has no radio for this track yet. Try the artist's radio instead."
-msgstr "この曲のラジオは TIDAL にまだありません。代わりにアーティストラジオをお試しください。"
+msgstr ""
+"この曲のラジオは TIDAL にまだありません。代わりにアーティストラジオをお試しく"
+"ださい。"
 
 #: src/ui/pages/mix.rs:264
 msgid "Couldn't load the mix"
@@ -1286,7 +1335,8 @@ msgstr "このラジオは空です"
 
 #: src/ui/pages/mix.rs:444
 msgid "TIDAL has nothing in it right now. Try again later."
-msgstr "TIDAL には今のところ何もありません。しばらくしてからもう一度お試しください。"
+msgstr ""
+"TIDAL には今のところ何もありません。しばらくしてからもう一度お試しください。"
 
 #: src/ui/pages/more.rs:366
 msgid "TIDAL has nothing in this list for now."
@@ -1343,7 +1393,8 @@ msgstr "まだ何も入っていません。"
 
 #: src/ui/pages/playlist.rs:1108
 msgid "The playlist isn't up to date yet; try again in a moment"
-msgstr "プレイリストはまだ最新ではありません。しばらくしてからもう一度お試しください"
+msgstr ""
+"プレイリストはまだ最新ではありません。しばらくしてからもう一度お試しください"
 
 #: src/ui/pages/playlist.rs:1163
 msgid "Removed from “{title}”"
@@ -1898,10 +1949,6 @@ msgstr "その他"
 msgid "Sleep timer: stops at the end of this track"
 msgstr "スリープタイマー：この曲の終わりに停止します"
 
-#: src/ui/widgets/np_common.rs:1004
-msgid "{n} min"
-msgstr "{n}分"
-
 #: src/ui/widgets/np_common.rs:1005
 msgid "Sleep timer: stops in {n} minute"
 msgid_plural "Sleep timer: stops in {n} minutes"
@@ -2109,8 +2156,12 @@ msgid "Sign Out?"
 msgstr "ログアウトしますか？"
 
 #: src/ui/window.rs:409
-msgid "You will need to sign in again to listen. Your library cached on this computer is deleted."
-msgstr "再び聴くにはもう一度ログインする必要があります。このコンピューターにキャッシュされたライブラリは削除されます。"
+msgid ""
+"You will need to sign in again to listen. Your library cached on this "
+"computer is deleted."
+msgstr ""
+"再び聴くにはもう一度ログインする必要があります。このコンピューターにキャッ"
+"シュされたライブラリは削除されます。"
 
 #: src/ui/window.rs:413
 msgid "_Sign Out"

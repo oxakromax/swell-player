@@ -37,12 +37,13 @@ pub fn total_duration(seconds: u64) -> String {
     let days = seconds / 86_400;
     let hours = (seconds % 86_400) / 3600;
     let minutes = (seconds % 3600) / 60;
+    let (d, h, m) = (days.to_string(), hours.to_string(), minutes.to_string());
     match (days, hours, minutes) {
-        (0, 0, m) => format!("{} min", m.max(1)),
-        (0, h, 0) => format!("{h} h"),
-        (0, h, m) => format!("{h} h {m} min"),
-        (d, 0, _) => format!("{d} d"),
-        (d, h, _) => format!("{d} d {h} h"),
+        (0, 0, m) => tr("{n} min").replace("{n}", &m.max(1).to_string()),
+        (0, _, 0) => tr("{n} h").replace("{n}", &h),
+        (0, _, _) => tr("{h} h {m} min").replace("{h}", &h).replace("{m}", &m),
+        (_, 0, _) => tr("{n} d").replace("{n}", &d),
+        _ => tr("{d} d {h} h").replace("{d}", &d).replace("{h}", &h),
     }
 }
 

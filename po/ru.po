@@ -8,7 +8,8 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
 
 #: src/playback/format.rs:30
 msgid "Unknown"
@@ -43,7 +44,9 @@ msgstr "Соединение потеряно — повторная попыт�
 
 #: src/playback/mod.rs:1659
 msgid "Could not play “{title}”. Playback stopped after {n} tracks failed"
-msgstr "Не удалось воспроизвести «{title}». Воспроизведение остановлено. Сбоев подряд: {n}"
+msgstr ""
+"Не удалось воспроизвести «{title}». Воспроизведение остановлено. Сбоев "
+"подряд: {n}"
 
 #: src/playback/mod.rs:1665
 msgid "Could not play “{title}”, skipped"
@@ -63,23 +66,33 @@ msgstr "{artists} — {album}"
 
 #: src/playback/plugins.rs:24
 msgid "Playback needs GStreamer’s “{element}”. Install {package}."
-msgstr "Для воспроизведения нужен элемент GStreamer «{element}». Установите {package}."
+msgstr ""
+"Для воспроизведения нужен элемент GStreamer «{element}». Установите "
+"{package}."
 
 #: src/session.rs:73
 msgid "Couldn't open the system's credential store."
 msgstr "Не удалось открыть хранилище учётных данных системы."
 
 #: src/session.rs:75
-msgid "Couldn't open the keyring. Make sure a keyring service (GNOME Keyring, KWallet) is running."
-msgstr "Не удалось открыть связку ключей. Убедитесь, что служба связки ключей (GNOME Keyring, KWallet) запущена."
+msgid ""
+"Couldn't open the keyring. Make sure a keyring service (GNOME Keyring, "
+"KWallet) is running."
+msgstr ""
+"Не удалось открыть связку ключей. Убедитесь, что служба связки ключей (GNOME "
+"Keyring, KWallet) запущена."
 
 #: src/session.rs:84
 msgid "Couldn't save the session in the system's credential store."
 msgstr "Не удалось сохранить сеанс в хранилище учётных данных системы."
 
 #: src/session.rs:86
-msgid "Couldn't save the session in the keyring. Make sure a keyring service (GNOME Keyring, KWallet) is running."
-msgstr "Не удалось сохранить сеанс в связке ключей. Убедитесь, что служба связки ключей (GNOME Keyring, KWallet) запущена."
+msgid ""
+"Couldn't save the session in the keyring. Make sure a keyring service (GNOME "
+"Keyring, KWallet) is running."
+msgstr ""
+"Не удалось сохранить сеанс в связке ключей. Убедитесь, что служба связки "
+"ключей (GNOME Keyring, KWallet) запущена."
 
 #: src/ui/context.rs:105
 msgid "You’re offline — showing saved data"
@@ -158,8 +171,8 @@ msgstr "Не удалось добавить в «{title}»"
 msgid "Search Playlists"
 msgstr "Поиск плейлистов"
 
-#: src/ui/dialogs/playlist.rs:168 src/ui/format.rs:29 src/ui/format.rs:54
-#: src/ui/format.rs:149 src/ui/format.rs:150 src/ui/pages/collection.rs:914
+#: src/ui/dialogs/playlist.rs:168 src/ui/format.rs:29 src/ui/format.rs:55
+#: src/ui/format.rs:150 src/ui/format.rs:151 src/ui/pages/collection.rs:914
 #: src/ui/pages/collection.rs:1061 src/ui/widgets/media_card.rs:506
 msgid "{n} track"
 msgid_plural "{n} tracks"
@@ -252,8 +265,11 @@ msgid "Delete “{title}”?"
 msgstr "Удалить «{title}»?"
 
 #: src/ui/dialogs/playlist.rs:509
-msgid "The playlist will be deleted from your TIDAL account. This can't be undone."
-msgstr "Плейлист будет удалён из вашей учётной записи TIDAL. Это действие нельзя отменить."
+msgid ""
+"The playlist will be deleted from your TIDAL account. This can't be undone."
+msgstr ""
+"Плейлист будет удалён из вашей учётной записи TIDAL. Это действие нельзя "
+"отменить."
 
 #: src/ui/dialogs/playlist.rs:515
 msgid "Delete"
@@ -393,8 +409,12 @@ msgid "Storage"
 msgstr "Хранилище"
 
 #: src/ui/dialogs/preferences.rs:284
-msgid "Downloaded artwork and saved answers from TIDAL, so pages open instantly and work offline."
-msgstr "Загруженные обложки и сохранённые ответы TIDAL: страницы открываются мгновенно и работают без сети."
+msgid ""
+"Downloaded artwork and saved answers from TIDAL, so pages open instantly and "
+"work offline."
+msgstr ""
+"Загруженные обложки и сохранённые ответы TIDAL: страницы открываются "
+"мгновенно и работают без сети."
 
 #: src/ui/dialogs/preferences.rs:289
 msgid "Cover Cache"
@@ -462,7 +482,9 @@ msgstr "Не удалось загрузить заблокированных и
 
 #: src/ui/dialogs/preferences.rs:498
 msgid "Nothing blocked. Blocked artists are skipped in radios and mixes."
-msgstr "Нет заблокированных. Заблокированные исполнители пропускаются в радио и миксах."
+msgstr ""
+"Нет заблокированных. Заблокированные исполнители пропускаются в радио и "
+"миксах."
 
 #: src/ui/dialogs/preferences.rs:500
 msgid "Skipped in radios and mixes."
@@ -508,79 +530,99 @@ msgstr "Учётная запись"
 msgid ","
 msgstr " "
 
-#: src/ui/format.rs:107
+#: src/ui/format.rs:42 src/ui/widgets/np_common.rs:1004
+msgid "{n} min"
+msgstr "{n} мин"
+
+#: src/ui/format.rs:43
+msgid "{n} h"
+msgstr "{n} ч"
+
+#: src/ui/format.rs:44
+msgid "{h} h {m} min"
+msgstr "{h} ч {m} мин"
+
+#: src/ui/format.rs:45
+msgid "{n} d"
+msgstr "{n} д"
+
+#: src/ui/format.rs:46
+msgid "{d} d {h} h"
+msgstr "{d} д {h} ч"
+
+#: src/ui/format.rs:108
 msgid "January"
 msgstr "января"
 
-#: src/ui/format.rs:108
+#: src/ui/format.rs:109
 msgid "February"
 msgstr "февраля"
 
-#: src/ui/format.rs:109
+#: src/ui/format.rs:110
 msgid "March"
 msgstr "марта"
 
-#: src/ui/format.rs:110
+#: src/ui/format.rs:111
 msgid "April"
 msgstr "апреля"
 
-#: src/ui/format.rs:111
+#: src/ui/format.rs:112
 msgid "May"
 msgstr "мая"
 
-#: src/ui/format.rs:112
+#: src/ui/format.rs:113
 msgid "June"
 msgstr "июня"
 
-#: src/ui/format.rs:113
+#: src/ui/format.rs:114
 msgid "July"
 msgstr "июля"
 
-#: src/ui/format.rs:114
+#: src/ui/format.rs:115
 msgid "August"
 msgstr "августа"
 
-#: src/ui/format.rs:115
+#: src/ui/format.rs:116
 msgid "September"
 msgstr "сентября"
 
-#: src/ui/format.rs:116
+#: src/ui/format.rs:117
 msgid "October"
 msgstr "октября"
 
-#: src/ui/format.rs:117
+#: src/ui/format.rs:118
 msgid "November"
 msgstr "ноября"
 
-#: src/ui/format.rs:118
+#: src/ui/format.rs:119
 msgid "December"
 msgstr "декабря"
 
-#: src/ui/format.rs:125
+#: src/ui/format.rs:126
 msgid "Monday"
 msgstr "понедельник"
 
-#: src/ui/format.rs:126
+#: src/ui/format.rs:127
 msgid "Tuesday"
 msgstr "вторник"
 
-#: src/ui/format.rs:127
+#: src/ui/format.rs:128
 msgid "Wednesday"
 msgstr "среда"
 
-#: src/ui/format.rs:128
+#: src/ui/format.rs:129
 msgid "Thursday"
 msgstr "четверг"
 
-#: src/ui/format.rs:129
+#: src/ui/format.rs:130
 msgid "Friday"
 msgstr "пятница"
 
-#: src/ui/format.rs:130
+#: src/ui/format.rs:131
 msgid "Saturday"
 msgstr "суббота"
 
-#: src/ui/format.rs:131
+#: src/ui/format.rs:132
 msgid "Sunday"
 msgstr "воскресенье"
 
@@ -1080,7 +1122,9 @@ msgstr "Нет плейлистов"
 
 #: src/ui/pages/collection_grid.rs:322
 msgid "Create a playlist, or use the heart on someone else's to save it here."
-msgstr "Создайте плейлист или нажмите на сердце у чужого плейлиста, чтобы сохранить его здесь."
+msgstr ""
+"Создайте плейлист или нажмите на сердце у чужого плейлиста, чтобы сохранить "
+"его здесь."
 
 #: src/ui/pages/collection_grid.rs:328
 msgid "No Saved Mixes"
@@ -1916,10 +1960,6 @@ msgstr "Ещё"
 msgid "Sleep timer: stops at the end of this track"
 msgstr "Таймер сна: остановка в конце этого трека"
 
-#: src/ui/widgets/np_common.rs:1004
-msgid "{n} min"
-msgstr "{n} мин"
-
 #: src/ui/widgets/np_common.rs:1005
 msgid "Sleep timer: stops in {n} minute"
 msgid_plural "Sleep timer: stops in {n} minutes"
@@ -2035,7 +2075,8 @@ msgstr "Очередь пуста"
 
 #: src/ui/widgets/queue_view.rs:145
 msgid "Use “Add to Queue” on any track, album or playlist."
-msgstr "Используйте «Добавить в очередь» для любого трека, альбома или плейлиста."
+msgstr ""
+"Используйте «Добавить в очередь» для любого трека, альбома или плейлиста."
 
 #: src/ui/widgets/queue_view.rs:313
 msgid "Playing from {source}"
@@ -2135,8 +2176,12 @@ msgid "Sign Out?"
 msgstr "Выйти?"
 
 #: src/ui/window.rs:409
-msgid "You will need to sign in again to listen. Your library cached on this computer is deleted."
-msgstr "Чтобы слушать музыку, нужно будет снова войти. Библиотека, сохранённая на этом компьютере, будет удалена."
+msgid ""
+"You will need to sign in again to listen. Your library cached on this "
+"computer is deleted."
+msgstr ""
+"Чтобы слушать музыку, нужно будет снова войти. Библиотека, сохранённая на "
+"этом компьютере, будет удалена."
 
 #: src/ui/window.rs:413
 msgid "_Sign Out"

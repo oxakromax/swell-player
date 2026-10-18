@@ -42,7 +42,9 @@ msgstr "Connexion perdue — nouvelle tentative"
 
 #: src/playback/mod.rs:1659
 msgid "Could not play “{title}”. Playback stopped after {n} tracks failed"
-msgstr "Impossible de lire « {title} ». La lecture s’est arrêtée après l’échec de {n} titres"
+msgstr ""
+"Impossible de lire « {title} ». La lecture s’est arrêtée après l’échec de "
+"{n} titres"
 
 #: src/playback/mod.rs:1665
 msgid "Could not play “{title}”, skipped"
@@ -69,16 +71,26 @@ msgid "Couldn't open the system's credential store."
 msgstr "Impossible d’ouvrir le gestionnaire d’identifiants du système."
 
 #: src/session.rs:75
-msgid "Couldn't open the keyring. Make sure a keyring service (GNOME Keyring, KWallet) is running."
-msgstr "Impossible d’ouvrir le trousseau de clés. Assurez-vous qu’un service de trousseau (GNOME Keyring, KWallet) est en cours d’exécution."
+msgid ""
+"Couldn't open the keyring. Make sure a keyring service (GNOME Keyring, "
+"KWallet) is running."
+msgstr ""
+"Impossible d’ouvrir le trousseau de clés. Assurez-vous qu’un service de "
+"trousseau (GNOME Keyring, KWallet) est en cours d’exécution."
 
 #: src/session.rs:84
 msgid "Couldn't save the session in the system's credential store."
-msgstr "Impossible d’enregistrer la session dans le gestionnaire d’identifiants du système."
+msgstr ""
+"Impossible d’enregistrer la session dans le gestionnaire d’identifiants du "
+"système."
 
 #: src/session.rs:86
-msgid "Couldn't save the session in the keyring. Make sure a keyring service (GNOME Keyring, KWallet) is running."
-msgstr "Impossible d’enregistrer la session dans le trousseau de clés. Assurez-vous qu’un service de trousseau (GNOME Keyring, KWallet) est en cours d’exécution."
+msgid ""
+"Couldn't save the session in the keyring. Make sure a keyring service (GNOME "
+"Keyring, KWallet) is running."
+msgstr ""
+"Impossible d’enregistrer la session dans le trousseau de clés. Assurez-vous "
+"qu’un service de trousseau (GNOME Keyring, KWallet) est en cours d’exécution."
 
 #: src/ui/context.rs:105
 msgid "You’re offline — showing saved data"
@@ -156,8 +168,8 @@ msgstr "Impossible d’ajouter à « {title} »"
 msgid "Search Playlists"
 msgstr "Rechercher des playlists"
 
-#: src/ui/dialogs/playlist.rs:168 src/ui/format.rs:29 src/ui/format.rs:54
-#: src/ui/format.rs:149 src/ui/format.rs:150 src/ui/pages/collection.rs:914
+#: src/ui/dialogs/playlist.rs:168 src/ui/format.rs:29 src/ui/format.rs:55
+#: src/ui/format.rs:150 src/ui/format.rs:151 src/ui/pages/collection.rs:914
 #: src/ui/pages/collection.rs:1061 src/ui/widgets/media_card.rs:506
 msgid "{n} track"
 msgid_plural "{n} tracks"
@@ -249,8 +261,11 @@ msgid "Delete “{title}”?"
 msgstr "Supprimer « {title} » ?"
 
 #: src/ui/dialogs/playlist.rs:509
-msgid "The playlist will be deleted from your TIDAL account. This can't be undone."
-msgstr "La playlist sera supprimée de votre compte TIDAL. Cette action est irréversible."
+msgid ""
+"The playlist will be deleted from your TIDAL account. This can't be undone."
+msgstr ""
+"La playlist sera supprimée de votre compte TIDAL. Cette action est "
+"irréversible."
 
 #: src/ui/dialogs/playlist.rs:515
 msgid "Delete"
@@ -390,8 +405,12 @@ msgid "Storage"
 msgstr "Stockage"
 
 #: src/ui/dialogs/preferences.rs:284
-msgid "Downloaded artwork and saved answers from TIDAL, so pages open instantly and work offline."
-msgstr "Pochettes téléchargées et réponses de TIDAL enregistrées, pour que les pages s’ouvrent instantanément et fonctionnent hors ligne."
+msgid ""
+"Downloaded artwork and saved answers from TIDAL, so pages open instantly and "
+"work offline."
+msgstr ""
+"Pochettes téléchargées et réponses de TIDAL enregistrées, pour que les pages "
+"s’ouvrent instantanément et fonctionnent hors ligne."
 
 #: src/ui/dialogs/preferences.rs:289
 msgid "Cover Cache"
@@ -423,7 +442,8 @@ msgstr "Vider le cache de la bibliothèque ?"
 
 #: src/ui/dialogs/preferences.rs:316
 msgid "Pages are loaded again from TIDAL. Your collection is not affected."
-msgstr "Les pages sont rechargées depuis TIDAL. Votre collection n’est pas affectée."
+msgstr ""
+"Les pages sont rechargées depuis TIDAL. Votre collection n’est pas affectée."
 
 #: src/ui/dialogs/preferences.rs:317
 msgid "Library Cache cleared"
@@ -459,7 +479,9 @@ msgstr "Impossible de charger les artistes bloqués."
 
 #: src/ui/dialogs/preferences.rs:498
 msgid "Nothing blocked. Blocked artists are skipped in radios and mixes."
-msgstr "Aucun artiste bloqué. Les artistes bloqués sont ignorés dans les radios et les mix."
+msgstr ""
+"Aucun artiste bloqué. Les artistes bloqués sont ignorés dans les radios et "
+"les mix."
 
 #: src/ui/dialogs/preferences.rs:500
 msgid "Skipped in radios and mixes."
@@ -505,79 +527,99 @@ msgstr "Compte"
 msgid ","
 msgstr " "
 
-#: src/ui/format.rs:107
+#: src/ui/format.rs:42 src/ui/widgets/np_common.rs:1004
+msgid "{n} min"
+msgstr "{n} min"
+
+#: src/ui/format.rs:43
+msgid "{n} h"
+msgstr "{n} h"
+
+#: src/ui/format.rs:44
+msgid "{h} h {m} min"
+msgstr "{h} h {m} min"
+
+#: src/ui/format.rs:45
+msgid "{n} d"
+msgstr "{n} j"
+
+#: src/ui/format.rs:46
+msgid "{d} d {h} h"
+msgstr "{d} j {h} h"
+
+#: src/ui/format.rs:108
 msgid "January"
 msgstr "janvier"
 
-#: src/ui/format.rs:108
+#: src/ui/format.rs:109
 msgid "February"
 msgstr "février"
 
-#: src/ui/format.rs:109
+#: src/ui/format.rs:110
 msgid "March"
 msgstr "mars"
 
-#: src/ui/format.rs:110
+#: src/ui/format.rs:111
 msgid "April"
 msgstr "avril"
 
-#: src/ui/format.rs:111
+#: src/ui/format.rs:112
 msgid "May"
 msgstr "mai"
 
-#: src/ui/format.rs:112
+#: src/ui/format.rs:113
 msgid "June"
 msgstr "juin"
 
-#: src/ui/format.rs:113
+#: src/ui/format.rs:114
 msgid "July"
 msgstr "juillet"
 
-#: src/ui/format.rs:114
+#: src/ui/format.rs:115
 msgid "August"
 msgstr "août"
 
-#: src/ui/format.rs:115
+#: src/ui/format.rs:116
 msgid "September"
 msgstr "septembre"
 
-#: src/ui/format.rs:116
+#: src/ui/format.rs:117
 msgid "October"
 msgstr "octobre"
 
-#: src/ui/format.rs:117
+#: src/ui/format.rs:118
 msgid "November"
 msgstr "novembre"
 
-#: src/ui/format.rs:118
+#: src/ui/format.rs:119
 msgid "December"
 msgstr "décembre"
 
-#: src/ui/format.rs:125
+#: src/ui/format.rs:126
 msgid "Monday"
 msgstr "lundi"
 
-#: src/ui/format.rs:126
+#: src/ui/format.rs:127
 msgid "Tuesday"
 msgstr "mardi"
 
-#: src/ui/format.rs:127
+#: src/ui/format.rs:128
 msgid "Wednesday"
 msgstr "mercredi"
 
-#: src/ui/format.rs:128
+#: src/ui/format.rs:129
 msgid "Thursday"
 msgstr "jeudi"
 
-#: src/ui/format.rs:129
+#: src/ui/format.rs:130
 msgid "Friday"
 msgstr "vendredi"
 
-#: src/ui/format.rs:130
+#: src/ui/format.rs:131
 msgid "Saturday"
 msgstr "samedi"
 
-#: src/ui/format.rs:131
+#: src/ui/format.rs:132
 msgid "Sunday"
 msgstr "dimanche"
 
@@ -615,7 +657,8 @@ msgid ""
 "2. TIDAL then shows a page that says “Oops”.\n"
 "3. Copy that page’s address and paste it here."
 msgstr ""
-"1. Connectez-vous sur la page TIDAL qui s’est ouverte dans votre navigateur.\n"
+"1. Connectez-vous sur la page TIDAL qui s’est ouverte dans votre "
+"navigateur.\n"
 "2. TIDAL affiche ensuite une page qui indique « Oops ».\n"
 "3. Copiez l’adresse de cette page et collez-la ici."
 
@@ -653,7 +696,8 @@ msgstr "Obtenir un nouveau code"
 
 #: src/ui/login.rs:139
 msgid "Open link.tidal.com on any device and enter this code."
-msgstr "Ouvrez link.tidal.com sur n’importe quel appareil et saisissez ce code."
+msgstr ""
+"Ouvrez link.tidal.com sur n’importe quel appareil et saisissez ce code."
 
 #: src/ui/login.rs:142
 msgid "Device Code"
@@ -668,7 +712,8 @@ msgid ""
 "Couldn't open the browser ({error}). Open this address yourself:\n"
 "{url}"
 msgstr ""
-"Impossible d’ouvrir le navigateur ({error}). Ouvrez vous-même cette adresse :\n"
+"Impossible d’ouvrir le navigateur ({error}). Ouvrez vous-même cette "
+"adresse :\n"
 "{url}"
 
 #: src/ui/login.rs:258
@@ -1075,7 +1120,9 @@ msgstr "Aucune playlist"
 
 #: src/ui/pages/collection_grid.rs:322
 msgid "Create a playlist, or use the heart on someone else's to save it here."
-msgstr "Créez une playlist ou utilisez le cœur sur celle de quelqu’un d’autre pour l’enregistrer ici."
+msgstr ""
+"Créez une playlist ou utilisez le cœur sur celle de quelqu’un d’autre pour "
+"l’enregistrer ici."
 
 #: src/ui/pages/collection_grid.rs:328
 msgid "No Saved Mixes"
@@ -1270,7 +1317,9 @@ msgstr "Aucune radio pour ce titre"
 
 #: src/ui/pages/mix.rs:246
 msgid "TIDAL has no radio for this track yet. Try the artist's radio instead."
-msgstr "TIDAL n’a pas encore de radio pour ce titre. Essayez plutôt la radio de l’artiste."
+msgstr ""
+"TIDAL n’a pas encore de radio pour ce titre. Essayez plutôt la radio de "
+"l’artiste."
 
 #: src/ui/pages/mix.rs:264
 msgid "Couldn't load the mix"
@@ -1322,7 +1371,8 @@ msgstr "Impossible d’ajouter à la playlist"
 
 #: src/ui/pages/playlist.rs:246
 msgid "The playlist changed; your last edit was not applied"
-msgstr "La playlist a changé ; votre dernière modification n’a pas été appliquée"
+msgstr ""
+"La playlist a changé ; votre dernière modification n’a pas été appliquée"
 
 #: src/ui/pages/playlist.rs:490 src/ui/pages/search_views.rs:347
 #: src/ui/widgets/media_card.rs:516 src/ui/widgets/page_header.rs:556
@@ -1907,10 +1957,6 @@ msgstr "Plus"
 msgid "Sleep timer: stops at the end of this track"
 msgstr "Minuteur d’arrêt : arrêt à la fin de ce titre"
 
-#: src/ui/widgets/np_common.rs:1004
-msgid "{n} min"
-msgstr "{n} min"
-
 #: src/ui/widgets/np_common.rs:1005
 msgid "Sleep timer: stops in {n} minute"
 msgid_plural "Sleep timer: stops in {n} minutes"
@@ -2022,7 +2068,9 @@ msgstr "La file d’attente est vide"
 
 #: src/ui/widgets/queue_view.rs:145
 msgid "Use “Add to Queue” on any track, album or playlist."
-msgstr "Utilisez « Ajouter à la file d’attente » sur n’importe quel titre, album ou playlist."
+msgstr ""
+"Utilisez « Ajouter à la file d’attente » sur n’importe quel titre, album ou "
+"playlist."
 
 #: src/ui/widgets/queue_view.rs:313
 msgid "Playing from {source}"
@@ -2122,8 +2170,12 @@ msgid "Sign Out?"
 msgstr "Se déconnecter ?"
 
 #: src/ui/window.rs:409
-msgid "You will need to sign in again to listen. Your library cached on this computer is deleted."
-msgstr "Vous devrez vous reconnecter pour écouter. La bibliothèque mise en cache sur cet ordinateur sera supprimée."
+msgid ""
+"You will need to sign in again to listen. Your library cached on this "
+"computer is deleted."
+msgstr ""
+"Vous devrez vous reconnecter pour écouter. La bibliothèque mise en cache sur "
+"cet ordinateur sera supprimée."
 
 #: src/ui/window.rs:413
 msgid "_Sign Out"

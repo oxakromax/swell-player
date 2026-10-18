@@ -68,7 +68,9 @@ msgid "Couldn't open the system's credential store."
 msgstr "无法打开系统凭据存储。"
 
 #: src/session.rs:75
-msgid "Couldn't open the keyring. Make sure a keyring service (GNOME Keyring, KWallet) is running."
+msgid ""
+"Couldn't open the keyring. Make sure a keyring service (GNOME Keyring, "
+"KWallet) is running."
 msgstr "无法打开密钥环。请确保密钥环服务（GNOME Keyring、KWallet）正在运行。"
 
 #: src/session.rs:84
@@ -76,8 +78,11 @@ msgid "Couldn't save the session in the system's credential store."
 msgstr "无法将会话保存到系统凭据存储。"
 
 #: src/session.rs:86
-msgid "Couldn't save the session in the keyring. Make sure a keyring service (GNOME Keyring, KWallet) is running."
-msgstr "无法将会话保存到密钥环。请确保密钥环服务（GNOME Keyring、KWallet）正在运行。"
+msgid ""
+"Couldn't save the session in the keyring. Make sure a keyring service (GNOME "
+"Keyring, KWallet) is running."
+msgstr ""
+"无法将会话保存到密钥环。请确保密钥环服务（GNOME Keyring、KWallet）正在运行。"
 
 #: src/ui/context.rs:105
 msgid "You’re offline — showing saved data"
@@ -154,8 +159,8 @@ msgstr "无法添加到“{title}”"
 msgid "Search Playlists"
 msgstr "搜索播放列表"
 
-#: src/ui/dialogs/playlist.rs:168 src/ui/format.rs:29 src/ui/format.rs:54
-#: src/ui/format.rs:149 src/ui/format.rs:150 src/ui/pages/collection.rs:914
+#: src/ui/dialogs/playlist.rs:168 src/ui/format.rs:29 src/ui/format.rs:55
+#: src/ui/format.rs:150 src/ui/format.rs:151 src/ui/pages/collection.rs:914
 #: src/ui/pages/collection.rs:1061 src/ui/widgets/media_card.rs:506
 msgid "{n} track"
 msgid_plural "{n} tracks"
@@ -246,7 +251,8 @@ msgid "Delete “{title}”?"
 msgstr "删除“{title}”？"
 
 #: src/ui/dialogs/playlist.rs:509
-msgid "The playlist will be deleted from your TIDAL account. This can't be undone."
+msgid ""
+"The playlist will be deleted from your TIDAL account. This can't be undone."
 msgstr "该播放列表将从你的 TIDAL 账户中删除，此操作无法撤销。"
 
 #: src/ui/dialogs/playlist.rs:515
@@ -387,7 +393,9 @@ msgid "Storage"
 msgstr "存储"
 
 #: src/ui/dialogs/preferences.rs:284
-msgid "Downloaded artwork and saved answers from TIDAL, so pages open instantly and work offline."
+msgid ""
+"Downloaded artwork and saved answers from TIDAL, so pages open instantly and "
+"work offline."
 msgstr "已下载的封面图片和 TIDAL 的已保存应答，让页面即时打开，并可离线使用。"
 
 #: src/ui/dialogs/preferences.rs:289
@@ -502,79 +510,99 @@ msgstr "账户"
 msgid ","
 msgstr ","
 
-#: src/ui/format.rs:107
+#: src/ui/format.rs:42 src/ui/widgets/np_common.rs:1004
+msgid "{n} min"
+msgstr "{n} 分钟"
+
+#: src/ui/format.rs:43
+msgid "{n} h"
+msgstr "{n} 小时"
+
+#: src/ui/format.rs:44
+msgid "{h} h {m} min"
+msgstr "{h} 小时 {m} 分钟"
+
+#: src/ui/format.rs:45
+msgid "{n} d"
+msgstr "{n} 天"
+
+#: src/ui/format.rs:46
+msgid "{d} d {h} h"
+msgstr "{d} 天 {h} 小时"
+
+#: src/ui/format.rs:108
 msgid "January"
 msgstr "1月"
 
-#: src/ui/format.rs:108
+#: src/ui/format.rs:109
 msgid "February"
 msgstr "2月"
 
-#: src/ui/format.rs:109
+#: src/ui/format.rs:110
 msgid "March"
 msgstr "3月"
 
-#: src/ui/format.rs:110
+#: src/ui/format.rs:111
 msgid "April"
 msgstr "4月"
 
-#: src/ui/format.rs:111
+#: src/ui/format.rs:112
 msgid "May"
 msgstr "5月"
 
-#: src/ui/format.rs:112
+#: src/ui/format.rs:113
 msgid "June"
 msgstr "6月"
 
-#: src/ui/format.rs:113
+#: src/ui/format.rs:114
 msgid "July"
 msgstr "7月"
 
-#: src/ui/format.rs:114
+#: src/ui/format.rs:115
 msgid "August"
 msgstr "8月"
 
-#: src/ui/format.rs:115
+#: src/ui/format.rs:116
 msgid "September"
 msgstr "9月"
 
-#: src/ui/format.rs:116
+#: src/ui/format.rs:117
 msgid "October"
 msgstr "10月"
 
-#: src/ui/format.rs:117
+#: src/ui/format.rs:118
 msgid "November"
 msgstr "11月"
 
-#: src/ui/format.rs:118
+#: src/ui/format.rs:119
 msgid "December"
 msgstr "12月"
 
-#: src/ui/format.rs:125
+#: src/ui/format.rs:126
 msgid "Monday"
 msgstr "星期一"
 
-#: src/ui/format.rs:126
+#: src/ui/format.rs:127
 msgid "Tuesday"
 msgstr "星期二"
 
-#: src/ui/format.rs:127
+#: src/ui/format.rs:128
 msgid "Wednesday"
 msgstr "星期三"
 
-#: src/ui/format.rs:128
+#: src/ui/format.rs:129
 msgid "Thursday"
 msgstr "星期四"
 
-#: src/ui/format.rs:129
+#: src/ui/format.rs:130
 msgid "Friday"
 msgstr "星期五"
 
-#: src/ui/format.rs:130
+#: src/ui/format.rs:131
 msgid "Saturday"
 msgstr "星期六"
 
-#: src/ui/format.rs:131
+#: src/ui/format.rs:132
 msgid "Sunday"
 msgstr "星期日"
 
@@ -1898,10 +1926,6 @@ msgstr "更多"
 msgid "Sleep timer: stops at the end of this track"
 msgstr "睡眠定时器：将在此曲目结束时停止"
 
-#: src/ui/widgets/np_common.rs:1004
-msgid "{n} min"
-msgstr "{n} 分钟"
-
 #: src/ui/widgets/np_common.rs:1005
 msgid "Sleep timer: stops in {n} minute"
 msgid_plural "Sleep timer: stops in {n} minutes"
@@ -2109,7 +2133,9 @@ msgid "Sign Out?"
 msgstr "退出登录？"
 
 #: src/ui/window.rs:409
-msgid "You will need to sign in again to listen. Your library cached on this computer is deleted."
+msgid ""
+"You will need to sign in again to listen. Your library cached on this "
+"computer is deleted."
 msgstr "你需要重新登录才能收听。缓存在此计算机上的资料库将被删除。"
 
 #: src/ui/window.rs:413

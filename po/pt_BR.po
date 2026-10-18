@@ -42,7 +42,9 @@ msgstr "Conexão perdida — tentando novamente"
 
 #: src/playback/mod.rs:1659
 msgid "Could not play “{title}”. Playback stopped after {n} tracks failed"
-msgstr "Não foi possível reproduzir “{title}”. A reprodução parou após a falha de {n} faixas"
+msgstr ""
+"Não foi possível reproduzir “{title}”. A reprodução parou após a falha de "
+"{n} faixas"
 
 #: src/playback/mod.rs:1665
 msgid "Could not play “{title}”, skipped"
@@ -69,16 +71,25 @@ msgid "Couldn't open the system's credential store."
 msgstr "Não foi possível abrir o armazenamento de credenciais do sistema."
 
 #: src/session.rs:75
-msgid "Couldn't open the keyring. Make sure a keyring service (GNOME Keyring, KWallet) is running."
-msgstr "Não foi possível abrir o chaveiro. Verifique se um serviço de chaveiro (GNOME Keyring, KWallet) está em execução."
+msgid ""
+"Couldn't open the keyring. Make sure a keyring service (GNOME Keyring, "
+"KWallet) is running."
+msgstr ""
+"Não foi possível abrir o chaveiro. Verifique se um serviço de chaveiro "
+"(GNOME Keyring, KWallet) está em execução."
 
 #: src/session.rs:84
 msgid "Couldn't save the session in the system's credential store."
-msgstr "Não foi possível salvar a sessão no armazenamento de credenciais do sistema."
+msgstr ""
+"Não foi possível salvar a sessão no armazenamento de credenciais do sistema."
 
 #: src/session.rs:86
-msgid "Couldn't save the session in the keyring. Make sure a keyring service (GNOME Keyring, KWallet) is running."
-msgstr "Não foi possível salvar a sessão no chaveiro. Verifique se um serviço de chaveiro (GNOME Keyring, KWallet) está em execução."
+msgid ""
+"Couldn't save the session in the keyring. Make sure a keyring service (GNOME "
+"Keyring, KWallet) is running."
+msgstr ""
+"Não foi possível salvar a sessão no chaveiro. Verifique se um serviço de "
+"chaveiro (GNOME Keyring, KWallet) está em execução."
 
 #: src/ui/context.rs:105
 msgid "You’re offline — showing saved data"
@@ -156,8 +167,8 @@ msgstr "Não foi possível adicionar a “{title}”"
 msgid "Search Playlists"
 msgstr "Pesquisar playlists"
 
-#: src/ui/dialogs/playlist.rs:168 src/ui/format.rs:29 src/ui/format.rs:54
-#: src/ui/format.rs:149 src/ui/format.rs:150 src/ui/pages/collection.rs:914
+#: src/ui/dialogs/playlist.rs:168 src/ui/format.rs:29 src/ui/format.rs:55
+#: src/ui/format.rs:150 src/ui/format.rs:151 src/ui/pages/collection.rs:914
 #: src/ui/pages/collection.rs:1061 src/ui/widgets/media_card.rs:506
 msgid "{n} track"
 msgid_plural "{n} tracks"
@@ -249,8 +260,10 @@ msgid "Delete “{title}”?"
 msgstr "Excluir “{title}”?"
 
 #: src/ui/dialogs/playlist.rs:509
-msgid "The playlist will be deleted from your TIDAL account. This can't be undone."
-msgstr "A playlist será excluída da sua conta do TIDAL. Isso não pode ser desfeito."
+msgid ""
+"The playlist will be deleted from your TIDAL account. This can't be undone."
+msgstr ""
+"A playlist será excluída da sua conta do TIDAL. Isso não pode ser desfeito."
 
 #: src/ui/dialogs/playlist.rs:515
 msgid "Delete"
@@ -390,8 +403,12 @@ msgid "Storage"
 msgstr "Armazenamento"
 
 #: src/ui/dialogs/preferences.rs:284
-msgid "Downloaded artwork and saved answers from TIDAL, so pages open instantly and work offline."
-msgstr "Capas baixadas e respostas do TIDAL salvas, para que as páginas abram instantaneamente e funcionem offline."
+msgid ""
+"Downloaded artwork and saved answers from TIDAL, so pages open instantly and "
+"work offline."
+msgstr ""
+"Capas baixadas e respostas do TIDAL salvas, para que as páginas abram "
+"instantaneamente e funcionem offline."
 
 #: src/ui/dialogs/preferences.rs:289
 msgid "Cover Cache"
@@ -423,7 +440,8 @@ msgstr "Limpar o cache da biblioteca?"
 
 #: src/ui/dialogs/preferences.rs:316
 msgid "Pages are loaded again from TIDAL. Your collection is not affected."
-msgstr "As páginas são carregadas novamente do TIDAL. Sua coleção não é afetada."
+msgstr ""
+"As páginas são carregadas novamente do TIDAL. Sua coleção não é afetada."
 
 #: src/ui/dialogs/preferences.rs:317
 msgid "Library Cache cleared"
@@ -459,7 +477,8 @@ msgstr "Não foi possível carregar os artistas bloqueados."
 
 #: src/ui/dialogs/preferences.rs:498
 msgid "Nothing blocked. Blocked artists are skipped in radios and mixes."
-msgstr "Nada bloqueado. Os artistas bloqueados são ignorados em rádios e mixes."
+msgstr ""
+"Nada bloqueado. Os artistas bloqueados são ignorados em rádios e mixes."
 
 #: src/ui/dialogs/preferences.rs:500
 msgid "Skipped in radios and mixes."
@@ -505,79 +524,99 @@ msgstr "Conta"
 msgid ","
 msgstr "."
 
-#: src/ui/format.rs:107
+#: src/ui/format.rs:42 src/ui/widgets/np_common.rs:1004
+msgid "{n} min"
+msgstr "{n} min"
+
+#: src/ui/format.rs:43
+msgid "{n} h"
+msgstr "{n} h"
+
+#: src/ui/format.rs:44
+msgid "{h} h {m} min"
+msgstr "{h} h {m} min"
+
+#: src/ui/format.rs:45
+msgid "{n} d"
+msgstr "{n} d"
+
+#: src/ui/format.rs:46
+msgid "{d} d {h} h"
+msgstr "{d} d {h} h"
+
+#: src/ui/format.rs:108
 msgid "January"
 msgstr "janeiro"
 
-#: src/ui/format.rs:108
+#: src/ui/format.rs:109
 msgid "February"
 msgstr "fevereiro"
 
-#: src/ui/format.rs:109
+#: src/ui/format.rs:110
 msgid "March"
 msgstr "março"
 
-#: src/ui/format.rs:110
+#: src/ui/format.rs:111
 msgid "April"
 msgstr "abril"
 
-#: src/ui/format.rs:111
+#: src/ui/format.rs:112
 msgid "May"
 msgstr "maio"
 
-#: src/ui/format.rs:112
+#: src/ui/format.rs:113
 msgid "June"
 msgstr "junho"
 
-#: src/ui/format.rs:113
+#: src/ui/format.rs:114
 msgid "July"
 msgstr "julho"
 
-#: src/ui/format.rs:114
+#: src/ui/format.rs:115
 msgid "August"
 msgstr "agosto"
 
-#: src/ui/format.rs:115
+#: src/ui/format.rs:116
 msgid "September"
 msgstr "setembro"
 
-#: src/ui/format.rs:116
+#: src/ui/format.rs:117
 msgid "October"
 msgstr "outubro"
 
-#: src/ui/format.rs:117
+#: src/ui/format.rs:118
 msgid "November"
 msgstr "novembro"
 
-#: src/ui/format.rs:118
+#: src/ui/format.rs:119
 msgid "December"
 msgstr "dezembro"
 
-#: src/ui/format.rs:125
+#: src/ui/format.rs:126
 msgid "Monday"
 msgstr "segunda-feira"
 
-#: src/ui/format.rs:126
+#: src/ui/format.rs:127
 msgid "Tuesday"
 msgstr "terça-feira"
 
-#: src/ui/format.rs:127
+#: src/ui/format.rs:128
 msgid "Wednesday"
 msgstr "quarta-feira"
 
-#: src/ui/format.rs:128
+#: src/ui/format.rs:129
 msgid "Thursday"
 msgstr "quinta-feira"
 
-#: src/ui/format.rs:129
+#: src/ui/format.rs:130
 msgid "Friday"
 msgstr "sexta-feira"
 
-#: src/ui/format.rs:130
+#: src/ui/format.rs:131
 msgid "Saturday"
 msgstr "sábado"
 
-#: src/ui/format.rs:131
+#: src/ui/format.rs:132
 msgid "Sunday"
 msgstr "domingo"
 
@@ -668,7 +707,8 @@ msgid ""
 "Couldn't open the browser ({error}). Open this address yourself:\n"
 "{url}"
 msgstr ""
-"Não foi possível abrir o navegador ({error}). Abra este endereço você mesmo:\n"
+"Não foi possível abrir o navegador ({error}). Abra este endereço você "
+"mesmo:\n"
 "{url}"
 
 #: src/ui/login.rs:258
@@ -1075,7 +1115,8 @@ msgstr "Nenhuma playlist"
 
 #: src/ui/pages/collection_grid.rs:322
 msgid "Create a playlist, or use the heart on someone else's to save it here."
-msgstr "Crie uma playlist ou use o coração na de outra pessoa para salvá-la aqui."
+msgstr ""
+"Crie uma playlist ou use o coração na de outra pessoa para salvá-la aqui."
 
 #: src/ui/pages/collection_grid.rs:328
 msgid "No Saved Mixes"
@@ -1270,7 +1311,9 @@ msgstr "Sem rádio para esta faixa"
 
 #: src/ui/pages/mix.rs:246
 msgid "TIDAL has no radio for this track yet. Try the artist's radio instead."
-msgstr "O TIDAL ainda não tem uma rádio para esta faixa. Experimente a rádio do artista."
+msgstr ""
+"O TIDAL ainda não tem uma rádio para esta faixa. Experimente a rádio do "
+"artista."
 
 #: src/ui/pages/mix.rs:264
 msgid "Couldn't load the mix"
@@ -1907,10 +1950,6 @@ msgstr "Mais"
 msgid "Sleep timer: stops at the end of this track"
 msgstr "Temporizador de sono: para no fim desta faixa"
 
-#: src/ui/widgets/np_common.rs:1004
-msgid "{n} min"
-msgstr "{n} min"
-
 #: src/ui/widgets/np_common.rs:1005
 msgid "Sleep timer: stops in {n} minute"
 msgid_plural "Sleep timer: stops in {n} minutes"
@@ -2122,8 +2161,12 @@ msgid "Sign Out?"
 msgstr "Desconectar?"
 
 #: src/ui/window.rs:409
-msgid "You will need to sign in again to listen. Your library cached on this computer is deleted."
-msgstr "Você precisará entrar novamente para ouvir. A biblioteca em cache neste computador será excluída."
+msgid ""
+"You will need to sign in again to listen. Your library cached on this "
+"computer is deleted."
+msgstr ""
+"Você precisará entrar novamente para ouvir. A biblioteca em cache neste "
+"computador será excluída."
 
 #: src/ui/window.rs:413
 msgid "_Sign Out"

@@ -884,14 +884,19 @@ msgstr[0] "{n} アルバム"
     }
 
     /// A field of a catalogue's header (`Language`, `Plural-Forms`…).
-    fn header_field<'a>(source: &'a str, name: &str) -> Option<&'a str> {
+    /// msgmerge wraps long fields over several quoted lines, so the
+    /// header's lines are joined before it is split into fields.
+    fn header_field(source: &str, name: &str) -> Option<String> {
         let header = source
             .split("\n\n")
             .find(|block| block.contains("msgid \"\"\n"))?;
-        header.lines().find_map(|line| {
-            let field = line.trim().strip_prefix('"')?.strip_suffix("\\n\"")?;
+        let text: String = header
+            .lines()
+            .filter_map(|line| line.trim().strip_prefix('"')?.strip_suffix('"'))
+            .collect();
+        text.split("\\n").find_map(|field| {
             let (key, value) = field.split_once(':')?;
-            (key.trim() == name).then(|| value.trim())
+            (key.trim() == name).then(|| value.trim().to_owned())
         })
     }
 
@@ -900,7 +905,7 @@ msgstr[0] "{n} アルバム"
     /// languages whose translation has not landed; a real catalogue drops
     /// the field (see docs/translating.md).
     fn is_partial(source: &str) -> bool {
-        header_field(source, "X-Swell-Partial") == Some("yes")
+        header_field(source, "X-Swell-Partial").as_deref() == Some("yes")
     }
 
     /// Every message in the sources is translated in every catalogue that
@@ -971,17 +976,19 @@ msgstr[0] "{n} アルバム"
         for language in CATALOGUES {
             let code = language.code;
             let mut problem = |text: String| problems.push(format!("{code}: {text}"));
-            if header_field(language.source, "Language") != Some(code) {
+            if header_field(language.source, "Language").as_deref() != Some(code) {
                 problem("the header's Language is not the catalogue's code".to_owned());
             }
             let count = plural_count(code);
-            let nplurals = header_field(language.source, "Plural-Forms")
-                .and_then(|forms| {
-                    forms
-                        .split(';')
-                        .find_map(|f| f.trim().strip_prefix("nplurals="))
+            let nplurals = header_field(language.source, "Plural-Forms").and_then(|forms| {
+                forms.split(';').find_map(|f| {
+                    f.trim()
+                        .strip_prefix("nplurals=")?
+                        .trim()
+                        .parse::<usize>()
+                        .ok()
                 })
-                .and_then(|n| n.trim().parse::<usize>().ok());
+            });
             if nplurals != Some(count) {
                 problem(format!(
                     "Plural-Forms has nplurals={nplurals:?}, plural_form() uses {count}"
@@ -1042,7 +1049,15 @@ msgstr[0] "{n} アルバム"
     fn reads_catalogue_headers() {
         let source = "# x\nmsgid \"\"\nmsgstr \"\"\n\"Language: pt_BR\\n\"\n\
                       \"X-Swell-Partial: yes\\n\"\n\nmsgid \"a\"\nmsgstr \"\"\n\"Language: no\\n\"\n";
-        assert_eq!(header_field(source, "Language"), Some("pt_BR"));
+        assert_eq!(header_field(source, "Language").as_deref(), Some("pt_BR"));
+        // msgmerge wraps long fields.
+        let wrapped = "msgid \"\"\nmsgstr \"\"\n\"Plural-Forms: nplurals=3; plural=(n%10==1 && \"\n\
+                       \"n%100!=11 ? 0 : 2);\\n\"\n\"Language: ru\\n\"\n";
+        assert_eq!(
+            header_field(wrapped, "Plural-Forms").as_deref(),
+            Some("nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : 2);")
+        );
+        assert_eq!(header_field(wrapped, "Language").as_deref(), Some("ru"));
         assert!(is_partial(source));
         assert!(!is_partial(PO));
         // The Spanish catalogue is complete.

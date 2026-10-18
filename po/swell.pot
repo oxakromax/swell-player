@@ -173,9 +173,9 @@ msgstr ""
 
 #: src/ui/dialogs/playlist.rs:168
 #: src/ui/format.rs:29
-#: src/ui/format.rs:54
-#: src/ui/format.rs:149
+#: src/ui/format.rs:55
 #: src/ui/format.rs:150
+#: src/ui/format.rs:151
 #: src/ui/pages/collection.rs:914
 #: src/ui/pages/collection.rs:1061
 #: src/ui/widgets/media_card.rs:506
@@ -554,79 +554,100 @@ msgstr ""
 msgid ","
 msgstr ""
 
-#: src/ui/format.rs:107
-msgid "January"
+#: src/ui/format.rs:42
+#: src/ui/widgets/np_common.rs:1004
+msgid "{n} min"
+msgstr ""
+
+#: src/ui/format.rs:43
+msgid "{n} h"
+msgstr ""
+
+#: src/ui/format.rs:44
+msgid "{h} h {m} min"
+msgstr ""
+
+#: src/ui/format.rs:45
+msgid "{n} d"
+msgstr ""
+
+#: src/ui/format.rs:46
+msgid "{d} d {h} h"
 msgstr ""
 
 #: src/ui/format.rs:108
-msgid "February"
+msgid "January"
 msgstr ""
 
 #: src/ui/format.rs:109
-msgid "March"
+msgid "February"
 msgstr ""
 
 #: src/ui/format.rs:110
-msgid "April"
+msgid "March"
 msgstr ""
 
 #: src/ui/format.rs:111
-msgid "May"
+msgid "April"
 msgstr ""
 
 #: src/ui/format.rs:112
-msgid "June"
+msgid "May"
 msgstr ""
 
 #: src/ui/format.rs:113
-msgid "July"
+msgid "June"
 msgstr ""
 
 #: src/ui/format.rs:114
-msgid "August"
+msgid "July"
 msgstr ""
 
 #: src/ui/format.rs:115
-msgid "September"
+msgid "August"
 msgstr ""
 
 #: src/ui/format.rs:116
-msgid "October"
+msgid "September"
 msgstr ""
 
 #: src/ui/format.rs:117
-msgid "November"
+msgid "October"
 msgstr ""
 
 #: src/ui/format.rs:118
+msgid "November"
+msgstr ""
+
+#: src/ui/format.rs:119
 msgid "December"
 msgstr ""
 
-#: src/ui/format.rs:125
+#: src/ui/format.rs:126
 msgid "Monday"
 msgstr ""
 
-#: src/ui/format.rs:126
+#: src/ui/format.rs:127
 msgid "Tuesday"
 msgstr ""
 
-#: src/ui/format.rs:127
+#: src/ui/format.rs:128
 msgid "Wednesday"
 msgstr ""
 
-#: src/ui/format.rs:128
+#: src/ui/format.rs:129
 msgid "Thursday"
 msgstr ""
 
-#: src/ui/format.rs:129
+#: src/ui/format.rs:130
 msgid "Friday"
 msgstr ""
 
-#: src/ui/format.rs:130
+#: src/ui/format.rs:131
 msgid "Saturday"
 msgstr ""
 
-#: src/ui/format.rs:131
+#: src/ui/format.rs:132
 msgid "Sunday"
 msgstr ""
 
@@ -2065,10 +2086,6 @@ msgstr ""
 
 #: src/ui/widgets/np_common.rs:996
 msgid "Sleep timer: stops at the end of this track"
-msgstr ""
-
-#: src/ui/widgets/np_common.rs:1004
-msgid "{n} min"
 msgstr ""
 
 #: src/ui/widgets/np_common.rs:1005

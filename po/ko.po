@@ -41,7 +41,8 @@ msgstr "연결이 끊어졌습니다 — 다시 시도하는 중"
 
 #: src/playback/mod.rs:1659
 msgid "Could not play “{title}”. Playback stopped after {n} tracks failed"
-msgstr "“{title}” 재생에 실패했습니다. 곡 {n}개의 재생에 실패하여 재생을 중지했습니다"
+msgstr ""
+"“{title}” 재생에 실패했습니다. 곡 {n}개의 재생에 실패하여 재생을 중지했습니다"
 
 #: src/playback/mod.rs:1665
 msgid "Could not play “{title}”, skipped"
@@ -61,23 +62,33 @@ msgstr "{artists} — {album}"
 
 #: src/playback/plugins.rs:24
 msgid "Playback needs GStreamer’s “{element}”. Install {package}."
-msgstr "재생하려면 GStreamer “{element}” 요소가 필요합니다. 다음을 설치하세요: {package}"
+msgstr ""
+"재생하려면 GStreamer “{element}” 요소가 필요합니다. 다음을 설치하세요: "
+"{package}"
 
 #: src/session.rs:73
 msgid "Couldn't open the system's credential store."
 msgstr "시스템 자격 증명 저장소를 열 수 없습니다."
 
 #: src/session.rs:75
-msgid "Couldn't open the keyring. Make sure a keyring service (GNOME Keyring, KWallet) is running."
-msgstr "키링을 열 수 없습니다. 키링 서비스(GNOME 키링, KWallet)가 실행 중인지 확인하세요."
+msgid ""
+"Couldn't open the keyring. Make sure a keyring service (GNOME Keyring, "
+"KWallet) is running."
+msgstr ""
+"키링을 열 수 없습니다. 키링 서비스(GNOME 키링, KWallet)가 실행 중인지 확인하"
+"세요."
 
 #: src/session.rs:84
 msgid "Couldn't save the session in the system's credential store."
 msgstr "시스템 자격 증명 저장소에 세션을 저장할 수 없습니다."
 
 #: src/session.rs:86
-msgid "Couldn't save the session in the keyring. Make sure a keyring service (GNOME Keyring, KWallet) is running."
-msgstr "키링에 세션을 저장할 수 없습니다. 키링 서비스(GNOME 키링, KWallet)가 실행 중인지 확인하세요."
+msgid ""
+"Couldn't save the session in the keyring. Make sure a keyring service (GNOME "
+"Keyring, KWallet) is running."
+msgstr ""
+"키링에 세션을 저장할 수 없습니다. 키링 서비스(GNOME 키링, KWallet)가 실행 중"
+"인지 확인하세요."
 
 #: src/ui/context.rs:105
 msgid "You’re offline — showing saved data"
@@ -154,8 +165,8 @@ msgstr "“{title}”에 추가할 수 없습니다"
 msgid "Search Playlists"
 msgstr "재생 목록 검색"
 
-#: src/ui/dialogs/playlist.rs:168 src/ui/format.rs:29 src/ui/format.rs:54
-#: src/ui/format.rs:149 src/ui/format.rs:150 src/ui/pages/collection.rs:914
+#: src/ui/dialogs/playlist.rs:168 src/ui/format.rs:29 src/ui/format.rs:55
+#: src/ui/format.rs:150 src/ui/format.rs:151 src/ui/pages/collection.rs:914
 #: src/ui/pages/collection.rs:1061 src/ui/widgets/media_card.rs:506
 msgid "{n} track"
 msgid_plural "{n} tracks"
@@ -246,7 +257,8 @@ msgid "Delete “{title}”?"
 msgstr "“{title}” 재생 목록을 삭제하시겠습니까?"
 
 #: src/ui/dialogs/playlist.rs:509
-msgid "The playlist will be deleted from your TIDAL account. This can't be undone."
+msgid ""
+"The playlist will be deleted from your TIDAL account. This can't be undone."
 msgstr "재생 목록이 TIDAL 계정에서 삭제됩니다. 이 작업은 되돌릴 수 없습니다."
 
 #: src/ui/dialogs/playlist.rs:515
@@ -387,8 +399,12 @@ msgid "Storage"
 msgstr "저장 공간"
 
 #: src/ui/dialogs/preferences.rs:284
-msgid "Downloaded artwork and saved answers from TIDAL, so pages open instantly and work offline."
-msgstr "다운로드한 아트워크와 TIDAL에서 저장한 응답입니다. 페이지가 즉시 열리고 오프라인에서도 작동합니다."
+msgid ""
+"Downloaded artwork and saved answers from TIDAL, so pages open instantly and "
+"work offline."
+msgstr ""
+"다운로드한 아트워크와 TIDAL에서 저장한 응답입니다. 페이지가 즉시 열리고 오프"
+"라인에서도 작동합니다."
 
 #: src/ui/dialogs/preferences.rs:289
 msgid "Cover Cache"
@@ -456,7 +472,8 @@ msgstr "차단한 아티스트를 불러올 수 없습니다."
 
 #: src/ui/dialogs/preferences.rs:498
 msgid "Nothing blocked. Blocked artists are skipped in radios and mixes."
-msgstr "차단한 아티스트가 없습니다. 차단한 아티스트는 라디오와 믹스에서 건너뜁니다."
+msgstr ""
+"차단한 아티스트가 없습니다. 차단한 아티스트는 라디오와 믹스에서 건너뜁니다."
 
 #: src/ui/dialogs/preferences.rs:500
 msgid "Skipped in radios and mixes."
@@ -502,79 +519,99 @@ msgstr "계정"
 msgid ","
 msgstr ","
 
-#: src/ui/format.rs:107
+#: src/ui/format.rs:42 src/ui/widgets/np_common.rs:1004
+msgid "{n} min"
+msgstr "{n}분"
+
+#: src/ui/format.rs:43
+msgid "{n} h"
+msgstr "{n}시간"
+
+#: src/ui/format.rs:44
+msgid "{h} h {m} min"
+msgstr "{h}시간 {m}분"
+
+#: src/ui/format.rs:45
+msgid "{n} d"
+msgstr "{n}일"
+
+#: src/ui/format.rs:46
+msgid "{d} d {h} h"
+msgstr "{d}일 {h}시간"
+
+#: src/ui/format.rs:108
 msgid "January"
 msgstr "1월"
 
-#: src/ui/format.rs:108
+#: src/ui/format.rs:109
 msgid "February"
 msgstr "2월"
 
-#: src/ui/format.rs:109
+#: src/ui/format.rs:110
 msgid "March"
 msgstr "3월"
 
-#: src/ui/format.rs:110
+#: src/ui/format.rs:111
 msgid "April"
 msgstr "4월"
 
-#: src/ui/format.rs:111
+#: src/ui/format.rs:112
 msgid "May"
 msgstr "5월"
 
-#: src/ui/format.rs:112
+#: src/ui/format.rs:113
 msgid "June"
 msgstr "6월"
 
-#: src/ui/format.rs:113
+#: src/ui/format.rs:114
 msgid "July"
 msgstr "7월"
 
-#: src/ui/format.rs:114
+#: src/ui/format.rs:115
 msgid "August"
 msgstr "8월"
 
-#: src/ui/format.rs:115
+#: src/ui/format.rs:116
 msgid "September"
 msgstr "9월"
 
-#: src/ui/format.rs:116
+#: src/ui/format.rs:117
 msgid "October"
 msgstr "10월"
 
-#: src/ui/format.rs:117
+#: src/ui/format.rs:118
 msgid "November"
 msgstr "11월"
 
-#: src/ui/format.rs:118
+#: src/ui/format.rs:119
 msgid "December"
 msgstr "12월"
 
-#: src/ui/format.rs:125
+#: src/ui/format.rs:126
 msgid "Monday"
 msgstr "월요일"
 
-#: src/ui/format.rs:126
+#: src/ui/format.rs:127
 msgid "Tuesday"
 msgstr "화요일"
 
-#: src/ui/format.rs:127
+#: src/ui/format.rs:128
 msgid "Wednesday"
 msgstr "수요일"
 
-#: src/ui/format.rs:128
+#: src/ui/format.rs:129
 msgid "Thursday"
 msgstr "목요일"
 
-#: src/ui/format.rs:129
+#: src/ui/format.rs:130
 msgid "Friday"
 msgstr "금요일"
 
-#: src/ui/format.rs:130
+#: src/ui/format.rs:131
 msgid "Saturday"
 msgstr "토요일"
 
-#: src/ui/format.rs:131
+#: src/ui/format.rs:132
 msgid "Sunday"
 msgstr "일요일"
 
@@ -1070,7 +1107,9 @@ msgstr "재생 목록이 없습니다"
 
 #: src/ui/pages/collection_grid.rs:322
 msgid "Create a playlist, or use the heart on someone else's to save it here."
-msgstr "재생 목록을 만들거나 다른 사람의 재생 목록에서 하트를 누르면 여기에 저장됩니다."
+msgstr ""
+"재생 목록을 만들거나 다른 사람의 재생 목록에서 하트를 누르면 여기에 저장됩니"
+"다."
 
 #: src/ui/pages/collection_grid.rs:328
 msgid "No Saved Mixes"
@@ -1262,7 +1301,8 @@ msgstr "이 곡의 라디오가 없습니다"
 
 #: src/ui/pages/mix.rs:246
 msgid "TIDAL has no radio for this track yet. Try the artist's radio instead."
-msgstr "TIDAL에 이 곡의 라디오가 아직 없습니다. 대신 아티스트 라디오를 사용해 보세요."
+msgstr ""
+"TIDAL에 이 곡의 라디오가 아직 없습니다. 대신 아티스트 라디오를 사용해 보세요."
 
 #: src/ui/pages/mix.rs:264
 msgid "Couldn't load the mix"
@@ -1898,10 +1938,6 @@ msgstr "더 보기"
 msgid "Sleep timer: stops at the end of this track"
 msgstr "수면 타이머: 이 곡이 끝나면 중지합니다"
 
-#: src/ui/widgets/np_common.rs:1004
-msgid "{n} min"
-msgstr "{n}분"
-
 #: src/ui/widgets/np_common.rs:1005
 msgid "Sleep timer: stops in {n} minute"
 msgid_plural "Sleep timer: stops in {n} minutes"
@@ -2109,8 +2145,12 @@ msgid "Sign Out?"
 msgstr "로그아웃하시겠습니까?"
 
 #: src/ui/window.rs:409
-msgid "You will need to sign in again to listen. Your library cached on this computer is deleted."
-msgstr "다시 들으려면 다시 로그인해야 합니다. 이 컴퓨터에 캐시된 라이브러리는 삭제됩니다."
+msgid ""
+"You will need to sign in again to listen. Your library cached on this "
+"computer is deleted."
+msgstr ""
+"다시 들으려면 다시 로그인해야 합니다. 이 컴퓨터에 캐시된 라이브러리는 삭제됩"
+"니다."
 
 #: src/ui/window.rs:413
 msgid "_Sign Out"
