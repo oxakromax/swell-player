@@ -1,0 +1,32 @@
+# cargo-about configuration: the third-party notices for the Rust crates
+# compiled into swell-player (`packaging/release.sh licenses`, with the
+# template packaging/about.hbs). Every target a release is built for is
+# listed, so one file covers the Linux, Windows and macOS packages.
+#
+# `accepted` holds the licences Cargo.lock actually uses, in order of
+# preference for crates that offer a choice. A dependency under any other
+# licence fails the release until it is reviewed and added here.
+accepted = [
+    "MIT",
+    "Apache-2.0",
+    "ISC",
+    "BSD-3-Clause",
+    "Unicode-3.0",
+    "Zlib",
+]
+targets = [
+    "x86_64-unknown-linux-gnu",
+    "aarch64-unknown-linux-gnu",
+    "x86_64-pc-windows-gnu",
+    "aarch64-apple-darwin",
+    "x86_64-apple-darwin",
+]
+# Build scripts' dependencies and dev-dependencies are not in the binary.
+ignore-build-dependencies = true
+ignore-dev-dependencies = true
+# cargo-about's own fixes for crates whose licence files are hard to match.
+workarounds = ["cocoa", "gtk", "ring", "rustls"]
+
+# Swell itself (COPYING); packaging/about.hbs leaves it out of the notices.
+[swell-player]
+accepted = ["GPL-3.0-or-later"]
