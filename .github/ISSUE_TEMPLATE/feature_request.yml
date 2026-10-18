@@ -1,0 +1,40 @@
+name: Feature request
+description: Suggest something Swell could do, or do better.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please search the
+        [existing issues](https://github.com/oxakromax/swell-player/issues?q=is%3Aissue)
+        first: if someone asked already, a 👍 on that issue helps more than a
+        new one. Swell can only offer what TIDAL's API provides, and won't
+        add downloading or anything that gets around the subscription.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would you like to do?
+      description: Describe the need or the problem, rather than a particular solution.
+      placeholder: "When I … I'd like to …, because …"
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: How could it work?
+      description: Your idea of how Swell could do it. Mock-ups and examples from other apps are welcome.
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives
+      description: Workarounds you use today, or other ways it could be solved.
+
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Contributing
+      options:
+        - label: I'd like to work on this myself.

@@ -1,0 +1,101 @@
+name: Bug report
+description: Something in Swell doesn't work as it should.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a problem! Please search the
+        [existing issues](https://github.com/oxakromax/swell-player/issues?q=is%3Aissue)
+        first. Security problems go through a
+        [private report](https://github.com/oxakromax/swell-player/security/advisories/new)
+        instead.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+      placeholder: |
+        1. Open an album
+        2. Click Shuffle
+        3. …
+    validations:
+      required: true
+
+  - type: dropdown
+    id: reproducible
+    attributes:
+      label: Does it happen every time?
+      options:
+        - "Yes, every time"
+        - "Sometimes"
+        - "It happened once"
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Swell version
+      description: Shown in the About dialog (main menu → About Swell).
+      placeholder: "1.0.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: installation
+    attributes:
+      label: How did you install Swell?
+      options:
+        - AUR (swell-player)
+        - AUR (swell-player-git)
+        - Flatpak
+        - .deb package
+        - .rpm package
+        - Windows installer or zip
+        - macOS .dmg
+        - Built from source
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: platform
+    attributes:
+      label: Operating system and desktop
+      placeholder: "Arch Linux, KDE Plasma 6.4 (Wayland)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: debug-info
+    attributes:
+      label: Debugging information
+      description: |
+        About dialog → Troubleshooting → Debugging Information → copy. It
+        lists the GTK, libadwaita and GStreamer versions.
+      render: text
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: |
+        Run Swell from a terminal with debug logging and reproduce the
+        problem:
+
+        ```
+        RUST_LOG=swell_player=debug swell-player
+        ```
+
+        (Flatpak: `flatpak run --env=RUST_LOG=swell_player=debug io.github.oxakromax.SwellPlayer`.)
+        Logs may contain signed stream URLs: look them over before posting,
+        and never paste tokens or the address from the browser sign-in.
+      render: text
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Screenshots, the TIDAL link of the album or track involved, your sign-in method (browser or device code), audio setup…
