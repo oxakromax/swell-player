@@ -7,7 +7,16 @@
 
   <name>Swell</name>
   <summary>Listen to TIDAL in a native app</summary>
+  <summary xml:lang="de">TIDAL in einer nativen App hören</summary>
   <summary xml:lang="es">Escucha TIDAL en una app nativa</summary>
+  <summary xml:lang="fr">Écoutez TIDAL dans une application native</summary>
+  <summary xml:lang="it">Ascolta TIDAL in un’app nativa</summary>
+  <summary xml:lang="ja">ネイティブアプリで TIDAL を聴く</summary>
+  <summary xml:lang="ko">네이티브 앱으로 TIDAL 듣기</summary>
+  <summary xml:lang="pt_BR">Ouça o TIDAL em um app nativo</summary>
+  <summary xml:lang="ru">Слушайте TIDAL в нативном приложении</summary>
+  <summary xml:lang="zh_CN">在原生应用中收听 TIDAL</summary>
+  <summary xml:lang="zh_TW">在原生應用程式中收聽 TIDAL</summary>
 
   <developer id="io.github.oxakromax">
     <name>oxakromax</name>
@@ -20,35 +29,179 @@
       collection, playlists and mixes one click away, and follows your
       desktop’s light or dark style and accent colour.
     </p>
+    <p xml:lang="de">
+      Swell ist ein schneller, schlanker TIDAL-Client, entwickelt mit GTK und
+      libadwaita. Er spielt bis zu Hi-Res Lossless ab, bit-perfect, hält Ihre
+      Sammlung, Playlists und Mixe einen Klick entfernt und folgt dem hellen
+      oder dunklen Stil und der Akzentfarbe Ihres Desktops.
+    </p>
     <p xml:lang="es">
       Swell es un cliente de TIDAL rápido y ligero, hecho con GTK y
       libadwaita. Reproduce hasta Hi-Res Lossless sin alterar el audio, deja
       tu colección, playlists y mixes a un clic, y sigue el estilo claro u
       oscuro y el color de acento de tu escritorio.
     </p>
+    <p xml:lang="fr">
+      Swell est un client TIDAL rapide et léger, conçu avec GTK et libadwaita.
+      Il lit jusqu’au Hi-Res Lossless, en bit-perfect, garde votre collection,
+      vos playlists et vos mix à portée de clic, et suit le style clair ou
+      sombre et la couleur d’accentuation de votre bureau.
+    </p>
+    <p xml:lang="it">
+      Swell è un client TIDAL veloce e leggero, creato con GTK e libadwaita.
+      Riproduce fino a Hi-Res Lossless, bit-perfect, tiene la tua collezione,
+      le playlist e i mix a portata di clic e segue lo stile chiaro o scuro e
+      il colore d’accento del tuo desktop.
+    </p>
+    <p xml:lang="ja">
+      Swell は、GTK と libadwaita で作られた、高速で軽量な TIDAL クライアントです。Hi-Res Lossless
+      までビットパーフェクトで再生でき、コレクション、プレイリスト、ミックスにワンクリックでアクセスできます。デスクトップのライトスタイル／ダークスタイルとアクセントカラーにも従います。
+    </p>
+    <p xml:lang="ko">
+      Swell은 GTK와 libadwaita로 만든 빠르고 가벼운 TIDAL 클라이언트입니다. Hi-Res Lossless까지
+      비트퍼펙트로 재생하고, 컬렉션과 재생 목록, 믹스를 한 번의 클릭으로 열 수 있으며, 데스크톱의 밝은 스타일 또는 어두운 스타일과
+      강조 색상을 따릅니다.
+    </p>
+    <p xml:lang="pt_BR">
+      O Swell é um cliente do TIDAL rápido e leve, feito com GTK e libadwaita.
+      Ele reproduz até Hi-Res Lossless, em bit-perfect, mantém sua coleção,
+      playlists e mixes a um clique de distância e segue o estilo claro ou
+      escuro e a cor de destaque da sua área de trabalho.
+    </p>
+    <p xml:lang="ru">
+      Swell — быстрый и лёгкий клиент TIDAL, созданный с помощью GTK и
+      libadwaita. Он воспроизводит вплоть до Hi-Res Lossless без изменения
+      звука (bit-perfect), держит вашу коллекцию, плейлисты и миксы на
+      расстоянии одного щелчка и следует светлому или тёмному стилю и
+      акцентному цвету вашего рабочего стола.
+    </p>
+    <p xml:lang="zh_CN">
+      Swell 是一款使用 GTK 和 libadwaita 构建的快速、轻量的 TIDAL 客户端。它最高支持 Hi-Res Lossless 的
+      bit-perfect 播放，让你的收藏、播放列表和 Mix 触手可及，并跟随桌面的浅色或深色样式和强调色。
+    </p>
+    <p xml:lang="zh_TW">
+      Swell 是一款使用 GTK 與 libadwaita 建構的快速、輕量的 TIDAL 用戶端。它最高支援 Hi-Res Lossless 的
+      bit-perfect 播放，讓你的收藏、播放清單與 Mix 觸手可及，並跟隨桌面的淺色或深色樣式與強調色。
+    </p>
     <ul>
       <li>Home, Explore and search as you type, with album, artist, playlist and mix pages</li>
+      <li xml:lang="de">Startseite, Entdecken und Suche während der Eingabe, mit Seiten für Alben, Künstler, Playlists und Mixe</li>
       <li xml:lang="es">Inicio, Explorar y búsqueda mientras escribes, con páginas de álbumes, artistas, playlists y mixes</li>
+      <li xml:lang="fr">Accueil, Explorer et recherche au fil de la frappe, avec des pages d’album, d’artiste, de playlist et de mix</li>
+      <li xml:lang="it">Home, Esplora e ricerca mentre scrivi, con pagine di album, artisti, playlist e mix</li>
+      <li xml:lang="ja">ホーム、探索、入力しながらの検索に対応し、アルバム、アーティスト、プレイリスト、ミックスのページを備えています</li>
+      <li xml:lang="ko">홈, 둘러보기, 입력하는 즉시 표시되는 검색, 그리고 앨범, 아티스트, 재생 목록, 믹스 페이지</li>
+      <li xml:lang="pt_BR">Início, Explorar e pesquisa enquanto você digita, com páginas de álbuns, artistas, playlists e mixes</li>
+      <li xml:lang="ru">Главная, Обзор и поиск по мере ввода, со страницами альбомов, исполнителей, плейлистов и миксов</li>
+      <li xml:lang="zh_CN">主页、探索和边输入边搜索，提供专辑、艺人、播放列表和 Mix 页面</li>
+      <li xml:lang="zh_TW">首頁、探索與邊輸入邊搜尋，提供專輯、藝人、播放清單與 Mix 頁面</li>
       <li>Your favourite tracks, albums, artists, playlists and mixes, opened instantly from a local cache</li>
+      <li xml:lang="de">Ihre favorisierten Titel, Alben, Künstler, Playlists und Mixe, sofort aus einem lokalen Cache geöffnet</li>
       <li xml:lang="es">Tus canciones, álbumes, artistas, playlists y mixes favoritos, abiertos al instante desde una caché local</li>
+      <li xml:lang="fr">Vos titres, albums, artistes, playlists et mix favoris, ouverts instantanément depuis un cache local</li>
+      <li xml:lang="it">I tuoi brani, album, artisti, playlist e mix preferiti, aperti all’istante da una cache locale</li>
+      <li xml:lang="ja">お気に入りの曲、アルバム、アーティスト、プレイリスト、ミックスを、ローカルキャッシュからすぐに開けます</li>
+      <li xml:lang="ko">즐겨찾는 곡, 앨범, 아티스트, 재생 목록, 믹스를 로컬 캐시에서 즉시 열기</li>
+      <li xml:lang="pt_BR">Suas faixas, álbuns, artistas, playlists e mixes favoritos, abertos instantaneamente a partir de um cache local</li>
+      <li xml:lang="ru">Ваши избранные треки, альбомы, исполнители, плейлисты и миксы, мгновенно открывающиеся из локального кэша</li>
+      <li xml:lang="zh_CN">你喜欢的曲目、专辑、艺人、播放列表和 Mix，从本地缓存即时打开</li>
+      <li xml:lang="zh_TW">你最愛的曲目、專輯、藝人、播放清單與 Mix，從本機快取立即開啟</li>
       <li>Create and edit playlists, with drag and drop and undo</li>
+      <li xml:lang="de">Playlists erstellen und bearbeiten, mit Drag &amp; Drop und Rückgängig</li>
       <li xml:lang="es">Crea y edita playlists, con arrastrar y soltar y deshacer</li>
+      <li xml:lang="fr">Créez et modifiez des playlists, avec glisser-déposer et annulation</li>
+      <li xml:lang="it">Crea e modifica playlist, con trascinamento e annullamento</li>
+      <li xml:lang="ja">ドラッグ＆ドロップと元に戻す操作に対応した、プレイリストの作成と編集</li>
+      <li xml:lang="ko">끌어서 놓기와 실행 취소를 지원하는 재생 목록 만들기 및 편집</li>
+      <li xml:lang="pt_BR">Crie e edite playlists, com arrastar e soltar e desfazer</li>
+      <li xml:lang="ru">Создание и редактирование плейлистов с перетаскиванием и отменой действий</li>
+      <li xml:lang="zh_CN">创建和编辑播放列表，支持拖放和撤销</li>
+      <li xml:lang="zh_TW">建立與編輯播放清單，支援拖放與復原</li>
       <li>FLAC up to 24-bit/192 kHz, gapless playback and optional ReplayGain normalisation</li>
+      <li xml:lang="de">FLAC bis 24 Bit/192 kHz, lückenlose Wiedergabe und optionale ReplayGain-Normalisierung</li>
       <li xml:lang="es">FLAC hasta 24 bits/192 kHz, reproducción sin pausas y normalización ReplayGain opcional</li>
+      <li xml:lang="fr">FLAC jusqu’à 24 bits/192 kHz, lecture sans coupure et normalisation ReplayGain facultative</li>
+      <li xml:lang="it">FLAC fino a 24 bit/192 kHz, riproduzione senza interruzioni e normalizzazione ReplayGain facoltativa</li>
+      <li xml:lang="ja">最大 24 ビット/192 kHz の FLAC、ギャップレス再生、オプションの ReplayGain 正規化</li>
+      <li xml:lang="ko">최대 24비트/192 kHz의 FLAC, 끊김 없는 재생, 선택 사항인 ReplayGain 정규화</li>
+      <li xml:lang="pt_BR">FLAC de até 24 bits/192 kHz, reprodução sem pausas e normalização ReplayGain opcional</li>
+      <li xml:lang="ru">FLAC до 24 бит/192 кГц, воспроизведение без пауз и необязательная нормализация ReplayGain</li>
+      <li xml:lang="zh_CN">FLAC 最高 24 位/192 kHz，无缝播放，可选的 ReplayGain 标准化</li>
+      <li xml:lang="zh_TW">FLAC 最高 24 位元/192 kHz，無縫播放，可選的 ReplayGain 正規化</li>
       <li>A real queue, shuffle and repeat, synced lyrics and a sleep timer</li>
+      <li xml:lang="de">Eine echte Warteschlange, Zufallswiedergabe und Wiederholen, synchronisierte Songtexte und ein Schlaf-Timer</li>
       <li xml:lang="es">Una cola de verdad, aleatorio y repetición, letras sincronizadas y temporizador</li>
+      <li xml:lang="fr">Une vraie file d’attente, lecture aléatoire et répétition, paroles synchronisées et minuteur d’arrêt</li>
+      <li xml:lang="it">Una vera coda, riproduzione casuale e ripetizione, testi sincronizzati e timer di spegnimento</li>
+      <li xml:lang="ja">本格的なキュー、シャッフルとリピート、同期歌詞、スリープタイマー</li>
+      <li xml:lang="ko">제대로 된 대기열, 셔플과 반복, 동기화 가사, 수면 타이머</li>
+      <li xml:lang="pt_BR">Uma fila de verdade, aleatório e repetição, letras sincronizadas e temporizador de sono</li>
+      <li xml:lang="ru">Полноценная очередь, перемешивание и повтор, синхронизированные тексты песен и таймер сна</li>
+      <li xml:lang="zh_CN">真正的队列、随机播放和循环播放、同步歌词以及睡眠定时器</li>
+      <li xml:lang="zh_TW">真正的佇列、隨機播放與重複播放、同步歌詞，以及睡眠計時器</li>
       <li>Media keys and desktop widgets through MPRIS</li>
+      <li xml:lang="de">Medientasten und Desktop-Widgets über MPRIS</li>
       <li xml:lang="es">Teclas multimedia y widgets del escritorio mediante MPRIS</li>
+      <li xml:lang="fr">Touches multimédias et widgets de bureau via MPRIS</li>
+      <li xml:lang="it">Tasti multimediali e widget del desktop tramite MPRIS</li>
+      <li xml:lang="ja">MPRIS によるメディアキーとデスクトップウィジェットのサポート</li>
+      <li xml:lang="ko">MPRIS를 통한 미디어 키와 데스크톱 위젯 지원</li>
+      <li xml:lang="pt_BR">Teclas de mídia e widgets da área de trabalho via MPRIS</li>
+      <li xml:lang="ru">Медиаклавиши и виджеты рабочего стола через MPRIS</li>
+      <li xml:lang="zh_CN">通过 MPRIS 支持媒体键和桌面小部件</li>
+      <li xml:lang="zh_TW">透過 MPRIS 支援媒體鍵與桌面小工具</li>
       <li>Adaptive layout, from phone-sized windows to wide screens, with full keyboard control</li>
+      <li xml:lang="de">Adaptives Layout, von Fenstern in Smartphone-Größe bis zu breiten Bildschirmen, mit vollständiger Tastaturbedienung</li>
       <li xml:lang="es">Diseño adaptable, de ventanas del tamaño de un teléfono a pantallas anchas, con control total por teclado</li>
+      <li xml:lang="fr">Disposition adaptative, des fenêtres de la taille d’un téléphone aux grands écrans, avec contrôle complet au clavier</li>
+      <li xml:lang="it">Layout adattivo, dalle finestre grandi come un telefono agli schermi ampi, con pieno controllo da tastiera</li>
+      <li xml:lang="ja">スマートフォンサイズの小さなウィンドウからワイド画面まで対応するアダプティブレイアウトと、キーボードだけで完全に操作できる設計</li>
+      <li xml:lang="ko">휴대전화 크기의 창부터 와이드 화면까지 대응하는 적응형 레이아웃과 완전한 키보드 조작</li>
+      <li xml:lang="pt_BR">Layout adaptável, de janelas do tamanho de um celular a telas largas, com controle total pelo teclado</li>
+      <li xml:lang="ru">Адаптивная компоновка, от окон размером с телефон до широких экранов, с полным управлением с клавиатуры</li>
+      <li xml:lang="zh_CN">自适应布局，从手机大小的窗口到宽屏皆可适用，并支持完整的键盘操作</li>
+      <li xml:lang="zh_TW">自動調整的版面，從手機大小的視窗到寬螢幕皆可適用，並支援完整的鍵盤操作</li>
     </ul>
     <p>
       Swell is not affiliated with, endorsed by or supported by TIDAL. A paid
       TIDAL subscription is needed.
     </p>
+    <p xml:lang="de">
+      Swell steht in keiner Verbindung zu TIDAL und wird weder von TIDAL
+      unterstützt noch empfohlen. Ein kostenpflichtiges TIDAL-Abonnement ist
+      erforderlich.
+    </p>
     <p xml:lang="es">
       Swell no está afiliado a TIDAL ni cuenta con su respaldo. Necesitas una
       suscripción de pago a TIDAL.
+    </p>
+    <p xml:lang="fr">
+      Swell n’est ni affilié à TIDAL, ni approuvé ou pris en charge par TIDAL.
+      Un abonnement TIDAL payant est nécessaire.
+    </p>
+    <p xml:lang="it">
+      Swell non è affiliato a TIDAL, né approvato o supportato da TIDAL. È
+      necessario un abbonamento a TIDAL a pagamento.
+    </p>
+    <p xml:lang="ja">
+      Swell は TIDAL と提携しておらず、TIDAL による承認やサポートも受けていません。TIDAL の有料サブスクリプションが必要です。
+    </p>
+    <p xml:lang="ko">
+      Swell은 TIDAL과 제휴 관계가 없으며 TIDAL의 승인이나 지원을 받지 않았습니다. TIDAL 유료 구독이 필요합니다.
+    </p>
+    <p xml:lang="pt_BR">
+      O Swell não é afiliado, endossado nem suportado pelo TIDAL. É necessária
+      uma assinatura paga do TIDAL.
+    </p>
+    <p xml:lang="ru">
+      Swell не связан с TIDAL и не одобрен и не поддерживается TIDAL.
+      Требуется платная подписка TIDAL.
+    </p>
+    <p xml:lang="zh_CN">
+      Swell 与 TIDAL 没有任何关联，也未获得 TIDAL 的认可或支持。需要付费的 TIDAL 订阅。
+    </p>
+    <p xml:lang="zh_TW">
+      Swell 與 TIDAL 沒有任何關係，也未獲得 TIDAL 的認可或支援。需要付費的 TIDAL 訂閱。
     </p>
   </description>
 
@@ -66,22 +219,58 @@
     <screenshot type="default">
       <image>https://raw.githubusercontent.com/oxakromax/swell-player/v1.0.0/docs/screenshots/home.png</image>
       <caption>Home, your personalised TIDAL feed</caption>
+      <caption xml:lang="de">Startseite, Ihr personalisierter TIDAL-Feed</caption>
       <caption xml:lang="es">Inicio, tu portada personalizada de TIDAL</caption>
+      <caption xml:lang="fr">Accueil, votre fil TIDAL personnalisé</caption>
+      <caption xml:lang="it">Home, il tuo feed TIDAL personalizzato</caption>
+      <caption xml:lang="ja">ホーム：パーソナライズされた TIDAL フィード</caption>
+      <caption xml:lang="ko">홈, 맞춤형 TIDAL 피드</caption>
+      <caption xml:lang="pt_BR">Início, seu feed personalizado do TIDAL</caption>
+      <caption xml:lang="ru">Главная — ваша персональная лента TIDAL</caption>
+      <caption xml:lang="zh_CN">主页，你的个性化 TIDAL 信息流</caption>
+      <caption xml:lang="zh_TW">首頁，你的個人化 TIDAL 動態</caption>
     </screenshot>
     <screenshot>
       <image>https://raw.githubusercontent.com/oxakromax/swell-player/v1.0.0/docs/screenshots/album.png</image>
       <caption>An album page</caption>
+      <caption xml:lang="de">Eine Albumseite</caption>
       <caption xml:lang="es">La página de un álbum</caption>
+      <caption xml:lang="fr">La page d’un album</caption>
+      <caption xml:lang="it">La pagina di un album</caption>
+      <caption xml:lang="ja">アルバムのページ</caption>
+      <caption xml:lang="ko">앨범 페이지</caption>
+      <caption xml:lang="pt_BR">A página de um álbum</caption>
+      <caption xml:lang="ru">Страница альбома</caption>
+      <caption xml:lang="zh_CN">专辑页面</caption>
+      <caption xml:lang="zh_TW">專輯頁面</caption>
     </screenshot>
     <screenshot>
       <image>https://raw.githubusercontent.com/oxakromax/swell-player/v1.0.0/docs/screenshots/now-playing.png</image>
       <caption>Now playing, with the queue</caption>
+      <caption xml:lang="de">Aktuelle Wiedergabe, mit der Warteschlange</caption>
       <caption xml:lang="es">En reproducción, con la cola</caption>
+      <caption xml:lang="fr">En cours de lecture, avec la file d’attente</caption>
+      <caption xml:lang="it">In riproduzione, con la coda</caption>
+      <caption xml:lang="ja">再生中の画面とキュー</caption>
+      <caption xml:lang="ko">대기열과 함께 보는 지금 재생 중 화면</caption>
+      <caption xml:lang="pt_BR">Tocando agora, com a fila</caption>
+      <caption xml:lang="ru">Сейчас играет, с очередью</caption>
+      <caption xml:lang="zh_CN">正在播放，附带队列</caption>
+      <caption xml:lang="zh_TW">正在播放，附帶佇列</caption>
     </screenshot>
     <screenshot>
       <image>https://raw.githubusercontent.com/oxakromax/swell-player/v1.0.0/docs/screenshots/narrow.png</image>
       <caption>The narrow layout, for small windows and phones</caption>
+      <caption xml:lang="de">Das schmale Layout für kleine Fenster und Smartphones</caption>
       <caption xml:lang="es">El diseño estrecho, para ventanas pequeñas y teléfonos</caption>
+      <caption xml:lang="fr">La disposition étroite, pour les petites fenêtres et les téléphones</caption>
+      <caption xml:lang="it">Il layout stretto, per finestre piccole e telefoni</caption>
+      <caption xml:lang="ja">小さなウィンドウやスマートフォン向けの、幅の狭いレイアウト</caption>
+      <caption xml:lang="ko">작은 창과 휴대전화를 위한 좁은 레이아웃</caption>
+      <caption xml:lang="pt_BR">O layout estreito, para janelas pequenas e celulares</caption>
+      <caption xml:lang="ru">Узкая компоновка для небольших окон и телефонов</caption>
+      <caption xml:lang="zh_CN">窄屏布局，适用于小窗口和手机</caption>
+      <caption xml:lang="zh_TW">窄螢幕版面，適用於小視窗與手機</caption>
     </screenshot>
   </screenshots>
 
@@ -113,9 +302,60 @@
     <keyword>streaming</keyword>
     <keyword>lossless</keyword>
     <keyword>hi-res</keyword>
+    <keyword xml:lang="de">Musik</keyword>
+    <keyword xml:lang="de">verlustfrei</keyword>
+    <keyword xml:lang="de">Musikplayer</keyword>
+    <keyword xml:lang="de">Wiedergabe</keyword>
     <keyword xml:lang="es">música</keyword>
     <keyword xml:lang="es">sin pérdida</keyword>
     <keyword xml:lang="es">reproductor</keyword>
+    <keyword xml:lang="fr">musique</keyword>
+    <keyword xml:lang="fr">sans perte</keyword>
+    <keyword xml:lang="fr">lecteur</keyword>
+    <keyword xml:lang="fr">lecteur audio</keyword>
+    <keyword xml:lang="it">musica</keyword>
+    <keyword xml:lang="it">senza perdita</keyword>
+    <keyword xml:lang="it">lettore</keyword>
+    <keyword xml:lang="it">lettore audio</keyword>
+    <keyword xml:lang="ja">音楽</keyword>
+    <keyword xml:lang="ja">ミュージック</keyword>
+    <keyword xml:lang="ja">ストリーミング</keyword>
+    <keyword xml:lang="ja">ハイレゾ</keyword>
+    <keyword xml:lang="ja">ロスレス</keyword>
+    <keyword xml:lang="ja">プレーヤー</keyword>
+    <keyword xml:lang="ja">プレイヤー</keyword>
+    <keyword xml:lang="ja">オーディオ</keyword>
+    <keyword xml:lang="ja">音声</keyword>
+    <keyword xml:lang="ko">음악</keyword>
+    <keyword xml:lang="ko">뮤직</keyword>
+    <keyword xml:lang="ko">스트리밍</keyword>
+    <keyword xml:lang="ko">하이레스</keyword>
+    <keyword xml:lang="ko">무손실</keyword>
+    <keyword xml:lang="ko">플레이어</keyword>
+    <keyword xml:lang="ko">오디오</keyword>
+    <keyword xml:lang="pt_BR">música</keyword>
+    <keyword xml:lang="pt_BR">sem perdas</keyword>
+    <keyword xml:lang="pt_BR">reprodutor</keyword>
+    <keyword xml:lang="pt_BR">áudio</keyword>
+    <keyword xml:lang="ru">музыка</keyword>
+    <keyword xml:lang="ru">стриминг</keyword>
+    <keyword xml:lang="ru">без потерь</keyword>
+    <keyword xml:lang="ru">плеер</keyword>
+    <keyword xml:lang="ru">проигрыватель</keyword>
+    <keyword xml:lang="ru">аудио</keyword>
+    <keyword xml:lang="zh_CN">音乐</keyword>
+    <keyword xml:lang="zh_CN">流媒体</keyword>
+    <keyword xml:lang="zh_CN">无损</keyword>
+    <keyword xml:lang="zh_CN">播放器</keyword>
+    <keyword xml:lang="zh_CN">音频</keyword>
+    <keyword xml:lang="zh_CN">歌曲</keyword>
+    <keyword xml:lang="zh_CN">yinyue</keyword>
+    <keyword xml:lang="zh_TW">音樂</keyword>
+    <keyword xml:lang="zh_TW">串流</keyword>
+    <keyword xml:lang="zh_TW">無損</keyword>
+    <keyword xml:lang="zh_TW">播放器</keyword>
+    <keyword xml:lang="zh_TW">音訊</keyword>
+    <keyword xml:lang="zh_TW">歌曲</keyword>
   </keywords>
 
   <releases>
@@ -123,16 +363,61 @@
       <url type="details">https://github.com/oxakromax/swell-player/releases/tag/v1.0.0</url>
       <description>
         <p>First release.</p>
+        <p xml:lang="de">Erste Version.</p>
         <p xml:lang="es">Primera versión.</p>
+        <p xml:lang="fr">Première version.</p>
+        <p xml:lang="it">Prima versione.</p>
+        <p xml:lang="ja">初回リリース。</p>
+        <p xml:lang="ko">첫 번째 릴리스.</p>
+        <p xml:lang="pt_BR">Primeira versão.</p>
+        <p xml:lang="ru">Первый выпуск.</p>
+        <p xml:lang="zh_CN">首个版本。</p>
+        <p xml:lang="zh_TW">首個版本。</p>
         <ul>
           <li>Hi-Res Lossless playback, bit-perfect to PipeWire, with gapless playback and ReplayGain</li>
+          <li xml:lang="de">Hi-Res-Lossless-Wiedergabe, bit-perfect bis PipeWire, mit lückenloser Wiedergabe und ReplayGain</li>
           <li xml:lang="es">Reproducción Hi-Res Lossless sin alterar el audio hasta PipeWire, sin pausas y con ReplayGain</li>
+          <li xml:lang="fr">Lecture Hi-Res Lossless, bit-perfect jusqu’à PipeWire, sans coupure et avec ReplayGain</li>
+          <li xml:lang="it">Riproduzione Hi-Res Lossless, bit-perfect fino a PipeWire, senza interruzioni e con ReplayGain</li>
+          <li xml:lang="ja">Hi-Res Lossless の再生。PipeWire までビットパーフェクトで、ギャップレス再生と ReplayGain に対応</li>
+          <li xml:lang="ko">Hi-Res Lossless 재생, PipeWire까지 비트퍼펙트, 끊김 없는 재생 및 ReplayGain 지원</li>
+          <li xml:lang="pt_BR">Reprodução Hi-Res Lossless, bit-perfect até o PipeWire, sem pausas e com ReplayGain</li>
+          <li xml:lang="ru">Воспроизведение Hi-Res Lossless без изменения звука вплоть до PipeWire, без пауз и с ReplayGain</li>
+          <li xml:lang="zh_CN">Hi-Res Lossless 播放，bit-perfect 直达 PipeWire，支持无缝播放和 ReplayGain</li>
+          <li xml:lang="zh_TW">Hi-Res Lossless 播放，bit-perfect 直達 PipeWire，支援無縫播放與 ReplayGain</li>
           <li>Home, Explore, search, and album, artist, playlist and mix pages</li>
+          <li xml:lang="de">Startseite, Entdecken, Suche sowie Seiten für Alben, Künstler, Playlists und Mixe</li>
           <li xml:lang="es">Inicio, Explorar, búsqueda y páginas de álbumes, artistas, playlists y mixes</li>
+          <li xml:lang="fr">Accueil, Explorer, recherche, et pages d’album, d’artiste, de playlist et de mix</li>
+          <li xml:lang="it">Home, Esplora, ricerca e pagine di album, artisti, playlist e mix</li>
+          <li xml:lang="ja">ホーム、探索、検索、アルバム・アーティスト・プレイリスト・ミックスのページ</li>
+          <li xml:lang="ko">홈, 둘러보기, 검색, 앨범·아티스트·재생 목록·믹스 페이지</li>
+          <li xml:lang="pt_BR">Início, Explorar, pesquisa e páginas de álbum, artista, playlist e mix</li>
+          <li xml:lang="ru">Главная, Обзор, поиск, а также страницы альбомов, исполнителей, плейлистов и миксов</li>
+          <li xml:lang="zh_CN">主页、探索、搜索，以及专辑、艺人、播放列表和 Mix 页面</li>
+          <li xml:lang="zh_TW">首頁、探索、搜尋，以及專輯、藝人、播放清單與 Mix 頁面</li>
           <li>Your collection from a local cache, playlist editing, queue, lyrics and MPRIS</li>
+          <li xml:lang="de">Ihre Sammlung aus einem lokalen Cache, Playlist-Bearbeitung, Warteschlange, Songtexte und MPRIS</li>
           <li xml:lang="es">Tu colección desde una caché local, edición de playlists, cola, letras y MPRIS</li>
+          <li xml:lang="fr">Votre collection depuis un cache local, modification des playlists, file d’attente, paroles et MPRIS</li>
+          <li xml:lang="it">La tua collezione da una cache locale, modifica delle playlist, coda, testi e MPRIS</li>
+          <li xml:lang="ja">ローカルキャッシュからのコレクション、プレイリストの編集、キュー、歌詞、MPRIS</li>
+          <li xml:lang="ko">로컬 캐시에서 불러오는 컬렉션, 재생 목록 편집, 대기열, 가사, MPRIS</li>
+          <li xml:lang="pt_BR">Sua coleção a partir de um cache local, edição de playlists, fila, letras e MPRIS</li>
+          <li xml:lang="ru">Ваша коллекция из локального кэша, редактирование плейлистов, очередь, тексты песен и MPRIS</li>
+          <li xml:lang="zh_CN">来自本地缓存的收藏、播放列表编辑、队列、歌词和 MPRIS</li>
+          <li xml:lang="zh_TW">來自本機快取的收藏、播放清單編輯、佇列、歌詞與 MPRIS</li>
           <li>English and Spanish</li>
+          <li xml:lang="de">Englisch und Spanisch</li>
           <li xml:lang="es">Inglés y español</li>
+          <li xml:lang="fr">Anglais et espagnol</li>
+          <li xml:lang="it">Inglese e spagnolo</li>
+          <li xml:lang="ja">英語とスペイン語</li>
+          <li xml:lang="ko">영어와 스페인어</li>
+          <li xml:lang="pt_BR">Inglês e espanhol</li>
+          <li xml:lang="ru">Английский и испанский</li>
+          <li xml:lang="zh_CN">英语和西班牙语</li>
+          <li xml:lang="zh_TW">英文與西班牙文</li>
         </ul>
       </description>
     </release>

@@ -25,7 +25,7 @@ msgstr "Formato desconhecido"
 #: src/playback/mod.rs:1439
 msgid "Skipped a track that is not available"
 msgid_plural "Skipped {n} tracks that are not available"
-msgstr[0] "Uma faixa indisponível foi ignorada"
+msgstr[0] "{n} faixa indisponível foi ignorada"
 msgstr[1] "{n} faixas indisponíveis foram ignoradas"
 
 #: src/playback/mod.rs:1469
@@ -42,9 +42,7 @@ msgstr "Conexão perdida — tentando novamente"
 
 #: src/playback/mod.rs:1659
 msgid "Could not play “{title}”. Playback stopped after {n} tracks failed"
-msgstr ""
-"Não foi possível reproduzir “{title}”. A reprodução parou após a falha de "
-"{n} faixas"
+msgstr "Não foi possível reproduzir “{title}”. A reprodução parou após a falha de {n} faixas"
 
 #: src/playback/mod.rs:1665
 msgid "Could not play “{title}”, skipped"
@@ -71,25 +69,16 @@ msgid "Couldn't open the system's credential store."
 msgstr "Não foi possível abrir o armazenamento de credenciais do sistema."
 
 #: src/session.rs:75
-msgid ""
-"Couldn't open the keyring. Make sure a keyring service (GNOME Keyring, "
-"KWallet) is running."
-msgstr ""
-"Não foi possível abrir o chaveiro. Verifique se um serviço de chaveiro "
-"(GNOME Keyring, KWallet) está em execução."
+msgid "Couldn't open the keyring. Make sure a keyring service (GNOME Keyring, KWallet) is running."
+msgstr "Não foi possível abrir o chaveiro. Verifique se um serviço de chaveiro (GNOME Keyring, KWallet) está em execução."
 
 #: src/session.rs:84
 msgid "Couldn't save the session in the system's credential store."
-msgstr ""
-"Não foi possível salvar a sessão no armazenamento de credenciais do sistema."
+msgstr "Não foi possível salvar a sessão no armazenamento de credenciais do sistema."
 
 #: src/session.rs:86
-msgid ""
-"Couldn't save the session in the keyring. Make sure a keyring service (GNOME "
-"Keyring, KWallet) is running."
-msgstr ""
-"Não foi possível salvar a sessão no chaveiro. Verifique se um serviço de "
-"chaveiro (GNOME Keyring, KWallet) está em execução."
+msgid "Couldn't save the session in the keyring. Make sure a keyring service (GNOME Keyring, KWallet) is running."
+msgstr "Não foi possível salvar a sessão no chaveiro. Verifique se um serviço de chaveiro (GNOME Keyring, KWallet) está em execução."
 
 #: src/ui/context.rs:105
 msgid "You’re offline — showing saved data"
@@ -260,10 +249,8 @@ msgid "Delete “{title}”?"
 msgstr "Excluir “{title}”?"
 
 #: src/ui/dialogs/playlist.rs:509
-msgid ""
-"The playlist will be deleted from your TIDAL account. This can't be undone."
-msgstr ""
-"A playlist será excluída da sua conta do TIDAL. Isso não pode ser desfeito."
+msgid "The playlist will be deleted from your TIDAL account. This can't be undone."
+msgstr "A playlist será excluída da sua conta do TIDAL. Isso não pode ser desfeito."
 
 #: src/ui/dialogs/playlist.rs:515
 msgid "Delete"
@@ -382,141 +369,135 @@ msgstr "Restaurar a fila ao iniciar"
 msgid "General"
 msgstr "Geral"
 
-#: src/ui/dialogs/preferences.rs:231
-msgid "Language"
-msgstr "Idioma"
-
-#: src/ui/dialogs/preferences.rs:232
+#: src/ui/dialogs/preferences.rs:230
 msgid "Automatic"
 msgstr "Automático"
 
-#: src/ui/dialogs/preferences.rs:253
+#: src/ui/dialogs/preferences.rs:235
+msgid "Language"
+msgstr "Idioma"
+
+#: src/ui/dialogs/preferences.rs:257
 msgid "Restart Swell to change the language"
 msgstr "Reinicie o Swell para mudar o idioma"
 
-#: src/ui/dialogs/preferences.rs:254
+#: src/ui/dialogs/preferences.rs:258
 msgid "Restart"
 msgstr "Reiniciar"
 
-#: src/ui/dialogs/preferences.rs:279
+#: src/ui/dialogs/preferences.rs:283
 msgid "Storage"
 msgstr "Armazenamento"
 
-#: src/ui/dialogs/preferences.rs:280
-msgid ""
-"Downloaded artwork and saved answers from TIDAL, so pages open instantly and "
-"work offline."
-msgstr ""
-"Capas baixadas e respostas do TIDAL salvas, para que as páginas abram "
-"instantaneamente e funcionem offline."
+#: src/ui/dialogs/preferences.rs:284
+msgid "Downloaded artwork and saved answers from TIDAL, so pages open instantly and work offline."
+msgstr "Capas baixadas e respostas do TIDAL salvas, para que as páginas abram instantaneamente e funcionem offline."
 
-#: src/ui/dialogs/preferences.rs:285
+#: src/ui/dialogs/preferences.rs:289
 msgid "Cover Cache"
 msgstr "Cache de capas"
 
-#: src/ui/dialogs/preferences.rs:286
+#: src/ui/dialogs/preferences.rs:290
 msgid "Clear the Cover Cache?"
 msgstr "Limpar o cache de capas?"
 
-#: src/ui/dialogs/preferences.rs:287
+#: src/ui/dialogs/preferences.rs:291
 msgid "Artwork is downloaded again as you browse."
 msgstr "As capas são baixadas novamente conforme você navega."
 
-#: src/ui/dialogs/preferences.rs:288
+#: src/ui/dialogs/preferences.rs:292
 msgid "Cover Cache cleared"
 msgstr "Cache de capas limpo"
 
-#: src/ui/dialogs/preferences.rs:289
+#: src/ui/dialogs/preferences.rs:293
 msgid "Couldn’t clear the Cover Cache"
 msgstr "Não foi possível limpar o cache de capas"
 
-#: src/ui/dialogs/preferences.rs:310
+#: src/ui/dialogs/preferences.rs:314
 msgid "Library Cache"
 msgstr "Cache da biblioteca"
 
-#: src/ui/dialogs/preferences.rs:311
+#: src/ui/dialogs/preferences.rs:315
 msgid "Clear the Library Cache?"
 msgstr "Limpar o cache da biblioteca?"
 
-#: src/ui/dialogs/preferences.rs:312
+#: src/ui/dialogs/preferences.rs:316
 msgid "Pages are loaded again from TIDAL. Your collection is not affected."
-msgstr ""
-"As páginas são carregadas novamente do TIDAL. Sua coleção não é afetada."
+msgstr "As páginas são carregadas novamente do TIDAL. Sua coleção não é afetada."
 
-#: src/ui/dialogs/preferences.rs:313
+#: src/ui/dialogs/preferences.rs:317
 msgid "Library Cache cleared"
 msgstr "Cache da biblioteca limpo"
 
-#: src/ui/dialogs/preferences.rs:314
+#: src/ui/dialogs/preferences.rs:318
 msgid "Couldn’t clear the Library Cache"
 msgstr "Não foi possível limpar o cache da biblioteca"
 
-#: src/ui/dialogs/preferences.rs:368
+#: src/ui/dialogs/preferences.rs:372
 msgid "Calculating…"
 msgstr "Calculando…"
 
-#: src/ui/dialogs/preferences.rs:371 src/ui/dialogs/preferences.rs:417
+#: src/ui/dialogs/preferences.rs:375 src/ui/dialogs/preferences.rs:421
 msgid "_Clear"
 msgstr "_Limpar"
 
-#: src/ui/dialogs/preferences.rs:417 src/ui/window.rs:413
+#: src/ui/dialogs/preferences.rs:421 src/ui/window.rs:413
 msgid "_Cancel"
 msgstr "_Cancelar"
 
-#: src/ui/dialogs/preferences.rs:472
+#: src/ui/dialogs/preferences.rs:476
 msgid "Blocked Artists"
 msgstr "Artistas bloqueados"
 
-#: src/ui/dialogs/preferences.rs:473
+#: src/ui/dialogs/preferences.rs:477
 msgid "Loading…"
 msgstr "Carregando…"
 
-#: src/ui/dialogs/preferences.rs:489
+#: src/ui/dialogs/preferences.rs:493
 msgid "Couldn’t load blocked artists."
 msgstr "Não foi possível carregar os artistas bloqueados."
 
-#: src/ui/dialogs/preferences.rs:494
+#: src/ui/dialogs/preferences.rs:498
 msgid "Nothing blocked. Blocked artists are skipped in radios and mixes."
-msgstr ""
-"Nada bloqueado. Os artistas bloqueados são ignorados em rádios e mixes."
+msgstr "Nada bloqueado. Os artistas bloqueados são ignorados em rádios e mixes."
 
-#: src/ui/dialogs/preferences.rs:496
+#: src/ui/dialogs/preferences.rs:500
 msgid "Skipped in radios and mixes."
 msgstr "Ignorado em rádios e mixes."
 
-#: src/ui/dialogs/preferences.rs:505
+#: src/ui/dialogs/preferences.rs:509
 msgid "Unblock"
 msgstr "Desbloquear"
 
-#: src/ui/dialogs/preferences.rs:538 src/ui/menus.rs:870
+#: src/ui/dialogs/preferences.rs:542 src/ui/menus.rs:870
 msgid "Unblocked {name}"
 msgstr "{name} desbloqueado"
 
-#: src/ui/dialogs/preferences.rs:548
+#: src/ui/dialogs/preferences.rs:552
 msgid "Couldn’t unblock the artist"
 msgstr "Não foi possível desbloquear o artista"
 
-#: src/ui/dialogs/preferences.rs:563
+#: src/ui/dialogs/preferences.rs:567
 msgid "Signed in with the browser"
 msgstr "Conectado pelo navegador"
 
-#: src/ui/dialogs/preferences.rs:564
+#: src/ui/dialogs/preferences.rs:568
 msgid "Up to Hi-Res Lossless"
 msgstr "Até Hi-Res Lossless"
 
-#: src/ui/dialogs/preferences.rs:567
+#: src/ui/dialogs/preferences.rs:571
 msgid "Signed in with a device code"
 msgstr "Conectado com um código de dispositivo"
 
-#: src/ui/dialogs/preferences.rs:568
+#: src/ui/dialogs/preferences.rs:572
 msgid "Up to Lossless (16-bit/44.1 kHz)"
 msgstr "Até Lossless (16 bits/44,1 kHz)"
 
-#: src/ui/dialogs/preferences.rs:596
+#: src/ui/dialogs/preferences.rs:600
 msgid "Sign _Out…"
 msgstr "_Desconectar…"
 
-#: src/ui/dialogs/preferences.rs:617
+#: src/ui/dialogs/preferences.rs:621
 msgid "Account"
 msgstr "Conta"
 
@@ -687,8 +668,7 @@ msgid ""
 "Couldn't open the browser ({error}). Open this address yourself:\n"
 "{url}"
 msgstr ""
-"Não foi possível abrir o navegador ({error}). Abra este endereço você "
-"mesmo:\n"
+"Não foi possível abrir o navegador ({error}). Abra este endereço você mesmo:\n"
 "{url}"
 
 #: src/ui/login.rs:258
@@ -1095,8 +1075,7 @@ msgstr "Nenhuma playlist"
 
 #: src/ui/pages/collection_grid.rs:322
 msgid "Create a playlist, or use the heart on someone else's to save it here."
-msgstr ""
-"Crie uma playlist ou use o coração na de outra pessoa para salvá-la aqui."
+msgstr "Crie uma playlist ou use o coração na de outra pessoa para salvá-la aqui."
 
 #: src/ui/pages/collection_grid.rs:328
 msgid "No Saved Mixes"
@@ -1291,9 +1270,7 @@ msgstr "Sem rádio para esta faixa"
 
 #: src/ui/pages/mix.rs:246
 msgid "TIDAL has no radio for this track yet. Try the artist's radio instead."
-msgstr ""
-"O TIDAL ainda não tem uma rádio para esta faixa. Experimente a rádio do "
-"artista."
+msgstr "O TIDAL ainda não tem uma rádio para esta faixa. Experimente a rádio do artista."
 
 #: src/ui/pages/mix.rs:264
 msgid "Couldn't load the mix"
@@ -2145,12 +2122,8 @@ msgid "Sign Out?"
 msgstr "Desconectar?"
 
 #: src/ui/window.rs:409
-msgid ""
-"You will need to sign in again to listen. Your library cached on this "
-"computer is deleted."
-msgstr ""
-"Você precisará entrar novamente para ouvir. A biblioteca em cache neste "
-"computador será excluída."
+msgid "You will need to sign in again to listen. Your library cached on this computer is deleted."
+msgstr "Você precisará entrar novamente para ouvir. A biblioteca em cache neste computador será excluída."
 
 #: src/ui/window.rs:413
 msgid "_Sign Out"

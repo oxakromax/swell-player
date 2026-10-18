@@ -19,8 +19,5 @@
   "The narrow layout, for small windows and phones": "窄屏布局，适用于小窗口和手机",
   "Your collection from a local cache, playlist editing, queue, lyrics and MPRIS": "来自本地缓存的收藏、播放列表编辑、队列、歌词和 MPRIS",
   "Your favourite tracks, albums, artists, playlists and mixes, opened instantly from a local cache": "你喜欢的曲目、专辑、艺人、播放列表和 Mix，从本地缓存即时打开",
-  "lossless": "无损",
-  "music": "音乐",
-  "music;tidal;streaming;hi-res;lossless;flac;player;audio;": "音乐;tidal;流媒体;hi-res;无损;flac;播放器;音频;歌曲;yinyue;",
-  "streaming": "流媒体"
+  "music;tidal;streaming;hi-res;lossless;flac;player;audio;": "音乐;tidal;流媒体;hi-res;无损;flac;播放器;音频;歌曲;yinyue;"
 }

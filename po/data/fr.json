@@ -19,7 +19,5 @@
   "The narrow layout, for small windows and phones": "La disposition étroite, pour les petites fenêtres et les téléphones",
   "Your collection from a local cache, playlist editing, queue, lyrics and MPRIS": "Votre collection depuis un cache local, modification des playlists, file d’attente, paroles et MPRIS",
   "Your favourite tracks, albums, artists, playlists and mixes, opened instantly from a local cache": "Vos titres, albums, artistes, playlists et mix favoris, ouverts instantanément depuis un cache local",
-  "lossless": "sans perte",
-  "music": "musique",
   "music;tidal;streaming;hi-res;lossless;flac;player;audio;": "musique;tidal;streaming;hi-res;lossless;sans perte;flac;lecteur;lecteur audio;audio;"
 }
