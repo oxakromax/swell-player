@@ -243,7 +243,7 @@ log "loaders.cache"
 # gdk-pixbuf in MSYS2 is built relocatable: module paths relative to the
 # bundle root (the parent of bin/) are resolved at run time.
 cache=$out/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache
-out_win=$(cygpath -m "$out")
+out_win=$(cygpath -am "$out")
 gdk-pixbuf-query-loaders "$out"/lib/gdk-pixbuf-2.0/2.10.0/loaders/*.dll | tr -d '\r' |
     sed -e '/^"[^"]*\.dll"$/ s|\\\\|/|g' |
     awk -v base="$out_win/" '
