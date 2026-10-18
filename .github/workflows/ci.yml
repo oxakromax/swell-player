@@ -47,6 +47,13 @@ jobs:
       - name: Flatpak crate list matches Cargo.lock
         run: packaging/flatpak/update-cargo-sources.sh --check
 
+      # A new UI string must be in po/swell.pot, and the desktop file and
+      # metainfo must carry what po/data/*.json translate.
+      - name: Translation template and data files are current
+        run: |
+          po/update-pot --check
+          po/apply-data-translations --check
+
       # A new dependency under a licence about.toml does not accept fails
       # here, not at release time. (Arch's cargo-about; releases pin theirs.)
       - name: Third-party licence notices

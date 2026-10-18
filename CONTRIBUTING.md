@@ -101,7 +101,10 @@ You can render Swell without touching your desktop, for example to check
 a layout at several sizes or to update `docs/screenshots/`:
 
 ```bash
-kwin_wayland --virtual --socket wayland-shots --width 1400 --height 900 --no-lockscreen &
+# dbus-run-session keeps the nested KWin off your session bus; without it,
+# it disables your desktop's global shortcuts (Alt+Tab…) when it exits.
+dbus-run-session -- kwin_wayland --virtual --socket wayland-shots \
+  --width 1400 --height 900 --no-lockscreen &
 KWIN=$!
 
 WAYLAND_DISPLAY=wayland-shots LANG=C.UTF-8 \
@@ -110,7 +113,7 @@ SWELL_SCREENSHOT=/tmp/album.png SWELL_SCREENSHOT_SIZES=1400x900,1000x760,400x800
 SWELL_SCREENSHOT_DELAY_MS=6000 \
   ./target/release/swell-player
 
-kill $KWIN
+pkill -P $KWIN kwin_wayland
 ```
 
 Any headless Wayland compositor works (`weston --backend=headless`,
