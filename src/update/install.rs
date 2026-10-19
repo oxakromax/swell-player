@@ -4,8 +4,9 @@
 //! `SHA256SUMS` and keeps it; once it is [`stage`]d, `main` runs it when
 //! Swell quits, or at once for a restart ([`install_staged`]):
 //!
-//! - Windows: the Inno Setup installer, silently, over the same folder;
-//!   with `/relaunch=1` (a restart) it starts Swell again
+//! - Windows: the Inno Setup installer, silently, over the same folder,
+//!   once this process and the programs it started have exited; with
+//!   `/relaunch=1` (a restart) it starts Swell again
 //!   (packaging/windows/swell.iss).
 //! - macOS: `install-macos.sh` waits for Swell to exit, copies `Swell.app`
 //!   out of the disk image next to the running app, checks its version
@@ -297,8 +298,9 @@ pub fn staged_version() -> Option<Version> {
 
 /// Starts installing the [`stage`]d update, if there is one: called by
 /// `main` once the application has quit, so its files can be replaced.
-/// With `restart`, Swell is started again afterwards (by the installer or
-/// the helper). Returns whether an installation was started.
+/// With `restart`, the installer or the helper starts Swell again
+/// afterwards, also when the update fails. Returns whether an
+/// installation was started.
 pub fn install_staged(restart: bool) -> bool {
     let Some(update) = staged().take() else {
         return false;
@@ -347,11 +349,11 @@ fn run(update: &Staged, restart: bool) -> Result<()> {
 }
 
 /// Runs the Inno Setup installer `setup` with no questions: it shows only
-/// its progress, closes a Swell that still runs and never reboots, and
-/// starts Swell again only for a restart (`/relaunch=1`, see swell.iss);
-/// Inno Setup's own restarting of the applications it closed would also
-/// start it after a plain quit. Not a child of this process's console or
-/// Ctrl+C group, so it outlives it.
+/// its progress, waits for this process (`/swellpid`) and never reboots,
+/// and starts Swell again only for a restart (`/relaunch=1`, see
+/// swell.iss); Inno Setup's own restarting of the applications it closed
+/// would also start it after a plain quit. Not a child of this process's
+/// console or Ctrl+C group, so it outlives it.
 #[cfg(windows)]
 fn run_installer(setup: &Path, restart: bool) -> Result<()> {
     use std::os::windows::process::CommandExt;
@@ -375,6 +377,7 @@ fn run_installer(setup: &Path, restart: bool) -> Result<()> {
         } else {
             "/relaunch=0"
         })
+        .arg(format!("/swellpid={}", std::process::id()))
         .arg(log)
         .creation_flags(DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP)
         .stdin(Stdio::null())

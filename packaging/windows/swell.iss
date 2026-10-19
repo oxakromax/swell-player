@@ -8,8 +8,11 @@
 ;
 ; Swell updates itself by running a newer installer silently when it quits
 ; (src/update/install.rs):
-;   setup.exe /SILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS /NORESTARTAPPLICATIONS /relaunch=0|1
-; With /relaunch=1 (the user chose Restart) Swell starts again afterwards.
+;   setup.exe /SILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS /NORESTARTAPPLICATIONS /relaunch=0|1 /swellpid=<pid>
+; It waits for that Swell, and for every program in the install, to exit
+; before it changes anything (see [Code]); a Swell that still runs (it
+; holds the AppMutex) stops it. With /relaunch=1 (the user chose Restart)
+; Swell starts again afterwards, also when the update fails.
 
 #ifndef AppVersion
   #define AppVersion "1.1.0"
@@ -58,6 +61,8 @@ CloseApplications=yes
 ChangesAssociations=yes
 ; One Setup at a time: two Swell instances may quit with the same update.
 SetupMutex=SwellPlayerSetup,Global\SwellPlayerSetup
+; Held by every running Swell (src/main.rs).
+AppMutex=SwellPlayerRunning
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -102,7 +107,109 @@ Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags
 Filename: "{app}\{#AppExe}"; Flags: nowait runasoriginaluser; Check: RelaunchAfterUpdate
 
 [Code]
+const
+  SYNCHRONIZE = $00100000;
+
+var
+  { The install folder, once known, and whether the files went in. }
+  AppDir: String;
+  Installed: Boolean;
+
+function OpenProcess(DesiredAccess: DWORD; InheritHandle: BOOL; ProcessId: DWORD): THandle;
+  external 'OpenProcess@kernel32.dll stdcall';
+function WaitForSingleObject(Handle: THandle; Milliseconds: DWORD): DWORD;
+  external 'WaitForSingleObject@kernel32.dll stdcall';
+function CloseHandle(Handle: THandle): BOOL;
+  external 'CloseHandle@kernel32.dll stdcall';
+
 function RelaunchAfterUpdate: Boolean;
 begin
   Result := WizardSilent and (ExpandConstant('{param:relaunch|0}') = '1');
+end;
+
+{ The process id of the Swell that started this update as it quit, or 0. }
+function SwellPid: Integer;
+begin
+  Result := StrToIntDef(ExpandConstant('{param:swellpid|0}'), 0);
+end;
+
+{ Waits (up to 30 s) for that Swell to exit before Setup checks the
+  AppMutex, which it holds until then. }
+function InitializeSetup: Boolean;
+var
+  Process: THandle;
+begin
+  if SwellPid <> 0 then begin
+    Process := OpenProcess(SYNCHRONIZE, False, SwellPid);
+    if Process <> 0 then begin
+      Log('Waiting for Swell to exit');
+      WaitForSingleObject(Process, 30000);
+      CloseHandle(Process);
+    end;
+  end;
+  Result := True;
+end;
+
+{ Whether a program in Dir runs: a running program cannot be opened for
+  writing. }
+function ProgramRunsIn(const Dir: String): Boolean;
+var
+  FindRec: TFindRec;
+  Stream: TFileStream;
+begin
+  Result := False;
+  if FindFirst(Dir + '\*.exe', FindRec) then
+    try
+      repeat
+        try
+          Stream := TFileStream.Create(Dir + '\' + FindRec.Name, fmOpenReadWrite or fmShareExclusive);
+          Stream.Free;
+        except
+          Result := True;
+        end;
+      until Result or not FindNext(FindRec);
+    finally
+      FindClose(FindRec);
+    end;
+end;
+
+{ An update also waits (up to 30 s) for the programs Swell started to exit:
+  gdbus.exe, the session bus GApplication starts, stays a few seconds after
+  the last client leaves. Setup cannot replace a running program or the DLLs
+  it loaded, and would leave a half-replaced install that no longer starts;
+  returning a message stops it before it changes anything. }
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  Tries: Integer;
+begin
+  Result := '';
+  AppDir := ExpandConstant('{app}');
+  if SwellPid = 0 then
+    Exit;
+  Tries := 0;
+  while ProgramRunsIn(AppDir + '\bin') or ProgramRunsIn(AppDir + '\libexec\gstreamer-1.0') do begin
+    Tries := Tries + 1;
+    if Tries > 60 then begin
+      Result := 'Swell, or a program it started, still runs from ' + AppDir;
+      Exit;
+    end;
+    Sleep(500);
+  end;
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssPostInstall then
+    Installed := True;
+end;
+
+{ An update for a restart that stopped early or failed starts the Swell that
+  is there, so that it does not just vanish. }
+procedure DeinitializeSetup;
+var
+  ResultCode: Integer;
+begin
+  if RelaunchAfterUpdate and not Installed and (AppDir <> '')
+    and FileExists(AppDir + '\{#AppExe}') then
+    ExecAsOriginalUser(AppDir + '\{#AppExe}', '', '', SW_SHOWNORMAL, ewNoWait, ResultCode);
 end;

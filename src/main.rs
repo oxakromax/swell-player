@@ -41,6 +41,8 @@ fn main() -> glib::ExitCode {
     playback::exempt_loopback_from_proxies();
     timing::start();
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn")).init();
+    #[cfg(windows)]
+    hold_running_mutex();
     if let Some(language) = i18n::init(&settings::saved_language()) {
         // GTK's and libadwaita's own strings follow the chosen language.
         // GLib's setenv, not std's: on Windows libintl reads the C
@@ -117,6 +119,28 @@ fn set_app_user_model_id() {
     let result = unsafe { SetCurrentProcessExplicitAppUserModelID(id.as_ptr()) };
     if result != 0 {
         log::debug!("could not set the AppUserModelID: HRESULT {result:#x}");
+    }
+}
+
+/// Holds the mutex `SwellPlayerRunning` until this process exits: the
+/// installer (packaging/windows/swell.iss, `AppMutex`) does not replace
+/// Swell's files while one runs.
+#[cfg(windows)]
+fn hold_running_mutex() {
+    use std::ffi::c_void;
+    #[link(name = "kernel32")]
+    unsafe extern "system" {
+        fn CreateMutexW(attributes: *const c_void, owned: i32, name: *const u16) -> *mut c_void;
+    }
+    let name: Vec<u16> = "SwellPlayerRunning".encode_utf16().chain([0]).collect();
+    // Safety: `name` is a NUL-terminated UTF-16 string that outlives the
+    // call. The handle is never closed: Windows closes it at exit.
+    let mutex = unsafe { CreateMutexW(std::ptr::null(), 0, name.as_ptr()) };
+    if mutex.is_null() {
+        log::debug!(
+            "could not create the running mutex: {}",
+            std::io::Error::last_os_error()
+        );
     }
 }
 
