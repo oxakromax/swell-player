@@ -306,7 +306,9 @@ impl DeviceCode {
         let deadline = now() + self.expires_in;
         while now() < deadline {
             tokio::time::sleep(Duration::from_secs(interval)).await;
-            let (status, body) = post_token(
+            // The user may take minutes to approve: a failed poll (a
+            // timeout, a dropped connection) is retried until the deadline.
+            let (status, body) = match post_token(
                 http,
                 client,
                 &[
@@ -317,7 +319,14 @@ impl DeviceCode {
                     ("scope", SCOPE),
                 ],
             )
-            .await?;
+            .await
+            {
+                Ok(reply) => reply,
+                Err(err) => {
+                    log::warn!("device-code poll failed, retrying: {err:#}");
+                    continue;
+                }
+            };
             if status.is_success() {
                 let token: TokenResponse = serde_json::from_slice(&body)?;
                 return Ok(token.into_authz(None));
@@ -325,6 +334,9 @@ impl DeviceCode {
             match serde_json::from_slice::<OAuthError>(&body) {
                 Ok(err) if err.error == "authorization_pending" => {}
                 Ok(err) if err.error == "slow_down" => interval += 5,
+                Ok(err) if !err.error.is_empty() => return Err(oauth_error(status, &body)),
+                // A 5xx without an OAuth error is the server's hiccup.
+                _ if status.is_server_error() => continue,
                 _ => return Err(oauth_error(status, &body)),
             }
         }
