@@ -345,6 +345,7 @@ impl SeekBar {
             _events: subscribe(playback, weak, |bar, event| match event {
                 Event::Track(track) => bar.reset(track.as_ref().map(|t| t.duration)),
                 Event::State(_) => bar.update(),
+                Event::Seeked(position) => bar.show_seeked(*position),
                 _ => {}
             }),
         });
@@ -408,6 +409,22 @@ impl SeekBar {
         self.settle_until.set(Some(Instant::now() + SEEK_SETTLE));
         self.scale.set_value(position);
         self.playback.seek(position);
+    }
+
+    /// A seek that did not come from the scale (shortcut, lyrics, media keys).
+    fn show_seeked(&self, position: f64) {
+        // A drag or keyboard change on the scale already shows its own value.
+        if self.pressed.get() || self.pending.get().is_some() {
+            return;
+        }
+        let duration = self
+            .playback
+            .duration()
+            .unwrap_or_else(|| self.scale.adjustment().upper());
+        // A flushing seek may briefly report the old position: hold the target.
+        self.settle_until.set(Some(Instant::now() + SEEK_SETTLE));
+        self.scale.set_value(position);
+        self.show_position(position, duration);
     }
 
     fn reset(&self, duration: Option<u32>) {

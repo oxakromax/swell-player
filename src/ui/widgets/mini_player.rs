@@ -108,6 +108,7 @@ impl MiniPlayer {
             _events: subscribe(playback, weak, |mini, event| match event {
                 Event::Track(_) => mini.show_track(),
                 Event::State(state) => mini.show_state(*state),
+                Event::Seeked(position) => mini.show_seeked(*position),
                 _ => {}
             }),
         });
@@ -202,7 +203,19 @@ impl MiniPlayer {
         let Some(ctx) = self.ctx.upgrade() else {
             return;
         };
-        let fraction = match (ctx.playback.position(), ctx.playback.duration()) {
+        self.set_progress(ctx.playback.position(), ctx.playback.duration());
+    }
+
+    /// The engine may still report the old position right after a seek.
+    fn show_seeked(&self, position: f64) {
+        let Some(ctx) = self.ctx.upgrade() else {
+            return;
+        };
+        self.set_progress(Some(position), ctx.playback.duration());
+    }
+
+    fn set_progress(&self, position: Option<f64>, duration: Option<f64>) {
+        let fraction = match (position, duration) {
             (Some(position), Some(duration)) if duration > 0.0 => position / duration,
             _ => 0.0,
         };
