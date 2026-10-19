@@ -50,6 +50,28 @@ builds, so run `make` (or `cargo build --release`) first as a normal user.
 Variables: `CARGO`, `CARGOFLAGS` (e.g. `CARGOFLAGS=--no-default-features`),
 `CARGO_TARGET_DIR`, `PREFIX`, `DESTDIR`, `BINDIR`, `DATADIR`.
 
+## Update checks
+
+Swell looks for new releases on GitHub
+(`api.github.com/repos/oxakromax/swell-player/releases/latest`) shortly
+after it starts, then once a day, and from Preferences → General →
+Updates. The Windows installer and the macOS app then install the new
+version themselves (`src/update/`); every other install only shows a
+notification that links to the release.
+
+A distribution that delivers Swell's updates itself should build without
+the checks:
+
+```bash
+SWELL_DISABLE_UPDATE_CHECK=1 make       # or SWELL_DISABLE_UPDATE_CHECK=1 cargo build --release --locked
+```
+
+The variable is read when the binary is compiled (any value other than
+empty or `0`); such a build never contacts GitHub and has no Updates group
+in Preferences. `flatpak/flathub-manifest.sh` sets it for Flathub. Builds
+run from a Cargo target directory don't check either, unless
+`SWELL_UPDATE_CHECK=1` is set when they run (to test the checks).
+
 ## Arch Linux (AUR)
 
 Two packages live in `aur/`:
