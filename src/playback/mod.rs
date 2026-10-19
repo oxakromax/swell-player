@@ -2058,6 +2058,9 @@ impl Playback {
                     tr("Playback failed: {error}").replace("{error}", message),
                 ));
             }
+            // Counted from the reload: playing again at once from mid-track
+            // must not count as healthy and allow another retry.
+            self.healthy_at.set(position + HEALTHY_AFTER);
             return self.reload_current(position);
         }
         // Otherwise (also during the handover: the network) it is the
