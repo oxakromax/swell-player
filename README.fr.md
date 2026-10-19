@@ -217,6 +217,24 @@ packaging, et `sudo make uninstall` la supprime. Le binaire fonctionne aussi
 directement depuis `target/release/swell-player`, puisque les icônes et les
 traductions sont intégrées.
 
+### Mises à jour
+
+Swell cherche une nouvelle version sur GitHub peu après son démarrage, puis
+une fois par jour ; **Préférences → Général → Mises à jour** désactive cette
+vérification ou la lance immédiatement. Ce qu’il advient d’une nouvelle
+version dépend de la manière dont Swell a été installé :
+
+| Installé avec | Nouvelle version |
+|---|---|
+| Installeur Windows, pour vous seul (par défaut) | Téléchargée, vérifiée avec le fichier `SHA256SUMS` de la version et installée à la fermeture de Swell, ou tout de suite avec **Redémarrer** |
+| `.dmg` macOS | Idem, lorsque Swell peut écrire dans le dossier où se trouve l’app ; sinon, Swell télécharge la nouvelle image disque et propose de l’ouvrir |
+| Paquets Linux, Flatpak, tarball, `.zip` portable Windows, installeur Windows pour tous les utilisateurs | Une notification avec un lien vers la version : mettez à jour comme vous avez installé |
+
+Les distributions qui fournissent elles-mêmes les mises à jour peuvent
+compiler Swell sans ces vérifications (voir
+[packaging/README.md](packaging/README.md#update-checks)), et les builds
+lancés depuis l’arborescence des sources ne vérifient rien.
+
 ## Connexion et qualité audio
 
 TIDAL ne permet pas aux applications tierces d’enregistrer leurs propres
@@ -284,7 +302,9 @@ Vous voulez Swell dans votre langue ? Consultez
   jetons, le cache, la file d’attente enregistrée et l’historique de
   recherche.
 - **Aucune télémétrie.** Swell ne se connecte qu’aux serveurs de TIDAL, pour
-  ce que vous lui demandez d’afficher ou de lire. Il n’a ni analyse
+  ce que vous lui demandez d’afficher ou de lire, et une fois par jour à
+  GitHub pour chercher une nouvelle version, ce qui n’envoie rien d’autre que
+  la version de Swell (voir [Mises à jour](#mises-à-jour)). Il n’a ni analyse
   d’audience, ni rapport de plantage, ni autre service tiers.
 
 ## Mesures

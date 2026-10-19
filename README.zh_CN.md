@@ -194,6 +194,22 @@ sudo make install     # binary, desktop entry, icon, metainfo under /usr/local
 `sudo make uninstall` 则将其卸载。由于图标和翻译已内嵌，二进制文件也可以直接从
 `target/release/swell-player` 运行。
 
+### 更新
+
+Swell 会在启动后不久检查 GitHub 上是否有新版本，之后每天检查一次；
+在**首选项 → 常规 → 更新**中可以关闭检查，或立即检查。
+新版本如何处理，取决于 Swell 的安装方式：
+
+| 安装方式 | 新版本 |
+|---|---|
+| Windows 安装程序，仅为当前用户安装（默认） | 下载后用该版本的 `SHA256SUMS` 校验，并在退出 Swell 时安装，也可以点按**重启**立即安装 |
+| macOS `.dmg` | 如果 Swell 有权写入应用所在的文件夹，则同上；否则 Swell 会下载新的磁盘映像并提示打开 |
+| Linux 安装包、Flatpak、tarball、Windows 便携版 `.zip`、面向所有用户的 Windows 安装程序 | 一条带有版本链接的通知：请用原来的安装方式更新 |
+
+自行分发更新的发行版可以在构建 Swell 时去掉这些检查
+（参见 [packaging/README.md](packaging/README.md#update-checks)）；
+从源码树中运行的构建不会检查更新。
+
 ## 登录与音质
 
 TIDAL 不允许第三方应用注册自己的 OAuth 客户端，因此 Swell 和所有开源 TIDAL
@@ -244,7 +260,8 @@ Swell 提供 **English**、**Español**、**Français**、**Deutsch**、**Italia
   （`~/.cache/swell-player/library.sqlite3`）、封面图片、播放过或即将播放的曲目开头的几秒（`~/.cache/swell-player/audio/`，仅音频，最多 512 MB）、你的设置、
   已保存的队列和最近搜索。可以在首选项中清除缓存；退出登录会删除令牌、缓存、
   已保存的队列和搜索历史。
-- **没有遥测。**Swell 只会连接 TIDAL 的服务器，用于显示或播放你要求的内容。
+- **没有遥测。**Swell 只会连接 TIDAL 的服务器，用于显示或播放你要求的内容；
+  另外每天会连接一次 GitHub 检查新版本，只发送 Swell 的版本号（参见[更新](#更新)）。
   它没有统计分析、崩溃报告或其他第三方服务。
 
 ## 性能测量

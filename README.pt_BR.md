@@ -213,6 +213,24 @@ empacotamento, e `sudo make uninstall` a remove. O binário também roda
 diretamente de `target/release/swell-player`, pois os ícones e as traduções
 são embutidos.
 
+### Atualizações
+
+O Swell procura uma nova versão no GitHub logo depois de iniciar e, em
+seguida, uma vez por dia; **Preferências → Geral → Atualizações** desativa
+isso ou verifica na hora. O que acontece com uma nova versão depende de como
+o Swell foi instalado:
+
+| Instalado com | Nova versão |
+|---|---|
+| Instalador do Windows, só para você (o padrão) | Baixada, conferida com o `SHA256SUMS` da versão e instalada quando você fecha o Swell, ou na hora com **Reiniciar** |
+| `.dmg` do macOS | O mesmo, quando o Swell pode gravar na pasta onde o app está; caso contrário, o Swell baixa a nova imagem de disco e se oferece para abri-la |
+| Pacotes Linux, Flatpak, tarball, `.zip` portátil do Windows, instalador do Windows para todos os usuários | Uma notificação com um link para a versão: atualize da mesma forma que você instalou |
+
+Distribuições que entregam as atualizações por conta própria podem compilar
+o Swell sem as verificações (veja
+[packaging/README.md](packaging/README.md#update-checks)), e as builds
+executadas a partir da árvore de código-fonte não verificam nada.
+
 ## Login e qualidade de áudio
 
 O TIDAL não permite que apps de terceiros registrem seus próprios clientes
@@ -274,8 +292,10 @@ Quer o Swell no seu idioma? Veja [docs/translating.md](docs/translating.md).
   recentes. As Preferências podem limpar o cache; desconectar apaga os
   tokens, o cache, a fila salva e o histórico de pesquisas.
 - **Sem telemetria.** O Swell se conecta apenas aos servidores do TIDAL, para
-  o que você pede que ele mostre ou reproduza. Não há análises, relatórios de
-  falhas nem outros serviços de terceiros.
+  o que você pede que ele mostre ou reproduza, e uma vez por dia ao GitHub
+  para procurar uma nova versão, sem enviar nada além da versão do Swell (veja
+  [Atualizações](#atualizações)). Não há análises, relatórios de falhas nem
+  outros serviços de terceiros.
 
 ## Medições
 

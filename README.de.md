@@ -220,6 +220,24 @@ bereit, und `sudo make uninstall` entfernt sie. Die Binärdatei läuft auch
 direkt aus `target/release/swell-player`, da Icons und Übersetzungen
 eingebettet sind.
 
+### Aktualisierungen
+
+Swell sucht kurz nach dem Start und danach einmal täglich auf GitHub nach
+einer neuen Version; unter **Einstellungen → Allgemein → Aktualisierungen**
+lässt sich das abschalten oder sofort prüfen. Was mit einer neuen Version
+geschieht, hängt davon ab, wie Swell installiert wurde:
+
+| Installiert mit | Neue Version |
+|---|---|
+| Windows-Installationsprogramm, nur für Sie (Standard) | Wird heruntergeladen, anhand der `SHA256SUMS` der Version geprüft und beim Beenden von Swell installiert, oder sofort mit **Neu starten** |
+| macOS-`.dmg` | Genauso, wenn Swell in den Ordner schreiben darf, in dem die App liegt; andernfalls lädt Swell das neue Image herunter und bietet an, es zu öffnen |
+| Linux-Pakete, Flatpak, Tarball, portable Windows-`.zip`-Datei, Windows-Installationsprogramm für alle Benutzer | Eine Benachrichtigung mit Link zur Version: Aktualisieren Sie auf dem Weg, auf dem Sie installiert haben |
+
+Distributionen, die Aktualisierungen selbst ausliefern, können Swell ohne
+die Prüfungen bauen (siehe
+[packaging/README.md](packaging/README.md#update-checks)); Builds, die aus
+dem Quellbaum laufen, prüfen nicht.
+
 ## Anmeldung und Audioqualität
 
 TIDAL erlaubt Drittanbieter-Apps nicht, eigene OAuth-Clients zu
@@ -285,8 +303,11 @@ Sie möchten Swell in Ihrer Sprache? Siehe [docs/translating.md](docs/translatin
   Tokens, der Cache, die gespeicherte Warteschlange und der Suchverlauf
   gelöscht.
 - **Keine Telemetrie.** Swell verbindet sich nur mit den Servern von TIDAL,
-  für das, was Sie anzeigen oder abspielen lassen. Es enthält keine
-  Analyse-, Absturzberichts- oder sonstigen Drittanbieterdienste.
+  für das, was Sie anzeigen oder abspielen lassen, und einmal täglich mit
+  GitHub, um nach einer neuen Version zu suchen; dabei wird nur Swells
+  Versionsnummer gesendet (siehe [Aktualisierungen](#aktualisierungen)). Es
+  enthält keine Analyse-, Absturzberichts- oder sonstigen
+  Drittanbieterdienste.
 
 ## Messungen
 

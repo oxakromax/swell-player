@@ -215,6 +215,24 @@ packaging, e `sudo make uninstall` la rimuove. Il binario funziona anche
 direttamente da `target/release/swell-player`, poiché icone e traduzioni
 sono incorporate.
 
+### Aggiornamenti
+
+Swell cerca una nuova release su GitHub poco dopo l’avvio e poi una volta al
+giorno; **Preferenze → Generale → Aggiornamenti** disattiva il controllo o
+lo esegue subito. Cosa succede a una nuova release dipende da come hai
+installato Swell:
+
+| Installato con | Nuova release |
+|---|---|
+| Programma di installazione per Windows, solo per te (predefinito) | Scaricata, verificata con il file `SHA256SUMS` della release e installata quando chiudi Swell, oppure subito con **Riavvia** |
+| `.dmg` per macOS | Lo stesso, se Swell può scrivere nella cartella in cui si trova l’app; altrimenti Swell scarica la nuova immagine disco e propone di aprirla |
+| Pacchetti Linux, Flatpak, tarball, `.zip` portabile per Windows, programma di installazione per Windows per tutti gli utenti | Una notifica con un collegamento alla release: aggiorna nello stesso modo in cui hai installato |
+
+Le distribuzioni che consegnano da sé gli aggiornamenti possono compilare
+Swell senza i controlli (vedi
+[packaging/README.md](packaging/README.md#update-checks)), e le build
+avviate dall’albero dei sorgenti non controllano nulla.
+
 ## Accesso e qualità audio
 
 TIDAL non permette alle app di terze parti di registrare i propri client
@@ -278,7 +296,9 @@ Vuoi Swell nella tua lingua? Vedi [docs/translating.md](docs/translating.md).
   recenti. Le preferenze permettono di svuotare la cache; la disconnessione
   elimina i token, la cache, la coda salvata e la cronologia delle ricerche.
 - **Nessuna telemetria.** Swell si collega solo ai server di TIDAL, per ciò
-  che gli chiedi di mostrare o riprodurre. Non ha analisi d’uso, segnalazione
+  che gli chiedi di mostrare o riprodurre, e una volta al giorno a GitHub per
+  cercare una nuova release, senza inviare altro che la versione di Swell
+  (vedi [Aggiornamenti](#aggiornamenti)). Non ha analisi d’uso, segnalazione
   dei crash né altri servizi di terze parti.
 
 ## Misurazioni

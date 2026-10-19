@@ -215,6 +215,25 @@ empaquetar, y `sudo make uninstall` la elimina. El binario también funciona
 directamente desde `target/release/swell-player`, ya que los iconos y las
 traducciones van incluidos.
 
+### Actualizaciones
+
+Swell busca una versión nueva en GitHub poco después de arrancar y luego una
+vez al día; **Preferencias → General → Actualizaciones** lo desactiva o
+comprueba al instante. Lo que ocurre con una versión nueva depende de cómo
+instalaste Swell:
+
+| Instalado con | Versión nueva |
+|---|---|
+| Instalador de Windows, solo para ti (el predeterminado) | Se descarga, se verifica con el `SHA256SUMS` de la versión y se instala al cerrar Swell, o al instante con **Reiniciar** |
+| `.dmg` de macOS | Lo mismo, si Swell puede escribir en la carpeta donde está la aplicación; si no, Swell descarga la nueva imagen de disco y se ofrece a abrirla |
+| Paquetes de Linux, Flatpak, tarball, `.zip` portable de Windows, instalador de Windows para todos los usuarios | Una notificación con un enlace a la versión: actualiza de la misma forma en que instalaste |
+
+Las distribuciones que entregan las actualizaciones por su cuenta pueden
+compilar Swell sin las comprobaciones (consulta
+[packaging/README.md](packaging/README.md#update-checks)), y las
+compilaciones que se ejecutan desde el árbol de código fuente no comprueban
+nada.
+
 ## Inicio de sesión y calidad de audio
 
 TIDAL no permite que las aplicaciones de terceros registren sus propios
@@ -277,8 +296,10 @@ pantalla nunca mezcle dos.
   ajustes, la cola guardada y las búsquedas recientes. Preferencias permite
   vaciar la caché; cerrar sesión borra los tokens, la caché, la cola
   guardada y el historial de búsqueda.
-- **Sin telemetría.** Swell solo se conecta a los servidores de TIDAL, para
-  lo que le pides mostrar o reproducir. No tiene analíticas, informes de
+- **Sin telemetría.** Swell solo se conecta a los servidores de TIDAL, para lo
+  que le pides mostrar o reproducir, y una vez al día a GitHub para buscar una
+  versión nueva, algo que no envía más que la versión de Swell (consulta
+  [Actualizaciones](#actualizaciones)). No tiene analíticas, informes de
   fallos ni otros servicios de terceros.
 
 ## Mediciones
