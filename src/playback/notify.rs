@@ -233,6 +233,11 @@ impl Desktop {
             return;
         }
         if app.active_window().is_some_and(|window| window.is_active()) {
+            // The earlier notification would show the wrong track.
+            if let Some(task) = self.notification.take() {
+                task.abort();
+            }
+            app.withdraw_notification("now-playing");
             return;
         }
         log::debug!("notifying track {}", track.id);
