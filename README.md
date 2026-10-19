@@ -214,9 +214,9 @@ at once. What happens to a new release depends on how Swell was installed:
 
 | Installed with | A new release |
 |---|---|
-| Windows installer | Downloaded, checked against the release's `SHA256SUMS` and installed when you quit Swell, or at once with **Restart** |
+| Windows installer, for you only (the default) | Downloaded, checked against the release's `SHA256SUMS` and installed when you quit Swell, or at once with **Restart** |
 | macOS `.dmg` | The same, when Swell may write to the folder the app is in; otherwise Swell downloads the new disk image and offers to open it |
-| Linux packages, Flatpak, tarball, Windows portable `.zip` | A notification that links to the release: update the way you installed |
+| Linux packages, Flatpak, tarball, Windows portable `.zip`, Windows installer for all users | A notification that links to the release: update the way you installed |
 
 Distributions that deliver updates themselves can build Swell without the
 checks (see [packaging/README.md](packaging/README.md#update-checks)), and

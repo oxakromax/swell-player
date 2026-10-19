@@ -9,8 +9,13 @@ use std::sync::OnceLock;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Channel {
     /// Installed by the Inno Setup installer into this folder (which has
-    /// its `unins000.exe`).
-    WindowsInstaller(PathBuf),
+    /// its `unins000.exe`), and whether Swell may update it: whether the
+    /// folder is writable. An all-users install (in Program Files) is
+    /// not; its installer would ask for an administrator at every quit.
+    WindowsInstaller {
+        prefix: PathBuf,
+        writable: bool,
+    },
     /// The portable zip, unpacked anywhere.
     WindowsPortable,
     /// The app bundle (`Swell.app`, or whatever it was renamed to), and
@@ -39,20 +44,26 @@ impl Channel {
     pub fn installs_updates(&self) -> bool {
         matches!(
             self,
-            Self::WindowsInstaller(_) | Self::MacApp { writable: true, .. }
+            Self::WindowsInstaller { writable: true, .. } | Self::MacApp { writable: true, .. }
         )
     }
 
     /// Whether a new release's package is downloaded: to install it, or
     /// for the user to open (an app Swell may not replace).
     pub fn downloads_updates(&self) -> bool {
-        matches!(self, Self::WindowsInstaller(_) | Self::MacApp { .. })
+        matches!(
+            self,
+            Self::WindowsInstaller { writable: true, .. } | Self::MacApp { .. }
+        )
     }
 
     /// For logs and the About dialog's debug information.
     pub fn name(&self) -> &'static str {
         match self {
-            Self::WindowsInstaller(_) => "Windows installer",
+            Self::WindowsInstaller { writable: true, .. } => "Windows installer",
+            Self::WindowsInstaller {
+                writable: false, ..
+            } => "Windows installer (read-only)",
             Self::WindowsPortable => "Windows portable",
             Self::MacApp { writable: true, .. } => "macOS app",
             Self::MacApp {
@@ -90,7 +101,8 @@ pub struct Facts {
     pub bundle: Option<PathBuf>,
     /// Windows: the bundle has the installer's `unins000.exe`.
     pub uninstaller: bool,
-    /// macOS: the folder of the app bundle is writable.
+    /// The installer's folder (Windows) or the app bundle's (macOS) is
+    /// writable.
     pub writable: bool,
     /// `FLATPAK_ID` is set, or `/.flatpak-info` exists.
     pub flatpak: bool,
@@ -108,7 +120,10 @@ pub fn detect(facts: &Facts) -> Channel {
     }
     match facts.os {
         Os::Windows => match &facts.bundle {
-            Some(prefix) if facts.uninstaller => Channel::WindowsInstaller(prefix.clone()),
+            Some(prefix) if facts.uninstaller => Channel::WindowsInstaller {
+                prefix: prefix.clone(),
+                writable: facts.writable,
+            },
             Some(_) => Channel::WindowsPortable,
             None => Channel::Unknown,
         },
@@ -204,11 +219,14 @@ fn gather(exe: PathBuf) -> Facts {
         && bundle
             .as_ref()
             .is_some_and(|prefix| prefix.join("unins000.exe").is_file());
-    let writable = os == Os::Mac
-        && bundle
+    let writable = match os {
+        Os::Windows => uninstaller && bundle.as_deref().is_some_and(writable),
+        Os::Mac => bundle
             .as_deref()
             .and_then(|contents| app_of(contents, &exe))
-            .is_some_and(|app| app.parent().is_some_and(writable));
+            .is_some_and(|app| app.parent().is_some_and(writable)),
+        Os::Other => false,
+    };
     // Packages are only asked about for the executable they install.
     let packaged = os == Os::Other && exe == Path::new("/usr/bin/swell-player");
     Facts {
@@ -240,7 +258,7 @@ fn pacman_has_swell() -> bool {
 }
 
 /// Whether files can be created in `dir`: tries one (never inside the
-/// signed app bundle itself).
+/// signed macOS app bundle itself).
 fn writable(dir: &Path) -> bool {
     let probe = dir.join(format!(".swell-write-test-{}", std::process::id()));
     match std::fs::File::create_new(&probe) {
@@ -282,11 +300,31 @@ mod tests {
         assert_eq!(detect(&bundled), Channel::WindowsPortable);
         let installed = Facts {
             uninstaller: true,
+            writable: true,
             ..bundled.clone()
         };
-        assert_eq!(detect(&installed), Channel::WindowsInstaller(prefix));
+        assert_eq!(
+            detect(&installed),
+            Channel::WindowsInstaller {
+                prefix: prefix.clone(),
+                writable: true
+            }
+        );
         assert!(detect(&installed).installs_updates());
         assert!(!detect(&bundled).downloads_updates());
+        // For all users: only announced.
+        let all_users = detect(&Facts {
+            writable: false,
+            ..installed
+        });
+        assert_eq!(
+            all_users,
+            Channel::WindowsInstaller {
+                prefix,
+                writable: false
+            }
+        );
+        assert!(!all_users.installs_updates() && !all_users.downloads_updates());
         assert_eq!(detect(&facts(Os::Windows, exe)), Channel::Unknown);
     }
 

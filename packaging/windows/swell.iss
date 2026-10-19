@@ -4,7 +4,8 @@
 ;   iscc /DAppVersion=1.1.0 /DSourceDir=C:\...\dist\windows\Swell /DOutputDir=C:\...\dist packaging\windows\swell.iss
 ;
 ; Installs per user without administrator rights by default; the first page
-; offers an all-users install instead.
+; offers an all-users install instead (which Swell only tells about new
+; releases, see src/update/channel.rs).
 ;
 ; Swell updates itself by running a newer installer silently when it quits
 ; (src/update/install.rs):

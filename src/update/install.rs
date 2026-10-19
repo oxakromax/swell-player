@@ -46,7 +46,7 @@ fn dir() -> PathBuf {
 /// Windows installer, or the macOS disk image of that architecture.
 fn package_name(channel: &Channel, version: Version, arch: &str) -> Option<String> {
     let suffix = match (channel, arch) {
-        (Channel::WindowsInstaller(_), "x86_64") => "windows-x86_64-setup.exe",
+        (Channel::WindowsInstaller { .. }, "x86_64") => "windows-x86_64-setup.exe",
         (Channel::MacApp { .. }, "aarch64") => "macos-arm64.dmg",
         (Channel::MacApp { .. }, "x86_64") => "macos-x86_64.dmg",
         _ => return None,
@@ -337,7 +337,7 @@ pub fn install_staged(restart: bool) -> bool {
 
 fn run(update: &Staged, restart: bool) -> Result<()> {
     #[cfg(windows)]
-    if let Channel::WindowsInstaller(_) = update.channel {
+    if let Channel::WindowsInstaller { .. } = update.channel {
         return run_installer(&update.path, restart);
     }
     #[cfg(target_os = "macos")]
@@ -434,7 +434,10 @@ mod tests {
 
     #[test]
     fn package_names() {
-        let windows = Channel::WindowsInstaller("C:\\Swell".into());
+        let windows = Channel::WindowsInstaller {
+            prefix: "C:\\Swell".into(),
+            writable: true,
+        };
         let mac = Channel::MacApp {
             app: "/Applications/Swell.app".into(),
             writable: true,
