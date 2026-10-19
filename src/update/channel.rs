@@ -18,11 +18,11 @@ pub enum Channel {
     },
     /// The portable zip, unpacked anywhere.
     WindowsPortable,
-    /// The app bundle (`Swell.app`, or whatever it was renamed to), and
-    /// whether Swell may replace it: whether its folder is writable.
+    /// The app bundle (`Swell.app`, or whatever it was renamed to). Whether
+    /// Swell may replace it is found only once there is a release to
+    /// install ([`app_writable`]).
     MacApp {
         app: PathBuf,
-        writable: bool,
     },
     Flatpak,
     /// Arch Linux's pacman (the AUR packages).
@@ -41,11 +41,13 @@ pub enum Channel {
 
 impl Channel {
     /// Whether a new release is downloaded and installed when Swell quits.
+    /// A macOS app is, unless [`app_writable`] found otherwise.
     pub fn installs_updates(&self) -> bool {
-        matches!(
-            self,
-            Self::WindowsInstaller { writable: true, .. } | Self::MacApp { writable: true, .. }
-        )
+        match self {
+            Self::WindowsInstaller { writable, .. } => *writable,
+            Self::MacApp { .. } => APP_WRITABLE.get().copied().unwrap_or(true),
+            _ => false,
+        }
     }
 
     /// Whether a new release's package is downloaded: to install it, or
@@ -65,10 +67,8 @@ impl Channel {
                 writable: false, ..
             } => "Windows installer (read-only)",
             Self::WindowsPortable => "Windows portable",
-            Self::MacApp { writable: true, .. } => "macOS app",
-            Self::MacApp {
-                writable: false, ..
-            } => "macOS app (read-only)",
+            Self::MacApp { .. } if self.installs_updates() => "macOS app",
+            Self::MacApp { .. } => "macOS app (read-only)",
             Self::Flatpak => "Flatpak",
             Self::Pacman => "pacman",
             Self::Deb => "deb",
@@ -101,8 +101,7 @@ pub struct Facts {
     pub bundle: Option<PathBuf>,
     /// Windows: the bundle has the installer's `unins000.exe`.
     pub uninstaller: bool,
-    /// The installer's folder (Windows) or the app bundle's (macOS) is
-    /// writable.
+    /// Windows: the installer's folder is writable.
     pub writable: bool,
     /// `FLATPAK_ID` is set, or `/.flatpak-info` exists.
     pub flatpak: bool,
@@ -128,10 +127,7 @@ pub fn detect(facts: &Facts) -> Channel {
             None => Channel::Unknown,
         },
         Os::Mac => match facts.bundle.as_deref().and_then(|c| app_of(c, &facts.exe)) {
-            Some(app) => Channel::MacApp {
-                app,
-                writable: facts.writable,
-            },
+            Some(app) => Channel::MacApp { app },
             None => Channel::Unknown,
         },
         Os::Other => {
@@ -219,14 +215,7 @@ fn gather(exe: PathBuf) -> Facts {
         && bundle
             .as_ref()
             .is_some_and(|prefix| prefix.join("unins000.exe").is_file());
-    let writable = match os {
-        Os::Windows => uninstaller && bundle.as_deref().is_some_and(writable),
-        Os::Mac => bundle
-            .as_deref()
-            .and_then(|contents| app_of(contents, &exe))
-            .is_some_and(|app| app.parent().is_some_and(writable)),
-        Os::Other => false,
-    };
+    let writable = uninstaller && bundle.as_deref().is_some_and(writable);
     // Packages are only asked about for the executable they install.
     let packaged = os == Os::Other && exe == Path::new("/usr/bin/swell-player");
     Facts {
@@ -255,6 +244,17 @@ fn pacman_has_swell() -> bool {
                 .is_some_and(|name| name.starts_with("swell-player-"))
         })
     })
+}
+
+/// Whether the macOS app may be replaced, once [`app_writable`] found out.
+static APP_WRITABLE: OnceLock<bool> = OnceLock::new();
+
+/// Whether Swell may replace the macOS app `app`: whether its folder is
+/// writable. Asked only once there is a release to install, then
+/// remembered: trying to write next to an app in ~/Desktop, ~/Documents or
+/// ~/Downloads brings up macOS's privacy prompt.
+pub fn app_writable(app: &Path) -> bool {
+    *APP_WRITABLE.get_or_init(|| app.parent().is_some_and(writable))
 }
 
 /// Whether files can be created in `dir`: tries one (never inside the
@@ -333,23 +333,16 @@ mod tests {
         let exe = "/Applications/Swell.app/Contents/MacOS/swell-player";
         let app = Facts {
             bundle: Some("/Applications/Swell.app/Contents".into()),
-            writable: true,
             ..facts(Os::Mac, exe)
         };
         let channel = detect(&app);
         assert_eq!(
             channel,
             Channel::MacApp {
-                app: "/Applications/Swell.app".into(),
-                writable: true
+                app: "/Applications/Swell.app".into()
             }
         );
-        assert!(channel.installs_updates());
-        let read_only = detect(&Facts {
-            writable: false,
-            ..app.clone()
-        });
-        assert!(!read_only.installs_updates() && read_only.downloads_updates());
+        assert!(channel.installs_updates() && channel.downloads_updates());
         // A binary outside an app bundle (a Homebrew build, say).
         assert_eq!(
             detect(&facts(Os::Mac, "/opt/homebrew/bin/swell-player")),

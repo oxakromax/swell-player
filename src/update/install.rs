@@ -159,7 +159,14 @@ pub async fn prepare(release: Release, channel: Channel) -> Result<Prepared> {
         .with_context(|| format!("SHA256SUMS has no checksum for {name}"))?;
     let path = download(package, sha256).await?;
     clean(Some(name)).await;
-    Ok(if channel.installs_updates() {
+    let installs = match &channel {
+        Channel::MacApp { app } => {
+            let app = app.clone();
+            tokio::task::spawn_blocking(move || super::channel::app_writable(&app)).await?
+        }
+        channel => channel.installs_updates(),
+    };
+    Ok(if installs {
         Prepared::Staged(Staged {
             version: release.version,
             path,
@@ -440,7 +447,6 @@ mod tests {
         };
         let mac = Channel::MacApp {
             app: "/Applications/Swell.app".into(),
-            writable: true,
         };
         let name = |channel: &Channel, arch: &str| package_name(channel, V, arch);
         assert_eq!(
