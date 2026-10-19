@@ -24,7 +24,7 @@ use crate::library;
 use crate::model::TrackInfo;
 use crate::playback::Source;
 use crate::runtime;
-use crate::tidal::models::{Album, Artist, Mix, Playlist};
+use crate::tidal::models::{Album, Artist, Cursor, Mix, Playlist};
 use crate::tidal::pages::{self, Target};
 
 /// Track lists fetched for "Play" on a collection stop here.
@@ -139,22 +139,31 @@ impl TrackQuery {
         runtime::spawn(async move {
             let mut tracks = Vec::new();
             match self {
-                Self::Album(id) => loop {
-                    let page = api.album_tracks(id, tracks.len(), PAGE).await?;
-                    let done = page.items.is_empty();
-                    tracks.extend(page.items.into_iter().map(TrackInfo::from));
-                    if done || tracks.len() >= page.total || tracks.len() >= MAX_TRACKS {
-                        break;
+                // Page by what TIDAL sent, not by what parsed: videos and
+                // malformed entries are dropped, which would re-fetch the
+                // tail of every page.
+                Self::Album(id) => {
+                    let mut cursor = Cursor::default();
+                    loop {
+                        let page = api.album_tracks(id, cursor.offset, PAGE).await?;
+                        cursor.advance(page.sent, PAGE, page.total);
+                        tracks.extend(page.items.into_iter().map(TrackInfo::from));
+                        if !cursor.has_more() || tracks.len() >= MAX_TRACKS {
+                            break;
+                        }
                     }
-                },
-                Self::Playlist(uuid) => loop {
-                    let page = api.playlist_tracks(&uuid, tracks.len(), PAGE).await?;
-                    let done = page.items.is_empty();
-                    tracks.extend(page.items.into_iter().map(TrackInfo::from));
-                    if done || tracks.len() >= page.total || tracks.len() >= MAX_TRACKS {
-                        break;
+                }
+                Self::Playlist(uuid) => {
+                    let mut cursor = Cursor::default();
+                    loop {
+                        let page = api.playlist_tracks(&uuid, cursor.offset, PAGE).await?;
+                        cursor.advance(page.sent, PAGE, page.total);
+                        tracks.extend(page.items.into_iter().map(TrackInfo::from));
+                        if !cursor.has_more() || tracks.len() >= MAX_TRACKS {
+                            break;
+                        }
                     }
-                },
+                }
                 Self::Mix(id) => {
                     let page = api.mix_tracks(&id, 0, PAGE).await?;
                     tracks.extend(page.items.into_iter().map(TrackInfo::from));
