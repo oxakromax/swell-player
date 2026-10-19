@@ -340,7 +340,17 @@ impl Client {
             let authz = self.authz();
             if authz.expires_within(REFRESH_MARGIN) && !refreshed {
                 refreshed = true;
-                self.refresh(&authz).await?;
+                // The token still has a little life left: a hiccup of the
+                // auth server must not fail the request.
+                if let Err(err) = self.refresh(&authz).await {
+                    let fatal = self.is_signed_out()
+                        || matches!(err.downcast_ref::<Error>(), Some(Error::SessionExpired))
+                        || authz.expires_within(Duration::ZERO);
+                    if fatal {
+                        return Err(err);
+                    }
+                    log::warn!("proactive token refresh failed, using the current token: {err:#}");
+                }
                 continue;
             }
             let url = format!("{}{}", call.base.url(), call.path);
