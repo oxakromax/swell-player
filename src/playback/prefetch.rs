@@ -304,9 +304,11 @@ impl Prefetcher {
         let Some(proxy) = proxy::running() else {
             return;
         };
+        // Not one whose fill failed (or found no room) lately, though.
         let unfilled = targets.iter().copied().find(|id| {
             self.slots.borrow().get(id).is_some_and(|slot| {
                 slot.filled_at.elapsed() >= FILL_AFTER
+                    && !self.failed.borrow().contains_key(id)
                     && slot
                         .stream
                         .route
@@ -345,6 +347,10 @@ impl Prefetcher {
                 if let (Some(route), Some(proxy)) = (route, proxy::running()) {
                     match proxy.prefetch(&route.key).await {
                         Ok(prefetched) => cached = prefetched,
+                        // Only filling: the job failed (tried again later).
+                        Err(err) if stream.is_none() => return Err(err),
+                        // The stream is kept; nothing cached counts as a
+                        // failed fill (see `finished`).
                         Err(err) => log::debug!(
                             "prefetch: no audio cached for track {track_id}: {}",
                             failure::redact(&format!("{err:#}"))
@@ -387,6 +393,12 @@ impl Prefetcher {
                     disk.map(|(used, _)| used >> 10),
                     disk.map(|(_, cap)| cap >> 10),
                 );
+                // Nothing downloaded and not complete: no room, or the
+                // download failed. Not tried again for a while (a refused
+                // DASH fill throws away what it had downloaded).
+                if !cached.complete && cached.bytes == 0 {
+                    self.failed.borrow_mut().insert(track_id, Instant::now());
+                }
                 let mut slots = self.slots.borrow_mut();
                 match stream {
                     Some(stream) => {
