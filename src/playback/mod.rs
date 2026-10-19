@@ -235,6 +235,9 @@ pub struct Playback {
     server_errors: Cell<u32>,
     /// Tracks skipped in a row after failing.
     failed_tracks: Cell<u32>,
+    /// The audio output failed and was built again: if it fails once more,
+    /// playback pauses.
+    sink_retried: Cell<bool>,
     log_output: Cell<bool>,
 
     prepared: RefCell<Option<Prepared>>,
@@ -339,6 +342,7 @@ impl Playback {
                 failures: Cell::new(0),
                 server_errors: Cell::new(0),
                 failed_tracks: Cell::new(0),
+                sink_retried: Cell::new(false),
                 log_output: Cell::new(false),
                 prepared: RefCell::default(),
                 preparing: Cell::new(None),
@@ -1572,6 +1576,7 @@ impl Playback {
             self.failures.set(0);
             self.server_errors.set(0);
             self.net_strikes.set(0);
+            self.sink_retried.set(false);
             self.prefetch_failed.set(None);
             self.prefetch_retry_at.set(None);
         }
@@ -1832,6 +1837,7 @@ impl Playback {
             self.failures.set(0);
             self.failed_tracks.set(0);
             self.net_strikes.set(0);
+            self.sink_retried.set(false);
         }
         if let Some((at, status)) = self.debug_engine_fail.get()
             && position >= at
@@ -1937,6 +1943,7 @@ impl Playback {
         self.loaded_track.set(Some(track_id));
         self.failures.set(0);
         self.net_strikes.set(0);
+        self.sink_retried.set(false);
         self.prefetch_failed.set(None);
         self.prefetch_retry_at.set(None);
         self.last_position.set(0.0);
@@ -1975,7 +1982,8 @@ impl Playback {
 
     /// A playback error. The network's fault: retry the same track at the
     /// same position until it works. The track's: reload once at the same
-    /// position (expired URLs), then skip. During the gapless handover, see
+    /// position (expired URLs), then skip. The audio output's: build it
+    /// again and reload once, then pause. During the gapless handover, see
     /// [`failure::blame_handover`].
     fn engine_failed(self: &Rc<Self>, message: &str, kind: Failure, from_sink: bool) {
         let handed_over = self.engine.as_ref().is_some_and(Engine::handover_pending);
@@ -2004,8 +2012,30 @@ impl Playback {
             }
             return self.reload_current(self.last_position.get());
         }
-        // Otherwise (also during the handover: the network, the audio
-        // output) it is the current track's; the prepared next one stays.
+        if from_sink {
+            // The audio output (a device gone or busy) is not the track's
+            // fault: build it again (the default one if the device is gone)
+            // and carry on at the same position. If that fails too, pause
+            // there; the queue stays as it is.
+            log::warn!("audio output failed: {message}");
+            if let Some(engine) = &self.engine {
+                engine.reset_output();
+            }
+            let position = self.last_position.get();
+            self.load_start.set(Some(position));
+            if self.sink_retried.replace(true) {
+                // Playing again tries afresh.
+                self.sink_retried.set(false);
+                self.want_play.set(false);
+                self.set_state(PlayState::Paused);
+                return self.emit(Event::Error(
+                    tr("Playback failed: {error}").replace("{error}", message),
+                ));
+            }
+            return self.reload_current(position);
+        }
+        // Otherwise (also during the handover: the network) it is the
+        // current track's; the prepared next one stays.
         // Its prefetched stream (likely expired) is not used again, and the
         // prepared stream may be just as stale.
         self.prefetcher.forget(track.id);

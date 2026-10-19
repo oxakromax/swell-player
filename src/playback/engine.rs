@@ -419,6 +419,8 @@ struct Deck {
     awaiting_first_start: Cell<bool>,
     /// The device the pipeline was last built with.
     output_applied: RefCell<Option<String>>,
+    /// The output failed: build the sink again on the next load.
+    output_stale: Cell<bool>,
     /// Fade factor, 0–1, on top of the user's volume.
     gain: Cell<f64>,
     /// The volume last given to the pipeline.
@@ -491,6 +493,7 @@ impl Deck {
             seeking_to_start: Cell::new(false),
             awaiting_first_start: Cell::new(false),
             output_applied: RefCell::default(),
+            output_stale: Cell::new(false),
             gain: Cell::new(1.0),
             applied: Cell::new(None),
             ramp: Cell::new(None),
@@ -551,9 +554,11 @@ impl Deck {
     /// Builds the audio sink for the wanted device. Only while the pipeline
     /// is in `Null`. A device that is not there (yet) leaves the default in
     /// place and is looked for again on the next load, so a DAC plugged in
-    /// later is picked up.
+    /// later is picked up. A stale output is built again even if it is
+    /// the wanted one.
     fn apply_output_device(&self, wanted: Option<String>) {
-        if *self.output_applied.borrow() == wanted {
+        let stale = self.output_stale.replace(false);
+        if !stale && *self.output_applied.borrow() == wanted {
             return;
         }
         let sink = wanted
@@ -567,7 +572,7 @@ impl Deck {
             });
         // Only what was built counts as applied.
         let applied = if sink.is_some() { wanted } else { None };
-        if sink.is_some() || self.output_applied.borrow().is_some() {
+        if stale || sink.is_some() || self.output_applied.borrow().is_some() {
             self.playbin.set_property("audio-sink", sink.as_ref());
         }
         self.output_applied.replace(applied);
@@ -778,6 +783,15 @@ impl Engine {
     /// GStreamer `Audio/Sink` device; `None` = the system default).
     pub fn set_output_device(&self, name: Option<String>) {
         self.inner.output_wanted.replace(name);
+    }
+
+    /// The audio output failed (a device gone or busy): every deck builds
+    /// its sink again on its next load, falling back to the default output
+    /// if the chosen device is not there.
+    pub fn reset_output(&self) {
+        for deck in &self.inner.decks {
+            deck.output_stale.set(true);
+        }
     }
 
     /// Whether the pipeline has the normalisation filter (as last loaded).
