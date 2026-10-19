@@ -670,7 +670,7 @@ impl Ui {
         let keys = gtk::EventControllerKey::new();
         keys.set_propagation_phase(gtk::PropagationPhase::Capture);
         let ui = Rc::downgrade(self);
-        keys.connect_key_pressed(move |_, key, _, state| {
+        keys.connect_key_pressed(move |controller, key, keycode, state| {
             let Some(ui) = ui.upgrade() else {
                 return glib::Propagation::Proceed;
             };
@@ -687,11 +687,25 @@ impl Ui {
                 };
             }
             let key = key.to_lower();
-            let Some((_, _, action)) = KEYS.iter().find(|(k, m, _)| *k == key && *m == modifiers)
-            else {
+            let find = |k: gdk::Key| KEYS.iter().find(|(kk, m, _)| *kk == k && *m == modifiers);
+            let found = find(key).or_else(|| {
+                // Non-Latin layouts: the same physical key in the other
+                // layout groups (as GTK does for accelerators).
+                if key.to_unicode().is_some_and(|c| c.is_ascii()) {
+                    return None;
+                }
+                controller
+                    .widget()?
+                    .display()
+                    .map_keycode(keycode)?
+                    .into_iter()
+                    .filter(|(position, _)| position.level() == 0)
+                    .find_map(|(_, k)| find(k.to_lower()))
+            });
+            let Some((matched, _, action)) = found else {
                 return glib::Propagation::Proceed;
             };
-            if ui.ctx().is_none() || !shortcut_allowed(&ui.window, key == gdk::Key::space) {
+            if ui.ctx().is_none() || !shortcut_allowed(&ui.window, *matched == gdk::Key::space) {
                 return glib::Propagation::Proceed;
             }
             let _ = WidgetExt::activate_action(&ui.window, &format!("win.{action}"), None);
