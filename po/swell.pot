@@ -28,33 +28,34 @@ msgstr ""
 msgid "Unknown format"
 msgstr ""
 
-#: src/playback/mod.rs:1555
+#: src/playback/mod.rs:1581
 msgid "Skipped a track that is not available"
 msgid_plural "Skipped {n} tracks that are not available"
 msgstr[0] ""
 msgstr[1] ""
 
-#: src/playback/mod.rs:1585
+#: src/playback/mod.rs:1617
 msgid "Playback needs GStreamer's playbin3"
 msgstr ""
 
-#: src/playback/mod.rs:1686
+#: src/playback/mod.rs:1718
 msgid "The TIDAL session has expired: sign in again to play"
 msgstr ""
 
-#: src/playback/mod.rs:1711
+#: src/playback/mod.rs:1743
 msgid "Connection lost — retrying"
 msgstr ""
 
-#: src/playback/mod.rs:1779
+#: src/playback/mod.rs:1811
 msgid "Could not play “{title}”. Playback stopped after {n} tracks failed"
 msgstr ""
 
-#: src/playback/mod.rs:1785
+#: src/playback/mod.rs:1817
 msgid "Could not play “{title}”, skipped"
 msgstr ""
 
-#: src/playback/mod.rs:1980
+#: src/playback/mod.rs:2020
+#: src/playback/mod.rs:2058
 msgid "Playback failed: {error}"
 msgstr ""
 
@@ -62,7 +63,7 @@ msgstr ""
 msgid "Playing music"
 msgstr ""
 
-#: src/playback/notify.rs:242
+#: src/playback/notify.rs:247
 msgid "{artists} — {album}"
 msgstr ""
 
@@ -122,7 +123,7 @@ msgid ""
 msgstr ""
 
 #: src/ui/dialogs/credits.rs:26
-#: src/ui/menus.rs:473
+#: src/ui/menus.rs:482
 #: src/ui/pages/album.rs:362
 #: src/ui/pages/album.rs:489
 msgid "Credits"
@@ -189,13 +190,13 @@ msgid "Your Playlists"
 msgstr ""
 
 #: src/ui/dialogs/playlist.rs:221
-#: src/ui/menus.rs:802
+#: src/ui/menus.rs:811
 msgid "New Playlist…"
 msgstr ""
 
 #: src/ui/dialogs/playlist.rs:244
-#: src/ui/menus.rs:442
-#: src/ui/menus.rs:507
+#: src/ui/menus.rs:451
+#: src/ui/menus.rs:516
 msgid "Add to Playlist"
 msgstr ""
 
@@ -559,7 +560,7 @@ msgid "Unblock"
 msgstr ""
 
 #: src/ui/dialogs/preferences.rs:584
-#: src/ui/menus.rs:870
+#: src/ui/menus.rs:879
 msgid "Unblocked {name}"
 msgstr ""
 
@@ -792,85 +793,85 @@ msgstr ""
 msgid "This code expired or was not approved."
 msgstr ""
 
-#: src/ui/menus.rs:201
+#: src/ui/menus.rs:210
 #: src/ui/pages/artist.rs:298
 msgid "There's nothing to play here"
 msgstr ""
 
-#: src/ui/menus.rs:203
-#: src/ui/menus.rs:842
+#: src/ui/menus.rs:212
+#: src/ui/menus.rs:851
 msgid "Couldn't load the tracks"
 msgstr ""
 
-#: src/ui/menus.rs:232
+#: src/ui/menus.rs:241
 msgid "“{title}” isn't available in your region"
 msgstr ""
 
-#: src/ui/menus.rs:243
-#: src/ui/menus.rs:256
-#: src/ui/menus.rs:269
+#: src/ui/menus.rs:252
+#: src/ui/menus.rs:265
+#: src/ui/menus.rs:278
 msgid "None of these tracks are available in your region"
 msgstr ""
 
-#: src/ui/menus.rs:272
+#: src/ui/menus.rs:281
 msgid "“{title}” will play next"
 msgstr ""
 
-#: src/ui/menus.rs:273
+#: src/ui/menus.rs:282
 msgid "Added “{title}” to the queue"
 msgstr ""
 
-#: src/ui/menus.rs:274
+#: src/ui/menus.rs:283
 msgid "Added {n} track to the queue"
 msgid_plural "Added {n} tracks to the queue"
 msgstr[0] ""
 msgstr[1] ""
 
-#: src/ui/menus.rs:287
+#: src/ui/menus.rs:296
 #: src/ui/pages/search.rs:130
 msgid "Show"
 msgstr ""
 
-#: src/ui/menus.rs:320
+#: src/ui/menus.rs:329
 msgid "Couldn't play this track"
 msgstr ""
 
-#: src/ui/menus.rs:428
+#: src/ui/menus.rs:437
 #: src/ui/widgets/heart_button.rs:173
 #: src/ui/widgets/np_common.rs:791
 msgid "Remove from Favourites"
 msgstr ""
 
-#: src/ui/menus.rs:430
+#: src/ui/menus.rs:439
 #: src/ui/widgets/heart_button.rs:175
 #: src/ui/widgets/np_common.rs:725
 #: src/ui/widgets/np_common.rs:793
 msgid "Add to Favourites"
 msgstr ""
 
-#: src/ui/menus.rs:437
-#: src/ui/menus.rs:784
+#: src/ui/menus.rs:446
+#: src/ui/menus.rs:793
 msgid "Play Next"
 msgstr ""
 
-#: src/ui/menus.rs:438
-#: src/ui/menus.rs:785
+#: src/ui/menus.rs:447
+#: src/ui/menus.rs:794
 msgid "Add to Queue"
 msgstr ""
 
-#: src/ui/menus.rs:447
+#: src/ui/menus.rs:456
 #: src/ui/widgets/np_common.rs:921
 msgid "Go to Album"
 msgstr ""
 
-#: src/ui/menus.rs:452
-#: src/ui/menus.rs:465
-#: src/ui/menus.rs:512
+#: src/ui/menus.rs:461
+#: src/ui/menus.rs:474
+#: src/ui/menus.rs:521
 #: src/ui/widgets/np_common.rs:922
 msgid "Go to Artist"
 msgstr ""
 
-#: src/ui/menus.rs:468
+#: src/ui/menus.rs:477
 #: src/ui/pages/mix.rs:51
 #: src/ui/pages/mix.rs:60
 #: src/ui/widgets/now_playing.rs:178
@@ -879,64 +880,64 @@ msgstr ""
 msgid "Track Radio"
 msgstr ""
 
-#: src/ui/menus.rs:474
-#: src/ui/menus.rs:523
-#: src/ui/menus.rs:542
+#: src/ui/menus.rs:483
+#: src/ui/menus.rs:532
 #: src/ui/menus.rs:551
-#: src/ui/menus.rs:575
+#: src/ui/menus.rs:560
+#: src/ui/menus.rs:584
 #: src/ui/widgets/np_common.rs:927
 #: src/ui/widgets/page_header.rs:486
 msgid "Copy Link"
 msgstr ""
 
-#: src/ui/menus.rs:480
+#: src/ui/menus.rs:489
 msgid "Remove from This Playlist"
 msgstr ""
 
-#: src/ui/menus.rs:484
+#: src/ui/menus.rs:493
 #: src/ui/shortcuts.rs:82
 msgid "Move Up"
 msgstr ""
 
-#: src/ui/menus.rs:487
+#: src/ui/menus.rs:496
 #: src/ui/shortcuts.rs:83
 msgid "Move Down"
 msgstr ""
 
-#: src/ui/menus.rs:497
+#: src/ui/menus.rs:506
 msgid "Block {name}"
 msgstr ""
 
-#: src/ui/menus.rs:517
-#: src/ui/menus.rs:559
+#: src/ui/menus.rs:526
+#: src/ui/menus.rs:568
 #: src/ui/pages/mix.rs:52
 #: src/ui/pages/mix.rs:61
 #: src/ui/widgets/page_header.rs:631
 msgid "Artist Radio"
 msgstr ""
 
-#: src/ui/menus.rs:527
+#: src/ui/menus.rs:536
 msgid "Edit Details…"
 msgstr ""
 
-#: src/ui/menus.rs:530
+#: src/ui/menus.rs:539
 msgid "Make Private"
 msgstr ""
 
-#: src/ui/menus.rs:532
+#: src/ui/menus.rs:541
 msgid "Make Public"
 msgstr ""
 
-#: src/ui/menus.rs:545
+#: src/ui/menus.rs:554
 msgid "Delete Playlist…"
 msgstr ""
 
-#: src/ui/menus.rs:555
+#: src/ui/menus.rs:564
 msgid "Play Top Tracks"
 msgstr ""
 
-#: src/ui/menus.rs:556
-#: src/ui/menus.rs:783
+#: src/ui/menus.rs:565
+#: src/ui/menus.rs:792
 #: src/ui/pages/collection.rs:681
 #: src/ui/shortcuts.rs:71
 #: src/ui/widgets/np_controls.rs:147
@@ -947,34 +948,34 @@ msgstr ""
 msgid "Shuffle"
 msgstr ""
 
-#: src/ui/menus.rs:568
+#: src/ui/menus.rs:577
 #: src/ui/widgets/heart_button.rs:189
 msgid "Unfollow"
 msgstr ""
 
-#: src/ui/menus.rs:570
+#: src/ui/menus.rs:579
 #: src/ui/widgets/heart_button.rs:185
 msgid "Follow"
 msgstr ""
 
-#: src/ui/menus.rs:578
+#: src/ui/menus.rs:587
 msgid "Block Artist"
 msgstr ""
 
-#: src/ui/menus.rs:625
+#: src/ui/menus.rs:634
 #: src/ui/widgets/heart_button.rs:215
 #: src/ui/widgets/np_common.rs:765
-#: src/ui/window.rs:744
+#: src/ui/window.rs:768
 msgid "Couldn't update favourites"
 msgstr ""
 
-#: src/ui/menus.rs:693
+#: src/ui/menus.rs:702
 #: src/ui/widgets/np_common.rs:882
 #: src/ui/widgets/page_header.rs:490
 msgid "Link copied"
 msgstr ""
 
-#: src/ui/menus.rs:782
+#: src/ui/menus.rs:791
 #: src/ui/pages/collection.rs:680
 #: src/ui/widgets/np_controls.rs:52
 #: src/ui/widgets/np_controls.rs:56
@@ -983,15 +984,15 @@ msgstr ""
 msgid "Play"
 msgstr ""
 
-#: src/ui/menus.rs:819
+#: src/ui/menus.rs:828
 msgid "More…"
 msgstr ""
 
-#: src/ui/menus.rs:861
+#: src/ui/menus.rs:870
 msgid "Blocked {name}"
 msgstr ""
 
-#: src/ui/menus.rs:871
+#: src/ui/menus.rs:880
 msgid "Couldn't update blocked artists"
 msgstr ""
 
@@ -1021,7 +1022,7 @@ msgstr ""
 #: src/ui/nav.rs:407
 #: src/ui/sidebar.rs:288
 #: src/ui/sidebar.rs:317
-#: src/ui/window.rs:806
+#: src/ui/window.rs:830
 msgid "Collection"
 msgstr ""
 
@@ -1359,7 +1360,7 @@ msgstr ""
 #: src/ui/pages/history.rs:248
 #: src/ui/pages/history.rs:255
 #: src/ui/sidebar.rs:146
-#: src/ui/window.rs:1229
+#: src/ui/window.rs:1253
 msgid "Recently Played"
 msgstr ""
 
@@ -1771,7 +1772,7 @@ msgstr ""
 #: src/ui/shortcuts.rs:52
 #: src/ui/shortcuts.rs:54
 #: src/ui/widgets/now_playing.rs:305
-#: src/ui/widgets/queue_view.rs:734
+#: src/ui/widgets/queue_view.rs:736
 msgid "Now Playing"
 msgstr ""
 
@@ -1827,7 +1828,7 @@ msgid "Volume Down"
 msgstr ""
 
 #: src/ui/shortcuts.rs:70
-#: src/ui/widgets/np_controls.rs:605
+#: src/ui/widgets/np_controls.rs:622
 msgid "Mute"
 msgstr ""
 
@@ -1947,7 +1948,7 @@ msgstr ""
 msgid "Couldn't load lyrics"
 msgstr ""
 
-#: src/ui/widgets/lyrics_view.rs:694
+#: src/ui/widgets/lyrics_view.rs:702
 msgid "Lyrics provided by {provider}"
 msgstr ""
 
@@ -1975,7 +1976,7 @@ msgstr ""
 msgid "Play {title}"
 msgstr ""
 
-#: src/ui/widgets/mini_player.rs:185
+#: src/ui/widgets/mini_player.rs:186
 msgid "Now Playing: {title} by {artists}. Open player"
 msgstr ""
 
@@ -2185,22 +2186,22 @@ msgstr ""
 msgid "Seek"
 msgstr ""
 
-#: src/ui/widgets/np_controls.rs:456
+#: src/ui/widgets/np_controls.rs:473
 msgid "{position} of {duration}"
 msgstr ""
 
-#: src/ui/widgets/np_controls.rs:487
-#: src/ui/widgets/np_controls.rs:494
-#: src/ui/widgets/np_controls.rs:509
-#: src/ui/widgets/np_controls.rs:513
+#: src/ui/widgets/np_controls.rs:504
+#: src/ui/widgets/np_controls.rs:511
+#: src/ui/widgets/np_controls.rs:526
+#: src/ui/widgets/np_controls.rs:530
 msgid "Volume"
 msgstr ""
 
-#: src/ui/widgets/np_controls.rs:605
+#: src/ui/widgets/np_controls.rs:622
 msgid "Unmute"
 msgstr ""
 
-#: src/ui/widgets/np_controls.rs:613
+#: src/ui/widgets/np_controls.rs:630
 msgid "Muted"
 msgstr ""
 
@@ -2263,30 +2264,30 @@ msgstr ""
 msgid "Queue cleared"
 msgstr ""
 
-#: src/ui/widgets/queue_view.rs:513
+#: src/ui/widgets/queue_view.rs:515
 msgid "Drag to Reorder"
 msgstr ""
 
-#: src/ui/widgets/queue_view.rs:520
 #: src/ui/widgets/queue_view.rs:522
+#: src/ui/widgets/queue_view.rs:524
 #: src/ui/widgets/track_row.rs:384
 msgid "Remove from Queue"
 msgstr ""
 
-#: src/ui/widgets/queue_view.rs:699
+#: src/ui/widgets/queue_view.rs:701
 #: src/ui/widgets/track_row.rs:759
 msgid "{track}, playing"
 msgstr ""
 
-#: src/ui/widgets/queue_view.rs:735
+#: src/ui/widgets/queue_view.rs:737
 msgid "Next in Queue"
 msgstr ""
 
-#: src/ui/widgets/queue_view.rs:737
+#: src/ui/widgets/queue_view.rs:739
 msgid "Next"
 msgstr ""
 
-#: src/ui/widgets/queue_view.rs:738
+#: src/ui/widgets/queue_view.rs:740
 msgid "Next From: {source}"
 msgstr ""
 
@@ -2367,6 +2368,6 @@ msgstr ""
 msgid "Couldn't load your library"
 msgstr ""
 
-#: src/ui/window.rs:770
+#: src/ui/window.rs:794
 msgid "Couldn't open the track"
 msgstr ""
