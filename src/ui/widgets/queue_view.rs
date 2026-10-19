@@ -379,6 +379,8 @@ impl QueueView {
     }
 
     fn on_key(&self, key: gdk::Key, modifiers: gdk::ModifierType) -> bool {
+        // NumLock and CapsLock are part of the raw state.
+        let modifiers = modifiers & gtk::accelerator_get_default_mod_mask();
         let Some(position) = self.focused_position() else {
             return false;
         };
