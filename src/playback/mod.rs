@@ -555,7 +555,11 @@ impl Playback {
             self.want_play.set(true);
             if let Some(engine) = &self.engine {
                 engine.resume();
-                if state != PlayState::Playing && engine.is_waiting() {
+                if engine.is_playing() {
+                    // Resumed during the pause fade-out: the pipeline never
+                    // left `Playing`, so no engine message will say so.
+                    self.set_state(PlayState::Playing);
+                } else if state != PlayState::Playing && engine.is_waiting() {
                     self.set_state(PlayState::Loading);
                 }
             }
@@ -1804,9 +1808,9 @@ impl Playback {
         if stale {
             self.refresh_next();
         }
-        // A missed engine message must not leave the UI loading while
-        // audio plays.
-        if self.state.get() == PlayState::Loading
+        // A missed engine message must not leave the UI loading (or
+        // paused, when a resume cancelled the pause fade) while audio plays.
+        if matches!(self.state.get(), PlayState::Loading | PlayState::Paused)
             && self.loaded.get()
             && self.want_play.get()
             && self.engine.as_ref().is_some_and(Engine::is_playing)
