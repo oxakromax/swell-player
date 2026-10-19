@@ -206,6 +206,22 @@ sudo make install     # binary, desktop entry, icon, metainfo under /usr/local
 `sudo make uninstall` removes it. The binary also runs straight from
 `target/release/swell-player`, since icons and translations are embedded.
 
+### Updates
+
+Swell looks for a new release on GitHub shortly after it starts and then
+once a day; **Preferences → General → Updates** turns this off or checks
+at once. What happens to a new release depends on how Swell was installed:
+
+| Installed with | A new release |
+|---|---|
+| Windows installer | Downloaded, checked against the release's `SHA256SUMS` and installed when you quit Swell, or at once with **Restart** |
+| macOS `.dmg` | The same, when Swell may write to the folder the app is in; otherwise Swell downloads the new disk image and offers to open it |
+| Linux packages, Flatpak, tarball, Windows portable `.zip` | A notification that links to the release: update the way you installed |
+
+Distributions that deliver updates themselves can build Swell without the
+checks (see [packaging/README.md](packaging/README.md#update-checks)), and
+builds run from the source tree don't check.
+
 ## Signing in and audio quality
 
 TIDAL does not let third-party apps register their own OAuth clients, so
@@ -266,7 +282,9 @@ Want Swell in your language? See [docs/translating.md](docs/translating.md).
   searches. Preferences can clear the cache; signing out deletes the tokens,
   the cache, the saved queue and the search history.
 - **No telemetry.** Swell connects only to TIDAL's servers, for what you
-  ask it to show or play. It has no analytics, crash reporting or other
+  ask it to show or play, and once a day to GitHub to look for a new
+  version, which sends nothing but Swell's version (see
+  [Updates](#updates)). It has no analytics, crash reporting or other
   third-party services.
 
 ## Measurements

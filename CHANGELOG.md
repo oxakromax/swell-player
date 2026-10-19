@@ -8,6 +8,18 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- **Updates:** Swell looks for a new release shortly after it starts and
+  then once a day (Preferences → General → Updates, which can turn it off
+  or check at once). The Windows installer and the macOS app download the
+  new version, check it against the release's `SHA256SUMS` and install it
+  when Swell quits, or at once with Restart. Elsewhere (Linux packages,
+  Flatpak, the tarball, the portable zip) a notification links to the
+  release. Each version is announced once per run, and nothing shows while
+  Swell is up to date. Distributions can build with
+  `SWELL_DISABLE_UPDATE_CHECK=1` to leave updates to themselves.
+
 ## [1.1.0] - 2026-10-18
 
 ### Added
