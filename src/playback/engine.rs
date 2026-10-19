@@ -741,15 +741,26 @@ fn watch_sink_caps(
         let (Some(shared), Some(sink)) = (shared.upgrade(), sink.upgrade()) else {
             return;
         };
-        let (volume, muted) = {
+        let wanted = || {
             let shared = lock(&shared);
             (shared.stream_volume, shared.stream_muted)
         };
-        if let Some(volume) = volume {
-            sink.set_property("volume", volume);
-        }
-        if let Some(muted) = muted {
-            sink.set_property("mute", muted);
+        let mut sent = wanted();
+        // The main thread may set a new volume between the read and the
+        // set here, which would then put the older one back: look again.
+        for _ in 0..3 {
+            let (volume, muted) = sent;
+            if let Some(volume) = volume {
+                sink.set_property("volume", volume);
+            }
+            if let Some(muted) = muted {
+                sink.set_property("mute", muted);
+            }
+            let now = wanted();
+            if now == sent {
+                break;
+            }
+            sent = now;
         }
     });
     // The same sink is added again on every load from `Null`: one handler.
