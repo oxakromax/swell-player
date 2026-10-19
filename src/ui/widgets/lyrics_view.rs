@@ -465,6 +465,14 @@ impl LyricsView {
             } => {
                 self.rtl.set(*rtl);
                 self.plain.set_label(text);
+                // Start at the top, not where the previous track was left.
+                if let Some(scrolled) = self
+                    .stack
+                    .child_by_name("plain")
+                    .and_downcast::<gtk::ScrolledWindow>()
+                {
+                    scrolled.vadjustment().set_value(0.0);
+                }
                 set_credit(&self.plain_credit, provider.as_deref());
                 self.align_lines();
                 self.stack.set_visible_child_name("plain");
