@@ -338,6 +338,9 @@ struct Entry {
     persisted: HashSet<String>,
     /// Its start is being read from disk into memory.
     promoting: bool,
+    /// Its stream is not needed any more (see [`Proxy::collect`]): never
+    /// read into memory again.
+    retired: bool,
 }
 
 impl Entry {
@@ -354,6 +357,7 @@ impl Entry {
             start_bytes: 0,
             persisted: HashSet::new(),
             promoting: false,
+            retired: false,
         }
     }
 
@@ -884,6 +888,7 @@ impl Proxy {
                     ranks.get(&entry.track_id) == Some(&0)
                         && entry.media.is_some()
                         && !entry.promoting
+                        && !entry.retired
                         && entry.start_files.iter().any(|f| !entry.cached.has(f))
                 })
                 .map(|(key, entry)| {
@@ -922,10 +927,9 @@ impl Proxy {
             let Ok(Some(blob)) = read else { continue };
             let len = blob.bytes.len();
             let mut store = self.lock();
-            let next = store
-                .routes
-                .get(key)
-                .is_some_and(|entry| store.rank(entry) == Some(0) && !entry.cached.has(&file));
+            let next = store.routes.get(key).is_some_and(|entry| {
+                store.rank(entry) == Some(0) && !entry.retired && !entry.cached.has(&file)
+            });
             // Room is made (evicting what is less wanted) and taken in one
             // critical section.
             if !next || !store.reserve(key, len) {
@@ -956,7 +960,8 @@ impl Proxy {
     /// `grace` (a deck fading out still streams from its route), and drops
     /// the cached bytes of streams not needed any more (`stale`: route
     /// keys; their routes stay while their track is wanted, as a paused
-    /// deck may still fetch through them).
+    /// deck may still fetch through them, but their starts are not read
+    /// into memory again: the track's new stream has its own copy).
     pub fn collect(&self, grace: Duration, stale: &[String]) {
         let mut store = self.lock();
         let ranks = std::mem::take(&mut store.ranks);
@@ -968,6 +973,7 @@ impl Proxy {
         for key in stale {
             if let Some(entry) = store.routes.get_mut(key) {
                 entry.cached = Cached::Nothing;
+                entry.retired = true;
             }
         }
         store.ranks = ranks;
@@ -2776,6 +2782,41 @@ mod tests {
                 let data = std::fs::read(entry.unwrap().path()).unwrap();
                 assert!(!data.windows(5).any(|w| w == b"token" || w == b"http:"));
             }
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// The start of a stream not needed any more (expired, resolved again)
+    /// is not read back into memory next to the new stream's, though the
+    /// track is still the next one.
+    #[test]
+    fn stale_routes_are_not_promoted() {
+        let file: Bytes = (0..3_000_000u32).map(|i| (i * 11 % 241) as u8).collect();
+        let dir = disk_dir("stale");
+        crate::runtime::runtime().block_on(async {
+            let upstream = fake_cdn(file.clone()).await;
+            let proxy = Proxy::start(Some(dir.clone())).unwrap();
+            let old = proxy.route_progressive(5, &upstream, &kept(1.0)).unwrap();
+            proxy.set_ranks(&[5], None);
+            let done = proxy.prefetch(&old.key).await.unwrap();
+            let prefix = prefix_bytes(1.0, 100_000.0);
+            assert_eq!((done.bytes, done.complete), (prefix, true));
+            assert_eq!(proxy.usage().0, prefix);
+            // Expired: its bytes go, its route stays (the track is wanted).
+            proxy.collect(Duration::from_secs(60), std::slice::from_ref(&old.key));
+            assert_eq!(proxy.usage().0, 0);
+            let resigned = upstream.replace("token=secret", "token=other");
+            let new = proxy.route_progressive(5, &resigned, &kept(1.0)).unwrap();
+            for _ in 0..3 {
+                proxy.set_ranks(&[5], None);
+                let idle = || proxy.lock().routes.values().all(|e| !e.promoting);
+                assert!(eventually(idle).await);
+            }
+            let store = proxy.lock();
+            assert!(store.routes.contains_key(&old.key));
+            assert_eq!(store.routes[&old.key].cached.len(), 0);
+            assert_eq!(store.routes[&new.key].cached.len(), prefix);
+            assert_eq!(store.used(), prefix);
         });
         let _ = std::fs::remove_dir_all(&dir);
     }
