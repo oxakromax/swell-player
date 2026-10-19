@@ -284,9 +284,15 @@ pub fn stage(update: Staged) {
     staged().replace(update);
 }
 
-/// Installs nothing when Swell quits (update checks were turned off).
+/// Installs nothing when Swell quits (update checks were turned off, or
+/// the release was withdrawn).
 pub fn unstage() {
     staged().take();
+}
+
+/// The version that installs when Swell quits, if any.
+pub fn staged_version() -> Option<Version> {
+    staged().as_ref().map(|update| update.version)
 }
 
 /// Starts installing the [`stage`]d update, if there is one: called by

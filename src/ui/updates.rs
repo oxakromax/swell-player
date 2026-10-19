@@ -386,6 +386,8 @@ async fn run_check(updater: Weak<Updater>) {
             "Swell is up to date (the latest release is {})",
             release.tag
         );
+        // A staged update whose release was withdrawn stays out too.
+        install::unstage();
         runtime::runtime().spawn(install::clean(None));
         return this.finish(Status::UpToDate);
     }
@@ -397,6 +399,11 @@ async fn run_check(updater: Weak<Updater>) {
     );
     if !channel.downloads_updates() {
         return this.finish(Status::Available(release));
+    }
+    // Downloaded and checked already: a failure fetching it again must
+    // not hide that it installs when Swell quits.
+    if install::staged_version() == Some(release.version) {
+        return this.finish(Status::Ready(release.version));
     }
     this.set_status(Status::Downloading(release.version));
     drop(this);
