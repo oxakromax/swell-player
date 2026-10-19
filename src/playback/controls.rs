@@ -131,4 +131,15 @@ mod tests {
         };
         assert_eq!(ended.position_now(), 12.0);
     }
+
+    #[test]
+    fn position_holds_without_a_start_time() {
+        let loading = Snapshot {
+            status: Status::Playing,
+            position: 3.0,
+            position_at: None,
+            ..Snapshot::default()
+        };
+        assert_eq!(loading.position_now(), 3.0);
+    }
 }

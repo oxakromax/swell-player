@@ -1133,6 +1133,13 @@ impl Playback {
         if !matches!(event, Event::Seeked(_) | Event::Error(_)) {
             self.sync_controls();
         }
+        if matches!(event, Event::State(PlayState::Playing))
+            && let Some(position) = self.position()
+        {
+            // The audio starts (after loading, or a rebuffer): clients
+            // that extrapolate need the real position.
+            self.restarted(position);
+        }
     }
 
     /// Announces a track that starts playing now.
@@ -1140,6 +1147,15 @@ impl Playback {
         self.emit(Event::Track(Some(track.clone())));
         if self.settings.get().notifications {
             self.desktop.track_changed(track);
+        }
+    }
+
+    /// Tells the media controls that the same track started over: they
+    /// were counting up to its end. Comes after `announce`, whose snapshot
+    /// still holds the old position.
+    fn restarted(&self, position: f64) {
+        if let Some(controls) = &self.controls {
+            controls.seeked(position);
         }
     }
 
@@ -1173,7 +1189,9 @@ impl Playback {
                 disc_number: track.volume_number,
             }),
             position: self.position().unwrap_or(0.0),
-            position_at: Some(Instant::now()),
+            // Nothing plays while loading or rebuffering: clients must not
+            // count up from this position until the audio starts.
+            position_at: (self.state.get() != PlayState::Loading).then(Instant::now),
             can_go_next: queue.can_advance(),
             can_go_previous: current.is_some(),
             can_play: current.is_some(),
@@ -1572,7 +1590,8 @@ impl Playback {
             self.finish();
             return self.emit(Event::Track(None));
         };
-        if self.loaded_track.replace(Some(track.id)) != Some(track.id) {
+        let same = self.loaded_track.replace(Some(track.id)) == Some(track.id);
+        if !same {
             self.failures.set(0);
             self.server_errors.set(0);
             self.net_strikes.set(0);
@@ -1588,6 +1607,10 @@ impl Playback {
         self.loaded.set(false);
         if announce || skipped > 0 {
             self.announce(&track);
+        }
+        if announce && same {
+            // Repeat-one: the controls still show the end of this track.
+            self.restarted(start.unwrap_or(0.0));
         }
         let Some(engine) = &self.engine else {
             return self.emit(Event::Error(
@@ -1940,7 +1963,7 @@ impl Playback {
             return;
         };
         log::info!("switched to track {track_id} (gapless or crossfading)");
-        self.loaded_track.set(Some(track_id));
+        let same = self.loaded_track.replace(Some(track_id)) == Some(track_id);
         self.failures.set(0);
         self.net_strikes.set(0);
         self.sink_retried.set(false);
@@ -1950,6 +1973,9 @@ impl Playback {
         self.healthy_at.set(HEALTHY_AFTER);
         self.log_output.set(true);
         self.announce(&track);
+        if same {
+            self.restarted(0.0);
+        }
         let gain = self.gain_for(&prepared.stream);
         self.set_current_stream(prepared.stream, prepared.at, gain);
         if self.sleep_timer() == Some(SleepTimer::EndOfTrack) {
