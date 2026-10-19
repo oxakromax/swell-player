@@ -22,35 +22,35 @@ msgstr "{codec} {bits} bit/{rate} kHz"
 msgid "Unknown format"
 msgstr "Formato sconosciuto"
 
-#: src/playback/mod.rs:1555
+#: src/playback/mod.rs:1581
 msgid "Skipped a track that is not available"
 msgid_plural "Skipped {n} tracks that are not available"
 msgstr[0] "Saltato un brano non disponibile"
 msgstr[1] "Saltati {n} brani non disponibili"
 
-#: src/playback/mod.rs:1585
+#: src/playback/mod.rs:1617
 msgid "Playback needs GStreamer's playbin3"
 msgstr "La riproduzione richiede playbin3 di GStreamer"
 
-#: src/playback/mod.rs:1686
+#: src/playback/mod.rs:1718
 msgid "The TIDAL session has expired: sign in again to play"
 msgstr "La sessione di TIDAL è scaduta: accedi di nuovo per riprodurre"
 
-#: src/playback/mod.rs:1711
+#: src/playback/mod.rs:1743
 msgid "Connection lost — retrying"
 msgstr "Connessione persa — nuovo tentativo"
 
-#: src/playback/mod.rs:1779
+#: src/playback/mod.rs:1811
 msgid "Could not play “{title}”. Playback stopped after {n} tracks failed"
 msgstr ""
 "Impossibile riprodurre “{title}”. La riproduzione si è interrotta dopo {n} "
 "brani non riusciti"
 
-#: src/playback/mod.rs:1785
+#: src/playback/mod.rs:1817
 msgid "Could not play “{title}”, skipped"
 msgstr "Impossibile riprodurre “{title}”, saltato"
 
-#: src/playback/mod.rs:1980
+#: src/playback/mod.rs:2020 src/playback/mod.rs:2058
 msgid "Playback failed: {error}"
 msgstr "Riproduzione non riuscita: {error}"
 
@@ -58,7 +58,7 @@ msgstr "Riproduzione non riuscita: {error}"
 msgid "Playing music"
 msgstr "Riproduzione di musica"
 
-#: src/playback/notify.rs:242
+#: src/playback/notify.rs:247
 msgid "{artists} — {album}"
 msgstr "{artists} — {album}"
 
@@ -124,7 +124,7 @@ msgstr ""
 "\n"
 "Non affiliato a TIDAL."
 
-#: src/ui/dialogs/credits.rs:26 src/ui/menus.rs:473 src/ui/pages/album.rs:362
+#: src/ui/dialogs/credits.rs:26 src/ui/menus.rs:482 src/ui/pages/album.rs:362
 #: src/ui/pages/album.rs:489
 msgid "Credits"
 msgstr "Crediti"
@@ -156,6 +156,7 @@ msgstr[0] "Aggiunto {n} brano a “{title}”"
 msgstr[1] "Aggiunti {n} brani a “{title}”"
 
 #: src/ui/dialogs/playlist.rs:71 src/ui/dialogs/playlist.rs:404
+#: src/ui/updates.rs:348
 msgid "Open"
 msgstr "Apri"
 
@@ -179,11 +180,11 @@ msgstr[1] "{n} brani"
 msgid "Your Playlists"
 msgstr "Le tue playlist"
 
-#: src/ui/dialogs/playlist.rs:221 src/ui/menus.rs:802
+#: src/ui/dialogs/playlist.rs:221 src/ui/menus.rs:811
 msgid "New Playlist…"
 msgstr "Nuova playlist…"
 
-#: src/ui/dialogs/playlist.rs:244 src/ui/menus.rs:442 src/ui/menus.rs:507
+#: src/ui/dialogs/playlist.rs:244 src/ui/menus.rs:451 src/ui/menus.rs:516
 msgid "Add to Playlist"
 msgstr "Aggiungi a una playlist"
 
@@ -278,88 +279,88 @@ msgstr "“{title}” eliminata"
 msgid "Couldn't delete the playlist"
 msgstr "Impossibile eliminare la playlist"
 
-#: src/ui/dialogs/preferences.rs:42 src/ui/widgets/np_common.rs:407
+#: src/ui/dialogs/preferences.rs:43 src/ui/widgets/np_common.rs:407
 #: src/ui/widgets/np_common.rs:411 src/ui/widgets/quality_badge.rs:28
 msgid "Hi-Res Lossless"
 msgstr "Hi-Res Lossless"
 
-#: src/ui/dialogs/preferences.rs:45 src/ui/widgets/np_common.rs:408
+#: src/ui/dialogs/preferences.rs:46 src/ui/widgets/np_common.rs:408
 #: src/ui/widgets/np_common.rs:412 src/ui/widgets/quality_badge.rs:29
 msgid "Lossless"
 msgstr "Lossless"
 
-#: src/ui/dialogs/preferences.rs:46 src/ui/widgets/np_common.rs:409
+#: src/ui/dialogs/preferences.rs:47 src/ui/widgets/np_common.rs:409
 msgid "High"
 msgstr "Alta"
 
-#: src/ui/dialogs/preferences.rs:47 src/ui/widgets/np_common.rs:410
+#: src/ui/dialogs/preferences.rs:48 src/ui/widgets/np_common.rs:410
 msgid "Low"
 msgstr "Bassa"
 
-#: src/ui/dialogs/preferences.rs:57
+#: src/ui/dialogs/preferences.rs:58
 msgid "Streaming Quality"
 msgstr "Qualità dello streaming"
 
-#: src/ui/dialogs/preferences.rs:65
+#: src/ui/dialogs/preferences.rs:66
 msgid "Hi-Res Lossless requires browser sign-in"
 msgstr "Hi-Res Lossless richiede l’accesso con il browser"
 
-#: src/ui/dialogs/preferences.rs:71 src/ui/widgets/np_common.rs:477
+#: src/ui/dialogs/preferences.rs:72 src/ui/widgets/np_common.rs:477
 msgid "Quality"
 msgstr "Qualità"
 
-#: src/ui/dialogs/preferences.rs:81
+#: src/ui/dialogs/preferences.rs:82
 msgid "Volume Normalisation"
 msgstr "Normalizzazione del volume"
 
-#: src/ui/dialogs/preferences.rs:82 src/ui/pages/album.rs:68
+#: src/ui/dialogs/preferences.rs:83 src/ui/pages/album.rs:68
 #: src/ui/pages/collection.rs:592 src/ui/pages/search_views.rs:339
 #: src/ui/widgets/page_header.rs:526
 msgid "Album"
 msgstr "Album"
 
-#: src/ui/dialogs/preferences.rs:82 src/ui/dialogs/preferences.rs:131
+#: src/ui/dialogs/preferences.rs:83 src/ui/dialogs/preferences.rs:132
 #: src/ui/widgets/np_common.rs:610 src/ui/widgets/np_common.rs:801
 msgid "Off"
 msgstr "Disattivata"
 
-#: src/ui/dialogs/preferences.rs:82 src/ui/pages/search_views.rs:343
+#: src/ui/dialogs/preferences.rs:83 src/ui/pages/search_views.rs:343
 msgid "Track"
 msgstr "Brano"
 
-#: src/ui/dialogs/preferences.rs:88
+#: src/ui/dialogs/preferences.rs:89
 msgid "Off keeps the output bit-perfect"
 msgstr "“Disattivata” mantiene l’uscita bit-perfect"
 
-#: src/ui/dialogs/preferences.rs:94
+#: src/ui/dialogs/preferences.rs:95
 msgid "Gapless Playback"
 msgstr "Riproduzione senza interruzioni"
 
-#: src/ui/dialogs/preferences.rs:100
+#: src/ui/dialogs/preferences.rs:101
 msgid "Processing"
 msgstr "Elaborazione"
 
-#: src/ui/dialogs/preferences.rs:107
+#: src/ui/dialogs/preferences.rs:108
 msgid "Smooth Transitions"
 msgstr "Transizioni morbide"
 
-#: src/ui/dialogs/preferences.rs:108
+#: src/ui/dialogs/preferences.rs:109
 msgid "Short fades when pausing, seeking and skipping"
 msgstr "Brevi dissolvenze quando metti in pausa, ti sposti nel brano o salti"
 
-#: src/ui/dialogs/preferences.rs:115 src/ui/shortcuts.rs:60
+#: src/ui/dialogs/preferences.rs:116 src/ui/shortcuts.rs:60
 msgid "Playback"
 msgstr "Riproduzione"
 
-#: src/ui/dialogs/preferences.rs:129
+#: src/ui/dialogs/preferences.rs:130
 msgid "{n} s"
 msgstr "{n} s"
 
-#: src/ui/dialogs/preferences.rs:135
+#: src/ui/dialogs/preferences.rs:136
 msgid "Crossfade"
 msgstr "Dissolvenza incrociata"
 
-#: src/ui/dialogs/preferences.rs:137
+#: src/ui/dialogs/preferences.rs:138
 msgid ""
 "Overlapping tracks are mixed, so those seconds are not bit-perfect; "
 "consecutive album tracks stay gapless"
@@ -367,67 +368,79 @@ msgstr ""
 "I brani che si sovrappongono vengono mixati, quindi quei secondi non sono "
 "bit-perfect; i brani consecutivi di un album restano senza interruzioni"
 
-#: src/ui/dialogs/preferences.rs:147
+#: src/ui/dialogs/preferences.rs:148
 msgid "System Default"
 msgstr "Predefinito di sistema"
 
-#: src/ui/dialogs/preferences.rs:149
+#: src/ui/dialogs/preferences.rs:150
 msgid "Output Device"
 msgstr "Dispositivo di uscita"
 
-#: src/ui/dialogs/preferences.rs:187 src/ui/widgets/np_common.rs:483
+#: src/ui/dialogs/preferences.rs:188 src/ui/widgets/np_common.rs:483
 msgid "Output"
 msgstr "Uscita"
 
-#: src/ui/dialogs/preferences.rs:218
+#: src/ui/dialogs/preferences.rs:219
 msgid "Behaviour"
 msgstr "Comportamento"
 
-#: src/ui/dialogs/preferences.rs:222
+#: src/ui/dialogs/preferences.rs:223
 msgid "Run in Background"
 msgstr "Esegui in background"
 
-#: src/ui/dialogs/preferences.rs:223
+#: src/ui/dialogs/preferences.rs:224
 msgid "Keep playing when the window is closed"
 msgstr "Continua la riproduzione quando la finestra viene chiusa"
 
-#: src/ui/dialogs/preferences.rs:229
+#: src/ui/dialogs/preferences.rs:230
 msgid "Track Change Notifications"
 msgstr "Notifiche di cambio brano"
 
-#: src/ui/dialogs/preferences.rs:230
+#: src/ui/dialogs/preferences.rs:231
 msgid "When the window is not focused"
 msgstr "Quando la finestra non è attiva"
 
-#: src/ui/dialogs/preferences.rs:236
+#: src/ui/dialogs/preferences.rs:237
 msgid "Restore Queue on Start"
 msgstr "Ripristina la coda all’avvio"
 
-#: src/ui/dialogs/preferences.rs:244 src/ui/shortcuts.rs:26
+#: src/ui/dialogs/preferences.rs:245 src/ui/shortcuts.rs:26
 msgid "General"
 msgstr "Generale"
 
-#: src/ui/dialogs/preferences.rs:257
+#: src/ui/dialogs/preferences.rs:263
+msgid "Check for Updates"
+msgstr "Controlla aggiornamenti"
+
+#: src/ui/dialogs/preferences.rs:269
+msgid "Check Now"
+msgstr "Controlla ora"
+
+#: src/ui/dialogs/preferences.rs:321
+msgid "Updates"
+msgstr "Aggiornamenti"
+
+#: src/ui/dialogs/preferences.rs:339
 msgid "Automatic"
 msgstr "Automatica"
 
-#: src/ui/dialogs/preferences.rs:262
+#: src/ui/dialogs/preferences.rs:344
 msgid "Language"
 msgstr "Lingua"
 
-#: src/ui/dialogs/preferences.rs:284
+#: src/ui/dialogs/preferences.rs:366
 msgid "Restart Swell to change the language"
 msgstr "Riavvia Swell per cambiare la lingua"
 
-#: src/ui/dialogs/preferences.rs:285
+#: src/ui/dialogs/preferences.rs:367 src/ui/updates.rs:323
 msgid "Restart"
 msgstr "Riavvia"
 
-#: src/ui/dialogs/preferences.rs:310
+#: src/ui/dialogs/preferences.rs:392
 msgid "Storage"
 msgstr "Archiviazione"
 
-#: src/ui/dialogs/preferences.rs:311
+#: src/ui/dialogs/preferences.rs:393
 msgid ""
 "Downloaded artwork, the first seconds of tracks and saved answers from "
 "TIDAL, so pages open instantly and work offline, and tracks start at once."
@@ -436,137 +449,137 @@ msgstr ""
 "così le pagine si aprono all’istante e funzionano anche offline, e i brani "
 "partono subito."
 
-#: src/ui/dialogs/preferences.rs:316
+#: src/ui/dialogs/preferences.rs:398
 msgid "Cover Cache"
 msgstr "Cache delle copertine"
 
-#: src/ui/dialogs/preferences.rs:317
+#: src/ui/dialogs/preferences.rs:399
 msgid "Clear the Cover Cache?"
 msgstr "Svuotare la cache delle copertine?"
 
-#: src/ui/dialogs/preferences.rs:318
+#: src/ui/dialogs/preferences.rs:400
 msgid "Artwork is downloaded again as you browse."
 msgstr "Le copertine vengono scaricate di nuovo mentre navighi."
 
-#: src/ui/dialogs/preferences.rs:319
+#: src/ui/dialogs/preferences.rs:401
 msgid "Cover Cache cleared"
 msgstr "Cache delle copertine svuotata"
 
-#: src/ui/dialogs/preferences.rs:320
+#: src/ui/dialogs/preferences.rs:402
 msgid "Couldn’t clear the Cover Cache"
 msgstr "Impossibile svuotare la cache delle copertine"
 
-#: src/ui/dialogs/preferences.rs:341
+#: src/ui/dialogs/preferences.rs:423
 msgid "Library Cache"
 msgstr "Cache della libreria"
 
-#: src/ui/dialogs/preferences.rs:342
+#: src/ui/dialogs/preferences.rs:424
 msgid "Clear the Library Cache?"
 msgstr "Svuotare la cache della libreria?"
 
-#: src/ui/dialogs/preferences.rs:343
+#: src/ui/dialogs/preferences.rs:425
 msgid "Pages are loaded again from TIDAL. Your collection is not affected."
 msgstr ""
 "Le pagine vengono caricate di nuovo da TIDAL. La tua collezione non viene "
 "toccata."
 
-#: src/ui/dialogs/preferences.rs:344
+#: src/ui/dialogs/preferences.rs:426
 msgid "Library Cache cleared"
 msgstr "Cache della libreria svuotata"
 
-#: src/ui/dialogs/preferences.rs:345
+#: src/ui/dialogs/preferences.rs:427
 msgid "Couldn’t clear the Library Cache"
 msgstr "Impossibile svuotare la cache della libreria"
 
-#: src/ui/dialogs/preferences.rs:374
+#: src/ui/dialogs/preferences.rs:456
 msgid "Audio Cache"
 msgstr "Cache audio"
 
-#: src/ui/dialogs/preferences.rs:375
+#: src/ui/dialogs/preferences.rs:457
 msgid "Clear the Audio Cache?"
 msgstr "Svuotare la cache audio?"
 
-#: src/ui/dialogs/preferences.rs:376
+#: src/ui/dialogs/preferences.rs:458
 msgid ""
 "The first seconds of upcoming tracks are downloaded again as you listen."
 msgstr ""
 "I primi secondi dei prossimi brani vengono scaricati di nuovo mentre ascolti."
 
-#: src/ui/dialogs/preferences.rs:379
+#: src/ui/dialogs/preferences.rs:461
 msgid "Audio Cache cleared"
 msgstr "Cache audio svuotata"
 
-#: src/ui/dialogs/preferences.rs:380
+#: src/ui/dialogs/preferences.rs:462
 msgid "Couldn’t clear the Audio Cache"
 msgstr "Impossibile svuotare la cache audio"
 
-#: src/ui/dialogs/preferences.rs:414
+#: src/ui/dialogs/preferences.rs:496
 msgid "Calculating…"
 msgstr "Calcolo in corso…"
 
-#: src/ui/dialogs/preferences.rs:417 src/ui/dialogs/preferences.rs:463
+#: src/ui/dialogs/preferences.rs:499 src/ui/dialogs/preferences.rs:545
 msgid "_Clear"
 msgstr "_Svuota"
 
-#: src/ui/dialogs/preferences.rs:463 src/ui/window.rs:413
+#: src/ui/dialogs/preferences.rs:545 src/ui/window.rs:417
 msgid "_Cancel"
 msgstr "_Annulla"
 
-#: src/ui/dialogs/preferences.rs:518
+#: src/ui/dialogs/preferences.rs:600
 msgid "Blocked Artists"
 msgstr "Artisti bloccati"
 
-#: src/ui/dialogs/preferences.rs:519
+#: src/ui/dialogs/preferences.rs:601
 msgid "Loading…"
 msgstr "Caricamento…"
 
-#: src/ui/dialogs/preferences.rs:535
+#: src/ui/dialogs/preferences.rs:617
 msgid "Couldn’t load blocked artists."
 msgstr "Impossibile caricare gli artisti bloccati."
 
-#: src/ui/dialogs/preferences.rs:540
+#: src/ui/dialogs/preferences.rs:622
 msgid "Nothing blocked. Blocked artists are skipped in radios and mixes."
 msgstr ""
 "Nessun artista bloccato. Gli artisti bloccati vengono saltati nelle radio e "
 "nei mix."
 
-#: src/ui/dialogs/preferences.rs:542
+#: src/ui/dialogs/preferences.rs:624
 msgid "Skipped in radios and mixes."
 msgstr "Saltato nelle radio e nei mix."
 
-#: src/ui/dialogs/preferences.rs:551
+#: src/ui/dialogs/preferences.rs:633
 msgid "Unblock"
 msgstr "Sblocca"
 
-#: src/ui/dialogs/preferences.rs:584 src/ui/menus.rs:870
+#: src/ui/dialogs/preferences.rs:666 src/ui/menus.rs:879
 msgid "Unblocked {name}"
 msgstr "{name} sbloccato"
 
-#: src/ui/dialogs/preferences.rs:594
+#: src/ui/dialogs/preferences.rs:676
 msgid "Couldn’t unblock the artist"
 msgstr "Impossibile sbloccare l’artista"
 
-#: src/ui/dialogs/preferences.rs:609
+#: src/ui/dialogs/preferences.rs:691
 msgid "Signed in with the browser"
 msgstr "Accesso effettuato con il browser"
 
-#: src/ui/dialogs/preferences.rs:610
+#: src/ui/dialogs/preferences.rs:692
 msgid "Up to Hi-Res Lossless"
 msgstr "Fino a Hi-Res Lossless"
 
-#: src/ui/dialogs/preferences.rs:613
+#: src/ui/dialogs/preferences.rs:695
 msgid "Signed in with a device code"
 msgstr "Accesso effettuato con un codice dispositivo"
 
-#: src/ui/dialogs/preferences.rs:614
+#: src/ui/dialogs/preferences.rs:696
 msgid "Up to Lossless (16-bit/44.1 kHz)"
 msgstr "Fino a Lossless (16 bit/44,1 kHz)"
 
-#: src/ui/dialogs/preferences.rs:642
+#: src/ui/dialogs/preferences.rs:724
 msgid "Sign _Out…"
 msgstr "_Disconnetti…"
 
-#: src/ui/dialogs/preferences.rs:663
+#: src/ui/dialogs/preferences.rs:745
 msgid "Account"
 msgstr "Account"
 
@@ -773,168 +786,168 @@ msgstr "Impossibile ottenere un codice. {error}"
 msgid "This code expired or was not approved."
 msgstr "Questo codice è scaduto o non è stato approvato."
 
-#: src/ui/menus.rs:201 src/ui/pages/artist.rs:298
+#: src/ui/menus.rs:210 src/ui/pages/artist.rs:298
 msgid "There's nothing to play here"
 msgstr "Qui non c’è niente da riprodurre"
 
-#: src/ui/menus.rs:203 src/ui/menus.rs:842
+#: src/ui/menus.rs:212 src/ui/menus.rs:851
 msgid "Couldn't load the tracks"
 msgstr "Impossibile caricare i brani"
 
-#: src/ui/menus.rs:232
+#: src/ui/menus.rs:241
 msgid "“{title}” isn't available in your region"
 msgstr "“{title}” non è disponibile nella tua regione"
 
-#: src/ui/menus.rs:243 src/ui/menus.rs:256 src/ui/menus.rs:269
+#: src/ui/menus.rs:252 src/ui/menus.rs:265 src/ui/menus.rs:278
 msgid "None of these tracks are available in your region"
 msgstr "Nessuno di questi brani è disponibile nella tua regione"
 
-#: src/ui/menus.rs:272
+#: src/ui/menus.rs:281
 msgid "“{title}” will play next"
 msgstr "“{title}” verrà riprodotto subito dopo"
 
-#: src/ui/menus.rs:273
+#: src/ui/menus.rs:282
 msgid "Added “{title}” to the queue"
 msgstr "“{title}” aggiunto alla coda"
 
-#: src/ui/menus.rs:274
+#: src/ui/menus.rs:283
 msgid "Added {n} track to the queue"
 msgid_plural "Added {n} tracks to the queue"
 msgstr[0] "Aggiunto {n} brano alla coda"
 msgstr[1] "Aggiunti {n} brani alla coda"
 
-#: src/ui/menus.rs:287 src/ui/pages/search.rs:130
+#: src/ui/menus.rs:296 src/ui/pages/search.rs:130
 msgid "Show"
 msgstr "Mostra"
 
-#: src/ui/menus.rs:320
+#: src/ui/menus.rs:329
 msgid "Couldn't play this track"
 msgstr "Impossibile riprodurre questo brano"
 
-#: src/ui/menus.rs:428 src/ui/widgets/heart_button.rs:173
+#: src/ui/menus.rs:437 src/ui/widgets/heart_button.rs:173
 #: src/ui/widgets/np_common.rs:791
 msgid "Remove from Favourites"
 msgstr "Rimuovi dai preferiti"
 
-#: src/ui/menus.rs:430 src/ui/widgets/heart_button.rs:175
+#: src/ui/menus.rs:439 src/ui/widgets/heart_button.rs:175
 #: src/ui/widgets/np_common.rs:725 src/ui/widgets/np_common.rs:793
 msgid "Add to Favourites"
 msgstr "Aggiungi ai preferiti"
 
-#: src/ui/menus.rs:437 src/ui/menus.rs:784
+#: src/ui/menus.rs:446 src/ui/menus.rs:793
 msgid "Play Next"
 msgstr "Riproduci dopo"
 
-#: src/ui/menus.rs:438 src/ui/menus.rs:785
+#: src/ui/menus.rs:447 src/ui/menus.rs:794
 msgid "Add to Queue"
 msgstr "Aggiungi alla coda"
 
-#: src/ui/menus.rs:447 src/ui/widgets/np_common.rs:921
+#: src/ui/menus.rs:456 src/ui/widgets/np_common.rs:921
 msgid "Go to Album"
 msgstr "Vai all’album"
 
-#: src/ui/menus.rs:452 src/ui/menus.rs:465 src/ui/menus.rs:512
+#: src/ui/menus.rs:461 src/ui/menus.rs:474 src/ui/menus.rs:521
 #: src/ui/widgets/np_common.rs:922
 msgid "Go to Artist"
 msgstr "Vai all’artista"
 
-#: src/ui/menus.rs:468 src/ui/pages/mix.rs:51 src/ui/pages/mix.rs:60
+#: src/ui/menus.rs:477 src/ui/pages/mix.rs:51 src/ui/pages/mix.rs:60
 #: src/ui/widgets/now_playing.rs:178 src/ui/widgets/now_playing.rs:180
 #: src/ui/widgets/np_common.rs:923
 msgid "Track Radio"
 msgstr "Radio del brano"
 
-#: src/ui/menus.rs:474 src/ui/menus.rs:523 src/ui/menus.rs:542
-#: src/ui/menus.rs:551 src/ui/menus.rs:575 src/ui/widgets/np_common.rs:927
+#: src/ui/menus.rs:483 src/ui/menus.rs:532 src/ui/menus.rs:551
+#: src/ui/menus.rs:560 src/ui/menus.rs:584 src/ui/widgets/np_common.rs:927
 #: src/ui/widgets/page_header.rs:486
 msgid "Copy Link"
 msgstr "Copia collegamento"
 
-#: src/ui/menus.rs:480
+#: src/ui/menus.rs:489
 msgid "Remove from This Playlist"
 msgstr "Rimuovi da questa playlist"
 
-#: src/ui/menus.rs:484 src/ui/shortcuts.rs:82
+#: src/ui/menus.rs:493 src/ui/shortcuts.rs:82
 msgid "Move Up"
 msgstr "Sposta su"
 
-#: src/ui/menus.rs:487 src/ui/shortcuts.rs:83
+#: src/ui/menus.rs:496 src/ui/shortcuts.rs:83
 msgid "Move Down"
 msgstr "Sposta giù"
 
-#: src/ui/menus.rs:497
+#: src/ui/menus.rs:506
 msgid "Block {name}"
 msgstr "Blocca {name}"
 
-#: src/ui/menus.rs:517 src/ui/menus.rs:559 src/ui/pages/mix.rs:52
+#: src/ui/menus.rs:526 src/ui/menus.rs:568 src/ui/pages/mix.rs:52
 #: src/ui/pages/mix.rs:61 src/ui/widgets/page_header.rs:631
 msgid "Artist Radio"
 msgstr "Radio dell’artista"
 
-#: src/ui/menus.rs:527
+#: src/ui/menus.rs:536
 msgid "Edit Details…"
 msgstr "Modifica dettagli…"
 
-#: src/ui/menus.rs:530
+#: src/ui/menus.rs:539
 msgid "Make Private"
 msgstr "Rendi privata"
 
-#: src/ui/menus.rs:532
+#: src/ui/menus.rs:541
 msgid "Make Public"
 msgstr "Rendi pubblica"
 
-#: src/ui/menus.rs:545
+#: src/ui/menus.rs:554
 msgid "Delete Playlist…"
 msgstr "Elimina playlist…"
 
-#: src/ui/menus.rs:555
+#: src/ui/menus.rs:564
 msgid "Play Top Tracks"
 msgstr "Riproduci i brani più popolari"
 
-#: src/ui/menus.rs:556 src/ui/menus.rs:783 src/ui/pages/collection.rs:681
+#: src/ui/menus.rs:565 src/ui/menus.rs:792 src/ui/pages/collection.rs:681
 #: src/ui/shortcuts.rs:71 src/ui/widgets/np_controls.rs:147
 #: src/ui/widgets/page_header.rs:153 src/ui/widgets/page_header.rs:316
 #: src/ui/widgets/page_header.rs:320 src/ui/widgets/page_header.rs:323
 msgid "Shuffle"
 msgstr "Casuale"
 
-#: src/ui/menus.rs:568 src/ui/widgets/heart_button.rs:189
+#: src/ui/menus.rs:577 src/ui/widgets/heart_button.rs:189
 msgid "Unfollow"
 msgstr "Smetti di seguire"
 
-#: src/ui/menus.rs:570 src/ui/widgets/heart_button.rs:185
+#: src/ui/menus.rs:579 src/ui/widgets/heart_button.rs:185
 msgid "Follow"
 msgstr "Segui"
 
-#: src/ui/menus.rs:578
+#: src/ui/menus.rs:587
 msgid "Block Artist"
 msgstr "Blocca artista"
 
-#: src/ui/menus.rs:625 src/ui/widgets/heart_button.rs:215
-#: src/ui/widgets/np_common.rs:765 src/ui/window.rs:744
+#: src/ui/menus.rs:634 src/ui/widgets/heart_button.rs:215
+#: src/ui/widgets/np_common.rs:765 src/ui/window.rs:775
 msgid "Couldn't update favourites"
 msgstr "Impossibile aggiornare i preferiti"
 
-#: src/ui/menus.rs:693 src/ui/widgets/np_common.rs:882
+#: src/ui/menus.rs:702 src/ui/widgets/np_common.rs:882
 #: src/ui/widgets/page_header.rs:490
 msgid "Link copied"
 msgstr "Collegamento copiato"
 
-#: src/ui/menus.rs:782 src/ui/pages/collection.rs:680
+#: src/ui/menus.rs:791 src/ui/pages/collection.rs:680
 #: src/ui/widgets/np_controls.rs:52 src/ui/widgets/np_controls.rs:56
 #: src/ui/widgets/np_controls.rs:86 src/ui/widgets/page_header.rs:309
 msgid "Play"
 msgstr "Riproduci"
 
-#: src/ui/menus.rs:819
+#: src/ui/menus.rs:828
 msgid "More…"
 msgstr "Altro…"
 
-#: src/ui/menus.rs:861
+#: src/ui/menus.rs:870
 msgid "Blocked {name}"
 msgstr "{name} bloccato"
 
-#: src/ui/menus.rs:871
+#: src/ui/menus.rs:880
 msgid "Couldn't update blocked artists"
 msgstr "Impossibile aggiornare gli artisti bloccati"
 
@@ -953,7 +966,7 @@ msgid "Search"
 msgstr "Cerca"
 
 #: src/ui/nav.rs:177 src/ui/nav.rs:407 src/ui/sidebar.rs:288
-#: src/ui/sidebar.rs:317 src/ui/window.rs:806
+#: src/ui/sidebar.rs:317 src/ui/window.rs:837
 msgid "Collection"
 msgstr "Collezione"
 
@@ -1263,7 +1276,7 @@ msgid "%b %-d"
 msgstr "%-d %b"
 
 #: src/ui/pages/history.rs:183 src/ui/pages/history.rs:248
-#: src/ui/pages/history.rs:255 src/ui/sidebar.rs:146 src/ui/window.rs:1229
+#: src/ui/pages/history.rs:255 src/ui/sidebar.rs:146 src/ui/window.rs:1260
 msgid "Recently Played"
 msgstr "Riprodotti di recente"
 
@@ -1658,7 +1671,7 @@ msgid "Close Panel or Popover"
 msgstr "Chiudi pannello o popover"
 
 #: src/ui/shortcuts.rs:52 src/ui/shortcuts.rs:54
-#: src/ui/widgets/now_playing.rs:305 src/ui/widgets/queue_view.rs:734
+#: src/ui/widgets/now_playing.rs:305 src/ui/widgets/queue_view.rs:736
 msgid "Now Playing"
 msgstr "In riproduzione"
 
@@ -1706,7 +1719,7 @@ msgstr "Alza il volume"
 msgid "Volume Down"
 msgstr "Abbassa il volume"
 
-#: src/ui/shortcuts.rs:70 src/ui/widgets/np_controls.rs:605
+#: src/ui/shortcuts.rs:70 src/ui/widgets/np_controls.rs:622
 msgid "Mute"
 msgstr "Disattiva audio"
 
@@ -1780,6 +1793,50 @@ msgstr "_Esci"
 msgid "Main Menu"
 msgstr "Menu principale"
 
+#: src/ui/updates.rs:62
+msgid "Version {version}"
+msgstr "Versione {version}"
+
+#: src/ui/updates.rs:63
+msgid "Checking…"
+msgstr "Controllo in corso…"
+
+#: src/ui/updates.rs:64
+msgid "Downloading Swell {version}…"
+msgstr "Download di Swell {version} in corso…"
+
+#: src/ui/updates.rs:65
+msgid "Swell {version} is up to date"
+msgstr "Swell {version} è aggiornato"
+
+#: src/ui/updates.rs:67 src/ui/updates.rs:316
+msgid "Swell {version} is available"
+msgstr "Swell {version} è disponibile"
+
+#: src/ui/updates.rs:69
+msgid "Swell {version} is ready to install"
+msgstr "Swell {version} è pronto per l’installazione"
+
+#: src/ui/updates.rs:70
+msgid "Couldn’t check for updates"
+msgstr "Impossibile controllare gli aggiornamenti"
+
+#: src/ui/updates.rs:72
+msgid "Couldn’t download Swell {version}"
+msgstr "Impossibile scaricare Swell {version}"
+
+#: src/ui/updates.rs:81
+msgid "Downloads new versions and installs them when you quit Swell"
+msgstr "Scarica le nuove versioni e le installa quando esci da Swell"
+
+#: src/ui/updates.rs:83
+msgid "Tells you when a new version is available"
+msgstr "Avvisa quando è disponibile una nuova versione"
+
+#: src/ui/updates.rs:334
+msgid "Details"
+msgstr "Dettagli"
+
 #: src/ui/widgets/carousel.rs:48
 msgid "Scroll Back"
 msgstr "Scorri indietro"
@@ -1820,7 +1877,7 @@ msgstr "Torna alla riga corrente"
 msgid "Couldn't load lyrics"
 msgstr "Impossibile caricare il testo"
 
-#: src/ui/widgets/lyrics_view.rs:694
+#: src/ui/widgets/lyrics_view.rs:702
 msgid "Lyrics provided by {provider}"
 msgstr "Testo fornito da {provider}"
 
@@ -1848,7 +1905,7 @@ msgstr "Mix: {title}, {details}"
 msgid "Play {title}"
 msgstr "Riproduci {title}"
 
-#: src/ui/widgets/mini_player.rs:185
+#: src/ui/widgets/mini_player.rs:186
 msgid "Now Playing: {title} by {artists}. Open player"
 msgstr "In riproduzione: {title} di {artists}. Apri il lettore"
 
@@ -2052,20 +2109,20 @@ msgstr "Ripeti: brano"
 msgid "Seek"
 msgstr "Posizione"
 
-#: src/ui/widgets/np_controls.rs:456
+#: src/ui/widgets/np_controls.rs:473
 msgid "{position} of {duration}"
 msgstr "{position} di {duration}"
 
-#: src/ui/widgets/np_controls.rs:487 src/ui/widgets/np_controls.rs:494
-#: src/ui/widgets/np_controls.rs:509 src/ui/widgets/np_controls.rs:513
+#: src/ui/widgets/np_controls.rs:504 src/ui/widgets/np_controls.rs:511
+#: src/ui/widgets/np_controls.rs:526 src/ui/widgets/np_controls.rs:530
 msgid "Volume"
 msgstr "Volume"
 
-#: src/ui/widgets/np_controls.rs:605
+#: src/ui/widgets/np_controls.rs:622
 msgid "Unmute"
 msgstr "Riattiva audio"
 
-#: src/ui/widgets/np_controls.rs:613
+#: src/ui/widgets/np_controls.rs:630
 msgid "Muted"
 msgstr "Audio disattivato"
 
@@ -2125,28 +2182,28 @@ msgstr "Riproduzione da {source}"
 msgid "Queue cleared"
 msgstr "Coda svuotata"
 
-#: src/ui/widgets/queue_view.rs:513
+#: src/ui/widgets/queue_view.rs:515
 msgid "Drag to Reorder"
 msgstr "Trascina per riordinare"
 
-#: src/ui/widgets/queue_view.rs:520 src/ui/widgets/queue_view.rs:522
+#: src/ui/widgets/queue_view.rs:522 src/ui/widgets/queue_view.rs:524
 #: src/ui/widgets/track_row.rs:384
 msgid "Remove from Queue"
 msgstr "Rimuovi dalla coda"
 
-#: src/ui/widgets/queue_view.rs:699 src/ui/widgets/track_row.rs:759
+#: src/ui/widgets/queue_view.rs:701 src/ui/widgets/track_row.rs:759
 msgid "{track}, playing"
 msgstr "{track}, in riproduzione"
 
-#: src/ui/widgets/queue_view.rs:735
+#: src/ui/widgets/queue_view.rs:737
 msgid "Next in Queue"
 msgstr "A seguire in coda"
 
-#: src/ui/widgets/queue_view.rs:737
+#: src/ui/widgets/queue_view.rs:739
 msgid "Next"
 msgstr "A seguire"
 
-#: src/ui/widgets/queue_view.rs:738
+#: src/ui/widgets/queue_view.rs:740
 msgid "Next From: {source}"
 msgstr "A seguire da: {source}"
 
@@ -2206,15 +2263,15 @@ msgstr "Trascina per riordinare (Alt+↑/↓)"
 msgid "Not available in your region"
 msgstr "Non disponibile nella tua regione"
 
-#: src/ui/window.rs:398
+#: src/ui/window.rs:402
 msgid "Couldn't remove your session from the keyring."
 msgstr "Impossibile rimuovere la tua sessione dal portachiavi."
 
-#: src/ui/window.rs:408
+#: src/ui/window.rs:412
 msgid "Sign Out?"
 msgstr "Disconnettersi?"
 
-#: src/ui/window.rs:409
+#: src/ui/window.rs:413
 msgid ""
 "You will need to sign in again to listen. Your library cached on this "
 "computer is deleted."
@@ -2222,14 +2279,14 @@ msgstr ""
 "Dovrai accedere di nuovo per ascoltare. La libreria in cache su questo "
 "computer verrà eliminata."
 
-#: src/ui/window.rs:413
+#: src/ui/window.rs:417
 msgid "_Sign Out"
 msgstr "_Disconnetti"
 
-#: src/ui/window.rs:518
+#: src/ui/window.rs:525
 msgid "Couldn't load your library"
 msgstr "Impossibile caricare la tua libreria"
 
-#: src/ui/window.rs:770
+#: src/ui/window.rs:801
 msgid "Couldn't open the track"
 msgstr "Impossibile aprire il brano"

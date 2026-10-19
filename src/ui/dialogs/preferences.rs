@@ -1,7 +1,7 @@
 //! The Preferences dialog (docs/design.md §3.14), bound to the settings
 //! store: changes apply (and save) as they are made.
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::time::Duration;
@@ -10,6 +10,7 @@ use adw::prelude::*;
 use gtk::glib;
 
 use super::super::context::Ctx;
+use super::super::updates::{self, Status};
 use crate::i18n::{self, tr};
 use crate::runtime;
 use crate::session::LoginFlow;
@@ -245,8 +246,89 @@ fn general_page(ctx: &Rc<Ctx>, dialog: &adw::PreferencesDialog) -> adw::Preferen
         .icon_name("preferences-system-symbolic")
         .build();
     page.add(&group);
+    if let Some(updates) = updates_group(ctx, dialog) {
+        page.add(&updates);
+    }
     page.add(&storage_group(ctx, dialog));
     page
+}
+
+/// "Updates": whether to check (the subtitle says what a new version does
+/// on this install) and Check Now, which shows how the checks stand.
+/// Missing from builds that don't check (see src/update).
+fn updates_group(ctx: &Rc<Ctx>, dialog: &adw::PreferencesDialog) -> Option<adw::PreferencesGroup> {
+    let updater = updates::current()?;
+    let enabled = switch_row(
+        ctx,
+        tr("Check for Updates"),
+        Some(updates::policy()),
+        ctx.settings.get().check_updates,
+        |s, on| s.check_updates = on,
+    );
+    let check = adw::ActionRow::builder()
+        .title(tr("Check Now"))
+        .activatable(true)
+        .build();
+    let icon = gtk::Image::from_icon_name("view-refresh-symbolic");
+    let spinner = adw::Spinner::new();
+    check.add_suffix(&icon);
+    check.add_suffix(&spinner);
+    enabled
+        .bind_property("active", &check, "sensitive")
+        .sync_create()
+        .build();
+    let show = {
+        let check = check.downgrade();
+        move |status: &Status| {
+            if let Some(check) = check.upgrade() {
+                check.set_subtitle(&status.describe());
+            }
+            icon.set_visible(!status.is_busy());
+            spinner.set_visible(status.is_busy());
+        }
+    };
+    show(&updater.status());
+    // The window's toasts are hidden behind the dialog, so the result of
+    // Check Now also shows here.
+    let asked = Rc::new(Cell::new(false));
+    let id = updater.connect_status({
+        let asked = asked.clone();
+        let dialog = dialog.downgrade();
+        let weak = Rc::downgrade(&updater);
+        move |status| {
+            show(status);
+            if status.is_busy() || !asked.replace(false) {
+                return;
+            }
+            if let (Some(dialog), Some(toast)) = (
+                dialog.upgrade(),
+                weak.upgrade().and_then(|updater| updater.toast(status)),
+            ) {
+                dialog.add_toast(toast);
+            }
+        }
+    });
+    check.connect_activated({
+        let updater = Rc::downgrade(&updater);
+        move |_| {
+            if let Some(updater) = updater.upgrade() {
+                asked.set(true);
+                updater.check(true);
+            }
+        }
+    });
+    let group = adw::PreferencesGroup::builder()
+        .title(tr("Updates"))
+        .build();
+    group.add(&enabled);
+    group.add(&check);
+    let updater = Rc::downgrade(&updater);
+    group.connect_destroy(move |_| {
+        if let Some(updater) = updater.upgrade() {
+            updater.disconnect(id);
+        }
+    });
+    Some(group)
 }
 
 /// "Language": Automatic, English and every translation (each language

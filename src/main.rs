@@ -21,6 +21,7 @@ mod settings;
 mod tidal;
 mod timing;
 mod ui;
+mod update;
 
 use adw::prelude::*;
 use gtk::{gdk, gio, glib};
@@ -93,7 +94,10 @@ fn main() -> glib::ExitCode {
     // Let go of the application (and its bus name) before a restart
     // starts the next instance.
     drop(app);
-    if ui::window::restart_requested() {
+    let restart = ui::window::restart_requested();
+    // A downloaded update installs now that Swell is done, and starts it
+    // again itself for a restart.
+    if !update::install::install_staged(restart) && restart {
         relaunch();
     }
     code

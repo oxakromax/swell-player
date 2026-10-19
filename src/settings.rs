@@ -85,6 +85,9 @@ pub struct Settings {
     /// `i18n::languages()` ("en", "es", "pt_BR"…). Read at startup only
     /// (see `i18n::init`).
     pub language: String,
+    /// Look for new releases (and, where Swell can replace itself,
+    /// install them when it quits); see `update`.
+    pub check_updates: bool,
 }
 
 impl Default for Settings {
@@ -110,6 +113,7 @@ impl Default for Settings {
             output_device: None,
             audio_cache_mb: 512,
             language: "auto".to_owned(),
+            check_updates: true,
         }
     }
 }
@@ -280,5 +284,9 @@ mod tests {
         assert_eq!(settings.language, "auto");
         assert_eq!(settings.crossfade_secs, 0);
         assert!(settings.fade_transitions);
+        // Settings saved before the option existed check for updates.
+        assert!(settings.check_updates);
+        assert!(parse(br#"{"volume":0.5}"#).check_updates);
+        assert!(!parse(br#"{"check_updates":false}"#).check_updates);
     }
 }

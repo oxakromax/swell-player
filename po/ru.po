@@ -23,36 +23,36 @@ msgstr "{codec} {bits} бит/{rate} кГц"
 msgid "Unknown format"
 msgstr "Неизвестный формат"
 
-#: src/playback/mod.rs:1555
+#: src/playback/mod.rs:1581
 msgid "Skipped a track that is not available"
 msgid_plural "Skipped {n} tracks that are not available"
 msgstr[0] "Пропущен {n} недоступный трек"
 msgstr[1] "Пропущено {n} недоступных трека"
 msgstr[2] "Пропущено {n} недоступных треков"
 
-#: src/playback/mod.rs:1585
+#: src/playback/mod.rs:1617
 msgid "Playback needs GStreamer's playbin3"
 msgstr "Для воспроизведения нужен playbin3 из GStreamer"
 
-#: src/playback/mod.rs:1686
+#: src/playback/mod.rs:1718
 msgid "The TIDAL session has expired: sign in again to play"
 msgstr "Сеанс TIDAL истёк: войдите снова, чтобы продолжить воспроизведение"
 
-#: src/playback/mod.rs:1711
+#: src/playback/mod.rs:1743
 msgid "Connection lost — retrying"
 msgstr "Соединение потеряно — повторная попытка"
 
-#: src/playback/mod.rs:1779
+#: src/playback/mod.rs:1811
 msgid "Could not play “{title}”. Playback stopped after {n} tracks failed"
 msgstr ""
 "Не удалось воспроизвести «{title}». Воспроизведение остановлено. Сбоев "
 "подряд: {n}"
 
-#: src/playback/mod.rs:1785
+#: src/playback/mod.rs:1817
 msgid "Could not play “{title}”, skipped"
 msgstr "Не удалось воспроизвести «{title}», трек пропущен"
 
-#: src/playback/mod.rs:1980
+#: src/playback/mod.rs:2020 src/playback/mod.rs:2058
 msgid "Playback failed: {error}"
 msgstr "Сбой воспроизведения: {error}"
 
@@ -60,7 +60,7 @@ msgstr "Сбой воспроизведения: {error}"
 msgid "Playing music"
 msgstr "Воспроизводится музыка"
 
-#: src/playback/notify.rs:242
+#: src/playback/notify.rs:247
 msgid "{artists} — {album}"
 msgstr "{artists} — {album}"
 
@@ -127,7 +127,7 @@ msgstr ""
 "\n"
 "Не связан с TIDAL."
 
-#: src/ui/dialogs/credits.rs:26 src/ui/menus.rs:473 src/ui/pages/album.rs:362
+#: src/ui/dialogs/credits.rs:26 src/ui/menus.rs:482 src/ui/pages/album.rs:362
 #: src/ui/pages/album.rs:489
 msgid "Credits"
 msgstr "Авторы"
@@ -160,6 +160,7 @@ msgstr[1] "Добавлено {n} трека в «{title}»"
 msgstr[2] "Добавлено {n} треков в «{title}»"
 
 #: src/ui/dialogs/playlist.rs:71 src/ui/dialogs/playlist.rs:404
+#: src/ui/updates.rs:348
 msgid "Open"
 msgstr "Открыть"
 
@@ -184,11 +185,11 @@ msgstr[2] "{n} треков"
 msgid "Your Playlists"
 msgstr "Ваши плейлисты"
 
-#: src/ui/dialogs/playlist.rs:221 src/ui/menus.rs:802
+#: src/ui/dialogs/playlist.rs:221 src/ui/menus.rs:811
 msgid "New Playlist…"
 msgstr "Новый плейлист…"
 
-#: src/ui/dialogs/playlist.rs:244 src/ui/menus.rs:442 src/ui/menus.rs:507
+#: src/ui/dialogs/playlist.rs:244 src/ui/menus.rs:451 src/ui/menus.rs:516
 msgid "Add to Playlist"
 msgstr "Добавить в плейлист"
 
@@ -283,88 +284,88 @@ msgstr "Плейлист «{title}» удалён"
 msgid "Couldn't delete the playlist"
 msgstr "Не удалось удалить плейлист"
 
-#: src/ui/dialogs/preferences.rs:42 src/ui/widgets/np_common.rs:407
+#: src/ui/dialogs/preferences.rs:43 src/ui/widgets/np_common.rs:407
 #: src/ui/widgets/np_common.rs:411 src/ui/widgets/quality_badge.rs:28
 msgid "Hi-Res Lossless"
 msgstr "Hi-Res Lossless"
 
-#: src/ui/dialogs/preferences.rs:45 src/ui/widgets/np_common.rs:408
+#: src/ui/dialogs/preferences.rs:46 src/ui/widgets/np_common.rs:408
 #: src/ui/widgets/np_common.rs:412 src/ui/widgets/quality_badge.rs:29
 msgid "Lossless"
 msgstr "Lossless"
 
-#: src/ui/dialogs/preferences.rs:46 src/ui/widgets/np_common.rs:409
+#: src/ui/dialogs/preferences.rs:47 src/ui/widgets/np_common.rs:409
 msgid "High"
 msgstr "Высокое"
 
-#: src/ui/dialogs/preferences.rs:47 src/ui/widgets/np_common.rs:410
+#: src/ui/dialogs/preferences.rs:48 src/ui/widgets/np_common.rs:410
 msgid "Low"
 msgstr "Низкое"
 
-#: src/ui/dialogs/preferences.rs:57
+#: src/ui/dialogs/preferences.rs:58
 msgid "Streaming Quality"
 msgstr "Качество стриминга"
 
-#: src/ui/dialogs/preferences.rs:65
+#: src/ui/dialogs/preferences.rs:66
 msgid "Hi-Res Lossless requires browser sign-in"
 msgstr "Для Hi-Res Lossless нужен вход через браузер"
 
-#: src/ui/dialogs/preferences.rs:71 src/ui/widgets/np_common.rs:477
+#: src/ui/dialogs/preferences.rs:72 src/ui/widgets/np_common.rs:477
 msgid "Quality"
 msgstr "Качество"
 
-#: src/ui/dialogs/preferences.rs:81
+#: src/ui/dialogs/preferences.rs:82
 msgid "Volume Normalisation"
 msgstr "Нормализация громкости"
 
-#: src/ui/dialogs/preferences.rs:82 src/ui/pages/album.rs:68
+#: src/ui/dialogs/preferences.rs:83 src/ui/pages/album.rs:68
 #: src/ui/pages/collection.rs:592 src/ui/pages/search_views.rs:339
 #: src/ui/widgets/page_header.rs:526
 msgid "Album"
 msgstr "Альбом"
 
-#: src/ui/dialogs/preferences.rs:82 src/ui/dialogs/preferences.rs:131
+#: src/ui/dialogs/preferences.rs:83 src/ui/dialogs/preferences.rs:132
 #: src/ui/widgets/np_common.rs:610 src/ui/widgets/np_common.rs:801
 msgid "Off"
 msgstr "Выкл."
 
-#: src/ui/dialogs/preferences.rs:82 src/ui/pages/search_views.rs:343
+#: src/ui/dialogs/preferences.rs:83 src/ui/pages/search_views.rs:343
 msgid "Track"
 msgstr "Трек"
 
-#: src/ui/dialogs/preferences.rs:88
+#: src/ui/dialogs/preferences.rs:89
 msgid "Off keeps the output bit-perfect"
 msgstr "«Выкл.» сохраняет вывод bit-perfect"
 
-#: src/ui/dialogs/preferences.rs:94
+#: src/ui/dialogs/preferences.rs:95
 msgid "Gapless Playback"
 msgstr "Воспроизведение без пауз"
 
-#: src/ui/dialogs/preferences.rs:100
+#: src/ui/dialogs/preferences.rs:101
 msgid "Processing"
 msgstr "Обработка"
 
-#: src/ui/dialogs/preferences.rs:107
+#: src/ui/dialogs/preferences.rs:108
 msgid "Smooth Transitions"
 msgstr "Плавные переходы"
 
-#: src/ui/dialogs/preferences.rs:108
+#: src/ui/dialogs/preferences.rs:109
 msgid "Short fades when pausing, seeking and skipping"
 msgstr "Короткие затухания при паузе, перемотке и переключении"
 
-#: src/ui/dialogs/preferences.rs:115 src/ui/shortcuts.rs:60
+#: src/ui/dialogs/preferences.rs:116 src/ui/shortcuts.rs:60
 msgid "Playback"
 msgstr "Воспроизведение"
 
-#: src/ui/dialogs/preferences.rs:129
+#: src/ui/dialogs/preferences.rs:130
 msgid "{n} s"
 msgstr "{n} с"
 
-#: src/ui/dialogs/preferences.rs:135
+#: src/ui/dialogs/preferences.rs:136
 msgid "Crossfade"
 msgstr "Кроссфейд"
 
-#: src/ui/dialogs/preferences.rs:137
+#: src/ui/dialogs/preferences.rs:138
 msgid ""
 "Overlapping tracks are mixed, so those seconds are not bit-perfect; "
 "consecutive album tracks stay gapless"
@@ -372,67 +373,79 @@ msgstr ""
 "Перекрывающиеся треки смешиваются, поэтому эти секунды не bit-perfect; "
 "соседние треки альбома играют без пауз"
 
-#: src/ui/dialogs/preferences.rs:147
+#: src/ui/dialogs/preferences.rs:148
 msgid "System Default"
 msgstr "По умолчанию"
 
-#: src/ui/dialogs/preferences.rs:149
+#: src/ui/dialogs/preferences.rs:150
 msgid "Output Device"
 msgstr "Устройство вывода"
 
-#: src/ui/dialogs/preferences.rs:187 src/ui/widgets/np_common.rs:483
+#: src/ui/dialogs/preferences.rs:188 src/ui/widgets/np_common.rs:483
 msgid "Output"
 msgstr "Вывод"
 
-#: src/ui/dialogs/preferences.rs:218
+#: src/ui/dialogs/preferences.rs:219
 msgid "Behaviour"
 msgstr "Поведение"
 
-#: src/ui/dialogs/preferences.rs:222
+#: src/ui/dialogs/preferences.rs:223
 msgid "Run in Background"
 msgstr "Работать в фоновом режиме"
 
-#: src/ui/dialogs/preferences.rs:223
+#: src/ui/dialogs/preferences.rs:224
 msgid "Keep playing when the window is closed"
 msgstr "Продолжать воспроизведение при закрытии окна"
 
-#: src/ui/dialogs/preferences.rs:229
+#: src/ui/dialogs/preferences.rs:230
 msgid "Track Change Notifications"
 msgstr "Уведомления о смене трека"
 
-#: src/ui/dialogs/preferences.rs:230
+#: src/ui/dialogs/preferences.rs:231
 msgid "When the window is not focused"
 msgstr "Когда окно не в фокусе"
 
-#: src/ui/dialogs/preferences.rs:236
+#: src/ui/dialogs/preferences.rs:237
 msgid "Restore Queue on Start"
 msgstr "Восстанавливать очередь при запуске"
 
-#: src/ui/dialogs/preferences.rs:244 src/ui/shortcuts.rs:26
+#: src/ui/dialogs/preferences.rs:245 src/ui/shortcuts.rs:26
 msgid "General"
 msgstr "Общие"
 
-#: src/ui/dialogs/preferences.rs:257
+#: src/ui/dialogs/preferences.rs:263
+msgid "Check for Updates"
+msgstr "Проверять обновления"
+
+#: src/ui/dialogs/preferences.rs:269
+msgid "Check Now"
+msgstr "Проверить сейчас"
+
+#: src/ui/dialogs/preferences.rs:321
+msgid "Updates"
+msgstr "Обновления"
+
+#: src/ui/dialogs/preferences.rs:339
 msgid "Automatic"
 msgstr "Автоматически"
 
-#: src/ui/dialogs/preferences.rs:262
+#: src/ui/dialogs/preferences.rs:344
 msgid "Language"
 msgstr "Язык"
 
-#: src/ui/dialogs/preferences.rs:284
+#: src/ui/dialogs/preferences.rs:366
 msgid "Restart Swell to change the language"
 msgstr "Перезапустите Swell, чтобы сменить язык"
 
-#: src/ui/dialogs/preferences.rs:285
+#: src/ui/dialogs/preferences.rs:367 src/ui/updates.rs:323
 msgid "Restart"
 msgstr "Перезапустить"
 
-#: src/ui/dialogs/preferences.rs:310
+#: src/ui/dialogs/preferences.rs:392
 msgid "Storage"
 msgstr "Хранилище"
 
-#: src/ui/dialogs/preferences.rs:311
+#: src/ui/dialogs/preferences.rs:393
 msgid ""
 "Downloaded artwork, the first seconds of tracks and saved answers from "
 "TIDAL, so pages open instantly and work offline, and tracks start at once."
@@ -441,136 +454,136 @@ msgstr ""
 "страницы открываются мгновенно и работают без сети, а треки начинают играть "
 "сразу."
 
-#: src/ui/dialogs/preferences.rs:316
+#: src/ui/dialogs/preferences.rs:398
 msgid "Cover Cache"
 msgstr "Кэш обложек"
 
-#: src/ui/dialogs/preferences.rs:317
+#: src/ui/dialogs/preferences.rs:399
 msgid "Clear the Cover Cache?"
 msgstr "Очистить кэш обложек?"
 
-#: src/ui/dialogs/preferences.rs:318
+#: src/ui/dialogs/preferences.rs:400
 msgid "Artwork is downloaded again as you browse."
 msgstr "Обложки будут загружены заново при просмотре."
 
-#: src/ui/dialogs/preferences.rs:319
+#: src/ui/dialogs/preferences.rs:401
 msgid "Cover Cache cleared"
 msgstr "Кэш обложек очищен"
 
-#: src/ui/dialogs/preferences.rs:320
+#: src/ui/dialogs/preferences.rs:402
 msgid "Couldn’t clear the Cover Cache"
 msgstr "Не удалось очистить кэш обложек"
 
-#: src/ui/dialogs/preferences.rs:341
+#: src/ui/dialogs/preferences.rs:423
 msgid "Library Cache"
 msgstr "Кэш библиотеки"
 
-#: src/ui/dialogs/preferences.rs:342
+#: src/ui/dialogs/preferences.rs:424
 msgid "Clear the Library Cache?"
 msgstr "Очистить кэш библиотеки?"
 
-#: src/ui/dialogs/preferences.rs:343
+#: src/ui/dialogs/preferences.rs:425
 msgid "Pages are loaded again from TIDAL. Your collection is not affected."
 msgstr "Страницы будут снова загружены из TIDAL. Ваша коллекция не пострадает."
 
-#: src/ui/dialogs/preferences.rs:344
+#: src/ui/dialogs/preferences.rs:426
 msgid "Library Cache cleared"
 msgstr "Кэш библиотеки очищен"
 
-#: src/ui/dialogs/preferences.rs:345
+#: src/ui/dialogs/preferences.rs:427
 msgid "Couldn’t clear the Library Cache"
 msgstr "Не удалось очистить кэш библиотеки"
 
-#: src/ui/dialogs/preferences.rs:374
+#: src/ui/dialogs/preferences.rs:456
 msgid "Audio Cache"
 msgstr "Кэш аудио"
 
-#: src/ui/dialogs/preferences.rs:375
+#: src/ui/dialogs/preferences.rs:457
 msgid "Clear the Audio Cache?"
 msgstr "Очистить кэш аудио?"
 
-#: src/ui/dialogs/preferences.rs:376
+#: src/ui/dialogs/preferences.rs:458
 msgid ""
 "The first seconds of upcoming tracks are downloaded again as you listen."
 msgstr ""
 "Первые секунды следующих треков будут загружены заново во время "
 "прослушивания."
 
-#: src/ui/dialogs/preferences.rs:379
+#: src/ui/dialogs/preferences.rs:461
 msgid "Audio Cache cleared"
 msgstr "Кэш аудио очищен"
 
-#: src/ui/dialogs/preferences.rs:380
+#: src/ui/dialogs/preferences.rs:462
 msgid "Couldn’t clear the Audio Cache"
 msgstr "Не удалось очистить кэш аудио"
 
-#: src/ui/dialogs/preferences.rs:414
+#: src/ui/dialogs/preferences.rs:496
 msgid "Calculating…"
 msgstr "Подсчёт…"
 
-#: src/ui/dialogs/preferences.rs:417 src/ui/dialogs/preferences.rs:463
+#: src/ui/dialogs/preferences.rs:499 src/ui/dialogs/preferences.rs:545
 msgid "_Clear"
 msgstr "Очис_тить"
 
-#: src/ui/dialogs/preferences.rs:463 src/ui/window.rs:413
+#: src/ui/dialogs/preferences.rs:545 src/ui/window.rs:417
 msgid "_Cancel"
 msgstr "_Отмена"
 
-#: src/ui/dialogs/preferences.rs:518
+#: src/ui/dialogs/preferences.rs:600
 msgid "Blocked Artists"
 msgstr "Заблокированные исполнители"
 
-#: src/ui/dialogs/preferences.rs:519
+#: src/ui/dialogs/preferences.rs:601
 msgid "Loading…"
 msgstr "Загрузка…"
 
-#: src/ui/dialogs/preferences.rs:535
+#: src/ui/dialogs/preferences.rs:617
 msgid "Couldn’t load blocked artists."
 msgstr "Не удалось загрузить заблокированных исполнителей."
 
-#: src/ui/dialogs/preferences.rs:540
+#: src/ui/dialogs/preferences.rs:622
 msgid "Nothing blocked. Blocked artists are skipped in radios and mixes."
 msgstr ""
 "Нет заблокированных. Заблокированные исполнители пропускаются в радио и "
 "миксах."
 
-#: src/ui/dialogs/preferences.rs:542
+#: src/ui/dialogs/preferences.rs:624
 msgid "Skipped in radios and mixes."
 msgstr "Пропускается в радио и миксах."
 
-#: src/ui/dialogs/preferences.rs:551
+#: src/ui/dialogs/preferences.rs:633
 msgid "Unblock"
 msgstr "Разблокировать"
 
-#: src/ui/dialogs/preferences.rs:584 src/ui/menus.rs:870
+#: src/ui/dialogs/preferences.rs:666 src/ui/menus.rs:879
 msgid "Unblocked {name}"
 msgstr "Разблокировано: {name}"
 
-#: src/ui/dialogs/preferences.rs:594
+#: src/ui/dialogs/preferences.rs:676
 msgid "Couldn’t unblock the artist"
 msgstr "Не удалось разблокировать исполнителя"
 
-#: src/ui/dialogs/preferences.rs:609
+#: src/ui/dialogs/preferences.rs:691
 msgid "Signed in with the browser"
 msgstr "Вход выполнен через браузер"
 
-#: src/ui/dialogs/preferences.rs:610
+#: src/ui/dialogs/preferences.rs:692
 msgid "Up to Hi-Res Lossless"
 msgstr "До Hi-Res Lossless"
 
-#: src/ui/dialogs/preferences.rs:613
+#: src/ui/dialogs/preferences.rs:695
 msgid "Signed in with a device code"
 msgstr "Вход выполнен с помощью кода устройства"
 
-#: src/ui/dialogs/preferences.rs:614
+#: src/ui/dialogs/preferences.rs:696
 msgid "Up to Lossless (16-bit/44.1 kHz)"
 msgstr "До Lossless (16 бит/44,1 кГц)"
 
-#: src/ui/dialogs/preferences.rs:642
+#: src/ui/dialogs/preferences.rs:724
 msgid "Sign _Out…"
 msgstr "Выйти из _учётной записи…"
 
-#: src/ui/dialogs/preferences.rs:663
+#: src/ui/dialogs/preferences.rs:745
 msgid "Account"
 msgstr "Учётная запись"
 
@@ -778,169 +791,169 @@ msgstr "Не удалось получить код. {error}"
 msgid "This code expired or was not approved."
 msgstr "Срок действия кода истёк, или он не был подтверждён."
 
-#: src/ui/menus.rs:201 src/ui/pages/artist.rs:298
+#: src/ui/menus.rs:210 src/ui/pages/artist.rs:298
 msgid "There's nothing to play here"
 msgstr "Здесь нечего воспроизводить"
 
-#: src/ui/menus.rs:203 src/ui/menus.rs:842
+#: src/ui/menus.rs:212 src/ui/menus.rs:851
 msgid "Couldn't load the tracks"
 msgstr "Не удалось загрузить треки"
 
-#: src/ui/menus.rs:232
+#: src/ui/menus.rs:241
 msgid "“{title}” isn't available in your region"
 msgstr "В вашем регионе недоступно: «{title}»"
 
-#: src/ui/menus.rs:243 src/ui/menus.rs:256 src/ui/menus.rs:269
+#: src/ui/menus.rs:252 src/ui/menus.rs:265 src/ui/menus.rs:278
 msgid "None of these tracks are available in your region"
 msgstr "Ни один из этих треков недоступен в вашем регионе"
 
-#: src/ui/menus.rs:272
+#: src/ui/menus.rs:281
 msgid "“{title}” will play next"
 msgstr "Далее будет играть «{title}»"
 
-#: src/ui/menus.rs:273
+#: src/ui/menus.rs:282
 msgid "Added “{title}” to the queue"
 msgstr "В очередь добавлено: «{title}»"
 
-#: src/ui/menus.rs:274
+#: src/ui/menus.rs:283
 msgid "Added {n} track to the queue"
 msgid_plural "Added {n} tracks to the queue"
 msgstr[0] "В очередь добавлен {n} трек"
 msgstr[1] "В очередь добавлено {n} трека"
 msgstr[2] "В очередь добавлено {n} треков"
 
-#: src/ui/menus.rs:287 src/ui/pages/search.rs:130
+#: src/ui/menus.rs:296 src/ui/pages/search.rs:130
 msgid "Show"
 msgstr "Показать"
 
-#: src/ui/menus.rs:320
+#: src/ui/menus.rs:329
 msgid "Couldn't play this track"
 msgstr "Не удалось воспроизвести этот трек"
 
-#: src/ui/menus.rs:428 src/ui/widgets/heart_button.rs:173
+#: src/ui/menus.rs:437 src/ui/widgets/heart_button.rs:173
 #: src/ui/widgets/np_common.rs:791
 msgid "Remove from Favourites"
 msgstr "Убрать из избранного"
 
-#: src/ui/menus.rs:430 src/ui/widgets/heart_button.rs:175
+#: src/ui/menus.rs:439 src/ui/widgets/heart_button.rs:175
 #: src/ui/widgets/np_common.rs:725 src/ui/widgets/np_common.rs:793
 msgid "Add to Favourites"
 msgstr "Добавить в избранное"
 
-#: src/ui/menus.rs:437 src/ui/menus.rs:784
+#: src/ui/menus.rs:446 src/ui/menus.rs:793
 msgid "Play Next"
 msgstr "Воспроизвести следующим"
 
-#: src/ui/menus.rs:438 src/ui/menus.rs:785
+#: src/ui/menus.rs:447 src/ui/menus.rs:794
 msgid "Add to Queue"
 msgstr "Добавить в очередь"
 
-#: src/ui/menus.rs:447 src/ui/widgets/np_common.rs:921
+#: src/ui/menus.rs:456 src/ui/widgets/np_common.rs:921
 msgid "Go to Album"
 msgstr "Перейти к альбому"
 
-#: src/ui/menus.rs:452 src/ui/menus.rs:465 src/ui/menus.rs:512
+#: src/ui/menus.rs:461 src/ui/menus.rs:474 src/ui/menus.rs:521
 #: src/ui/widgets/np_common.rs:922
 msgid "Go to Artist"
 msgstr "Перейти к исполнителю"
 
-#: src/ui/menus.rs:468 src/ui/pages/mix.rs:51 src/ui/pages/mix.rs:60
+#: src/ui/menus.rs:477 src/ui/pages/mix.rs:51 src/ui/pages/mix.rs:60
 #: src/ui/widgets/now_playing.rs:178 src/ui/widgets/now_playing.rs:180
 #: src/ui/widgets/np_common.rs:923
 msgid "Track Radio"
 msgstr "Радио трека"
 
-#: src/ui/menus.rs:474 src/ui/menus.rs:523 src/ui/menus.rs:542
-#: src/ui/menus.rs:551 src/ui/menus.rs:575 src/ui/widgets/np_common.rs:927
+#: src/ui/menus.rs:483 src/ui/menus.rs:532 src/ui/menus.rs:551
+#: src/ui/menus.rs:560 src/ui/menus.rs:584 src/ui/widgets/np_common.rs:927
 #: src/ui/widgets/page_header.rs:486
 msgid "Copy Link"
 msgstr "Копировать ссылку"
 
-#: src/ui/menus.rs:480
+#: src/ui/menus.rs:489
 msgid "Remove from This Playlist"
 msgstr "Убрать из этого плейлиста"
 
-#: src/ui/menus.rs:484 src/ui/shortcuts.rs:82
+#: src/ui/menus.rs:493 src/ui/shortcuts.rs:82
 msgid "Move Up"
 msgstr "Вверх"
 
-#: src/ui/menus.rs:487 src/ui/shortcuts.rs:83
+#: src/ui/menus.rs:496 src/ui/shortcuts.rs:83
 msgid "Move Down"
 msgstr "Вниз"
 
-#: src/ui/menus.rs:497
+#: src/ui/menus.rs:506
 msgid "Block {name}"
 msgstr "Заблокировать: {name}"
 
-#: src/ui/menus.rs:517 src/ui/menus.rs:559 src/ui/pages/mix.rs:52
+#: src/ui/menus.rs:526 src/ui/menus.rs:568 src/ui/pages/mix.rs:52
 #: src/ui/pages/mix.rs:61 src/ui/widgets/page_header.rs:631
 msgid "Artist Radio"
 msgstr "Радио исполнителя"
 
-#: src/ui/menus.rs:527
+#: src/ui/menus.rs:536
 msgid "Edit Details…"
 msgstr "Изменить сведения…"
 
-#: src/ui/menus.rs:530
+#: src/ui/menus.rs:539
 msgid "Make Private"
 msgstr "Сделать приватным"
 
-#: src/ui/menus.rs:532
+#: src/ui/menus.rs:541
 msgid "Make Public"
 msgstr "Сделать публичным"
 
-#: src/ui/menus.rs:545
+#: src/ui/menus.rs:554
 msgid "Delete Playlist…"
 msgstr "Удалить плейлист…"
 
-#: src/ui/menus.rs:555
+#: src/ui/menus.rs:564
 msgid "Play Top Tracks"
 msgstr "Воспроизвести популярные треки"
 
-#: src/ui/menus.rs:556 src/ui/menus.rs:783 src/ui/pages/collection.rs:681
+#: src/ui/menus.rs:565 src/ui/menus.rs:792 src/ui/pages/collection.rs:681
 #: src/ui/shortcuts.rs:71 src/ui/widgets/np_controls.rs:147
 #: src/ui/widgets/page_header.rs:153 src/ui/widgets/page_header.rs:316
 #: src/ui/widgets/page_header.rs:320 src/ui/widgets/page_header.rs:323
 msgid "Shuffle"
 msgstr "Перемешать"
 
-#: src/ui/menus.rs:568 src/ui/widgets/heart_button.rs:189
+#: src/ui/menus.rs:577 src/ui/widgets/heart_button.rs:189
 msgid "Unfollow"
 msgstr "Отписаться"
 
-#: src/ui/menus.rs:570 src/ui/widgets/heart_button.rs:185
+#: src/ui/menus.rs:579 src/ui/widgets/heart_button.rs:185
 msgid "Follow"
 msgstr "Подписаться"
 
-#: src/ui/menus.rs:578
+#: src/ui/menus.rs:587
 msgid "Block Artist"
 msgstr "Заблокировать исполнителя"
 
-#: src/ui/menus.rs:625 src/ui/widgets/heart_button.rs:215
-#: src/ui/widgets/np_common.rs:765 src/ui/window.rs:744
+#: src/ui/menus.rs:634 src/ui/widgets/heart_button.rs:215
+#: src/ui/widgets/np_common.rs:765 src/ui/window.rs:775
 msgid "Couldn't update favourites"
 msgstr "Не удалось обновить избранное"
 
-#: src/ui/menus.rs:693 src/ui/widgets/np_common.rs:882
+#: src/ui/menus.rs:702 src/ui/widgets/np_common.rs:882
 #: src/ui/widgets/page_header.rs:490
 msgid "Link copied"
 msgstr "Ссылка скопирована"
 
-#: src/ui/menus.rs:782 src/ui/pages/collection.rs:680
+#: src/ui/menus.rs:791 src/ui/pages/collection.rs:680
 #: src/ui/widgets/np_controls.rs:52 src/ui/widgets/np_controls.rs:56
 #: src/ui/widgets/np_controls.rs:86 src/ui/widgets/page_header.rs:309
 msgid "Play"
 msgstr "Воспроизвести"
 
-#: src/ui/menus.rs:819
+#: src/ui/menus.rs:828
 msgid "More…"
 msgstr "Ещё…"
 
-#: src/ui/menus.rs:861
+#: src/ui/menus.rs:870
 msgid "Blocked {name}"
 msgstr "Заблокировано: {name}"
 
-#: src/ui/menus.rs:871
+#: src/ui/menus.rs:880
 msgid "Couldn't update blocked artists"
 msgstr "Не удалось обновить список заблокированных исполнителей"
 
@@ -959,7 +972,7 @@ msgid "Search"
 msgstr "Поиск"
 
 #: src/ui/nav.rs:177 src/ui/nav.rs:407 src/ui/sidebar.rs:288
-#: src/ui/sidebar.rs:317 src/ui/window.rs:806
+#: src/ui/sidebar.rs:317 src/ui/window.rs:837
 msgid "Collection"
 msgstr "Коллекция"
 
@@ -1274,7 +1287,7 @@ msgid "%b %-d"
 msgstr "%-d %b"
 
 #: src/ui/pages/history.rs:183 src/ui/pages/history.rs:248
-#: src/ui/pages/history.rs:255 src/ui/sidebar.rs:146 src/ui/window.rs:1229
+#: src/ui/pages/history.rs:255 src/ui/sidebar.rs:146 src/ui/window.rs:1260
 msgid "Recently Played"
 msgstr "Недавно слушали"
 
@@ -1668,7 +1681,7 @@ msgid "Close Panel or Popover"
 msgstr "Закрыть панель или всплывающее окно"
 
 #: src/ui/shortcuts.rs:52 src/ui/shortcuts.rs:54
-#: src/ui/widgets/now_playing.rs:305 src/ui/widgets/queue_view.rs:734
+#: src/ui/widgets/now_playing.rs:305 src/ui/widgets/queue_view.rs:736
 msgid "Now Playing"
 msgstr "Сейчас играет"
 
@@ -1716,7 +1729,7 @@ msgstr "Увеличить громкость"
 msgid "Volume Down"
 msgstr "Уменьшить громкость"
 
-#: src/ui/shortcuts.rs:70 src/ui/widgets/np_controls.rs:605
+#: src/ui/shortcuts.rs:70 src/ui/widgets/np_controls.rs:622
 msgid "Mute"
 msgstr "Отключить звук"
 
@@ -1790,6 +1803,50 @@ msgstr "_Выход"
 msgid "Main Menu"
 msgstr "Главное меню"
 
+#: src/ui/updates.rs:62
+msgid "Version {version}"
+msgstr "Версия {version}"
+
+#: src/ui/updates.rs:63
+msgid "Checking…"
+msgstr "Проверка…"
+
+#: src/ui/updates.rs:64
+msgid "Downloading Swell {version}…"
+msgstr "Скачивание Swell {version}…"
+
+#: src/ui/updates.rs:65
+msgid "Swell {version} is up to date"
+msgstr "Swell {version} — последняя версия"
+
+#: src/ui/updates.rs:67 src/ui/updates.rs:316
+msgid "Swell {version} is available"
+msgstr "Доступна новая версия: Swell {version}"
+
+#: src/ui/updates.rs:69
+msgid "Swell {version} is ready to install"
+msgstr "Swell {version} готов к установке"
+
+#: src/ui/updates.rs:70
+msgid "Couldn’t check for updates"
+msgstr "Не удалось проверить обновления"
+
+#: src/ui/updates.rs:72
+msgid "Couldn’t download Swell {version}"
+msgstr "Не удалось скачать Swell {version}"
+
+#: src/ui/updates.rs:81
+msgid "Downloads new versions and installs them when you quit Swell"
+msgstr "Скачивает новые версии и устанавливает их при выходе из Swell"
+
+#: src/ui/updates.rs:83
+msgid "Tells you when a new version is available"
+msgstr "Сообщает о выходе новой версии"
+
+#: src/ui/updates.rs:334
+msgid "Details"
+msgstr "Подробности"
+
 #: src/ui/widgets/carousel.rs:48
 msgid "Scroll Back"
 msgstr "Прокрутить назад"
@@ -1830,7 +1887,7 @@ msgstr "К текущей строке"
 msgid "Couldn't load lyrics"
 msgstr "Не удалось загрузить текст песни"
 
-#: src/ui/widgets/lyrics_view.rs:694
+#: src/ui/widgets/lyrics_view.rs:702
 msgid "Lyrics provided by {provider}"
 msgstr "Текст предоставлен: {provider}"
 
@@ -1858,7 +1915,7 @@ msgstr "Микс: {title}, {details}"
 msgid "Play {title}"
 msgstr "Воспроизвести: {title}"
 
-#: src/ui/widgets/mini_player.rs:185
+#: src/ui/widgets/mini_player.rs:186
 msgid "Now Playing: {title} by {artists}. Open player"
 msgstr "Сейчас играет: {title}, {artists}. Открыть плеер"
 
@@ -2066,20 +2123,20 @@ msgstr "Повтор: один трек"
 msgid "Seek"
 msgstr "Позиция"
 
-#: src/ui/widgets/np_controls.rs:456
+#: src/ui/widgets/np_controls.rs:473
 msgid "{position} of {duration}"
 msgstr "{position} из {duration}"
 
-#: src/ui/widgets/np_controls.rs:487 src/ui/widgets/np_controls.rs:494
-#: src/ui/widgets/np_controls.rs:509 src/ui/widgets/np_controls.rs:513
+#: src/ui/widgets/np_controls.rs:504 src/ui/widgets/np_controls.rs:511
+#: src/ui/widgets/np_controls.rs:526 src/ui/widgets/np_controls.rs:530
 msgid "Volume"
 msgstr "Громкость"
 
-#: src/ui/widgets/np_controls.rs:605
+#: src/ui/widgets/np_controls.rs:622
 msgid "Unmute"
 msgstr "Включить звук"
 
-#: src/ui/widgets/np_controls.rs:613
+#: src/ui/widgets/np_controls.rs:630
 msgid "Muted"
 msgstr "Звук отключён"
 
@@ -2140,28 +2197,28 @@ msgstr "Воспроизведение из: {source}"
 msgid "Queue cleared"
 msgstr "Очередь очищена"
 
-#: src/ui/widgets/queue_view.rs:513
+#: src/ui/widgets/queue_view.rs:515
 msgid "Drag to Reorder"
 msgstr "Перетащите, чтобы изменить порядок"
 
-#: src/ui/widgets/queue_view.rs:520 src/ui/widgets/queue_view.rs:522
+#: src/ui/widgets/queue_view.rs:522 src/ui/widgets/queue_view.rs:524
 #: src/ui/widgets/track_row.rs:384
 msgid "Remove from Queue"
 msgstr "Убрать из очереди"
 
-#: src/ui/widgets/queue_view.rs:699 src/ui/widgets/track_row.rs:759
+#: src/ui/widgets/queue_view.rs:701 src/ui/widgets/track_row.rs:759
 msgid "{track}, playing"
 msgstr "{track}, воспроизводится"
 
-#: src/ui/widgets/queue_view.rs:735
+#: src/ui/widgets/queue_view.rs:737
 msgid "Next in Queue"
 msgstr "Далее в очереди"
 
-#: src/ui/widgets/queue_view.rs:737
+#: src/ui/widgets/queue_view.rs:739
 msgid "Next"
 msgstr "Далее"
 
-#: src/ui/widgets/queue_view.rs:738
+#: src/ui/widgets/queue_view.rs:740
 msgid "Next From: {source}"
 msgstr "Далее из: {source}"
 
@@ -2221,15 +2278,15 @@ msgstr "Перетащите, чтобы изменить порядок (Alt+�
 msgid "Not available in your region"
 msgstr "Недоступно в вашем регионе"
 
-#: src/ui/window.rs:398
+#: src/ui/window.rs:402
 msgid "Couldn't remove your session from the keyring."
 msgstr "Не удалось удалить ваш сеанс из связки ключей."
 
-#: src/ui/window.rs:408
+#: src/ui/window.rs:412
 msgid "Sign Out?"
 msgstr "Выйти?"
 
-#: src/ui/window.rs:409
+#: src/ui/window.rs:413
 msgid ""
 "You will need to sign in again to listen. Your library cached on this "
 "computer is deleted."
@@ -2237,14 +2294,14 @@ msgstr ""
 "Чтобы слушать музыку, нужно будет снова войти. Библиотека, сохранённая на "
 "этом компьютере, будет удалена."
 
-#: src/ui/window.rs:413
+#: src/ui/window.rs:417
 msgid "_Sign Out"
 msgstr "_Выйти"
 
-#: src/ui/window.rs:518
+#: src/ui/window.rs:525
 msgid "Couldn't load your library"
 msgstr "Не удалось загрузить вашу библиотеку"
 
-#: src/ui/window.rs:770
+#: src/ui/window.rs:801
 msgid "Couldn't open the track"
 msgstr "Не удалось открыть трек"

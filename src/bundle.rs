@@ -10,7 +10,7 @@ use std::path::PathBuf;
 
 /// `<root>` of `<root>\bin\swell-player.exe` (Windows) or `Swell.app/Contents`
 /// (macOS), when the executable runs from such a bundle.
-fn prefix() -> Option<PathBuf> {
+pub fn prefix() -> Option<PathBuf> {
     let exe = std::env::current_exe().ok()?;
     let prefix = exe.parent()?.parent()?.to_path_buf();
     let plugins = if cfg!(windows) {

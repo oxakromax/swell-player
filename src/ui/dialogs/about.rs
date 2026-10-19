@@ -27,8 +27,9 @@ fn debug_info() -> String {
     let cache = glib::user_cache_dir().join("swell-player");
     let config = glib::user_config_dir().join("swell-player");
     format!(
-        "Swell {}\nGTK {}.{}.{}\nlibadwaita {}.{}.{}\nGStreamer {}\nCache: {}\nSettings: {}\n",
+        "Swell {} ({})\nGTK {}.{}.{}\nlibadwaita {}.{}.{}\nGStreamer {}\nCache: {}\nSettings: {}\n",
         env!("CARGO_PKG_VERSION"),
+        crate::update::channel::current().name(),
         gtk::major_version(),
         gtk::minor_version(),
         gtk::micro_version(),

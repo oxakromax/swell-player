@@ -22,36 +22,36 @@ msgstr "{codec} {bits}ビット/{rate} kHz"
 msgid "Unknown format"
 msgstr "不明な形式"
 
-#: src/playback/mod.rs:1555
+#: src/playback/mod.rs:1581
 msgid "Skipped a track that is not available"
 msgid_plural "Skipped {n} tracks that are not available"
 msgstr[0] "利用できない曲を{n}曲スキップしました"
 
-#: src/playback/mod.rs:1585
+#: src/playback/mod.rs:1617
 msgid "Playback needs GStreamer's playbin3"
 msgstr "再生には GStreamer の playbin3 が必要です"
 
-#: src/playback/mod.rs:1686
+#: src/playback/mod.rs:1718
 msgid "The TIDAL session has expired: sign in again to play"
 msgstr ""
 "TIDAL のセッションの有効期限が切れました。再生するには、もう一度ログインして"
 "ください"
 
-#: src/playback/mod.rs:1711
+#: src/playback/mod.rs:1743
 msgid "Connection lost — retrying"
 msgstr "接続が切れました — 再試行しています"
 
-#: src/playback/mod.rs:1779
+#: src/playback/mod.rs:1811
 msgid "Could not play “{title}”. Playback stopped after {n} tracks failed"
 msgstr ""
 "「{title}」を再生できませんでした。{n}曲の再生に失敗したため、再生を停止しま"
 "した"
 
-#: src/playback/mod.rs:1785
+#: src/playback/mod.rs:1817
 msgid "Could not play “{title}”, skipped"
 msgstr "「{title}」を再生できないため、スキップしました"
 
-#: src/playback/mod.rs:1980
+#: src/playback/mod.rs:2020 src/playback/mod.rs:2058
 msgid "Playback failed: {error}"
 msgstr "再生に失敗しました：{error}"
 
@@ -59,7 +59,7 @@ msgstr "再生に失敗しました：{error}"
 msgid "Playing music"
 msgstr "音楽を再生中"
 
-#: src/playback/notify.rs:242
+#: src/playback/notify.rs:247
 msgid "{artists} — {album}"
 msgstr "{artists} — {album}"
 
@@ -127,7 +127,7 @@ msgstr ""
 "\n"
 "TIDAL とは提携していません。"
 
-#: src/ui/dialogs/credits.rs:26 src/ui/menus.rs:473 src/ui/pages/album.rs:362
+#: src/ui/dialogs/credits.rs:26 src/ui/menus.rs:482 src/ui/pages/album.rs:362
 #: src/ui/pages/album.rs:489
 msgid "Credits"
 msgstr "クレジット"
@@ -158,6 +158,7 @@ msgid_plural "Added {n} tracks to “{title}”"
 msgstr[0] "「{title}」に{n}曲を追加しました"
 
 #: src/ui/dialogs/playlist.rs:71 src/ui/dialogs/playlist.rs:404
+#: src/ui/updates.rs:348
 msgid "Open"
 msgstr "開く"
 
@@ -180,11 +181,11 @@ msgstr[0] "{n}曲"
 msgid "Your Playlists"
 msgstr "自分のプレイリスト"
 
-#: src/ui/dialogs/playlist.rs:221 src/ui/menus.rs:802
+#: src/ui/dialogs/playlist.rs:221 src/ui/menus.rs:811
 msgid "New Playlist…"
 msgstr "新しいプレイリスト…"
 
-#: src/ui/dialogs/playlist.rs:244 src/ui/menus.rs:442 src/ui/menus.rs:507
+#: src/ui/dialogs/playlist.rs:244 src/ui/menus.rs:451 src/ui/menus.rs:516
 msgid "Add to Playlist"
 msgstr "プレイリストに追加"
 
@@ -279,88 +280,88 @@ msgstr "「{title}」を削除しました"
 msgid "Couldn't delete the playlist"
 msgstr "プレイリストを削除できませんでした"
 
-#: src/ui/dialogs/preferences.rs:42 src/ui/widgets/np_common.rs:407
+#: src/ui/dialogs/preferences.rs:43 src/ui/widgets/np_common.rs:407
 #: src/ui/widgets/np_common.rs:411 src/ui/widgets/quality_badge.rs:28
 msgid "Hi-Res Lossless"
 msgstr "Hi-Res Lossless"
 
-#: src/ui/dialogs/preferences.rs:45 src/ui/widgets/np_common.rs:408
+#: src/ui/dialogs/preferences.rs:46 src/ui/widgets/np_common.rs:408
 #: src/ui/widgets/np_common.rs:412 src/ui/widgets/quality_badge.rs:29
 msgid "Lossless"
 msgstr "Lossless"
 
-#: src/ui/dialogs/preferences.rs:46 src/ui/widgets/np_common.rs:409
+#: src/ui/dialogs/preferences.rs:47 src/ui/widgets/np_common.rs:409
 msgid "High"
 msgstr "高音質"
 
-#: src/ui/dialogs/preferences.rs:47 src/ui/widgets/np_common.rs:410
+#: src/ui/dialogs/preferences.rs:48 src/ui/widgets/np_common.rs:410
 msgid "Low"
 msgstr "低音質"
 
-#: src/ui/dialogs/preferences.rs:57
+#: src/ui/dialogs/preferences.rs:58
 msgid "Streaming Quality"
 msgstr "ストリーミング品質"
 
-#: src/ui/dialogs/preferences.rs:65
+#: src/ui/dialogs/preferences.rs:66
 msgid "Hi-Res Lossless requires browser sign-in"
 msgstr "Hi-Res Lossless を使うにはブラウザーでのログインが必要です"
 
-#: src/ui/dialogs/preferences.rs:71 src/ui/widgets/np_common.rs:477
+#: src/ui/dialogs/preferences.rs:72 src/ui/widgets/np_common.rs:477
 msgid "Quality"
 msgstr "音質"
 
-#: src/ui/dialogs/preferences.rs:81
+#: src/ui/dialogs/preferences.rs:82
 msgid "Volume Normalisation"
 msgstr "音量の正規化"
 
-#: src/ui/dialogs/preferences.rs:82 src/ui/pages/album.rs:68
+#: src/ui/dialogs/preferences.rs:83 src/ui/pages/album.rs:68
 #: src/ui/pages/collection.rs:592 src/ui/pages/search_views.rs:339
 #: src/ui/widgets/page_header.rs:526
 msgid "Album"
 msgstr "アルバム"
 
-#: src/ui/dialogs/preferences.rs:82 src/ui/dialogs/preferences.rs:131
+#: src/ui/dialogs/preferences.rs:83 src/ui/dialogs/preferences.rs:132
 #: src/ui/widgets/np_common.rs:610 src/ui/widgets/np_common.rs:801
 msgid "Off"
 msgstr "オフ"
 
-#: src/ui/dialogs/preferences.rs:82 src/ui/pages/search_views.rs:343
+#: src/ui/dialogs/preferences.rs:83 src/ui/pages/search_views.rs:343
 msgid "Track"
 msgstr "曲"
 
-#: src/ui/dialogs/preferences.rs:88
+#: src/ui/dialogs/preferences.rs:89
 msgid "Off keeps the output bit-perfect"
 msgstr "オフにするとビットパーフェクトで出力されます"
 
-#: src/ui/dialogs/preferences.rs:94
+#: src/ui/dialogs/preferences.rs:95
 msgid "Gapless Playback"
 msgstr "ギャップレス再生"
 
-#: src/ui/dialogs/preferences.rs:100
+#: src/ui/dialogs/preferences.rs:101
 msgid "Processing"
 msgstr "処理"
 
-#: src/ui/dialogs/preferences.rs:107
+#: src/ui/dialogs/preferences.rs:108
 msgid "Smooth Transitions"
 msgstr "スムーズな切り替え"
 
-#: src/ui/dialogs/preferences.rs:108
+#: src/ui/dialogs/preferences.rs:109
 msgid "Short fades when pausing, seeking and skipping"
 msgstr "一時停止、シーク、スキップ時に短いフェードをかけます"
 
-#: src/ui/dialogs/preferences.rs:115 src/ui/shortcuts.rs:60
+#: src/ui/dialogs/preferences.rs:116 src/ui/shortcuts.rs:60
 msgid "Playback"
 msgstr "再生"
 
-#: src/ui/dialogs/preferences.rs:129
+#: src/ui/dialogs/preferences.rs:130
 msgid "{n} s"
 msgstr "{n}秒"
 
-#: src/ui/dialogs/preferences.rs:135
+#: src/ui/dialogs/preferences.rs:136
 msgid "Crossfade"
 msgstr "クロスフェード"
 
-#: src/ui/dialogs/preferences.rs:137
+#: src/ui/dialogs/preferences.rs:138
 msgid ""
 "Overlapping tracks are mixed, so those seconds are not bit-perfect; "
 "consecutive album tracks stay gapless"
@@ -368,67 +369,79 @@ msgstr ""
 "重なる部分では2曲がミックスされるため、その数秒間はビットパーフェクトではあり"
 "ません。アルバムの連続した曲はギャップレスのままです"
 
-#: src/ui/dialogs/preferences.rs:147
+#: src/ui/dialogs/preferences.rs:148
 msgid "System Default"
 msgstr "システムのデフォルト"
 
-#: src/ui/dialogs/preferences.rs:149
+#: src/ui/dialogs/preferences.rs:150
 msgid "Output Device"
 msgstr "出力デバイス"
 
-#: src/ui/dialogs/preferences.rs:187 src/ui/widgets/np_common.rs:483
+#: src/ui/dialogs/preferences.rs:188 src/ui/widgets/np_common.rs:483
 msgid "Output"
 msgstr "出力"
 
-#: src/ui/dialogs/preferences.rs:218
+#: src/ui/dialogs/preferences.rs:219
 msgid "Behaviour"
 msgstr "動作"
 
-#: src/ui/dialogs/preferences.rs:222
+#: src/ui/dialogs/preferences.rs:223
 msgid "Run in Background"
 msgstr "バックグラウンドで実行"
 
-#: src/ui/dialogs/preferences.rs:223
+#: src/ui/dialogs/preferences.rs:224
 msgid "Keep playing when the window is closed"
 msgstr "ウィンドウを閉じても再生を続けます"
 
-#: src/ui/dialogs/preferences.rs:229
+#: src/ui/dialogs/preferences.rs:230
 msgid "Track Change Notifications"
 msgstr "曲の変更通知"
 
-#: src/ui/dialogs/preferences.rs:230
+#: src/ui/dialogs/preferences.rs:231
 msgid "When the window is not focused"
 msgstr "ウィンドウがフォーカスされていないとき"
 
-#: src/ui/dialogs/preferences.rs:236
+#: src/ui/dialogs/preferences.rs:237
 msgid "Restore Queue on Start"
 msgstr "起動時にキューを復元"
 
-#: src/ui/dialogs/preferences.rs:244 src/ui/shortcuts.rs:26
+#: src/ui/dialogs/preferences.rs:245 src/ui/shortcuts.rs:26
 msgid "General"
 msgstr "一般"
 
-#: src/ui/dialogs/preferences.rs:257
+#: src/ui/dialogs/preferences.rs:263
+msgid "Check for Updates"
+msgstr "アップデートを確認"
+
+#: src/ui/dialogs/preferences.rs:269
+msgid "Check Now"
+msgstr "今すぐ確認"
+
+#: src/ui/dialogs/preferences.rs:321
+msgid "Updates"
+msgstr "アップデート"
+
+#: src/ui/dialogs/preferences.rs:339
 msgid "Automatic"
 msgstr "自動"
 
-#: src/ui/dialogs/preferences.rs:262
+#: src/ui/dialogs/preferences.rs:344
 msgid "Language"
 msgstr "言語"
 
-#: src/ui/dialogs/preferences.rs:284
+#: src/ui/dialogs/preferences.rs:366
 msgid "Restart Swell to change the language"
 msgstr "言語を変更するには Swell を再起動してください"
 
-#: src/ui/dialogs/preferences.rs:285
+#: src/ui/dialogs/preferences.rs:367 src/ui/updates.rs:323
 msgid "Restart"
 msgstr "再起動"
 
-#: src/ui/dialogs/preferences.rs:310
+#: src/ui/dialogs/preferences.rs:392
 msgid "Storage"
 msgstr "ストレージ"
 
-#: src/ui/dialogs/preferences.rs:311
+#: src/ui/dialogs/preferences.rs:393
 msgid ""
 "Downloaded artwork, the first seconds of tracks and saved answers from "
 "TIDAL, so pages open instantly and work offline, and tracks start at once."
@@ -436,135 +449,135 @@ msgstr ""
 "ダウンロードしたアートワーク、曲の冒頭の数秒、TIDAL から保存した応答です。"
 "ページがすばやく開き、オフラインでも使え、曲がすぐに再生されます。"
 
-#: src/ui/dialogs/preferences.rs:316
+#: src/ui/dialogs/preferences.rs:398
 msgid "Cover Cache"
 msgstr "カバーキャッシュ"
 
-#: src/ui/dialogs/preferences.rs:317
+#: src/ui/dialogs/preferences.rs:399
 msgid "Clear the Cover Cache?"
 msgstr "カバーキャッシュを消去しますか？"
 
-#: src/ui/dialogs/preferences.rs:318
+#: src/ui/dialogs/preferences.rs:400
 msgid "Artwork is downloaded again as you browse."
 msgstr "アートワークは、閲覧するときに再びダウンロードされます。"
 
-#: src/ui/dialogs/preferences.rs:319
+#: src/ui/dialogs/preferences.rs:401
 msgid "Cover Cache cleared"
 msgstr "カバーキャッシュを消去しました"
 
-#: src/ui/dialogs/preferences.rs:320
+#: src/ui/dialogs/preferences.rs:402
 msgid "Couldn’t clear the Cover Cache"
 msgstr "カバーキャッシュを消去できませんでした"
 
-#: src/ui/dialogs/preferences.rs:341
+#: src/ui/dialogs/preferences.rs:423
 msgid "Library Cache"
 msgstr "ライブラリキャッシュ"
 
-#: src/ui/dialogs/preferences.rs:342
+#: src/ui/dialogs/preferences.rs:424
 msgid "Clear the Library Cache?"
 msgstr "ライブラリキャッシュを消去しますか？"
 
-#: src/ui/dialogs/preferences.rs:343
+#: src/ui/dialogs/preferences.rs:425
 msgid "Pages are loaded again from TIDAL. Your collection is not affected."
 msgstr "ページは TIDAL から再び読み込まれます。コレクションには影響しません。"
 
-#: src/ui/dialogs/preferences.rs:344
+#: src/ui/dialogs/preferences.rs:426
 msgid "Library Cache cleared"
 msgstr "ライブラリキャッシュを消去しました"
 
-#: src/ui/dialogs/preferences.rs:345
+#: src/ui/dialogs/preferences.rs:427
 msgid "Couldn’t clear the Library Cache"
 msgstr "ライブラリキャッシュを消去できませんでした"
 
-#: src/ui/dialogs/preferences.rs:374
+#: src/ui/dialogs/preferences.rs:456
 msgid "Audio Cache"
 msgstr "オーディオキャッシュ"
 
-#: src/ui/dialogs/preferences.rs:375
+#: src/ui/dialogs/preferences.rs:457
 msgid "Clear the Audio Cache?"
 msgstr "オーディオキャッシュを消去しますか？"
 
-#: src/ui/dialogs/preferences.rs:376
+#: src/ui/dialogs/preferences.rs:458
 msgid ""
 "The first seconds of upcoming tracks are downloaded again as you listen."
 msgstr ""
 "次に再生する曲の冒頭の数秒は、聴いているあいだに再びダウンロードされます。"
 
-#: src/ui/dialogs/preferences.rs:379
+#: src/ui/dialogs/preferences.rs:461
 msgid "Audio Cache cleared"
 msgstr "オーディオキャッシュを消去しました"
 
-#: src/ui/dialogs/preferences.rs:380
+#: src/ui/dialogs/preferences.rs:462
 msgid "Couldn’t clear the Audio Cache"
 msgstr "オーディオキャッシュを消去できませんでした"
 
-#: src/ui/dialogs/preferences.rs:414
+#: src/ui/dialogs/preferences.rs:496
 msgid "Calculating…"
 msgstr "計算中…"
 
-#: src/ui/dialogs/preferences.rs:417 src/ui/dialogs/preferences.rs:463
+#: src/ui/dialogs/preferences.rs:499 src/ui/dialogs/preferences.rs:545
 msgid "_Clear"
 msgstr "消去(_E)"
 
-#: src/ui/dialogs/preferences.rs:463 src/ui/window.rs:413
+#: src/ui/dialogs/preferences.rs:545 src/ui/window.rs:417
 msgid "_Cancel"
 msgstr "キャンセル(_C)"
 
-#: src/ui/dialogs/preferences.rs:518
+#: src/ui/dialogs/preferences.rs:600
 msgid "Blocked Artists"
 msgstr "ブロックしたアーティスト"
 
-#: src/ui/dialogs/preferences.rs:519
+#: src/ui/dialogs/preferences.rs:601
 msgid "Loading…"
 msgstr "読み込み中…"
 
-#: src/ui/dialogs/preferences.rs:535
+#: src/ui/dialogs/preferences.rs:617
 msgid "Couldn’t load blocked artists."
 msgstr "ブロックしたアーティストを読み込めませんでした。"
 
-#: src/ui/dialogs/preferences.rs:540
+#: src/ui/dialogs/preferences.rs:622
 msgid "Nothing blocked. Blocked artists are skipped in radios and mixes."
 msgstr ""
 "ブロックしているアーティストはいません。ブロックしたアーティストは、ラジオや"
 "ミックスでスキップされます。"
 
-#: src/ui/dialogs/preferences.rs:542
+#: src/ui/dialogs/preferences.rs:624
 msgid "Skipped in radios and mixes."
 msgstr "ラジオやミックスでスキップされます。"
 
-#: src/ui/dialogs/preferences.rs:551
+#: src/ui/dialogs/preferences.rs:633
 msgid "Unblock"
 msgstr "ブロック解除"
 
-#: src/ui/dialogs/preferences.rs:584 src/ui/menus.rs:870
+#: src/ui/dialogs/preferences.rs:666 src/ui/menus.rs:879
 msgid "Unblocked {name}"
 msgstr "{name} のブロックを解除しました"
 
-#: src/ui/dialogs/preferences.rs:594
+#: src/ui/dialogs/preferences.rs:676
 msgid "Couldn’t unblock the artist"
 msgstr "アーティストのブロックを解除できませんでした"
 
-#: src/ui/dialogs/preferences.rs:609
+#: src/ui/dialogs/preferences.rs:691
 msgid "Signed in with the browser"
 msgstr "ブラウザーでログイン済み"
 
-#: src/ui/dialogs/preferences.rs:610
+#: src/ui/dialogs/preferences.rs:692
 msgid "Up to Hi-Res Lossless"
 msgstr "Hi-Res Lossless まで再生できます"
 
-#: src/ui/dialogs/preferences.rs:613
+#: src/ui/dialogs/preferences.rs:695
 msgid "Signed in with a device code"
 msgstr "デバイスコードでログイン済み"
 
-#: src/ui/dialogs/preferences.rs:614
+#: src/ui/dialogs/preferences.rs:696
 msgid "Up to Lossless (16-bit/44.1 kHz)"
 msgstr "Lossless (16ビット/44.1 kHz) まで再生できます"
 
-#: src/ui/dialogs/preferences.rs:642
+#: src/ui/dialogs/preferences.rs:724
 msgid "Sign _Out…"
 msgstr "ログアウト(_O)…"
 
-#: src/ui/dialogs/preferences.rs:663
+#: src/ui/dialogs/preferences.rs:745
 msgid "Account"
 msgstr "アカウント"
 
@@ -771,167 +784,167 @@ msgstr "コードを取得できませんでした。{error}"
 msgid "This code expired or was not approved."
 msgstr "このコードは期限切れか、承認されませんでした。"
 
-#: src/ui/menus.rs:201 src/ui/pages/artist.rs:298
+#: src/ui/menus.rs:210 src/ui/pages/artist.rs:298
 msgid "There's nothing to play here"
 msgstr "ここには再生できるものがありません"
 
-#: src/ui/menus.rs:203 src/ui/menus.rs:842
+#: src/ui/menus.rs:212 src/ui/menus.rs:851
 msgid "Couldn't load the tracks"
 msgstr "曲を読み込めませんでした"
 
-#: src/ui/menus.rs:232
+#: src/ui/menus.rs:241
 msgid "“{title}” isn't available in your region"
 msgstr "「{title}」はお住まいの地域では利用できません"
 
-#: src/ui/menus.rs:243 src/ui/menus.rs:256 src/ui/menus.rs:269
+#: src/ui/menus.rs:252 src/ui/menus.rs:265 src/ui/menus.rs:278
 msgid "None of these tracks are available in your region"
 msgstr "これらの曲はどれもお住まいの地域では利用できません"
 
-#: src/ui/menus.rs:272
+#: src/ui/menus.rs:281
 msgid "“{title}” will play next"
 msgstr "「{title}」を次に再生します"
 
-#: src/ui/menus.rs:273
+#: src/ui/menus.rs:282
 msgid "Added “{title}” to the queue"
 msgstr "「{title}」をキューに追加しました"
 
-#: src/ui/menus.rs:274
+#: src/ui/menus.rs:283
 msgid "Added {n} track to the queue"
 msgid_plural "Added {n} tracks to the queue"
 msgstr[0] "{n}曲をキューに追加しました"
 
-#: src/ui/menus.rs:287 src/ui/pages/search.rs:130
+#: src/ui/menus.rs:296 src/ui/pages/search.rs:130
 msgid "Show"
 msgstr "表示"
 
-#: src/ui/menus.rs:320
+#: src/ui/menus.rs:329
 msgid "Couldn't play this track"
 msgstr "この曲を再生できませんでした"
 
-#: src/ui/menus.rs:428 src/ui/widgets/heart_button.rs:173
+#: src/ui/menus.rs:437 src/ui/widgets/heart_button.rs:173
 #: src/ui/widgets/np_common.rs:791
 msgid "Remove from Favourites"
 msgstr "お気に入りから削除"
 
-#: src/ui/menus.rs:430 src/ui/widgets/heart_button.rs:175
+#: src/ui/menus.rs:439 src/ui/widgets/heart_button.rs:175
 #: src/ui/widgets/np_common.rs:725 src/ui/widgets/np_common.rs:793
 msgid "Add to Favourites"
 msgstr "お気に入りに追加"
 
-#: src/ui/menus.rs:437 src/ui/menus.rs:784
+#: src/ui/menus.rs:446 src/ui/menus.rs:793
 msgid "Play Next"
 msgstr "次に再生"
 
-#: src/ui/menus.rs:438 src/ui/menus.rs:785
+#: src/ui/menus.rs:447 src/ui/menus.rs:794
 msgid "Add to Queue"
 msgstr "キューに追加"
 
-#: src/ui/menus.rs:447 src/ui/widgets/np_common.rs:921
+#: src/ui/menus.rs:456 src/ui/widgets/np_common.rs:921
 msgid "Go to Album"
 msgstr "アルバムへ移動"
 
-#: src/ui/menus.rs:452 src/ui/menus.rs:465 src/ui/menus.rs:512
+#: src/ui/menus.rs:461 src/ui/menus.rs:474 src/ui/menus.rs:521
 #: src/ui/widgets/np_common.rs:922
 msgid "Go to Artist"
 msgstr "アーティストへ移動"
 
-#: src/ui/menus.rs:468 src/ui/pages/mix.rs:51 src/ui/pages/mix.rs:60
+#: src/ui/menus.rs:477 src/ui/pages/mix.rs:51 src/ui/pages/mix.rs:60
 #: src/ui/widgets/now_playing.rs:178 src/ui/widgets/now_playing.rs:180
 #: src/ui/widgets/np_common.rs:923
 msgid "Track Radio"
 msgstr "トラックラジオ"
 
-#: src/ui/menus.rs:474 src/ui/menus.rs:523 src/ui/menus.rs:542
-#: src/ui/menus.rs:551 src/ui/menus.rs:575 src/ui/widgets/np_common.rs:927
+#: src/ui/menus.rs:483 src/ui/menus.rs:532 src/ui/menus.rs:551
+#: src/ui/menus.rs:560 src/ui/menus.rs:584 src/ui/widgets/np_common.rs:927
 #: src/ui/widgets/page_header.rs:486
 msgid "Copy Link"
 msgstr "リンクをコピー"
 
-#: src/ui/menus.rs:480
+#: src/ui/menus.rs:489
 msgid "Remove from This Playlist"
 msgstr "このプレイリストから削除"
 
-#: src/ui/menus.rs:484 src/ui/shortcuts.rs:82
+#: src/ui/menus.rs:493 src/ui/shortcuts.rs:82
 msgid "Move Up"
 msgstr "上へ移動"
 
-#: src/ui/menus.rs:487 src/ui/shortcuts.rs:83
+#: src/ui/menus.rs:496 src/ui/shortcuts.rs:83
 msgid "Move Down"
 msgstr "下へ移動"
 
-#: src/ui/menus.rs:497
+#: src/ui/menus.rs:506
 msgid "Block {name}"
 msgstr "{name} をブロック"
 
-#: src/ui/menus.rs:517 src/ui/menus.rs:559 src/ui/pages/mix.rs:52
+#: src/ui/menus.rs:526 src/ui/menus.rs:568 src/ui/pages/mix.rs:52
 #: src/ui/pages/mix.rs:61 src/ui/widgets/page_header.rs:631
 msgid "Artist Radio"
 msgstr "アーティストラジオ"
 
-#: src/ui/menus.rs:527
+#: src/ui/menus.rs:536
 msgid "Edit Details…"
 msgstr "詳細を編集…"
 
-#: src/ui/menus.rs:530
+#: src/ui/menus.rs:539
 msgid "Make Private"
 msgstr "非公開にする"
 
-#: src/ui/menus.rs:532
+#: src/ui/menus.rs:541
 msgid "Make Public"
 msgstr "公開する"
 
-#: src/ui/menus.rs:545
+#: src/ui/menus.rs:554
 msgid "Delete Playlist…"
 msgstr "プレイリストを削除…"
 
-#: src/ui/menus.rs:555
+#: src/ui/menus.rs:564
 msgid "Play Top Tracks"
 msgstr "人気曲を再生"
 
-#: src/ui/menus.rs:556 src/ui/menus.rs:783 src/ui/pages/collection.rs:681
+#: src/ui/menus.rs:565 src/ui/menus.rs:792 src/ui/pages/collection.rs:681
 #: src/ui/shortcuts.rs:71 src/ui/widgets/np_controls.rs:147
 #: src/ui/widgets/page_header.rs:153 src/ui/widgets/page_header.rs:316
 #: src/ui/widgets/page_header.rs:320 src/ui/widgets/page_header.rs:323
 msgid "Shuffle"
 msgstr "シャッフル"
 
-#: src/ui/menus.rs:568 src/ui/widgets/heart_button.rs:189
+#: src/ui/menus.rs:577 src/ui/widgets/heart_button.rs:189
 msgid "Unfollow"
 msgstr "フォロー解除"
 
-#: src/ui/menus.rs:570 src/ui/widgets/heart_button.rs:185
+#: src/ui/menus.rs:579 src/ui/widgets/heart_button.rs:185
 msgid "Follow"
 msgstr "フォロー"
 
-#: src/ui/menus.rs:578
+#: src/ui/menus.rs:587
 msgid "Block Artist"
 msgstr "アーティストをブロック"
 
-#: src/ui/menus.rs:625 src/ui/widgets/heart_button.rs:215
-#: src/ui/widgets/np_common.rs:765 src/ui/window.rs:744
+#: src/ui/menus.rs:634 src/ui/widgets/heart_button.rs:215
+#: src/ui/widgets/np_common.rs:765 src/ui/window.rs:775
 msgid "Couldn't update favourites"
 msgstr "お気に入りを更新できませんでした"
 
-#: src/ui/menus.rs:693 src/ui/widgets/np_common.rs:882
+#: src/ui/menus.rs:702 src/ui/widgets/np_common.rs:882
 #: src/ui/widgets/page_header.rs:490
 msgid "Link copied"
 msgstr "リンクをコピーしました"
 
-#: src/ui/menus.rs:782 src/ui/pages/collection.rs:680
+#: src/ui/menus.rs:791 src/ui/pages/collection.rs:680
 #: src/ui/widgets/np_controls.rs:52 src/ui/widgets/np_controls.rs:56
 #: src/ui/widgets/np_controls.rs:86 src/ui/widgets/page_header.rs:309
 msgid "Play"
 msgstr "再生"
 
-#: src/ui/menus.rs:819
+#: src/ui/menus.rs:828
 msgid "More…"
 msgstr "その他…"
 
-#: src/ui/menus.rs:861
+#: src/ui/menus.rs:870
 msgid "Blocked {name}"
 msgstr "{name} をブロックしました"
 
-#: src/ui/menus.rs:871
+#: src/ui/menus.rs:880
 msgid "Couldn't update blocked artists"
 msgstr "ブロックしたアーティストを更新できませんでした"
 
@@ -950,7 +963,7 @@ msgid "Search"
 msgstr "検索"
 
 #: src/ui/nav.rs:177 src/ui/nav.rs:407 src/ui/sidebar.rs:288
-#: src/ui/sidebar.rs:317 src/ui/window.rs:806
+#: src/ui/sidebar.rs:317 src/ui/window.rs:837
 msgid "Collection"
 msgstr "コレクション"
 
@@ -1257,7 +1270,7 @@ msgid "%b %-d"
 msgstr "%b%-d日"
 
 #: src/ui/pages/history.rs:183 src/ui/pages/history.rs:248
-#: src/ui/pages/history.rs:255 src/ui/sidebar.rs:146 src/ui/window.rs:1229
+#: src/ui/pages/history.rs:255 src/ui/sidebar.rs:146 src/ui/window.rs:1260
 msgid "Recently Played"
 msgstr "最近再生した曲"
 
@@ -1653,7 +1666,7 @@ msgid "Close Panel or Popover"
 msgstr "パネルまたはポップオーバーを閉じる"
 
 #: src/ui/shortcuts.rs:52 src/ui/shortcuts.rs:54
-#: src/ui/widgets/now_playing.rs:305 src/ui/widgets/queue_view.rs:734
+#: src/ui/widgets/now_playing.rs:305 src/ui/widgets/queue_view.rs:736
 msgid "Now Playing"
 msgstr "再生中"
 
@@ -1701,7 +1714,7 @@ msgstr "音量を上げる"
 msgid "Volume Down"
 msgstr "音量を下げる"
 
-#: src/ui/shortcuts.rs:70 src/ui/widgets/np_controls.rs:605
+#: src/ui/shortcuts.rs:70 src/ui/widgets/np_controls.rs:622
 msgid "Mute"
 msgstr "ミュート"
 
@@ -1775,6 +1788,50 @@ msgstr "終了(_Q)"
 msgid "Main Menu"
 msgstr "メインメニュー"
 
+#: src/ui/updates.rs:62
+msgid "Version {version}"
+msgstr "バージョン {version}"
+
+#: src/ui/updates.rs:63
+msgid "Checking…"
+msgstr "確認中…"
+
+#: src/ui/updates.rs:64
+msgid "Downloading Swell {version}…"
+msgstr "Swell {version} をダウンロード中…"
+
+#: src/ui/updates.rs:65
+msgid "Swell {version} is up to date"
+msgstr "Swell {version} は最新です"
+
+#: src/ui/updates.rs:67 src/ui/updates.rs:316
+msgid "Swell {version} is available"
+msgstr "Swell {version} が利用可能です"
+
+#: src/ui/updates.rs:69
+msgid "Swell {version} is ready to install"
+msgstr "Swell {version} をインストールする準備ができました"
+
+#: src/ui/updates.rs:70
+msgid "Couldn’t check for updates"
+msgstr "アップデートを確認できませんでした"
+
+#: src/ui/updates.rs:72
+msgid "Couldn’t download Swell {version}"
+msgstr "Swell {version} をダウンロードできませんでした"
+
+#: src/ui/updates.rs:81
+msgid "Downloads new versions and installs them when you quit Swell"
+msgstr "新しいバージョンをダウンロードし、Swell の終了時にインストールします"
+
+#: src/ui/updates.rs:83
+msgid "Tells you when a new version is available"
+msgstr "新しいバージョンが利用可能になるとお知らせします"
+
+#: src/ui/updates.rs:334
+msgid "Details"
+msgstr "詳細"
+
 #: src/ui/widgets/carousel.rs:48
 msgid "Scroll Back"
 msgstr "前へスクロール"
@@ -1815,7 +1872,7 @@ msgstr "現在の行に戻る"
 msgid "Couldn't load lyrics"
 msgstr "歌詞を読み込めませんでした"
 
-#: src/ui/widgets/lyrics_view.rs:694
+#: src/ui/widgets/lyrics_view.rs:702
 msgid "Lyrics provided by {provider}"
 msgstr "歌詞提供：{provider}"
 
@@ -1843,7 +1900,7 @@ msgstr "ミックス：{title}、{details}"
 msgid "Play {title}"
 msgstr "{title} を再生"
 
-#: src/ui/widgets/mini_player.rs:185
+#: src/ui/widgets/mini_player.rs:186
 msgid "Now Playing: {title} by {artists}. Open player"
 msgstr "再生中：{title} ({artists})。プレーヤーを開く"
 
@@ -2043,20 +2100,20 @@ msgstr "リピート：1曲"
 msgid "Seek"
 msgstr "シーク"
 
-#: src/ui/widgets/np_controls.rs:456
+#: src/ui/widgets/np_controls.rs:473
 msgid "{position} of {duration}"
 msgstr "{duration}中 {position}"
 
-#: src/ui/widgets/np_controls.rs:487 src/ui/widgets/np_controls.rs:494
-#: src/ui/widgets/np_controls.rs:509 src/ui/widgets/np_controls.rs:513
+#: src/ui/widgets/np_controls.rs:504 src/ui/widgets/np_controls.rs:511
+#: src/ui/widgets/np_controls.rs:526 src/ui/widgets/np_controls.rs:530
 msgid "Volume"
 msgstr "音量"
 
-#: src/ui/widgets/np_controls.rs:605
+#: src/ui/widgets/np_controls.rs:622
 msgid "Unmute"
 msgstr "ミュート解除"
 
-#: src/ui/widgets/np_controls.rs:613
+#: src/ui/widgets/np_controls.rs:630
 msgid "Muted"
 msgstr "ミュート中"
 
@@ -2116,28 +2173,28 @@ msgstr "再生元：{source}"
 msgid "Queue cleared"
 msgstr "キューを消去しました"
 
-#: src/ui/widgets/queue_view.rs:513
+#: src/ui/widgets/queue_view.rs:515
 msgid "Drag to Reorder"
 msgstr "ドラッグして並べ替え"
 
-#: src/ui/widgets/queue_view.rs:520 src/ui/widgets/queue_view.rs:522
+#: src/ui/widgets/queue_view.rs:522 src/ui/widgets/queue_view.rs:524
 #: src/ui/widgets/track_row.rs:384
 msgid "Remove from Queue"
 msgstr "キューから削除"
 
-#: src/ui/widgets/queue_view.rs:699 src/ui/widgets/track_row.rs:759
+#: src/ui/widgets/queue_view.rs:701 src/ui/widgets/track_row.rs:759
 msgid "{track}, playing"
 msgstr "{track}、再生中"
 
-#: src/ui/widgets/queue_view.rs:735
+#: src/ui/widgets/queue_view.rs:737
 msgid "Next in Queue"
 msgstr "キューの次"
 
-#: src/ui/widgets/queue_view.rs:737
+#: src/ui/widgets/queue_view.rs:739
 msgid "Next"
 msgstr "次の曲"
 
-#: src/ui/widgets/queue_view.rs:738
+#: src/ui/widgets/queue_view.rs:740
 msgid "Next From: {source}"
 msgstr "次の再生元：{source}"
 
@@ -2197,15 +2254,15 @@ msgstr "ドラッグして並べ替え (Alt+↑/↓)"
 msgid "Not available in your region"
 msgstr "お住まいの地域では利用できません"
 
-#: src/ui/window.rs:398
+#: src/ui/window.rs:402
 msgid "Couldn't remove your session from the keyring."
 msgstr "キーリングからセッションを削除できませんでした。"
 
-#: src/ui/window.rs:408
+#: src/ui/window.rs:412
 msgid "Sign Out?"
 msgstr "ログアウトしますか？"
 
-#: src/ui/window.rs:409
+#: src/ui/window.rs:413
 msgid ""
 "You will need to sign in again to listen. Your library cached on this "
 "computer is deleted."
@@ -2213,14 +2270,14 @@ msgstr ""
 "再生するには、もう一度ログインする必要があります。このコンピューターにキャッ"
 "シュされたライブラリは削除されます。"
 
-#: src/ui/window.rs:413
+#: src/ui/window.rs:417
 msgid "_Sign Out"
 msgstr "ログアウト(_O)"
 
-#: src/ui/window.rs:518
+#: src/ui/window.rs:525
 msgid "Couldn't load your library"
 msgstr "ライブラリを読み込めませんでした"
 
-#: src/ui/window.rs:770
+#: src/ui/window.rs:801
 msgid "Couldn't open the track"
 msgstr "曲を開けませんでした"

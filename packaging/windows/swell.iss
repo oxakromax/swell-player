@@ -5,6 +5,11 @@
 ;
 ; Installs per user without administrator rights by default; the first page
 ; offers an all-users install instead.
+;
+; Swell updates itself by running a newer installer silently when it quits
+; (src/update/install.rs):
+;   setup.exe /SILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS /NORESTARTAPPLICATIONS /relaunch=0|1
+; With /relaunch=1 (the user chose Restart) Swell starts again afterwards.
 
 #ifndef AppVersion
   #define AppVersion "1.1.0"
@@ -51,6 +56,8 @@ SolidCompression=yes
 WizardStyle=modern
 CloseApplications=yes
 ChangesAssociations=yes
+; One Setup at a time: two Swell instances may quit with the same update.
+SetupMutex=SwellPlayerSetup,Global\SwellPlayerSetup
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -90,3 +97,12 @@ Root: HKA; Subkey: "Software\Classes\tidal\shell\open\command"; ValueType: strin
 
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent
+; An update that Swell started for a restart: start it again, as the user
+; who ran it (not as the administrator an all-users install elevates to).
+Filename: "{app}\{#AppExe}"; Flags: nowait runasoriginaluser; Check: RelaunchAfterUpdate
+
+[Code]
+function RelaunchAfterUpdate: Boolean;
+begin
+  Result := WizardSilent and (ExpandConstant('{param:relaunch|0}') = '1');
+end;

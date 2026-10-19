@@ -237,12 +237,14 @@ fn build(app: &adw::Application) {
 
     let http = api::http_client();
     api::preconnect(&http);
+    let updates = super::updates::start(&window, &settings);
     let ui = Rc::new(Ui {
         window,
         stack,
         covers: CoverLoader::new(http.clone()),
         http,
         settings,
+        updates,
         session: RefCell::default(),
         session_actions: RefCell::default(),
         pending: RefCell::default(),
@@ -301,6 +303,8 @@ struct Ui {
     covers: Rc<CoverLoader>,
     http: reqwest::Client,
     settings: Rc<settings::Store>,
+    /// Update checks, when this build makes them.
+    updates: Option<Rc<super::updates::Updater>>,
     /// The signed-in session, while signed in.
     session: RefCell<Option<Session>>,
     /// Actions that need a session (disabled while signed out).
@@ -470,6 +474,9 @@ impl Ui {
         if let Some(message) = crate::playback::plugins::missing_message() {
             ctx.toasts
                 .add_toast(adw::Toast::builder().title(message).timeout(0).build());
+        }
+        if let Some(updates) = &self.updates {
+            updates.set_toasts(&ctx.toasts);
         }
         shell.navigator.show_section("home");
         if let Some(section) = super::debug::section() {

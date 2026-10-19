@@ -22,33 +22,33 @@ msgstr "{codec} {bits}비트/{rate} kHz"
 msgid "Unknown format"
 msgstr "알 수 없는 형식"
 
-#: src/playback/mod.rs:1555
+#: src/playback/mod.rs:1581
 msgid "Skipped a track that is not available"
 msgid_plural "Skipped {n} tracks that are not available"
 msgstr[0] "사용할 수 없는 곡 {n}곡을 건너뛰었습니다"
 
-#: src/playback/mod.rs:1585
+#: src/playback/mod.rs:1617
 msgid "Playback needs GStreamer's playbin3"
 msgstr "재생하려면 GStreamer playbin3이 필요합니다"
 
-#: src/playback/mod.rs:1686
+#: src/playback/mod.rs:1718
 msgid "The TIDAL session has expired: sign in again to play"
 msgstr "TIDAL 세션이 만료되었습니다. 재생하려면 다시 로그인하세요"
 
-#: src/playback/mod.rs:1711
+#: src/playback/mod.rs:1743
 msgid "Connection lost — retrying"
 msgstr "연결이 끊어졌습니다 — 다시 시도하는 중"
 
-#: src/playback/mod.rs:1779
+#: src/playback/mod.rs:1811
 msgid "Could not play “{title}”. Playback stopped after {n} tracks failed"
 msgstr ""
 "“{title}” 재생에 실패했습니다. {n}곡의 재생에 실패하여 재생을 중지했습니다"
 
-#: src/playback/mod.rs:1785
+#: src/playback/mod.rs:1817
 msgid "Could not play “{title}”, skipped"
 msgstr "“{title}” 재생에 실패하여 건너뛰었습니다"
 
-#: src/playback/mod.rs:1980
+#: src/playback/mod.rs:2020 src/playback/mod.rs:2058
 msgid "Playback failed: {error}"
 msgstr "재생 실패: {error}"
 
@@ -56,7 +56,7 @@ msgstr "재생 실패: {error}"
 msgid "Playing music"
 msgstr "음악 재생 중"
 
-#: src/playback/notify.rs:242
+#: src/playback/notify.rs:247
 msgid "{artists} — {album}"
 msgstr "{artists} — {album}"
 
@@ -123,7 +123,7 @@ msgstr ""
 "\n"
 "TIDAL과 제휴 관계가 없습니다."
 
-#: src/ui/dialogs/credits.rs:26 src/ui/menus.rs:473 src/ui/pages/album.rs:362
+#: src/ui/dialogs/credits.rs:26 src/ui/menus.rs:482 src/ui/pages/album.rs:362
 #: src/ui/pages/album.rs:489
 msgid "Credits"
 msgstr "크레디트"
@@ -154,6 +154,7 @@ msgid_plural "Added {n} tracks to “{title}”"
 msgstr[0] "“{title}”에 {n}곡을 추가했습니다"
 
 #: src/ui/dialogs/playlist.rs:71 src/ui/dialogs/playlist.rs:404
+#: src/ui/updates.rs:348
 msgid "Open"
 msgstr "열기"
 
@@ -176,11 +177,11 @@ msgstr[0] "{n}곡"
 msgid "Your Playlists"
 msgstr "내 재생 목록"
 
-#: src/ui/dialogs/playlist.rs:221 src/ui/menus.rs:802
+#: src/ui/dialogs/playlist.rs:221 src/ui/menus.rs:811
 msgid "New Playlist…"
 msgstr "새 재생 목록…"
 
-#: src/ui/dialogs/playlist.rs:244 src/ui/menus.rs:442 src/ui/menus.rs:507
+#: src/ui/dialogs/playlist.rs:244 src/ui/menus.rs:451 src/ui/menus.rs:516
 msgid "Add to Playlist"
 msgstr "재생 목록에 추가"
 
@@ -273,88 +274,88 @@ msgstr "“{title}” 재생 목록을 삭제했습니다"
 msgid "Couldn't delete the playlist"
 msgstr "재생 목록을 삭제할 수 없습니다"
 
-#: src/ui/dialogs/preferences.rs:42 src/ui/widgets/np_common.rs:407
+#: src/ui/dialogs/preferences.rs:43 src/ui/widgets/np_common.rs:407
 #: src/ui/widgets/np_common.rs:411 src/ui/widgets/quality_badge.rs:28
 msgid "Hi-Res Lossless"
 msgstr "Hi-Res Lossless"
 
-#: src/ui/dialogs/preferences.rs:45 src/ui/widgets/np_common.rs:408
+#: src/ui/dialogs/preferences.rs:46 src/ui/widgets/np_common.rs:408
 #: src/ui/widgets/np_common.rs:412 src/ui/widgets/quality_badge.rs:29
 msgid "Lossless"
 msgstr "Lossless"
 
-#: src/ui/dialogs/preferences.rs:46 src/ui/widgets/np_common.rs:409
+#: src/ui/dialogs/preferences.rs:47 src/ui/widgets/np_common.rs:409
 msgid "High"
 msgstr "높음"
 
-#: src/ui/dialogs/preferences.rs:47 src/ui/widgets/np_common.rs:410
+#: src/ui/dialogs/preferences.rs:48 src/ui/widgets/np_common.rs:410
 msgid "Low"
 msgstr "낮음"
 
-#: src/ui/dialogs/preferences.rs:57
+#: src/ui/dialogs/preferences.rs:58
 msgid "Streaming Quality"
 msgstr "스트리밍 품질"
 
-#: src/ui/dialogs/preferences.rs:65
+#: src/ui/dialogs/preferences.rs:66
 msgid "Hi-Res Lossless requires browser sign-in"
 msgstr "Hi-Res Lossless를 사용하려면 브라우저로 로그인해야 합니다"
 
-#: src/ui/dialogs/preferences.rs:71 src/ui/widgets/np_common.rs:477
+#: src/ui/dialogs/preferences.rs:72 src/ui/widgets/np_common.rs:477
 msgid "Quality"
 msgstr "품질"
 
-#: src/ui/dialogs/preferences.rs:81
+#: src/ui/dialogs/preferences.rs:82
 msgid "Volume Normalisation"
 msgstr "볼륨 정규화"
 
-#: src/ui/dialogs/preferences.rs:82 src/ui/pages/album.rs:68
+#: src/ui/dialogs/preferences.rs:83 src/ui/pages/album.rs:68
 #: src/ui/pages/collection.rs:592 src/ui/pages/search_views.rs:339
 #: src/ui/widgets/page_header.rs:526
 msgid "Album"
 msgstr "앨범"
 
-#: src/ui/dialogs/preferences.rs:82 src/ui/dialogs/preferences.rs:131
+#: src/ui/dialogs/preferences.rs:83 src/ui/dialogs/preferences.rs:132
 #: src/ui/widgets/np_common.rs:610 src/ui/widgets/np_common.rs:801
 msgid "Off"
 msgstr "끔"
 
-#: src/ui/dialogs/preferences.rs:82 src/ui/pages/search_views.rs:343
+#: src/ui/dialogs/preferences.rs:83 src/ui/pages/search_views.rs:343
 msgid "Track"
 msgstr "곡"
 
-#: src/ui/dialogs/preferences.rs:88
+#: src/ui/dialogs/preferences.rs:89
 msgid "Off keeps the output bit-perfect"
 msgstr "끄면 출력이 비트퍼펙트로 유지됩니다"
 
-#: src/ui/dialogs/preferences.rs:94
+#: src/ui/dialogs/preferences.rs:95
 msgid "Gapless Playback"
 msgstr "끊김 없는 재생"
 
-#: src/ui/dialogs/preferences.rs:100
+#: src/ui/dialogs/preferences.rs:101
 msgid "Processing"
 msgstr "처리"
 
-#: src/ui/dialogs/preferences.rs:107
+#: src/ui/dialogs/preferences.rs:108
 msgid "Smooth Transitions"
 msgstr "부드러운 전환"
 
-#: src/ui/dialogs/preferences.rs:108
+#: src/ui/dialogs/preferences.rs:109
 msgid "Short fades when pausing, seeking and skipping"
 msgstr "일시 정지, 탐색, 건너뛰기 때 짧게 페이드합니다"
 
-#: src/ui/dialogs/preferences.rs:115 src/ui/shortcuts.rs:60
+#: src/ui/dialogs/preferences.rs:116 src/ui/shortcuts.rs:60
 msgid "Playback"
 msgstr "재생"
 
-#: src/ui/dialogs/preferences.rs:129
+#: src/ui/dialogs/preferences.rs:130
 msgid "{n} s"
 msgstr "{n}초"
 
-#: src/ui/dialogs/preferences.rs:135
+#: src/ui/dialogs/preferences.rs:136
 msgid "Crossfade"
 msgstr "크로스페이드"
 
-#: src/ui/dialogs/preferences.rs:137
+#: src/ui/dialogs/preferences.rs:138
 msgid ""
 "Overlapping tracks are mixed, so those seconds are not bit-perfect; "
 "consecutive album tracks stay gapless"
@@ -362,67 +363,79 @@ msgstr ""
 "겹치는 동안 두 곡이 믹스되므로 그 몇 초는 비트퍼펙트가 아닙니다. 앨범의 연속"
 "된 곡은 끊김 없이 재생됩니다"
 
-#: src/ui/dialogs/preferences.rs:147
+#: src/ui/dialogs/preferences.rs:148
 msgid "System Default"
 msgstr "시스템 기본값"
 
-#: src/ui/dialogs/preferences.rs:149
+#: src/ui/dialogs/preferences.rs:150
 msgid "Output Device"
 msgstr "출력 장치"
 
-#: src/ui/dialogs/preferences.rs:187 src/ui/widgets/np_common.rs:483
+#: src/ui/dialogs/preferences.rs:188 src/ui/widgets/np_common.rs:483
 msgid "Output"
 msgstr "출력"
 
-#: src/ui/dialogs/preferences.rs:218
+#: src/ui/dialogs/preferences.rs:219
 msgid "Behaviour"
 msgstr "동작"
 
-#: src/ui/dialogs/preferences.rs:222
+#: src/ui/dialogs/preferences.rs:223
 msgid "Run in Background"
 msgstr "백그라운드에서 실행"
 
-#: src/ui/dialogs/preferences.rs:223
+#: src/ui/dialogs/preferences.rs:224
 msgid "Keep playing when the window is closed"
 msgstr "창을 닫아도 계속 재생합니다"
 
-#: src/ui/dialogs/preferences.rs:229
+#: src/ui/dialogs/preferences.rs:230
 msgid "Track Change Notifications"
 msgstr "곡 변경 알림"
 
-#: src/ui/dialogs/preferences.rs:230
+#: src/ui/dialogs/preferences.rs:231
 msgid "When the window is not focused"
 msgstr "창에 초점이 없을 때"
 
-#: src/ui/dialogs/preferences.rs:236
+#: src/ui/dialogs/preferences.rs:237
 msgid "Restore Queue on Start"
 msgstr "시작할 때 대기열 복원"
 
-#: src/ui/dialogs/preferences.rs:244 src/ui/shortcuts.rs:26
+#: src/ui/dialogs/preferences.rs:245 src/ui/shortcuts.rs:26
 msgid "General"
 msgstr "일반"
 
-#: src/ui/dialogs/preferences.rs:257
+#: src/ui/dialogs/preferences.rs:263
+msgid "Check for Updates"
+msgstr "업데이트 확인"
+
+#: src/ui/dialogs/preferences.rs:269
+msgid "Check Now"
+msgstr "지금 확인"
+
+#: src/ui/dialogs/preferences.rs:321
+msgid "Updates"
+msgstr "업데이트"
+
+#: src/ui/dialogs/preferences.rs:339
 msgid "Automatic"
 msgstr "자동"
 
-#: src/ui/dialogs/preferences.rs:262
+#: src/ui/dialogs/preferences.rs:344
 msgid "Language"
 msgstr "언어"
 
-#: src/ui/dialogs/preferences.rs:284
+#: src/ui/dialogs/preferences.rs:366
 msgid "Restart Swell to change the language"
 msgstr "언어를 변경하려면 Swell을 다시 시작하세요"
 
-#: src/ui/dialogs/preferences.rs:285
+#: src/ui/dialogs/preferences.rs:367 src/ui/updates.rs:323
 msgid "Restart"
 msgstr "다시 시작"
 
-#: src/ui/dialogs/preferences.rs:310
+#: src/ui/dialogs/preferences.rs:392
 msgid "Storage"
 msgstr "저장 공간"
 
-#: src/ui/dialogs/preferences.rs:311
+#: src/ui/dialogs/preferences.rs:393
 msgid ""
 "Downloaded artwork, the first seconds of tracks and saved answers from "
 "TIDAL, so pages open instantly and work offline, and tracks start at once."
@@ -430,133 +443,133 @@ msgstr ""
 "다운로드한 아트워크, 곡의 처음 몇 초, TIDAL에서 저장한 응답입니다. 페이지가 "
 "즉시 열리고 오프라인에서도 작동하며, 곡이 바로 재생됩니다."
 
-#: src/ui/dialogs/preferences.rs:316
+#: src/ui/dialogs/preferences.rs:398
 msgid "Cover Cache"
 msgstr "커버 캐시"
 
-#: src/ui/dialogs/preferences.rs:317
+#: src/ui/dialogs/preferences.rs:399
 msgid "Clear the Cover Cache?"
 msgstr "커버 캐시를 지우시겠습니까?"
 
-#: src/ui/dialogs/preferences.rs:318
+#: src/ui/dialogs/preferences.rs:400
 msgid "Artwork is downloaded again as you browse."
 msgstr "둘러보는 동안 아트워크를 다시 다운로드합니다."
 
-#: src/ui/dialogs/preferences.rs:319
+#: src/ui/dialogs/preferences.rs:401
 msgid "Cover Cache cleared"
 msgstr "커버 캐시를 지웠습니다"
 
-#: src/ui/dialogs/preferences.rs:320
+#: src/ui/dialogs/preferences.rs:402
 msgid "Couldn’t clear the Cover Cache"
 msgstr "커버 캐시를 지울 수 없습니다"
 
-#: src/ui/dialogs/preferences.rs:341
+#: src/ui/dialogs/preferences.rs:423
 msgid "Library Cache"
 msgstr "라이브러리 캐시"
 
-#: src/ui/dialogs/preferences.rs:342
+#: src/ui/dialogs/preferences.rs:424
 msgid "Clear the Library Cache?"
 msgstr "라이브러리 캐시를 지우시겠습니까?"
 
-#: src/ui/dialogs/preferences.rs:343
+#: src/ui/dialogs/preferences.rs:425
 msgid "Pages are loaded again from TIDAL. Your collection is not affected."
 msgstr "페이지를 TIDAL에서 다시 불러옵니다. 컬렉션에는 영향이 없습니다."
 
-#: src/ui/dialogs/preferences.rs:344
+#: src/ui/dialogs/preferences.rs:426
 msgid "Library Cache cleared"
 msgstr "라이브러리 캐시를 지웠습니다"
 
-#: src/ui/dialogs/preferences.rs:345
+#: src/ui/dialogs/preferences.rs:427
 msgid "Couldn’t clear the Library Cache"
 msgstr "라이브러리 캐시를 지울 수 없습니다"
 
-#: src/ui/dialogs/preferences.rs:374
+#: src/ui/dialogs/preferences.rs:456
 msgid "Audio Cache"
 msgstr "오디오 캐시"
 
-#: src/ui/dialogs/preferences.rs:375
+#: src/ui/dialogs/preferences.rs:457
 msgid "Clear the Audio Cache?"
 msgstr "오디오 캐시를 지우시겠습니까?"
 
-#: src/ui/dialogs/preferences.rs:376
+#: src/ui/dialogs/preferences.rs:458
 msgid ""
 "The first seconds of upcoming tracks are downloaded again as you listen."
 msgstr "다음 곡들의 처음 몇 초는 듣는 동안 다시 다운로드합니다."
 
-#: src/ui/dialogs/preferences.rs:379
+#: src/ui/dialogs/preferences.rs:461
 msgid "Audio Cache cleared"
 msgstr "오디오 캐시를 지웠습니다"
 
-#: src/ui/dialogs/preferences.rs:380
+#: src/ui/dialogs/preferences.rs:462
 msgid "Couldn’t clear the Audio Cache"
 msgstr "오디오 캐시를 지울 수 없습니다"
 
-#: src/ui/dialogs/preferences.rs:414
+#: src/ui/dialogs/preferences.rs:496
 msgid "Calculating…"
 msgstr "계산하는 중…"
 
-#: src/ui/dialogs/preferences.rs:417 src/ui/dialogs/preferences.rs:463
+#: src/ui/dialogs/preferences.rs:499 src/ui/dialogs/preferences.rs:545
 msgid "_Clear"
 msgstr "지우기(_L)"
 
-#: src/ui/dialogs/preferences.rs:463 src/ui/window.rs:413
+#: src/ui/dialogs/preferences.rs:545 src/ui/window.rs:417
 msgid "_Cancel"
 msgstr "취소(_C)"
 
-#: src/ui/dialogs/preferences.rs:518
+#: src/ui/dialogs/preferences.rs:600
 msgid "Blocked Artists"
 msgstr "차단한 아티스트"
 
-#: src/ui/dialogs/preferences.rs:519
+#: src/ui/dialogs/preferences.rs:601
 msgid "Loading…"
 msgstr "불러오는 중…"
 
-#: src/ui/dialogs/preferences.rs:535
+#: src/ui/dialogs/preferences.rs:617
 msgid "Couldn’t load blocked artists."
 msgstr "차단한 아티스트를 불러올 수 없습니다."
 
-#: src/ui/dialogs/preferences.rs:540
+#: src/ui/dialogs/preferences.rs:622
 msgid "Nothing blocked. Blocked artists are skipped in radios and mixes."
 msgstr ""
 "차단한 아티스트가 없습니다. 차단한 아티스트는 라디오와 믹스에서 건너뜁니다."
 
-#: src/ui/dialogs/preferences.rs:542
+#: src/ui/dialogs/preferences.rs:624
 msgid "Skipped in radios and mixes."
 msgstr "라디오와 믹스에서 건너뜁니다."
 
-#: src/ui/dialogs/preferences.rs:551
+#: src/ui/dialogs/preferences.rs:633
 msgid "Unblock"
 msgstr "차단 해제"
 
-#: src/ui/dialogs/preferences.rs:584 src/ui/menus.rs:870
+#: src/ui/dialogs/preferences.rs:666 src/ui/menus.rs:879
 msgid "Unblocked {name}"
 msgstr "{name} 아티스트의 차단을 해제했습니다"
 
-#: src/ui/dialogs/preferences.rs:594
+#: src/ui/dialogs/preferences.rs:676
 msgid "Couldn’t unblock the artist"
 msgstr "아티스트 차단을 해제할 수 없습니다"
 
-#: src/ui/dialogs/preferences.rs:609
+#: src/ui/dialogs/preferences.rs:691
 msgid "Signed in with the browser"
 msgstr "브라우저로 로그인함"
 
-#: src/ui/dialogs/preferences.rs:610
+#: src/ui/dialogs/preferences.rs:692
 msgid "Up to Hi-Res Lossless"
 msgstr "Hi-Res Lossless까지 지원"
 
-#: src/ui/dialogs/preferences.rs:613
+#: src/ui/dialogs/preferences.rs:695
 msgid "Signed in with a device code"
 msgstr "기기 코드로 로그인함"
 
-#: src/ui/dialogs/preferences.rs:614
+#: src/ui/dialogs/preferences.rs:696
 msgid "Up to Lossless (16-bit/44.1 kHz)"
 msgstr "Lossless(16비트/44.1 kHz)까지 지원"
 
-#: src/ui/dialogs/preferences.rs:642
+#: src/ui/dialogs/preferences.rs:724
 msgid "Sign _Out…"
 msgstr "로그아웃(_O)…"
 
-#: src/ui/dialogs/preferences.rs:663
+#: src/ui/dialogs/preferences.rs:745
 msgid "Account"
 msgstr "계정"
 
@@ -762,167 +775,167 @@ msgstr "코드를 받을 수 없습니다. {error}"
 msgid "This code expired or was not approved."
 msgstr "이 코드는 만료되었거나 승인되지 않았습니다."
 
-#: src/ui/menus.rs:201 src/ui/pages/artist.rs:298
+#: src/ui/menus.rs:210 src/ui/pages/artist.rs:298
 msgid "There's nothing to play here"
 msgstr "여기에는 재생할 항목이 없습니다"
 
-#: src/ui/menus.rs:203 src/ui/menus.rs:842
+#: src/ui/menus.rs:212 src/ui/menus.rs:851
 msgid "Couldn't load the tracks"
 msgstr "곡을 불러올 수 없습니다"
 
-#: src/ui/menus.rs:232
+#: src/ui/menus.rs:241
 msgid "“{title}” isn't available in your region"
 msgstr "“{title}” 항목은 사용자의 지역에서 사용할 수 없습니다"
 
-#: src/ui/menus.rs:243 src/ui/menus.rs:256 src/ui/menus.rs:269
+#: src/ui/menus.rs:252 src/ui/menus.rs:265 src/ui/menus.rs:278
 msgid "None of these tracks are available in your region"
 msgstr "이 곡들은 모두 사용자의 지역에서 사용할 수 없습니다"
 
-#: src/ui/menus.rs:272
+#: src/ui/menus.rs:281
 msgid "“{title}” will play next"
 msgstr "“{title}” 항목을 다음에 재생합니다"
 
-#: src/ui/menus.rs:273
+#: src/ui/menus.rs:282
 msgid "Added “{title}” to the queue"
 msgstr "“{title}” 항목을 대기열에 추가했습니다"
 
-#: src/ui/menus.rs:274
+#: src/ui/menus.rs:283
 msgid "Added {n} track to the queue"
 msgid_plural "Added {n} tracks to the queue"
 msgstr[0] "{n}곡을 대기열에 추가했습니다"
 
-#: src/ui/menus.rs:287 src/ui/pages/search.rs:130
+#: src/ui/menus.rs:296 src/ui/pages/search.rs:130
 msgid "Show"
 msgstr "보기"
 
-#: src/ui/menus.rs:320
+#: src/ui/menus.rs:329
 msgid "Couldn't play this track"
 msgstr "이 곡을 재생할 수 없습니다"
 
-#: src/ui/menus.rs:428 src/ui/widgets/heart_button.rs:173
+#: src/ui/menus.rs:437 src/ui/widgets/heart_button.rs:173
 #: src/ui/widgets/np_common.rs:791
 msgid "Remove from Favourites"
 msgstr "즐겨찾기에서 제거"
 
-#: src/ui/menus.rs:430 src/ui/widgets/heart_button.rs:175
+#: src/ui/menus.rs:439 src/ui/widgets/heart_button.rs:175
 #: src/ui/widgets/np_common.rs:725 src/ui/widgets/np_common.rs:793
 msgid "Add to Favourites"
 msgstr "즐겨찾기에 추가"
 
-#: src/ui/menus.rs:437 src/ui/menus.rs:784
+#: src/ui/menus.rs:446 src/ui/menus.rs:793
 msgid "Play Next"
 msgstr "다음에 재생"
 
-#: src/ui/menus.rs:438 src/ui/menus.rs:785
+#: src/ui/menus.rs:447 src/ui/menus.rs:794
 msgid "Add to Queue"
 msgstr "대기열에 추가"
 
-#: src/ui/menus.rs:447 src/ui/widgets/np_common.rs:921
+#: src/ui/menus.rs:456 src/ui/widgets/np_common.rs:921
 msgid "Go to Album"
 msgstr "앨범으로 이동"
 
-#: src/ui/menus.rs:452 src/ui/menus.rs:465 src/ui/menus.rs:512
+#: src/ui/menus.rs:461 src/ui/menus.rs:474 src/ui/menus.rs:521
 #: src/ui/widgets/np_common.rs:922
 msgid "Go to Artist"
 msgstr "아티스트로 이동"
 
-#: src/ui/menus.rs:468 src/ui/pages/mix.rs:51 src/ui/pages/mix.rs:60
+#: src/ui/menus.rs:477 src/ui/pages/mix.rs:51 src/ui/pages/mix.rs:60
 #: src/ui/widgets/now_playing.rs:178 src/ui/widgets/now_playing.rs:180
 #: src/ui/widgets/np_common.rs:923
 msgid "Track Radio"
 msgstr "트랙 라디오"
 
-#: src/ui/menus.rs:474 src/ui/menus.rs:523 src/ui/menus.rs:542
-#: src/ui/menus.rs:551 src/ui/menus.rs:575 src/ui/widgets/np_common.rs:927
+#: src/ui/menus.rs:483 src/ui/menus.rs:532 src/ui/menus.rs:551
+#: src/ui/menus.rs:560 src/ui/menus.rs:584 src/ui/widgets/np_common.rs:927
 #: src/ui/widgets/page_header.rs:486
 msgid "Copy Link"
 msgstr "링크 복사"
 
-#: src/ui/menus.rs:480
+#: src/ui/menus.rs:489
 msgid "Remove from This Playlist"
 msgstr "이 재생 목록에서 제거"
 
-#: src/ui/menus.rs:484 src/ui/shortcuts.rs:82
+#: src/ui/menus.rs:493 src/ui/shortcuts.rs:82
 msgid "Move Up"
 msgstr "위로 이동"
 
-#: src/ui/menus.rs:487 src/ui/shortcuts.rs:83
+#: src/ui/menus.rs:496 src/ui/shortcuts.rs:83
 msgid "Move Down"
 msgstr "아래로 이동"
 
-#: src/ui/menus.rs:497
+#: src/ui/menus.rs:506
 msgid "Block {name}"
 msgstr "{name} 차단하기"
 
-#: src/ui/menus.rs:517 src/ui/menus.rs:559 src/ui/pages/mix.rs:52
+#: src/ui/menus.rs:526 src/ui/menus.rs:568 src/ui/pages/mix.rs:52
 #: src/ui/pages/mix.rs:61 src/ui/widgets/page_header.rs:631
 msgid "Artist Radio"
 msgstr "아티스트 라디오"
 
-#: src/ui/menus.rs:527
+#: src/ui/menus.rs:536
 msgid "Edit Details…"
 msgstr "세부 정보 편집…"
 
-#: src/ui/menus.rs:530
+#: src/ui/menus.rs:539
 msgid "Make Private"
 msgstr "비공개로 설정"
 
-#: src/ui/menus.rs:532
+#: src/ui/menus.rs:541
 msgid "Make Public"
 msgstr "공개로 설정"
 
-#: src/ui/menus.rs:545
+#: src/ui/menus.rs:554
 msgid "Delete Playlist…"
 msgstr "재생 목록 삭제…"
 
-#: src/ui/menus.rs:555
+#: src/ui/menus.rs:564
 msgid "Play Top Tracks"
 msgstr "인기 곡 재생"
 
-#: src/ui/menus.rs:556 src/ui/menus.rs:783 src/ui/pages/collection.rs:681
+#: src/ui/menus.rs:565 src/ui/menus.rs:792 src/ui/pages/collection.rs:681
 #: src/ui/shortcuts.rs:71 src/ui/widgets/np_controls.rs:147
 #: src/ui/widgets/page_header.rs:153 src/ui/widgets/page_header.rs:316
 #: src/ui/widgets/page_header.rs:320 src/ui/widgets/page_header.rs:323
 msgid "Shuffle"
 msgstr "셔플"
 
-#: src/ui/menus.rs:568 src/ui/widgets/heart_button.rs:189
+#: src/ui/menus.rs:577 src/ui/widgets/heart_button.rs:189
 msgid "Unfollow"
 msgstr "팔로우 취소"
 
-#: src/ui/menus.rs:570 src/ui/widgets/heart_button.rs:185
+#: src/ui/menus.rs:579 src/ui/widgets/heart_button.rs:185
 msgid "Follow"
 msgstr "팔로우"
 
-#: src/ui/menus.rs:578
+#: src/ui/menus.rs:587
 msgid "Block Artist"
 msgstr "아티스트 차단"
 
-#: src/ui/menus.rs:625 src/ui/widgets/heart_button.rs:215
-#: src/ui/widgets/np_common.rs:765 src/ui/window.rs:744
+#: src/ui/menus.rs:634 src/ui/widgets/heart_button.rs:215
+#: src/ui/widgets/np_common.rs:765 src/ui/window.rs:775
 msgid "Couldn't update favourites"
 msgstr "즐겨찾기를 업데이트할 수 없습니다"
 
-#: src/ui/menus.rs:693 src/ui/widgets/np_common.rs:882
+#: src/ui/menus.rs:702 src/ui/widgets/np_common.rs:882
 #: src/ui/widgets/page_header.rs:490
 msgid "Link copied"
 msgstr "링크를 복사했습니다"
 
-#: src/ui/menus.rs:782 src/ui/pages/collection.rs:680
+#: src/ui/menus.rs:791 src/ui/pages/collection.rs:680
 #: src/ui/widgets/np_controls.rs:52 src/ui/widgets/np_controls.rs:56
 #: src/ui/widgets/np_controls.rs:86 src/ui/widgets/page_header.rs:309
 msgid "Play"
 msgstr "재생"
 
-#: src/ui/menus.rs:819
+#: src/ui/menus.rs:828
 msgid "More…"
 msgstr "더 보기…"
 
-#: src/ui/menus.rs:861
+#: src/ui/menus.rs:870
 msgid "Blocked {name}"
 msgstr "{name} 아티스트를 차단했습니다"
 
-#: src/ui/menus.rs:871
+#: src/ui/menus.rs:880
 msgid "Couldn't update blocked artists"
 msgstr "차단한 아티스트를 업데이트할 수 없습니다"
 
@@ -941,7 +954,7 @@ msgid "Search"
 msgstr "검색"
 
 #: src/ui/nav.rs:177 src/ui/nav.rs:407 src/ui/sidebar.rs:288
-#: src/ui/sidebar.rs:317 src/ui/window.rs:806
+#: src/ui/sidebar.rs:317 src/ui/window.rs:837
 msgid "Collection"
 msgstr "컬렉션"
 
@@ -1248,7 +1261,7 @@ msgid "%b %-d"
 msgstr "%b %-d일"
 
 #: src/ui/pages/history.rs:183 src/ui/pages/history.rs:248
-#: src/ui/pages/history.rs:255 src/ui/sidebar.rs:146 src/ui/window.rs:1229
+#: src/ui/pages/history.rs:255 src/ui/sidebar.rs:146 src/ui/window.rs:1260
 msgid "Recently Played"
 msgstr "최근 재생"
 
@@ -1641,7 +1654,7 @@ msgid "Close Panel or Popover"
 msgstr "패널 또는 팝오버 닫기"
 
 #: src/ui/shortcuts.rs:52 src/ui/shortcuts.rs:54
-#: src/ui/widgets/now_playing.rs:305 src/ui/widgets/queue_view.rs:734
+#: src/ui/widgets/now_playing.rs:305 src/ui/widgets/queue_view.rs:736
 msgid "Now Playing"
 msgstr "지금 재생 중"
 
@@ -1689,7 +1702,7 @@ msgstr "볼륨 높이기"
 msgid "Volume Down"
 msgstr "볼륨 낮추기"
 
-#: src/ui/shortcuts.rs:70 src/ui/widgets/np_controls.rs:605
+#: src/ui/shortcuts.rs:70 src/ui/widgets/np_controls.rs:622
 msgid "Mute"
 msgstr "음소거"
 
@@ -1763,6 +1776,50 @@ msgstr "종료(_Q)"
 msgid "Main Menu"
 msgstr "주 메뉴"
 
+#: src/ui/updates.rs:62
+msgid "Version {version}"
+msgstr "버전 {version}"
+
+#: src/ui/updates.rs:63
+msgid "Checking…"
+msgstr "확인하는 중…"
+
+#: src/ui/updates.rs:64
+msgid "Downloading Swell {version}…"
+msgstr "Swell {version} 다운로드하는 중…"
+
+#: src/ui/updates.rs:65
+msgid "Swell {version} is up to date"
+msgstr "Swell {version}은(는) 최신 버전입니다"
+
+#: src/ui/updates.rs:67 src/ui/updates.rs:316
+msgid "Swell {version} is available"
+msgstr "Swell {version} 업데이트가 있습니다"
+
+#: src/ui/updates.rs:69
+msgid "Swell {version} is ready to install"
+msgstr "Swell {version} 업데이트를 설치할 준비가 되었습니다"
+
+#: src/ui/updates.rs:70
+msgid "Couldn’t check for updates"
+msgstr "업데이트를 확인할 수 없습니다"
+
+#: src/ui/updates.rs:72
+msgid "Couldn’t download Swell {version}"
+msgstr "Swell {version}을(를) 다운로드할 수 없습니다"
+
+#: src/ui/updates.rs:81
+msgid "Downloads new versions and installs them when you quit Swell"
+msgstr "새 버전을 다운로드하고 Swell을 종료할 때 설치합니다"
+
+#: src/ui/updates.rs:83
+msgid "Tells you when a new version is available"
+msgstr "새 버전이 나오면 알려 줍니다"
+
+#: src/ui/updates.rs:334
+msgid "Details"
+msgstr "자세히"
+
 #: src/ui/widgets/carousel.rs:48
 msgid "Scroll Back"
 msgstr "뒤로 스크롤"
@@ -1803,7 +1860,7 @@ msgstr "현재 줄로 돌아가기"
 msgid "Couldn't load lyrics"
 msgstr "가사를 불러올 수 없습니다"
 
-#: src/ui/widgets/lyrics_view.rs:694
+#: src/ui/widgets/lyrics_view.rs:702
 msgid "Lyrics provided by {provider}"
 msgstr "가사 제공: {provider}"
 
@@ -1831,7 +1888,7 @@ msgstr "믹스: {title}, {details}"
 msgid "Play {title}"
 msgstr "{title} 재생"
 
-#: src/ui/widgets/mini_player.rs:185
+#: src/ui/widgets/mini_player.rs:186
 msgid "Now Playing: {title} by {artists}. Open player"
 msgstr "지금 재생 중: {artists}의 {title}. 플레이어 열기"
 
@@ -2031,20 +2088,20 @@ msgstr "반복: 한 곡"
 msgid "Seek"
 msgstr "재생 위치"
 
-#: src/ui/widgets/np_controls.rs:456
+#: src/ui/widgets/np_controls.rs:473
 msgid "{position} of {duration}"
 msgstr "{duration} 중 {position}"
 
-#: src/ui/widgets/np_controls.rs:487 src/ui/widgets/np_controls.rs:494
-#: src/ui/widgets/np_controls.rs:509 src/ui/widgets/np_controls.rs:513
+#: src/ui/widgets/np_controls.rs:504 src/ui/widgets/np_controls.rs:511
+#: src/ui/widgets/np_controls.rs:526 src/ui/widgets/np_controls.rs:530
 msgid "Volume"
 msgstr "볼륨"
 
-#: src/ui/widgets/np_controls.rs:605
+#: src/ui/widgets/np_controls.rs:622
 msgid "Unmute"
 msgstr "음소거 해제"
 
-#: src/ui/widgets/np_controls.rs:613
+#: src/ui/widgets/np_controls.rs:630
 msgid "Muted"
 msgstr "음소거됨"
 
@@ -2104,28 +2161,28 @@ msgstr "재생 출처: {source}"
 msgid "Queue cleared"
 msgstr "대기열을 비웠습니다"
 
-#: src/ui/widgets/queue_view.rs:513
+#: src/ui/widgets/queue_view.rs:515
 msgid "Drag to Reorder"
 msgstr "끌어서 순서 변경"
 
-#: src/ui/widgets/queue_view.rs:520 src/ui/widgets/queue_view.rs:522
+#: src/ui/widgets/queue_view.rs:522 src/ui/widgets/queue_view.rs:524
 #: src/ui/widgets/track_row.rs:384
 msgid "Remove from Queue"
 msgstr "대기열에서 제거"
 
-#: src/ui/widgets/queue_view.rs:699 src/ui/widgets/track_row.rs:759
+#: src/ui/widgets/queue_view.rs:701 src/ui/widgets/track_row.rs:759
 msgid "{track}, playing"
 msgstr "{track}, 재생 중"
 
-#: src/ui/widgets/queue_view.rs:735
+#: src/ui/widgets/queue_view.rs:737
 msgid "Next in Queue"
 msgstr "대기열의 다음 곡"
 
-#: src/ui/widgets/queue_view.rs:737
+#: src/ui/widgets/queue_view.rs:739
 msgid "Next"
 msgstr "다음 곡"
 
-#: src/ui/widgets/queue_view.rs:738
+#: src/ui/widgets/queue_view.rs:740
 msgid "Next From: {source}"
 msgstr "다음 출처: {source}"
 
@@ -2185,15 +2242,15 @@ msgstr "끌어서 순서 변경(Alt+↑/↓)"
 msgid "Not available in your region"
 msgstr "사용자의 지역에서 사용할 수 없습니다"
 
-#: src/ui/window.rs:398
+#: src/ui/window.rs:402
 msgid "Couldn't remove your session from the keyring."
 msgstr "키링에서 세션을 제거할 수 없습니다."
 
-#: src/ui/window.rs:408
+#: src/ui/window.rs:412
 msgid "Sign Out?"
 msgstr "로그아웃하시겠습니까?"
 
-#: src/ui/window.rs:409
+#: src/ui/window.rs:413
 msgid ""
 "You will need to sign in again to listen. Your library cached on this "
 "computer is deleted."
@@ -2201,14 +2258,14 @@ msgstr ""
 "음악을 들으려면 다시 로그인해야 합니다. 이 컴퓨터에 캐시된 라이브러리는 삭제"
 "됩니다."
 
-#: src/ui/window.rs:413
+#: src/ui/window.rs:417
 msgid "_Sign Out"
 msgstr "로그아웃(_O)"
 
-#: src/ui/window.rs:518
+#: src/ui/window.rs:525
 msgid "Couldn't load your library"
 msgstr "라이브러리를 불러올 수 없습니다"
 
-#: src/ui/window.rs:770
+#: src/ui/window.rs:801
 msgid "Couldn't open the track"
 msgstr "곡을 열 수 없습니다"
