@@ -1889,7 +1889,9 @@ impl Playback {
                 let advanced = self.queue.borrow_mut().advance(false);
                 self.emit(Event::Queue);
                 if advanced {
-                    self.load_current(true, None, true);
+                    // Paused during the closing fade (or by the sleep
+                    // timer): the next track waits, paused.
+                    self.load_current(self.want_play.get(), None, true);
                 } else {
                     self.finish();
                 }
