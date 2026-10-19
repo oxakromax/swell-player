@@ -101,9 +101,9 @@ impl Image {
             Self::Artist(id) => format!("artist-{size}/{id}.jpg"),
             Self::Playlist(id) => format!("playlist-{size}/{id}.jpg"),
             Self::Url(url) => {
-                // Mix image URLs carry a rotating token; key on the path.
-                let stable = url.split('?').next().unwrap_or(url);
-                let digest = sha2::Sha256::digest(stable.as_bytes());
+                // Mix artwork (`images.tidal.com/im/im?uuid=..&w=..`) is
+                // identified by its query, so the whole URL is the key.
+                let digest = sha2::Sha256::digest(url.as_bytes());
                 let hex: String = digest[..16].iter().map(|b| format!("{b:02x}")).collect();
                 format!("url/{hex}.jpg")
             }
@@ -620,5 +620,14 @@ mod tests {
         ] {
             assert!(!Image::Url(url.into()).is_valid(), "{url}");
         }
+    }
+
+    #[test]
+    fn mix_images_do_not_share_a_cache_file() {
+        let image = |query: &str| Image::Url(format!("https://images.tidal.com/im/im?{query}"));
+        let a = image("uuid=a&w=640&h=640").file_name(0);
+        assert_ne!(a, image("uuid=b&w=640&h=640").file_name(0));
+        assert_ne!(a, image("uuid=a&w=320&h=320").file_name(0));
+        assert_eq!(a, image("uuid=a&w=640&h=640").file_name(0));
     }
 }
