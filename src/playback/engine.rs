@@ -330,6 +330,10 @@ struct Shared {
     pending_gain: Option<f64>,
     /// The normalisation `volume` element, when installed.
     filter: Option<gst::Element>,
+    /// The volume and mute last given to the pipeline, for the sink to
+    /// take again when it opens a new stream (see [`watch_sink_caps`]).
+    stream_volume: Option<f64>,
+    stream_muted: Option<bool>,
 }
 
 impl Shared {
@@ -478,6 +482,17 @@ impl Deck {
                     );
                 }
                 playbin.set_property("uri", &next.uri);
+                None
+            }
+        });
+
+        // Every element added, the sink inside `autoaudiosink` included.
+        playbin.connect("element-setup", false, {
+            let shared = Arc::downgrade(&shared);
+            let watched = Mutex::new(None);
+            move |values| {
+                let element = values[1].get::<gst::Element>().ok()?;
+                watch_sink_caps(&element, &shared, &watched);
                 None
             }
         });
@@ -694,6 +709,61 @@ fn audio_sink(playbin: &gst::Element) -> Option<gst::Element> {
     None
 }
 
+/// The handler on the sink pad that [`watch_sink_caps`] connected last.
+type CapsWatch = Mutex<Option<(glib::WeakRef<gst::Pad>, glib::SignalHandlerId)>>;
+
+/// Gives the volume and mute to the sink again whenever its format changes
+/// (a gapless switch from 16-bit 44.1 kHz to 24-bit 96 kHz, say): a
+/// `GstStreamVolume` sink such as `pulsesink` then drops its stream and
+/// opens a new one without them, which the sound server starts at its
+/// default (often 100 %, or unmuted), and playsink does not send them
+/// again. Runs on the streaming thread, once the new caps were accepted:
+/// the new stream exists then, still corked, so the volume is in place
+/// before it plays anything.
+fn watch_sink_caps(
+    element: &gst::Element,
+    shared: &std::sync::Weak<Mutex<Shared>>,
+    watched: &CapsWatch,
+) {
+    let stream_volume =
+        glib::Type::from_name("GstStreamVolume").is_some_and(|iface| element.type_().is_a(iface));
+    if !element.element_flags().contains(gst::ElementFlags::SINK)
+        || element.is::<gst::Bin>()
+        || !stream_volume
+    {
+        return;
+    }
+    let Some(pad) = element.static_pad("sink") else {
+        return;
+    };
+    let (shared, sink) = (shared.clone(), element.downgrade());
+    let handler = pad.connect_notify(Some("caps"), move |_, _| {
+        let (Some(shared), Some(sink)) = (shared.upgrade(), sink.upgrade()) else {
+            return;
+        };
+        let (volume, muted) = {
+            let shared = lock(&shared);
+            (shared.stream_volume, shared.stream_muted)
+        };
+        if let Some(volume) = volume {
+            sink.set_property("volume", volume);
+        }
+        if let Some(muted) = muted {
+            sink.set_property("mute", muted);
+        }
+    });
+    // The same sink is added again on every load from `Null`: one handler.
+    let old = watched
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .replace((pad.downgrade(), handler));
+    if let Some((pad, handler)) = old
+        && let Some(pad) = pad.upgrade()
+    {
+        pad.disconnect(handler);
+    }
+}
+
 /// Whether a load takes the active deck (else the other one), given each
 /// deck's role and fade factor once the active one has let go: a free deck;
 /// with both still fading out (a change during a crossfade), the quieter
@@ -884,7 +954,7 @@ impl Engine {
     pub fn set_muted(&self, muted: bool) {
         self.inner.muted.set(muted);
         for deck in &self.inner.decks {
-            deck.playbin.set_property("mute", muted);
+            self.inner.apply_mute(deck);
         }
     }
 
@@ -960,7 +1030,14 @@ impl Inner {
         {
             return;
         }
+        lock(&deck.shared).stream_volume = Some(volume);
         deck.playbin.set_property("volume", volume);
+    }
+
+    fn apply_mute(&self, deck: &Deck) {
+        let muted = self.muted.get();
+        lock(&deck.shared).stream_muted = Some(muted);
+        deck.playbin.set_property("mute", muted);
     }
 
     fn set_gain_now(&self, deck: &Deck, gain: f64) {
@@ -1007,7 +1084,7 @@ impl Inner {
         deck.role.set(Role::Active);
         deck.fade_in.set(fade_in);
         self.set_gain_now(deck, if fade_in { 0.0 } else { 1.0 });
-        deck.playbin.set_property("mute", self.muted.get());
+        self.apply_mute(deck);
         self.active.set(index);
         self.ensure_timer();
     }
@@ -1301,7 +1378,7 @@ impl Inner {
         );
         deck.role.set(Role::Preroll);
         self.set_gain_now(deck, 0.0);
-        deck.playbin.set_property("mute", self.muted.get());
+        self.apply_mute(deck);
         if let Some(armed) = self.armed.borrow_mut().as_mut() {
             armed.deck = Some(index);
         }
