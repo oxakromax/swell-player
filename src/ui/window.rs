@@ -588,11 +588,19 @@ impl Ui {
         self.playback_action("seek-backward", |ctx| seek_by(ctx, -SEEK_STEP));
         self.playback_action("volume-up", |ctx| {
             let playback = &ctx.playback;
-            playback.set_volume((playback.volume() + VOLUME_STEP).min(1.0));
+            let value = (playback.volume() + VOLUME_STEP).min(1.0);
+            if playback.is_muted() && value > 0.0 {
+                playback.set_muted(false);
+            }
+            playback.set_volume(value);
         });
         self.playback_action("volume-down", |ctx| {
             let playback = &ctx.playback;
-            playback.set_volume((playback.volume() - VOLUME_STEP).max(0.0));
+            let value = (playback.volume() - VOLUME_STEP).max(0.0);
+            if playback.is_muted() && value > 0.0 {
+                playback.set_muted(false);
+            }
+            playback.set_volume(value);
         });
         self.playback_action("mute", |ctx| {
             ctx.playback.set_muted(!ctx.playback.is_muted())
