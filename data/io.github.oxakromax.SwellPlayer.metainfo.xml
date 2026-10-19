@@ -217,7 +217,7 @@
 
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/oxakromax/swell-player/v1.1.0/docs/screenshots/home.png</image>
+      <image>https://raw.githubusercontent.com/oxakromax/swell-player/v1.2.0/docs/screenshots/home.png</image>
       <caption>Home, your personalised TIDAL feed</caption>
       <caption xml:lang="de">Startseite, Ihr personalisierter TIDAL-Feed</caption>
       <caption xml:lang="es">Inicio, tu portada personalizada de TIDAL</caption>
@@ -231,7 +231,7 @@
       <caption xml:lang="zh_TW">首頁，你的個人化 TIDAL 動態</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/oxakromax/swell-player/v1.1.0/docs/screenshots/album.png</image>
+      <image>https://raw.githubusercontent.com/oxakromax/swell-player/v1.2.0/docs/screenshots/album.png</image>
       <caption>An album page</caption>
       <caption xml:lang="de">Eine Albumseite</caption>
       <caption xml:lang="es">La página de un álbum</caption>
@@ -245,7 +245,7 @@
       <caption xml:lang="zh_TW">專輯頁面</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/oxakromax/swell-player/v1.1.0/docs/screenshots/now-playing.png</image>
+      <image>https://raw.githubusercontent.com/oxakromax/swell-player/v1.2.0/docs/screenshots/now-playing.png</image>
       <caption>Now playing, with the queue</caption>
       <caption xml:lang="de">Aktuelle Wiedergabe, mit der Warteschlange</caption>
       <caption xml:lang="es">Sonando ahora, con la cola</caption>
@@ -259,7 +259,7 @@
       <caption xml:lang="zh_TW">正在播放，附帶佇列</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/oxakromax/swell-player/v1.1.0/docs/screenshots/narrow.png</image>
+      <image>https://raw.githubusercontent.com/oxakromax/swell-player/v1.2.0/docs/screenshots/narrow.png</image>
       <caption>The narrow layout, for small windows and phones</caption>
       <caption xml:lang="de">Das schmale Layout für kleine Fenster und Smartphones</caption>
       <caption xml:lang="es">El diseño estrecho, para ventanas pequeñas y teléfonos</caption>
@@ -359,6 +359,68 @@
   </keywords>
 
   <releases>
+    <release version="1.2.0" date="2026-10-18" type="stable">
+      <url type="details">https://github.com/oxakromax/swell-player/releases/tag/v1.2.0</url>
+      <description>
+        <p>Automatic updates, and the volume no longer jumps to full when the track changes.</p>
+        <p xml:lang="de">Automatische Updates, und die Lautstärke springt beim Titelwechsel nicht mehr auf das Maximum.</p>
+        <p xml:lang="es">Actualizaciones automáticas, y el volumen ya no salta al máximo al cambiar de canción.</p>
+        <p xml:lang="fr">Des mises à jour automatiques, et le volume ne saute plus au maximum au changement de titre.</p>
+        <p xml:lang="it">Aggiornamenti automatici, e il volume non salta più al massimo al cambio di brano.</p>
+        <p xml:lang="ja">自動アップデートに対応し、曲が変わるときに音量が最大に跳ね上がらなくなりました。</p>
+        <p xml:lang="ko">자동 업데이트를 지원하며, 곡이 바뀔 때 음량이 최대로 튀지 않습니다.</p>
+        <p xml:lang="pt_BR">Atualizações automáticas, e o volume não pula mais para o máximo ao trocar de faixa.</p>
+        <p xml:lang="ru">Автоматические обновления, а громкость больше не подскакивает до максимума при смене трека.</p>
+        <p xml:lang="zh_CN">支持自动更新，切歌时音量也不会再突然变到最大。</p>
+        <p xml:lang="zh_TW">支援自動更新，切換曲目時音量也不會再突然變到最大。</p>
+        <ul>
+          <li>Swell looks for new versions; the Windows installer and the macOS app update themselves when Swell quits</li>
+          <li xml:lang="de">Swell sucht nach neuen Versionen; der Windows-Installer und die macOS-App aktualisieren sich beim Beenden von Swell selbst</li>
+          <li xml:lang="es">Swell busca versiones nuevas; el instalador de Windows y la app de macOS se actualizan solos al cerrar Swell</li>
+          <li xml:lang="fr">Swell cherche les nouvelles versions ; l’installateur Windows et l’app macOS se mettent à jour quand Swell se ferme</li>
+          <li xml:lang="it">Swell cerca le nuove versioni; il programma di installazione per Windows e l’app per macOS si aggiornano da soli alla chiusura di Swell</li>
+          <li xml:lang="ja">Swell が新しいバージョンを確認し、Windows のインストーラー版と macOS アプリは Swell の終了時に自動で更新されます</li>
+          <li xml:lang="ko">Swell이 새 버전을 확인하고, Windows 설치 프로그램과 macOS 앱은 Swell을 종료할 때 스스로 업데이트됩니다</li>
+          <li xml:lang="pt_BR">O Swell procura novas versões; o instalador do Windows e o app do macOS se atualizam sozinhos quando o Swell é fechado</li>
+          <li xml:lang="ru">Swell проверяет наличие новых версий; установленная версия для Windows и приложение для macOS обновляются сами при выходе из Swell</li>
+          <li xml:lang="zh_CN">Swell 会检查新版本；Windows 安装版和 macOS 应用会在退出 Swell 时自动更新</li>
+          <li xml:lang="zh_TW">Swell 會檢查新版本；Windows 安裝版和 macOS 應用程式會在關閉 Swell 時自動更新</li>
+          <li>A new track always starts at your volume, also with normalisation or on a change of sample rate</li>
+          <li xml:lang="de">Ein neuer Titel beginnt immer mit Ihrer Lautstärke, auch mit Normalisierung oder bei einer anderen Abtastrate</li>
+          <li xml:lang="es">Una canción nueva siempre empieza con tu volumen, también con normalización o al cambiar la frecuencia de muestreo</li>
+          <li xml:lang="fr">Un nouveau titre démarre toujours à votre volume, y compris avec la normalisation ou un changement de fréquence d’échantillonnage</li>
+          <li xml:lang="it">Un nuovo brano parte sempre al tuo volume, anche con la normalizzazione o con una frequenza di campionamento diversa</li>
+          <li xml:lang="ja">新しい曲は、ノーマライズ使用時やサンプルレートが変わるときも、常に設定した音量で始まります</li>
+          <li xml:lang="ko">새 곡은 노멀라이즈를 켜거나 샘플 레이트가 바뀔 때도 항상 설정한 음량으로 시작합니다</li>
+          <li xml:lang="pt_BR">Uma nova faixa sempre começa no seu volume, também com normalização ou ao mudar a taxa de amostragem</li>
+          <li xml:lang="ru">Новый трек всегда начинается с вашей громкостью, в том числе с нормализацией и при смене частоты дискретизации</li>
+          <li xml:lang="zh_CN">新曲目总是以你设定的音量开始，开启音量标准化或采样率变化时也一样</li>
+          <li xml:lang="zh_TW">新曲目總是以你設定的音量開始，開啟音量標準化或取樣率變化時也一樣</li>
+          <li>A failing audio output pauses playback instead of skipping through the queue</li>
+          <li xml:lang="de">Eine ausgefallene Audioausgabe pausiert die Wiedergabe, statt durch die Warteschlange zu springen</li>
+          <li xml:lang="es">Si falla la salida de audio, la reproducción se pausa en vez de saltar por toda la cola</li>
+          <li xml:lang="fr">Une sortie audio en panne met la lecture en pause au lieu de parcourir toute la file d’attente</li>
+          <li xml:lang="it">Un’uscita audio guasta mette in pausa la riproduzione invece di saltare tutta la coda</li>
+          <li xml:lang="ja">オーディオ出力に問題が起きると、キューを飛ばさずに再生を一時停止します</li>
+          <li xml:lang="ko">오디오 출력에 문제가 생기면 대기열을 건너뛰는 대신 재생을 일시 정지합니다</li>
+          <li xml:lang="pt_BR">Uma saída de áudio com falha pausa a reprodução em vez de pular a fila inteira</li>
+          <li xml:lang="ru">При сбое аудиовыхода воспроизведение ставится на паузу, а не перескакивает по всей очереди</li>
+          <li xml:lang="zh_CN">音频输出出错时会暂停播放，而不是跳过整个队列</li>
+          <li xml:lang="zh_TW">音訊輸出出錯時會暫停播放，而不是跳過整個佇列</li>
+          <li>Fixes for keyboard shortcuts on other layouts, media controls, lyrics, long playlists and signing in</li>
+          <li xml:lang="de">Korrekturen für Tastenkürzel auf anderen Tastaturbelegungen, Mediensteuerung, Liedtexte, lange Wiedergabelisten und die Anmeldung</li>
+          <li xml:lang="es">Correcciones en los atajos de teclado con otras distribuciones, los controles multimedia, las letras, las playlists largas y el inicio de sesión</li>
+          <li xml:lang="fr">Des corrections pour les raccourcis clavier sur d’autres dispositions, les contrôles multimédias, les paroles, les longues playlists et la connexion</li>
+          <li xml:lang="it">Correzioni per le scorciatoie da tastiera con altri layout, i controlli multimediali, i testi, le playlist lunghe e l’accesso</li>
+          <li xml:lang="ja">他のキーボード配列でのショートカット、メディアコントロール、歌詞、長いプレイリスト、ログインの修正</li>
+          <li xml:lang="ko">다른 키보드 배열의 단축키, 미디어 컨트롤, 가사, 긴 재생 목록, 로그인 관련 수정</li>
+          <li xml:lang="pt_BR">Correções nos atalhos de teclado em outros layouts, nos controles de mídia, nas letras, em playlists longas e no login</li>
+          <li xml:lang="ru">Исправления сочетаний клавиш в других раскладках, медиаклавиш, текстов песен, длинных плейлистов и входа в аккаунт</li>
+          <li xml:lang="zh_CN">修复了其他键盘布局下的快捷键、媒体控制、歌词、长播放列表和登录方面的问题</li>
+          <li xml:lang="zh_TW">修正了其他鍵盤配置下的快速鍵、媒體控制、歌詞、長播放清單和登入方面的問題</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.1.0" date="2026-10-18" type="stable">
       <url type="details">https://github.com/oxakromax/swell-player/releases/tag/v1.1.0</url>
       <description>

@@ -39,7 +39,7 @@ body:
     attributes:
       label: Swell version
       description: Shown in the About dialog (main menu → About Swell).
-      placeholder: "1.1.0"
+      placeholder: "1.2.0"
     validations:
       required: true
 
