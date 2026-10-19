@@ -717,6 +717,8 @@ fn shortcut_allowed(window: &adw::ApplicationWindow, space: bool) -> bool {
     }
     !(space
         && (focus.is::<gtk::Button>()
+            // The mini player is a focusable box that acts as a button.
+            || focus.accessible_role() == gtk::AccessibleRole::Button
             || focus.is::<gtk::Switch>()
             || focus.is::<gtk::Range>()
             || focus.is::<gtk::CheckButton>()
