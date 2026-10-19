@@ -516,6 +516,10 @@ impl Deck {
     /// Stops at once and frees the deck.
     fn cut(&self) {
         let _ = self.playbin.set_state(gst::State::Null);
+        // `Null` frees playsink's audio chain: the next sink stream only
+        // gets our volume if it is set again, else the sound server picks
+        // one (often 100 %).
+        self.applied.set(None);
         lock(&self.shared).reset();
         self.role.set(Role::Idle);
         self.target_playing.set(false);
