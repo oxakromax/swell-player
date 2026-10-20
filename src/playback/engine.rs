@@ -314,6 +314,11 @@ const PREROLL_LEAD: f64 = 10.0;
 const RAMP_TICK: Duration = Duration::from_millis(15);
 /// Timer while a crossfade waits for its moment.
 const WATCH_TICK: Duration = Duration::from_millis(250);
+/// Hi-Res audio a deck buffers ahead. `dashdemux2` defaults to 30 s: about
+/// 35 MB of 24-bit/192 kHz FLAC per deck, twice that while two decks
+/// overlap. 15 s (three to four of TIDAL's 4 s segments) still bridge
+/// network stalls; lossless files buffer about 5 s.
+const DASH_BUFFER: gst::ClockTime = gst::ClockTime::from_seconds(15);
 
 /// State shared with GStreamer's streaming threads, one per deck.
 ///
@@ -492,6 +497,7 @@ impl Deck {
             let watched = Mutex::new(None);
             move |values| {
                 let element = values[1].get::<gst::Element>().ok()?;
+                limit_dash_buffer(&element);
                 watch_sink_caps(&element, &shared, &watched);
                 None
             }
@@ -530,7 +536,7 @@ impl Deck {
 
     /// Stops at once and frees the deck.
     fn cut(&self) {
-        let _ = self.playbin.set_state(gst::State::Null);
+        stop(&self.playbin);
         // `Null` frees playsink's audio chain: the next sink stream only
         // gets our volume if it is set again, else the sound server picks
         // one (often 100 %).
@@ -683,6 +689,17 @@ impl Deck {
     }
 }
 
+/// Stops `playbin`, freeing its elements and the audio they hold; if it
+/// held any, the heap they took goes back to the system soon (see
+/// `mem.rs`).
+fn stop(playbin: &gst::Element) {
+    let (_, current, pending) = playbin.state(gst::ClockTime::ZERO);
+    let _ = playbin.set_state(gst::State::Null);
+    if current != gst::State::Null || pending != gst::State::VoidPending {
+        crate::mem::trim_soon();
+    }
+}
+
 /// Settled in `Playing` (no state change pending).
 fn is_playing(playbin: &gst::Element) -> bool {
     let (_, current, pending) = playbin.state(gst::ClockTime::ZERO);
@@ -707,6 +724,24 @@ fn audio_sink(playbin: &gst::Element) -> Option<gst::Element> {
         }
     }
     None
+}
+
+/// Caps what an adaptive demuxer (`dashdemux2`) buffers ahead at
+/// [`DASH_BUFFER`].
+fn limit_dash_buffer(element: &gst::Element) {
+    // Nanoseconds as u64: the old `dashdemux` has a `max-buffering-time`
+    // in seconds (a u32), and setting a value of the wrong type panics.
+    let in_ns = |name: &str| {
+        element
+            .find_property(name)
+            .is_some_and(|pspec| pspec.value_type() == u64::static_type())
+    };
+    if !in_ns("max-buffering-time") || !in_ns("high-watermark-time") {
+        return;
+    }
+    let limit = DASH_BUFFER.nseconds();
+    element.set_property("max-buffering-time", limit);
+    element.set_property("high-watermark-time", limit);
 }
 
 /// The handler on the sink pad that [`watch_sink_caps`] connected last.
@@ -1518,11 +1553,11 @@ impl Inner {
                     return self.begin_crossfade(Duration::ZERO);
                 }
                 self.disarm();
-                let _ = playbin.set_state(gst::State::Null);
+                stop(playbin);
                 self.emit(EngineEvent::Finished);
             }
             MessageView::Error(err) => {
-                let _ = playbin.set_state(gst::State::Null);
+                stop(playbin);
                 deck.start_at.set(None);
                 deck.pending_seek.set(None);
                 self.disarm();
@@ -1585,6 +1620,8 @@ impl Inner {
                     filter.set_property("volume", gain.clamp(0.0, 10.0));
                 }
                 if let Some(track_id) = started {
+                    // The previous stream's elements go now.
+                    crate::mem::trim_soon();
                     self.emit(EngineEvent::NextStarted(track_id));
                 }
             }
@@ -1801,6 +1838,20 @@ mod tests {
         assert!(load_on_active((Outgoing, 0.3), (Outgoing, 0.95)));
         // Late in it: the new track is the louder one.
         assert!(!load_on_active((Outgoing, 0.9), (Outgoing, 0.2)));
+    }
+
+    #[test]
+    fn dash_buffer_is_limited() {
+        if gst::init().is_err() {
+            return;
+        }
+        let Ok(demux) = gst::ElementFactory::make("dashdemux2").build() else {
+            return;
+        };
+        limit_dash_buffer(&demux);
+        for name in ["max-buffering-time", "high-watermark-time"] {
+            assert_eq!(demux.property::<u64>(name), DASH_BUFFER.nseconds());
+        }
     }
 
     #[test]

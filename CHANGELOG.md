@@ -8,6 +8,27 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- **Tray icon:** with Run in Background on, Swell shows an icon in the
+  tray (a StatusNotifierItem on Linux: KDE Plasma, Xfce, waybar, GNOME
+  with the AppIndicator extension…; the notification area on Windows;
+  the menu bar on macOS) while it runs. A click brings the window back;
+  its menu plays or pauses, skips and quits.
+
+### Fixed
+
+- **Memory growing with every track:** freed audio stayed in glibc's
+  arenas, so memory rose track after track although nothing leaked; the
+  allocator now keeps at most two arenas and gives freed memory back once
+  a track's pipeline stops. Hi-Res streams buffer 15 s ahead instead of
+  30 s (about 35 MB less per deck at 24-bit/192 kHz). The now-playing
+  panel no longer loads the large cover of every track while it is
+  closed, and large covers keep a budget of their own (16 MB) within the
+  artwork cache, so the covers of earlier tracks no longer pile up. The
+  lyrics and play-time caches are bounded. In tests, memory now stays
+  flat over 60 tracks instead of climbing.
+
 ## [1.2.0] - 2026-10-18
 
 ### Added

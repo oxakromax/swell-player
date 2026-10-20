@@ -38,6 +38,9 @@ use crate::tidal::{self, Base};
 /// The `viewAll` of the home feed's CONTINUE_LISTEN_TO module.
 const PATH: &str = "home/pages/CONTINUE_LISTEN_TO/view-all?platform=WEB";
 const FRESH_FOR: Duration = Duration::from_secs(2 * 60);
+/// Play times kept: more than the queue's history, which is what they are
+/// matched against.
+const RECORDED: usize = 1000;
 
 thread_local! {
     /// Track ids and when they started playing (Unix seconds), oldest
@@ -58,18 +61,26 @@ pub(super) fn record_plays(ctx: &Rc<Ctx>) {
     PLAYED.with(|p| p.borrow_mut().clear());
     // A track counts as played once it actually plays (not when a paused
     // session is restored).
-    let now = || glib::DateTime::now_utc().map_or(0, |now| now.to_unix());
+    let record = |id: u64| {
+        let now = glib::DateTime::now_utc().map_or(0, |now| now.to_unix());
+        PLAYED.with_borrow_mut(|played| {
+            played.push((id, now));
+            if played.len() > RECORDED {
+                played.drain(..played.len() - RECORDED);
+            }
+        });
+    };
     let current = ctx.playback.current().map(|t| t.id);
     let pending = Cell::new(None::<u64>);
     match (current, ctx.playback.state()) {
-        (Some(id), PlayState::Playing) => PLAYED.with(|p| p.borrow_mut().push((id, now()))),
+        (Some(id), PlayState::Playing) => record(id),
         (id, _) => pending.set(id),
     }
     ctx.playback.subscribe(move |event| match event {
         Event::Track(track) => pending.set(track.as_ref().map(|t| t.id)),
         Event::State(PlayState::Playing) => {
             if let Some(id) = pending.take() {
-                PLAYED.with(|p| p.borrow_mut().push((id, now())));
+                record(id);
             }
         }
         _ => {}

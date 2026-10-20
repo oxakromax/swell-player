@@ -927,8 +927,8 @@ msgstr ""
 #: src/ui/menus.rs:477
 #: src/ui/pages/mix.rs:51
 #: src/ui/pages/mix.rs:60
-#: src/ui/widgets/now_playing.rs:178
 #: src/ui/widgets/now_playing.rs:180
+#: src/ui/widgets/now_playing.rs:182
 #: src/ui/widgets/np_common.rs:923
 msgid "Track Radio"
 msgstr ""
@@ -1365,91 +1365,91 @@ msgstr ""
 msgid "TIDAL has nothing on this page in your country."
 msgstr ""
 
-#: src/ui/pages/history.rs:107
+#: src/ui/pages/history.rs:118
 msgid "Today"
 msgstr ""
 
-#: src/ui/pages/history.rs:108
+#: src/ui/pages/history.rs:119
 msgid "Yesterday"
 msgstr ""
 
-#: src/ui/pages/history.rs:109
+#: src/ui/pages/history.rs:120
 msgid "This Week"
 msgstr ""
 
-#: src/ui/pages/history.rs:110
+#: src/ui/pages/history.rs:121
 msgid "Earlier"
 msgstr ""
 
-#: src/ui/pages/history.rs:132
-#: src/ui/pages/history.rs:468
+#: src/ui/pages/history.rs:143
+#: src/ui/pages/history.rs:479
 msgid "Just now"
 msgstr ""
 
-#: src/ui/pages/history.rs:134
-#: src/ui/pages/history.rs:472
+#: src/ui/pages/history.rs:145
+#: src/ui/pages/history.rs:483
 msgid "{n} min ago"
 msgstr ""
 
-#: src/ui/pages/history.rs:136
-#: src/ui/pages/history.rs:476
+#: src/ui/pages/history.rs:147
+#: src/ui/pages/history.rs:487
 msgid "{n} h ago"
 msgstr ""
 
-#: src/ui/pages/history.rs:143
+#: src/ui/pages/history.rs:154
 msgid "%b %-d"
 msgstr ""
 
-#: src/ui/pages/history.rs:183
-#: src/ui/pages/history.rs:248
-#: src/ui/pages/history.rs:255
+#: src/ui/pages/history.rs:194
+#: src/ui/pages/history.rs:259
+#: src/ui/pages/history.rs:266
 #: src/ui/sidebar.rs:146
 #: src/ui/window.rs:1260
 msgid "Recently Played"
 msgstr ""
 
-#: src/ui/pages/history.rs:194
+#: src/ui/pages/history.rs:205
 msgid "This Session"
 msgstr ""
 
-#: src/ui/pages/history.rs:196
+#: src/ui/pages/history.rs:207
 msgid "Tracks you play in Swell appear here."
 msgstr ""
 
-#: src/ui/pages/history.rs:227
+#: src/ui/pages/history.rs:238
 msgid "On TIDAL"
 msgstr ""
 
-#: src/ui/pages/history.rs:228
+#: src/ui/pages/history.rs:239
 msgid "What you played lately, on any device"
 msgstr ""
 
-#: src/ui/pages/history.rs:242
+#: src/ui/pages/history.rs:253
 msgid "Nothing Played Yet"
 msgstr ""
 
-#: src/ui/pages/history.rs:243
+#: src/ui/pages/history.rs:254
 msgid "Music you play appears here."
 msgstr ""
 
-#: src/ui/pages/history.rs:397
+#: src/ui/pages/history.rs:408
 msgid "Nothing yet."
 msgstr ""
 
-#: src/ui/pages/history.rs:411
+#: src/ui/pages/history.rs:422
 msgid "Couldn't load what you played"
 msgstr ""
 
-#: src/ui/pages/history.rs:415
+#: src/ui/pages/history.rs:426
 msgid "Couldn't load this. {reason}"
 msgstr ""
 
-#: src/ui/pages/history.rs:419
+#: src/ui/pages/history.rs:430
 #: src/ui/pages/home_sections.rs:257
 #: src/ui/pages/playlist.rs:886
 #: src/ui/pages/search.rs:201
 #: src/ui/pages/search_views.rs:493
-#: src/ui/widgets/lyrics_view.rs:181
+#: src/ui/widgets/lyrics_view.rs:185
 #: src/ui/widgets/status.rs:191
 msgid "Retry"
 msgstr ""
@@ -1811,20 +1811,20 @@ msgstr ""
 
 #: src/ui/shortcuts.rs:52
 #: src/ui/shortcuts.rs:54
-#: src/ui/widgets/now_playing.rs:305
+#: src/ui/widgets/now_playing.rs:307
 #: src/ui/widgets/queue_view.rs:736
 msgid "Now Playing"
 msgstr ""
 
 #: src/ui/shortcuts.rs:55
-#: src/ui/widgets/lyrics_view.rs:200
-#: src/ui/widgets/now_playing.rs:274
+#: src/ui/widgets/lyrics_view.rs:204
+#: src/ui/widgets/now_playing.rs:276
 #: src/ui/widgets/player_bar.rs:109
 msgid "Lyrics"
 msgstr ""
 
 #: src/ui/shortcuts.rs:56
-#: src/ui/widgets/now_playing.rs:277
+#: src/ui/widgets/now_playing.rs:279
 #: src/ui/widgets/player_bar.rs:110
 #: src/ui/widgets/queue_view.rs:124
 msgid "Queue"
@@ -1904,7 +1904,7 @@ msgstr ""
 
 #: src/ui/sidebar.rs:853
 #: src/ui/sidebar.rs:856
-#: src/ui/widgets/now_playing.rs:270
+#: src/ui/widgets/now_playing.rs:272
 msgid "Playing"
 msgstr ""
 
@@ -1999,28 +1999,28 @@ msgstr ""
 msgid "Follow this artist"
 msgstr ""
 
-#: src/ui/widgets/lyrics_view.rs:158
-#: src/ui/widgets/now_playing.rs:254
+#: src/ui/widgets/lyrics_view.rs:162
+#: src/ui/widgets/now_playing.rs:256
 msgid "Nothing Playing"
 msgstr ""
 
-#: src/ui/widgets/lyrics_view.rs:175
+#: src/ui/widgets/lyrics_view.rs:179
 msgid "No Lyrics for This Track"
 msgstr ""
 
-#: src/ui/widgets/lyrics_view.rs:188
+#: src/ui/widgets/lyrics_view.rs:192
 msgid "Couldn't Load Lyrics"
 msgstr ""
 
-#: src/ui/widgets/lyrics_view.rs:216
+#: src/ui/widgets/lyrics_view.rs:220
 msgid "Back to Current Line"
 msgstr ""
 
-#: src/ui/widgets/lyrics_view.rs:439
+#: src/ui/widgets/lyrics_view.rs:445
 msgid "Couldn't load lyrics"
 msgstr ""
 
-#: src/ui/widgets/lyrics_view.rs:702
+#: src/ui/widgets/lyrics_view.rs:708
 msgid "Lyrics provided by {provider}"
 msgstr ""
 
@@ -2052,24 +2052,24 @@ msgstr ""
 msgid "Now Playing: {title} by {artists}. Open player"
 msgstr ""
 
-#: src/ui/widgets/now_playing.rs:172
+#: src/ui/widgets/now_playing.rs:174
 msgid "Radio"
 msgstr ""
 
-#: src/ui/widgets/now_playing.rs:208
+#: src/ui/widgets/now_playing.rs:210
 msgid "Show Queue"
 msgstr ""
 
-#: src/ui/widgets/now_playing.rs:216
+#: src/ui/widgets/now_playing.rs:218
 msgid "UP NEXT"
 msgstr ""
 
-#: src/ui/widgets/now_playing.rs:255
+#: src/ui/widgets/now_playing.rs:257
 msgid "Pick something from your collection."
 msgstr ""
 
-#: src/ui/widgets/now_playing.rs:281
-#: src/ui/widgets/now_playing.rs:284
+#: src/ui/widgets/now_playing.rs:283
+#: src/ui/widgets/now_playing.rs:286
 msgid "Close"
 msgstr ""
 

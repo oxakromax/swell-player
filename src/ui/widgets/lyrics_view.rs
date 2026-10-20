@@ -1,20 +1,22 @@
 //! The Lyrics tab of the now-playing panel (docs/design.md §3.13).
 //!
 //! Lyrics are fetched off the main thread the first time the tab is shown
-//! for a track and kept in memory per track id. Synced lyrics (LRC lines)
-//! highlight the current line and keep it a third of the way down; scrolling
-//! by hand pauses that for a few seconds (or until "Back to Current Line").
-//! Clicking a line, or Enter on it, seeks there. The position is only
-//! followed while the tab is visible and the player is playing.
+//! for a track and kept in memory for the last [`CACHED_TRACKS`] tracks.
+//! Synced lyrics (LRC lines) highlight the current line and keep it a third
+//! of the way down; scrolling by hand pauses that for a few seconds (or
+//! until "Back to Current Line"). Clicking a line, or Enter on it, seeks
+//! there. The position is only followed while the tab is visible and the
+//! player is playing.
 
 use std::cell::{Cell, RefCell};
-use std::collections::HashMap;
+use std::num::NonZeroUsize;
 use std::rc::{Rc, Weak};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use adw::prelude::*;
 use gtk::glib;
+use lru::LruCache;
 
 use super::super::context::Ctx;
 use super::np_common::{Subscription, Ticker, icons, subscribe};
@@ -33,6 +35,8 @@ const RESUME_AFTER: Duration = Duration::from_secs(5);
 const SCROLL_DURATION: u32 = 400;
 /// Ignore the engine's position this long after a seek from a line click.
 const SEEK_SETTLE: Duration = Duration::from_millis(800);
+/// Tracks whose lyrics stay in memory (going back, repeat).
+const CACHED_TRACKS: usize = 20;
 
 /// What a track's lyrics turned out to be.
 #[derive(Debug, PartialEq)]
@@ -130,7 +134,7 @@ pub struct LyricsView {
     animation: adw::TimedAnimation,
     lines: RefCell<Vec<Line>>,
     current: Cell<Option<usize>>,
-    cache: RefCell<HashMap<u64, Rc<Content>>>,
+    cache: RefCell<LruCache<u64, Rc<Content>>>,
     /// Track whose lyrics are on screen (or being fetched).
     shown: Cell<Option<u64>>,
     task: RefCell<Option<glib::JoinHandle<()>>>,
@@ -278,7 +282,9 @@ impl LyricsView {
             animation,
             lines: RefCell::default(),
             current: Cell::new(None),
-            cache: RefCell::default(),
+            cache: RefCell::new(LruCache::new(
+                NonZeroUsize::new(CACHED_TRACKS).expect("non-zero"),
+            )),
             shown: Cell::new(None),
             task: RefCell::default(),
             follow: Cell::new(true),
@@ -415,7 +421,7 @@ impl LyricsView {
         if let Some(task) = self.task.take() {
             task.abort();
         }
-        let cached = self.cache.borrow().get(&track.id).cloned();
+        let cached = self.cache.borrow_mut().get(&track.id).cloned();
         if let Some(content) = cached {
             self.display(&content);
             return;
@@ -446,7 +452,7 @@ impl LyricsView {
                 }
             };
             let content = Rc::new(content);
-            view.cache.borrow_mut().insert(id, content.clone());
+            view.cache.borrow_mut().put(id, content.clone());
             if view.shown.get() == Some(id) {
                 view.display(&content);
             }

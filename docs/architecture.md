@@ -123,7 +123,13 @@ embedded, so it runs from anywhere without being installed.
   created, or is off), every prefetched start stays in memory within
   64 MB, as before. Either budget is lower when the system is short of
   memory, and never exceeded: room is reserved before downloading,
-  evicting the least wanted first.
+  evicting the least wanted first. A deck buffers at most 15 s of a
+  Hi-Res stream ahead (`dashdemux2` would buffer 30 s, about 35 MB at
+  24-bit/192 kHz) and about 5 s of a lossless file. What a deck frees
+  when it stops, or after a gapless switch, goes back to the system
+  within seconds: glibc is limited to two arenas at startup and trimmed
+  then (`src/mem.rs`); otherwise freed audio stayed in its arenas and RSS
+  rose with every track, although nothing leaked.
 - **Local proxy.** All streams play through `http://127.0.0.1:<port>/…`
   (`src/playback/proxy.rs`): lossless files are served from the cached
   prefix and continued from the CDN with a `Range` request; DASH

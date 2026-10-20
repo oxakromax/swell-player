@@ -36,6 +36,8 @@ fn main() -> glib::ExitCode {
     bundle::setup();
     #[cfg(windows)]
     set_app_user_model_id();
+    // While no other thread exists (see mem.rs).
+    mem::configure();
     // Before GStreamer reads the environment, and while no other thread
     // exists: the local stream proxy is never reached through `http_proxy`.
     playback::exempt_loopback_from_proxies();

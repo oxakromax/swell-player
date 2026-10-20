@@ -35,6 +35,13 @@ const WORKERS: usize = 4;
 /// Decoded textures kept in memory (RGBA: an 80 px cover is 25 KB, a 640 px
 /// one 1.6 MB).
 const MEMORY_BUDGET: usize = 64 * 1024 * 1024;
+/// Part of [`MEMORY_BUDGET`] that textures larger than [`LARGE_PIXELS`] may
+/// take. Those are page headers and the now-playing cover (one per track
+/// played, 6.5 MB at 1280 px): without their own limit, the covers of
+/// tracks played long ago would fill the cache and push out the small ones
+/// lists scroll back to. They are on disk; decoding one again is cheap.
+const LARGE_BUDGET: usize = 16 * 1024 * 1024;
+const LARGE_PIXELS: usize = 320 * 320;
 const DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(15);
 
 /// A piece of artwork. TIDAL serves each kind in a fixed set of sizes.
@@ -330,21 +337,20 @@ impl CoverLoader {
             memory: RefCell::new(Memory {
                 textures: LruCache::unbounded(),
                 bytes: 0,
+                large_bytes: 0,
             }),
             pending: RefCell::default(),
             missing: RefCell::default(),
         })
     }
 
-    /// Tells the pool which list position is in the middle of the viewport.
     /// Drops every decoded texture and remembered miss (on sign-out).
     pub fn clear_memory(&self) {
-        let mut memory = self.memory.borrow_mut();
-        memory.textures.clear();
-        memory.bytes = 0;
+        self.memory.borrow_mut().clear();
         self.missing.borrow_mut().clear();
     }
 
+    /// Tells the pool which list position is in the middle of the viewport.
     pub fn set_focus(&self, position: u32) {
         self.queue.focus.store(position, Ordering::Relaxed);
     }
@@ -469,10 +475,13 @@ impl CoverLoader {
     }
 }
 
-/// Decoded textures, least recently used dropped first past the budget.
+/// Decoded textures, least recently used dropped first past the budget
+/// (and large ones past theirs).
 struct Memory {
     textures: LruCache<String, gdk::Texture>,
     bytes: usize,
+    /// The part of `bytes` taken by large textures.
+    large_bytes: usize,
 }
 
 impl Memory {
@@ -480,16 +489,70 @@ impl Memory {
         (texture.width().max(1) as usize) * (texture.height().max(1) as usize) * 4
     }
 
+    fn is_large(cost: usize) -> bool {
+        cost > LARGE_PIXELS * 4
+    }
+
+    fn clear(&mut self) {
+        self.textures.clear();
+        self.bytes = 0;
+        self.large_bytes = 0;
+    }
+
     fn put(&mut self, key: String, texture: gdk::Texture) {
-        self.bytes += Self::cost(&texture);
+        self.add(Self::cost(&texture));
         if let Some(old) = self.textures.put(key, texture) {
-            self.bytes -= Self::cost(&old);
+            self.remove(Self::cost(&old));
         }
         while self.bytes > MEMORY_BUDGET && self.textures.len() > 1 {
             match self.textures.pop_lru() {
-                Some((_, old)) => self.bytes -= Self::cost(&old),
+                Some((_, old)) => self.remove(Self::cost(&old)),
                 None => break,
             }
+        }
+        if self.large_bytes > LARGE_BUDGET {
+            self.drop_large();
+        }
+    }
+
+    /// Drops the least recently used large textures until they fit their
+    /// budget, keeping the newest one.
+    fn drop_large(&mut self) {
+        let mut excess = self.large_bytes - LARGE_BUDGET;
+        let mut keys = Vec::new();
+        // Least recently used first; the newest is last.
+        let mut large = self
+            .textures
+            .iter()
+            .rev()
+            .map(|(key, texture)| (key, Self::cost(texture)))
+            .filter(|(_, cost)| Self::is_large(*cost))
+            .peekable();
+        while let Some((key, cost)) = large.next() {
+            if excess == 0 || large.peek().is_none() {
+                break;
+            }
+            keys.push(key.clone());
+            excess = excess.saturating_sub(cost);
+        }
+        for key in keys {
+            if let Some(old) = self.textures.pop(&key) {
+                self.remove(Self::cost(&old));
+            }
+        }
+    }
+
+    fn add(&mut self, cost: usize) {
+        self.bytes += cost;
+        if Self::is_large(cost) {
+            self.large_bytes += cost;
+        }
+    }
+
+    fn remove(&mut self, cost: usize) {
+        self.bytes -= cost;
+        if Self::is_large(cost) {
+            self.large_bytes -= cost;
         }
     }
 }
@@ -620,6 +683,46 @@ mod tests {
         ] {
             assert!(!Image::Url(url.into()).is_valid(), "{url}");
         }
+    }
+
+    #[test]
+    fn large_textures_have_their_own_budget() {
+        let texture = |size: i32| -> gdk::Texture {
+            let bytes = glib::Bytes::from_owned(vec![0u8; (size * size * 4) as usize]);
+            gdk::MemoryTexture::new(
+                size,
+                size,
+                gdk::MemoryFormat::R8g8b8a8,
+                &bytes,
+                size as usize * 4,
+            )
+            .upcast()
+        };
+        let mut memory = Memory {
+            textures: LruCache::unbounded(),
+            bytes: 0,
+            large_bytes: 0,
+        };
+        memory.put("small".into(), texture(80));
+        for i in 0..12 {
+            memory.put(format!("large-{i}"), texture(640));
+        }
+        // 640 px: 1.6 MB each, so 10 fit; the oldest went first.
+        assert!(memory.large_bytes <= LARGE_BUDGET);
+        assert!(memory.textures.contains("large-11"));
+        assert!(!memory.textures.contains("large-0"));
+        assert!(memory.textures.contains("small"));
+        // One that is over the budget by itself is still kept.
+        memory.put("huge".into(), texture(2100));
+        assert!(memory.textures.contains("huge"));
+        assert!(!memory.textures.contains("large-11"));
+        assert_eq!(memory.large_bytes, Memory::cost(&texture(2100)));
+        assert_eq!(
+            memory.bytes,
+            memory.large_bytes + Memory::cost(&texture(80))
+        );
+        memory.clear();
+        assert_eq!((memory.bytes, memory.large_bytes), (0, 0));
     }
 
     #[test]

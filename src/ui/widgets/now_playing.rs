@@ -77,6 +77,8 @@ pub struct NowPlayingPanel {
     picture: gtk::Picture,
     picture_ticket: RefCell<Option<Ticket>>,
     picture_cover: RefCell<Option<String>>,
+    /// The track changed while hidden: its cover loads when shown.
+    picture_stale: Cell<bool>,
     title: gtk::Label,
     explicit: gtk::Label,
     artists: gtk::Label,
@@ -328,6 +330,7 @@ impl NowPlayingPanel {
             picture,
             picture_ticket: RefCell::default(),
             picture_cover: RefCell::default(),
+            picture_stale: Cell::new(false),
             title,
             explicit,
             artists,
@@ -428,9 +431,14 @@ impl NowPlayingPanel {
         panel.widget.connect_map({
             let weak = Rc::downgrade(&panel);
             move |_| {
-                if let Some(panel) = weak.upgrade()
-                    && panel.up_next_stale.get()
+                let Some(panel) = weak.upgrade() else { return };
+                if panel.picture_stale.get()
+                    && let Some(ctx) = panel.ctx.upgrade()
                 {
+                    let cover = ctx.playback.current().and_then(|track| track.cover);
+                    panel.set_picture(&ctx, cover.as_deref());
+                }
+                if panel.up_next_stale.get() {
                     panel.show_up_next();
                 }
             }
@@ -512,13 +520,23 @@ impl NowPlayingPanel {
         self.show_up_next();
     }
 
+    /// Shows `cover`. While the panel is hidden the previous cover is let
+    /// go and the new one only loads once the panel shows: a large texture
+    /// per track played with the panel closed would only crowd the cover
+    /// cache (and the size is only right once the panel is on screen).
     fn set_picture(&self, ctx: &Rc<Ctx>, cover: Option<&str>) {
+        let mapped = self.widget.is_mapped();
+        self.picture_stale.set(!mapped && cover.is_some());
         if self.picture_cover.borrow().as_deref() == cover && cover.is_some() {
             return;
         }
         self.picture_ticket.take();
-        self.picture_cover.replace(cover.map(str::to_owned));
         self.picture.set_paintable(None::<&gtk::gdk::Paintable>);
+        if !mapped {
+            self.picture_cover.replace(None);
+            return;
+        }
+        self.picture_cover.replace(cover.map(str::to_owned));
         let Some(cover) = cover else { return };
         let picture = self.picture.downgrade();
         let ticket = ctx.covers.load(
