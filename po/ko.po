@@ -1605,6 +1605,10 @@ msgstr "키보드 단축키"
 msgid "Reload Page"
 msgstr "페이지 새로 고침"
 
+#: src/playback/tray/mod.rs:64
+msgid "Show Window"
+msgstr "창 표시"
+
 #: src/ui/shortcuts.rs:33
 msgid "Close Window"
 msgstr "창 닫기"

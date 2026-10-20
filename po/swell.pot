@@ -28,34 +28,34 @@ msgstr ""
 msgid "Unknown format"
 msgstr ""
 
-#: src/playback/mod.rs:1581
+#: src/playback/mod.rs:1599
 msgid "Skipped a track that is not available"
 msgid_plural "Skipped {n} tracks that are not available"
 msgstr[0] ""
 msgstr[1] ""
 
-#: src/playback/mod.rs:1617
+#: src/playback/mod.rs:1635
 msgid "Playback needs GStreamer's playbin3"
 msgstr ""
 
-#: src/playback/mod.rs:1718
+#: src/playback/mod.rs:1736
 msgid "The TIDAL session has expired: sign in again to play"
 msgstr ""
 
-#: src/playback/mod.rs:1743
+#: src/playback/mod.rs:1761
 msgid "Connection lost — retrying"
 msgstr ""
 
-#: src/playback/mod.rs:1811
+#: src/playback/mod.rs:1829
 msgid "Could not play “{title}”. Playback stopped after {n} tracks failed"
 msgstr ""
 
-#: src/playback/mod.rs:1817
+#: src/playback/mod.rs:1835
 msgid "Could not play “{title}”, skipped"
 msgstr ""
 
-#: src/playback/mod.rs:2020
-#: src/playback/mod.rs:2058
+#: src/playback/mod.rs:2038
+#: src/playback/mod.rs:2076
 msgid "Playback failed: {error}"
 msgstr ""
 
@@ -63,12 +63,51 @@ msgstr ""
 msgid "Playing music"
 msgstr ""
 
-#: src/playback/notify.rs:247
+#: src/playback/notify.rs:252
 msgid "{artists} — {album}"
 msgstr ""
 
 #: src/playback/plugins.rs:24
 msgid "Playback needs GStreamer’s “{element}”. Install {package}."
+msgstr ""
+
+#: src/playback/tray/mod.rs:64
+msgid "Show Window"
+msgstr ""
+
+#: src/playback/tray/mod.rs:65
+#: src/ui/menus.rs:791
+#: src/ui/pages/collection.rs:680
+#: src/ui/widgets/np_controls.rs:52
+#: src/ui/widgets/np_controls.rs:56
+#: src/ui/widgets/np_controls.rs:86
+#: src/ui/widgets/page_header.rs:309
+msgid "Play"
+msgstr ""
+
+#: src/playback/tray/mod.rs:66
+#: src/ui/widgets/np_controls.rs:84
+msgid "Pause"
+msgstr ""
+
+#: src/playback/tray/mod.rs:67
+#: src/ui/shortcuts.rs:64
+#: src/ui/widgets/mini_player.rs:70
+#: src/ui/widgets/mini_player.rs:72
+#: src/ui/widgets/np_controls.rs:150
+msgid "Next Track"
+msgstr ""
+
+#: src/playback/tray/mod.rs:68
+#: src/ui/shortcuts.rs:65
+#: src/ui/widgets/np_controls.rs:148
+#: src/ui/widgets/np_controls.rs:240
+msgid "Previous Track"
+msgstr ""
+
+#: src/playback/tray/mod.rs:69
+#: src/ui/shortcuts.rs:34
+msgid "Quit"
 msgstr ""
 
 #: src/session.rs:73
@@ -989,15 +1028,6 @@ msgstr ""
 msgid "Link copied"
 msgstr ""
 
-#: src/ui/menus.rs:791
-#: src/ui/pages/collection.rs:680
-#: src/ui/widgets/np_controls.rs:52
-#: src/ui/widgets/np_controls.rs:56
-#: src/ui/widgets/np_controls.rs:86
-#: src/ui/widgets/page_header.rs:309
-msgid "Play"
-msgstr ""
-
 #: src/ui/menus.rs:828
 msgid "More…"
 msgstr ""
@@ -1737,10 +1767,6 @@ msgstr ""
 msgid "Close Window"
 msgstr ""
 
-#: src/ui/shortcuts.rs:34
-msgid "Quit"
-msgstr ""
-
 #: src/ui/shortcuts.rs:38
 msgid "Navigation"
 msgstr ""
@@ -1810,19 +1836,6 @@ msgstr ""
 
 #: src/ui/shortcuts.rs:63
 msgid "Play/Pause Anywhere"
-msgstr ""
-
-#: src/ui/shortcuts.rs:64
-#: src/ui/widgets/mini_player.rs:70
-#: src/ui/widgets/mini_player.rs:72
-#: src/ui/widgets/np_controls.rs:150
-msgid "Next Track"
-msgstr ""
-
-#: src/ui/shortcuts.rs:65
-#: src/ui/widgets/np_controls.rs:148
-#: src/ui/widgets/np_controls.rs:240
-msgid "Previous Track"
 msgstr ""
 
 #: src/ui/shortcuts.rs:66
@@ -2219,10 +2232,6 @@ msgid "{n} second"
 msgid_plural "{n} seconds"
 msgstr[0] ""
 msgstr[1] ""
-
-#: src/ui/widgets/np_controls.rs:84
-msgid "Pause"
-msgstr ""
 
 #: src/ui/widgets/np_controls.rs:151
 #: src/ui/widgets/np_controls.rs:280

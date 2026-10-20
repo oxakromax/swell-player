@@ -190,8 +190,13 @@ impl Desktop {
         if let Some(hook) = hook {
             return hook();
         }
+        // The application's Quit action saves the window state first.
         if let Some(app) = self.app() {
-            app.quit();
+            if app.lookup_action("quit").is_some() {
+                app.activate_action("quit", None);
+            } else {
+                app.quit();
+            }
         }
     }
 

@@ -38,7 +38,7 @@ embedded, so it runs from anywhere without being installed.
 | `src/covers.rs` | Artwork loader: `ctx.covers.load(&Image, pixels, position, callback)` returns a `Ticket` to keep while waiting (dropping it cancels). |
 | `src/runtime.rs` | The Tokio runtime for all I/O. |
 | `src/model.rs` | `TrackInfo`, what lists and the queue hold. |
-| `src/playback/` | `Playback` facade over GStreamer `playbin3`: queue, transport, gapless handover, ReplayGain, output device, sleep timer, session save/restore, MPRIS, format details. |
+| `src/playback/` | `Playback` facade over GStreamer `playbin3`: queue, transport, gapless handover, ReplayGain, output device, sleep timer, session save/restore, MPRIS, the tray icon (`tray/`: StatusNotifierItem, Windows notification area, macOS menu bar), format details. |
 | `src/library.rs` | Favourites (`is_favorite`, optimistic `set_favorite`), user playlists, favourite mixes, change notifications. |
 | `src/settings.rs` | JSON settings store (`get`, `update`, `connect_changed`) in `~/.config/swell-player/settings.json`. |
 | `src/i18n.rs` | Translations: embedded `.po` catalogues, `tr`/`trn`, TIDAL locale. See [`translating.md`](translating.md). |

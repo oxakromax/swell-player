@@ -1596,6 +1596,10 @@ msgstr "鍵盤快速鍵"
 msgid "Reload Page"
 msgstr "重新載入頁面"
 
+#: src/playback/tray/mod.rs:64
+msgid "Show Window"
+msgstr "顯示視窗"
+
 #: src/ui/shortcuts.rs:33
 msgid "Close Window"
 msgstr "關閉視窗"

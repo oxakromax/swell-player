@@ -1622,6 +1622,10 @@ msgstr "Scorciatoie da tastiera"
 msgid "Reload Page"
 msgstr "Ricarica la pagina"
 
+#: src/playback/tray/mod.rs:64
+msgid "Show Window"
+msgstr "Mostra la finestra"
+
 #: src/ui/shortcuts.rs:33
 msgid "Close Window"
 msgstr "Chiudi la finestra"

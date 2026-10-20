@@ -61,7 +61,9 @@ music client is expected to have. Items marked **(new)** are beyond High Tide.
 ## Integrations
 - MPRIS (all methods including Raise/Quit, metadata with art), media keys.
 - Desktop notification on track change (optional) **(new)**.
-- Run in background (hide on close) with the background portal.
+- Run in background (hide on close) with the background portal, and a
+  tray icon meanwhile (show the window, play/pause, previous/next, quit)
+  **(new)**.
 - Copy share link.
 
 ## Preferences

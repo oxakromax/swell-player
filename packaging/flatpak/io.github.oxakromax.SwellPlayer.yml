@@ -31,6 +31,9 @@ finish-args:
   - --socket=pulseaudio
   # Media keys, desktop widgets and playerctl (MPRIS).
   - --own-name=org.mpris.MediaPlayer2.SwellPlayer
+  # The tray icon while running in the background (StatusNotifierItem):
+  # announced to the panel's watcher under the connection's own name.
+  - --talk-name=org.kde.StatusNotifierWatcher
   # Nothing else is needed: the keyring is the Secret portal (oo7 detects
   # the sandbox and keeps an encrypted file under ~/.var/app, so no
   # org.freedesktop.secrets access), notifications, "keep awake while

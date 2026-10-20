@@ -1632,6 +1632,10 @@ msgstr "Комбинации клавиш"
 msgid "Reload Page"
 msgstr "Обновить страницу"
 
+#: src/playback/tray/mod.rs:64
+msgid "Show Window"
+msgstr "Показать окно"
+
 #: src/ui/shortcuts.rs:33
 msgid "Close Window"
 msgstr "Закрыть окно"

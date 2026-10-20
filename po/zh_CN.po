@@ -1595,6 +1595,10 @@ msgstr "键盘快捷键"
 msgid "Reload Page"
 msgstr "重新加载页面"
 
+#: src/playback/tray/mod.rs:64
+msgid "Show Window"
+msgstr "显示窗口"
+
 #: src/ui/shortcuts.rs:33
 msgid "Close Window"
 msgstr "关闭窗口"

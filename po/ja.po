@@ -1617,6 +1617,10 @@ msgstr "キーボードショートカット"
 msgid "Reload Page"
 msgstr "ページを再読み込み"
 
+#: src/playback/tray/mod.rs:64
+msgid "Show Window"
+msgstr "ウィンドウを表示"
+
 #: src/ui/shortcuts.rs:33
 msgid "Close Window"
 msgstr "ウィンドウを閉じる"

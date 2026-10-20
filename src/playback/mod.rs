@@ -83,6 +83,7 @@ mod rundir;
 mod session;
 mod sleep;
 mod transition;
+mod tray;
 
 use std::cell::{Cell, RefCell};
 use std::rc::{Rc, Weak};
@@ -280,6 +281,8 @@ pub struct Playback {
     debug_engine_fail: Cell<Option<(f64, u32)>>,
     desktop: notify::Desktop,
     controls: Option<controls::MediaControls>,
+    /// The tray icon, shown while "Run in Background" is on.
+    tray: tray::Tray,
     save_pending: Cell<bool>,
     position_saved_at: Cell<Instant>,
     /// Output device from the settings (display name).
@@ -374,6 +377,7 @@ impl Playback {
                         }),
                 ),
                 desktop: notify::Desktop::default(),
+                tray: tray::Tray::new(commands.clone()),
                 controls: Some(controls::MediaControls::start(commands)),
                 save_pending: Cell::new(false),
                 position_saved_at: Cell::new(Instant::now()),
@@ -383,6 +387,7 @@ impl Playback {
             }
         });
         this.apply_volume();
+        this.tray.set_visible(current.background);
         if let Some(engine) = &this.engine {
             engine.set_output_device(this.output_device.borrow().clone());
             engine.set_fades(current.fade_transitions);
@@ -492,6 +497,9 @@ impl Playback {
         self.desktop.attach(app, move || {
             if let Some(this) = weak.upgrade() {
                 this.save_session();
+                // GTK keeps the window, and so this, alive at exit:
+                // Windows would leave a dead icon in the notification area.
+                this.tray.set_visible(false);
             }
             rundir::remove_own();
         });
@@ -959,10 +967,11 @@ impl Playback {
 
     /// Stops playback, empties the queue and forgets the saved one
     /// (sign-out). From then on this `Playback` never writes the session
-    /// files again, not even at shutdown.
+    /// files again, not even at shutdown, and shows no tray icon.
     pub fn forget_session(&self) {
         self.saving_off.store(true, Ordering::SeqCst);
         self.forgotten.set(true);
+        self.tray.set_visible(false);
         self.stop();
         let mut queue = Queue::default();
         queue.set_shuffle(self.shuffle());
@@ -1160,9 +1169,6 @@ impl Playback {
     }
 
     fn sync_controls(&self) {
-        let Some(controls) = &self.controls else {
-            return;
-        };
         let queue = self.queue.borrow();
         let current = queue.current();
         let status = match self.state.get() {
@@ -1170,6 +1176,16 @@ impl Playback {
             PlayState::Loading if self.want_play.get() => controls::Status::Playing,
             PlayState::Loading | PlayState::Paused => controls::Status::Paused,
             PlayState::Stopped => controls::Status::Stopped,
+        };
+        self.tray.update(tray::TrayState::new(
+            current.map(|track| format!("{} — {}", track.title, track.artist_names())),
+            status,
+            current.is_some(),
+            queue.can_advance(),
+            current.is_some(),
+        ));
+        let Some(controls) = &self.controls else {
+            return;
         };
         let settings = self.settings.get();
         let snapshot = controls::Snapshot {
@@ -1240,6 +1256,8 @@ impl Playback {
 
     fn on_settings_changed(self: &Rc<Self>, settings: &settings::Settings) {
         self.apply_volume();
+        self.tray
+            .set_visible(settings.background && !self.forgotten.get());
         if self.normalization.replace(settings.normalization) != settings.normalization {
             self.apply_normalization();
         }

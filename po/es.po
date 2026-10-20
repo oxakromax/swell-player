@@ -1617,6 +1617,10 @@ msgstr "Atajos de teclado"
 msgid "Reload Page"
 msgstr "Recargar la página"
 
+#: src/playback/tray/mod.rs:64
+msgid "Show Window"
+msgstr "Mostrar la ventana"
+
 #: src/ui/shortcuts.rs:33
 msgid "Close Window"
 msgstr "Cerrar la ventana"

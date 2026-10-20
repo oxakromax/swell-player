@@ -1629,6 +1629,10 @@ msgstr "Raccourcis clavier"
 msgid "Reload Page"
 msgstr "Recharger la page"
 
+#: src/playback/tray/mod.rs:64
+msgid "Show Window"
+msgstr "Afficher la fenêtre"
+
 #: src/ui/shortcuts.rs:33
 msgid "Close Window"
 msgstr "Fermer la fenêtre"

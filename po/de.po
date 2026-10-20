@@ -1636,6 +1636,10 @@ msgstr "Tastenkürzel"
 msgid "Reload Page"
 msgstr "Seite neu laden"
 
+#: src/playback/tray/mod.rs:64
+msgid "Show Window"
+msgstr "Fenster anzeigen"
+
 #: src/ui/shortcuts.rs:33
 msgid "Close Window"
 msgstr "Fenster schließen"
