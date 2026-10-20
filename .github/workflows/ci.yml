@@ -286,5 +286,8 @@ jobs:
       - name: Build
         run: cargo build --locked
 
+      # A test that hangs fails the job instead of holding the runner (and
+      # every later run on the branch) for GitHub's six hours.
       - name: Tests
+        timeout-minutes: 15
         run: cargo test --locked
