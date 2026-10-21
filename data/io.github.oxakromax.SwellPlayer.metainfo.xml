@@ -217,7 +217,7 @@
 
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/oxakromax/swell-player/v1.2.0/docs/screenshots/home.png</image>
+      <image>https://raw.githubusercontent.com/oxakromax/swell-player/v1.3.0/docs/screenshots/home.png</image>
       <caption>Home, your personalised TIDAL feed</caption>
       <caption xml:lang="de">Startseite, Ihr personalisierter TIDAL-Feed</caption>
       <caption xml:lang="es">Inicio, tu portada personalizada de TIDAL</caption>
@@ -231,7 +231,7 @@
       <caption xml:lang="zh_TW">首頁，你的個人化 TIDAL 動態</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/oxakromax/swell-player/v1.2.0/docs/screenshots/album.png</image>
+      <image>https://raw.githubusercontent.com/oxakromax/swell-player/v1.3.0/docs/screenshots/album.png</image>
       <caption>An album page</caption>
       <caption xml:lang="de">Eine Albumseite</caption>
       <caption xml:lang="es">La página de un álbum</caption>
@@ -245,7 +245,7 @@
       <caption xml:lang="zh_TW">專輯頁面</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/oxakromax/swell-player/v1.2.0/docs/screenshots/now-playing.png</image>
+      <image>https://raw.githubusercontent.com/oxakromax/swell-player/v1.3.0/docs/screenshots/now-playing.png</image>
       <caption>Now playing, with the queue</caption>
       <caption xml:lang="de">Aktuelle Wiedergabe, mit der Warteschlange</caption>
       <caption xml:lang="es">Sonando ahora, con la cola</caption>
@@ -259,7 +259,7 @@
       <caption xml:lang="zh_TW">正在播放，附帶佇列</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/oxakromax/swell-player/v1.2.0/docs/screenshots/narrow.png</image>
+      <image>https://raw.githubusercontent.com/oxakromax/swell-player/v1.3.0/docs/screenshots/narrow.png</image>
       <caption>The narrow layout, for small windows and phones</caption>
       <caption xml:lang="de">Das schmale Layout für kleine Fenster und Smartphones</caption>
       <caption xml:lang="es">El diseño estrecho, para ventanas pequeñas y teléfonos</caption>
@@ -359,6 +359,46 @@
   </keywords>
 
   <releases>
+    <release version="1.3.0" date="2026-10-21" type="stable">
+      <url type="details">https://github.com/oxakromax/swell-player/releases/tag/v1.3.0</url>
+      <description>
+        <p>A tray icon while Swell runs in the background, and memory no longer grows with every track.</p>
+        <p xml:lang="de">Ein Symbol im Infobereich, während Swell im Hintergrund läuft, und der Speicherbedarf wächst nicht mehr mit jedem Titel.</p>
+        <p xml:lang="es">Un icono en la bandeja mientras Swell se ejecuta en segundo plano, y la memoria ya no crece con cada canción.</p>
+        <p xml:lang="fr">Une icône dans la zone de notification pendant que Swell tourne en arrière-plan, et la mémoire ne grossit plus à chaque titre.</p>
+        <p xml:lang="it">Un’icona nell’area di notifica mentre Swell è in esecuzione in background, e la memoria non cresce più a ogni brano.</p>
+        <p xml:lang="ja">Swell がバックグラウンドで動作している間はトレイにアイコンを表示し、曲ごとにメモリが増え続けることもなくなりました。</p>
+        <p xml:lang="ko">Swell이 백그라운드에서 실행되는 동안 트레이 아이콘을 표시하며, 곡마다 메모리가 늘어나지 않습니다.</p>
+        <p xml:lang="pt_BR">Um ícone na bandeja enquanto o Swell roda em segundo plano, e a memória não cresce mais a cada faixa.</p>
+        <p xml:lang="ru">Значок в трее, пока Swell работает в фоне, и потребление памяти больше не растёт с каждым треком.</p>
+        <p xml:lang="zh_CN">Swell 在后台运行时会在托盘显示图标，内存也不会再随每首曲目增长。</p>
+        <p xml:lang="zh_TW">Swell 在背景執行時會在系統匣顯示圖示，記憶體也不會再隨每首曲目增長。</p>
+        <ul>
+          <li>With Run in Background on, a tray icon brings the window back, plays, pauses, skips and quits</li>
+          <li xml:lang="de">Mit „Im Hintergrund ausführen“ holt ein Symbol im Infobereich das Fenster zurück, spielt ab, pausiert, springt weiter und beendet</li>
+          <li xml:lang="es">Con «Ejecutar en segundo plano», un icono en la bandeja recupera la ventana, reproduce, pausa, salta y sale</li>
+          <li xml:lang="fr">Avec « Exécuter en arrière-plan », une icône dans la zone de notification rouvre la fenêtre, lit, met en pause, change de titre et quitte</li>
+          <li xml:lang="it">Con «Esegui in background», un’icona nell’area di notifica riapre la finestra, riproduce, mette in pausa, salta e chiude</li>
+          <li xml:lang="ja">「バックグラウンドで実行」をオンにすると、トレイアイコンからウィンドウの再表示、再生、一時停止、曲送り、終了ができます</li>
+          <li xml:lang="ko">‘백그라운드에서 실행’을 켜면 트레이 아이콘으로 창을 다시 열고, 재생, 일시 정지, 곡 넘기기, 종료를 할 수 있습니다</li>
+          <li xml:lang="pt_BR">Com “Executar em segundo plano”, um ícone na bandeja traz a janela de volta, toca, pausa, pula e sai</li>
+          <li xml:lang="ru">С включённой работой в фоне значок в трее возвращает окно, запускает и ставит на паузу воспроизведение, переключает треки и закрывает приложение</li>
+          <li xml:lang="zh_CN">开启“后台运行”后，托盘图标可以重新打开窗口、播放、暂停、切歌和退出</li>
+          <li xml:lang="zh_TW">開啟「在背景執行」後，系統匣圖示可以重新開啟視窗、播放、暫停、切換曲目和結束</li>
+          <li>Memory no longer climbs track after track: the audio and covers of earlier tracks are given back at once</li>
+          <li xml:lang="de">Der Speicherbedarf steigt nicht mehr von Titel zu Titel: Audio und Cover früherer Titel werden sofort freigegeben</li>
+          <li xml:lang="es">La memoria ya no sube canción tras canción: el audio y las carátulas de las canciones anteriores se liberan al momento</li>
+          <li xml:lang="fr">La mémoire ne grimpe plus de titre en titre : l’audio et les pochettes des titres précédents sont libérés aussitôt</li>
+          <li xml:lang="it">La memoria non sale più brano dopo brano: l’audio e le copertine dei brani precedenti vengono liberati subito</li>
+          <li xml:lang="ja">曲を重ねてもメモリが増え続けなくなりました。前の曲の音声とジャケット画像はすぐに解放されます</li>
+          <li xml:lang="ko">곡을 거듭 재생해도 메모리가 계속 늘지 않습니다. 이전 곡의 오디오와 앨범 아트는 바로 해제됩니다</li>
+          <li xml:lang="pt_BR">A memória não sobe mais faixa após faixa: o áudio e as capas das faixas anteriores são liberados na hora</li>
+          <li xml:lang="ru">Память больше не растёт от трека к треку: звук и обложки предыдущих треков сразу освобождаются</li>
+          <li xml:lang="zh_CN">内存不再随曲目一首首上涨：之前曲目的音频和封面会立即释放</li>
+          <li xml:lang="zh_TW">記憶體不再隨曲目一首首上漲：之前曲目的音訊和封面會立即釋放</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.2.0" date="2026-10-18" type="stable">
       <url type="details">https://github.com/oxakromax/swell-player/releases/tag/v1.2.0</url>
       <description>

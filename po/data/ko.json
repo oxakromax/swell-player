@@ -2,6 +2,7 @@
   "A failing audio output pauses playback instead of skipping through the queue": "오디오 출력에 문제가 생기면 대기열을 건너뛰는 대신 재생을 일시 정지합니다",
   "A new track always starts at your volume, also with normalisation or on a change of sample rate": "새 곡은 노멀라이즈를 켜거나 샘플 레이트가 바뀔 때도 항상 설정한 음량으로 시작합니다",
   "A real queue, shuffle and repeat, synced lyrics and a sleep timer": "제대로 된 대기열, 셔플과 반복, 동기화 가사, 수면 타이머",
+  "A tray icon while Swell runs in the background, and memory no longer grows with every track.": "Swell이 백그라운드에서 실행되는 동안 트레이 아이콘을 표시하며, 곡마다 메모리가 늘어나지 않습니다.",
   "Adaptive layout, from phone-sized windows to wide screens, with full keyboard control": "휴대전화 크기의 창부터 와이드 화면까지 대응하는 적응형 레이아웃과 완전한 키보드 조작",
   "An album page": "앨범 페이지",
   "Automatic updates, and the volume no longer jumps to full when the track changes.": "자동 업데이트를 지원하며, 곡이 바뀔 때 음량이 최대로 튀지 않습니다.",
@@ -16,6 +17,7 @@
   "Home, your personalised TIDAL feed": "홈, 맞춤형 TIDAL 피드",
   "Listen to TIDAL in a native app": "네이티브 앱으로 TIDAL 듣기",
   "Media keys and desktop widgets through MPRIS": "MPRIS를 통한 미디어 키와 데스크톱 위젯 지원",
+  "Memory no longer climbs track after track: the audio and covers of earlier tracks are given back at once": "곡을 거듭 재생해도 메모리가 계속 늘지 않습니다. 이전 곡의 오디오와 앨범 아트는 바로 해제됩니다",
   "Music Player": "음악 플레이어",
   "Nine more languages, instant skips and smooth transitions.": "9개 언어 추가, 즉시 곡 넘기기, 부드러운 전환.",
   "Now playing, with the queue": "대기열과 함께 보는 지금 재생 중 화면",
@@ -26,6 +28,7 @@
   "Swell looks for new versions; the Windows installer and the macOS app update themselves when Swell quits": "Swell이 새 버전을 확인하고, Windows 설치 프로그램과 macOS 앱은 Swell을 종료할 때 스스로 업데이트됩니다",
   "The interface in French, German, Italian, Brazilian Portuguese, Russian, Japanese, Korean and Chinese": "프랑스어, 독일어, 이탈리아어, 브라질 포르투갈어, 러시아어, 일본어, 한국어, 중국어 인터페이스",
   "The narrow layout, for small windows and phones": "작은 창과 휴대전화를 위한 좁은 레이아웃",
+  "With Run in Background on, a tray icon brings the window back, plays, pauses, skips and quits": "‘백그라운드에서 실행’을 켜면 트레이 아이콘으로 창을 다시 열고, 재생, 일시 정지, 곡 넘기기, 종료를 할 수 있습니다",
   "Your collection from a local cache, playlist editing, queue, lyrics and MPRIS": "로컬 캐시에서 불러오는 컬렉션, 재생 목록 편집, 대기열, 가사, MPRIS",
   "Your favourite tracks, albums, artists, playlists and mixes, opened instantly from a local cache": "즐겨찾는 곡, 앨범, 아티스트, 재생 목록, 믹스를 로컬 캐시에서 즉시 열기",
   "music;tidal;streaming;hi-res;lossless;flac;player;audio;": "음악;뮤직;tidal;스트리밍;하이레스;hi-res;무손실;lossless;flac;플레이어;오디오;"

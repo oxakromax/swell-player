@@ -2,6 +2,7 @@
   "A failing audio output pauses playback instead of skipping through the queue": "音频输出出错时会暂停播放，而不是跳过整个队列",
   "A new track always starts at your volume, also with normalisation or on a change of sample rate": "新曲目总是以你设定的音量开始，开启音量标准化或采样率变化时也一样",
   "A real queue, shuffle and repeat, synced lyrics and a sleep timer": "真正的队列、随机播放和循环播放、同步歌词以及睡眠定时器",
+  "A tray icon while Swell runs in the background, and memory no longer grows with every track.": "Swell 在后台运行时会在托盘显示图标，内存也不会再随每首曲目增长。",
   "Adaptive layout, from phone-sized windows to wide screens, with full keyboard control": "自适应布局，从手机大小的窗口到宽屏皆可适用，并支持完整的键盘操作",
   "An album page": "专辑页面",
   "Automatic updates, and the volume no longer jumps to full when the track changes.": "支持自动更新，切歌时音量也不会再突然变到最大。",
@@ -16,6 +17,7 @@
   "Home, your personalised TIDAL feed": "主页，你的个性化 TIDAL 信息流",
   "Listen to TIDAL in a native app": "在原生应用中收听 TIDAL",
   "Media keys and desktop widgets through MPRIS": "通过 MPRIS 支持媒体键和桌面小部件",
+  "Memory no longer climbs track after track: the audio and covers of earlier tracks are given back at once": "内存不再随曲目一首首上涨：之前曲目的音频和封面会立即释放",
   "Music Player": "音乐播放器",
   "Nine more languages, instant skips and smooth transitions.": "新增九种语言，即时切歌，平滑过渡。",
   "Now playing, with the queue": "正在播放，附带队列",
@@ -26,6 +28,7 @@
   "Swell looks for new versions; the Windows installer and the macOS app update themselves when Swell quits": "Swell 会检查新版本；Windows 安装版和 macOS 应用会在退出 Swell 时自动更新",
   "The interface in French, German, Italian, Brazilian Portuguese, Russian, Japanese, Korean and Chinese": "界面支持法语、德语、意大利语、巴西葡萄牙语、俄语、日语、韩语和中文",
   "The narrow layout, for small windows and phones": "窄屏布局，适用于小窗口和手机",
+  "With Run in Background on, a tray icon brings the window back, plays, pauses, skips and quits": "开启“后台运行”后，托盘图标可以重新打开窗口、播放、暂停、切歌和退出",
   "Your collection from a local cache, playlist editing, queue, lyrics and MPRIS": "来自本地缓存的收藏、播放列表编辑、队列、歌词和 MPRIS",
   "Your favourite tracks, albums, artists, playlists and mixes, opened instantly from a local cache": "你喜欢的曲目、专辑、艺人、播放列表和 Mix，从本地缓存即时打开",
   "music;tidal;streaming;hi-res;lossless;flac;player;audio;": "音乐;tidal;流媒体;hi-res;无损;flac;播放器;音频;歌曲;yinyue;"

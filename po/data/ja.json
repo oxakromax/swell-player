@@ -2,6 +2,7 @@
   "A failing audio output pauses playback instead of skipping through the queue": "オーディオ出力に問題が起きると、キューを飛ばさずに再生を一時停止します",
   "A new track always starts at your volume, also with normalisation or on a change of sample rate": "新しい曲は、ノーマライズ使用時やサンプルレートが変わるときも、常に設定した音量で始まります",
   "A real queue, shuffle and repeat, synced lyrics and a sleep timer": "本格的なキュー、シャッフルとリピート、同期歌詞、スリープタイマー",
+  "A tray icon while Swell runs in the background, and memory no longer grows with every track.": "Swell がバックグラウンドで動作している間はトレイにアイコンを表示し、曲ごとにメモリが増え続けることもなくなりました。",
   "Adaptive layout, from phone-sized windows to wide screens, with full keyboard control": "スマートフォンサイズの小さなウィンドウからワイド画面まで対応するアダプティブレイアウトと、キーボードだけで完全に操作できる設計",
   "An album page": "アルバムのページ",
   "Automatic updates, and the volume no longer jumps to full when the track changes.": "自動アップデートに対応し、曲が変わるときに音量が最大に跳ね上がらなくなりました。",
@@ -16,6 +17,7 @@
   "Home, your personalised TIDAL feed": "ホーム：パーソナライズされた TIDAL フィード",
   "Listen to TIDAL in a native app": "ネイティブアプリで TIDAL を聴く",
   "Media keys and desktop widgets through MPRIS": "MPRIS によるメディアキーとデスクトップウィジェットのサポート",
+  "Memory no longer climbs track after track: the audio and covers of earlier tracks are given back at once": "曲を重ねてもメモリが増え続けなくなりました。前の曲の音声とジャケット画像はすぐに解放されます",
   "Music Player": "ミュージックプレーヤー",
   "Nine more languages, instant skips and smooth transitions.": "9つの言語を追加、瞬時の曲送り、なめらかな切り替え。",
   "Now playing, with the queue": "再生中の画面とキュー",
@@ -26,6 +28,7 @@
   "Swell looks for new versions; the Windows installer and the macOS app update themselves when Swell quits": "Swell が新しいバージョンを確認し、Windows のインストーラー版と macOS アプリは Swell の終了時に自動で更新されます",
   "The interface in French, German, Italian, Brazilian Portuguese, Russian, Japanese, Korean and Chinese": "フランス語、ドイツ語、イタリア語、ブラジルポルトガル語、ロシア語、日本語、韓国語、中国語のインターフェース",
   "The narrow layout, for small windows and phones": "小さなウィンドウやスマートフォン向けの、幅の狭いレイアウト",
+  "With Run in Background on, a tray icon brings the window back, plays, pauses, skips and quits": "「バックグラウンドで実行」をオンにすると、トレイアイコンからウィンドウの再表示、再生、一時停止、曲送り、終了ができます",
   "Your collection from a local cache, playlist editing, queue, lyrics and MPRIS": "ローカルキャッシュからのコレクション、プレイリストの編集、キュー、歌詞、MPRIS",
   "Your favourite tracks, albums, artists, playlists and mixes, opened instantly from a local cache": "お気に入りの曲、アルバム、アーティスト、プレイリスト、ミックスを、ローカルキャッシュからすぐに開けます",
   "music;tidal;streaming;hi-res;lossless;flac;player;audio;": "音楽;ミュージック;tidal;ストリーミング;ハイレゾ;hi-res;ロスレス;lossless;flac;プレーヤー;プレイヤー;オーディオ;音声;"

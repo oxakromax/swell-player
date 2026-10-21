@@ -2,6 +2,7 @@
   "A failing audio output pauses playback instead of skipping through the queue": "Un’uscita audio guasta mette in pausa la riproduzione invece di saltare tutta la coda",
   "A new track always starts at your volume, also with normalisation or on a change of sample rate": "Un nuovo brano parte sempre al tuo volume, anche con la normalizzazione o con una frequenza di campionamento diversa",
   "A real queue, shuffle and repeat, synced lyrics and a sleep timer": "Una vera coda, riproduzione casuale e ripetizione, testi sincronizzati e timer di spegnimento",
+  "A tray icon while Swell runs in the background, and memory no longer grows with every track.": "Un’icona nell’area di notifica mentre Swell è in esecuzione in background, e la memoria non cresce più a ogni brano.",
   "Adaptive layout, from phone-sized windows to wide screens, with full keyboard control": "Layout adattivo, dalle finestre grandi come un telefono agli schermi ampi, con pieno controllo da tastiera",
   "An album page": "La pagina di un album",
   "Automatic updates, and the volume no longer jumps to full when the track changes.": "Aggiornamenti automatici, e il volume non salta più al massimo al cambio di brano.",
@@ -16,6 +17,7 @@
   "Home, your personalised TIDAL feed": "Home, il tuo feed TIDAL personalizzato",
   "Listen to TIDAL in a native app": "Ascolta TIDAL in un’app nativa",
   "Media keys and desktop widgets through MPRIS": "Tasti multimediali e widget del desktop tramite MPRIS",
+  "Memory no longer climbs track after track: the audio and covers of earlier tracks are given back at once": "La memoria non sale più brano dopo brano: l’audio e le copertine dei brani precedenti vengono liberati subito",
   "Music Player": "Lettore musicale",
   "Nine more languages, instant skips and smooth transitions.": "Nove lingue in più, salti istantanei e transizioni morbide.",
   "Now playing, with the queue": "In riproduzione, con la coda",
@@ -26,6 +28,7 @@
   "Swell looks for new versions; the Windows installer and the macOS app update themselves when Swell quits": "Swell cerca le nuove versioni; il programma di installazione per Windows e l’app per macOS si aggiornano da soli alla chiusura di Swell",
   "The interface in French, German, Italian, Brazilian Portuguese, Russian, Japanese, Korean and Chinese": "L’interfaccia in francese, tedesco, italiano, portoghese brasiliano, russo, giapponese, coreano e cinese",
   "The narrow layout, for small windows and phones": "Il layout stretto, per finestre piccole e telefoni",
+  "With Run in Background on, a tray icon brings the window back, plays, pauses, skips and quits": "Con «Esegui in background», un’icona nell’area di notifica riapre la finestra, riproduce, mette in pausa, salta e chiude",
   "Your collection from a local cache, playlist editing, queue, lyrics and MPRIS": "La tua collezione da una cache locale, modifica delle playlist, coda, testi e MPRIS",
   "Your favourite tracks, albums, artists, playlists and mixes, opened instantly from a local cache": "I tuoi brani, album, artisti, playlist e mix preferiti, aperti all’istante da una cache locale",
   "music;tidal;streaming;hi-res;lossless;flac;player;audio;": "musica;tidal;streaming;hi-res;lossless;senza perdita;flac;lettore;lettore audio;audio;"
