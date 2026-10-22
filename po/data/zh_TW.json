@@ -26,6 +26,7 @@
   "Swell is a fast, lightweight TIDAL client built with GTK and libadwaita. It plays up to Hi-Res Lossless, bit-perfect, keeps your collection, playlists and mixes one click away, and follows your desktop’s light or dark style and accent colour.": "Swell 是一款使用 GTK 與 libadwaita 建構的快速、輕量的 TIDAL 用戶端。它最高支援 Hi-Res Lossless 的 bit-perfect 播放，讓你的收藏、播放清單與 Mix 觸手可及，並跟隨桌面的淺色或深色樣式與強調色。",
   "Swell is not affiliated with, endorsed by or supported by TIDAL. A paid TIDAL subscription is needed.": "Swell 與 TIDAL 沒有任何關係，也未獲得 TIDAL 的認可或支援。需要付費的 TIDAL 訂閱。",
   "Swell looks for new versions; the Windows installer and the macOS app update themselves when Swell quits": "Swell 會檢查新版本；Windows 安裝版和 macOS 應用程式會在關閉 Swell 時自動更新",
+  "The home’s “View All” pages that TIDAL sends empty, such as Personal Radio Stations, show what the home shows instead of nothing.": "TIDAL 傳回為空的首頁「查看全部」頁面（例如個人化電台）現在會顯示首頁上的內容，而不是什麼都沒有。",
   "The interface in French, German, Italian, Brazilian Portuguese, Russian, Japanese, Korean and Chinese": "介面支援法語、德語、義大利語、巴西葡萄牙語、俄語、日語、韓語和中文",
   "The narrow layout, for small windows and phones": "窄螢幕版面，適用於小視窗與手機",
   "With Run in Background on, a tray icon brings the window back, plays, pauses, skips and quits": "開啟「在背景執行」後，系統匣圖示可以重新開啟視窗、播放、暫停、切換曲目和結束",
