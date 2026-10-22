@@ -143,10 +143,10 @@ msgstr ""
 #: src/ui/pages/artist.rs:271
 #: src/ui/pages/explore.rs:176
 #: src/ui/pages/home_sections.rs:303
-#: src/ui/pages/more.rs:151
+#: src/ui/pages/more.rs:206
 #: src/ui/pages/search_views.rs:156
 #: src/ui/widgets/carousel.rs:56
-#: src/ui/widgets/section.rs:124
+#: src/ui/widgets/section.rs:125
 msgid "View All"
 msgstr ""
 
@@ -584,7 +584,7 @@ msgid "_Clear"
 msgstr ""
 
 #: src/ui/dialogs/preferences.rs:545
-#: src/ui/window.rs:417
+#: src/ui/window.rs:418
 msgid "_Cancel"
 msgstr ""
 
@@ -1018,7 +1018,7 @@ msgstr ""
 #: src/ui/menus.rs:634
 #: src/ui/widgets/heart_button.rs:215
 #: src/ui/widgets/np_common.rs:765
-#: src/ui/window.rs:775
+#: src/ui/window.rs:776
 msgid "Couldn't update favourites"
 msgstr ""
 
@@ -1066,7 +1066,7 @@ msgstr ""
 #: src/ui/nav.rs:407
 #: src/ui/sidebar.rs:288
 #: src/ui/sidebar.rs:317
-#: src/ui/window.rs:837
+#: src/ui/window.rs:838
 msgid "Collection"
 msgstr ""
 
@@ -1117,8 +1117,8 @@ msgstr ""
 #: src/ui/pages/artist.rs:235
 #: src/ui/pages/explore.rs:155
 #: src/ui/pages/home.rs:156
-#: src/ui/pages/more.rs:365
-#: src/ui/pages/more.rs:509
+#: src/ui/pages/more.rs:423
+#: src/ui/pages/more.rs:567
 msgid "Nothing Here Yet"
 msgstr ""
 
@@ -1172,7 +1172,7 @@ msgstr ""
 #: src/ui/pages/collection.rs:483
 #: src/ui/pages/collection.rs:507
 #: src/ui/pages/home_sections.rs:525
-#: src/ui/pages/more.rs:140
+#: src/ui/pages/more.rs:195
 #: src/ui/widgets/np_controls.rs:103
 #: src/ui/widgets/skeleton.rs:109
 msgid "Loading"
@@ -1356,12 +1356,12 @@ msgid "Couldn't undo that"
 msgstr ""
 
 #: src/ui/pages/explore.rs:110
-#: src/ui/pages/more.rs:289
+#: src/ui/pages/more.rs:347
 msgid "Couldn't load the page"
 msgstr ""
 
 #: src/ui/pages/explore.rs:156
-#: src/ui/pages/more.rs:510
+#: src/ui/pages/more.rs:568
 msgid "TIDAL has nothing on this page in your country."
 msgstr ""
 
@@ -1404,7 +1404,7 @@ msgstr ""
 #: src/ui/pages/history.rs:259
 #: src/ui/pages/history.rs:266
 #: src/ui/sidebar.rs:146
-#: src/ui/window.rs:1260
+#: src/ui/window.rs:1261
 msgid "Recently Played"
 msgstr ""
 
@@ -1479,7 +1479,7 @@ msgid "Couldn't load more of Home"
 msgstr ""
 
 #: src/ui/pages/home.rs:230
-#: src/ui/pages/more.rs:611
+#: src/ui/pages/more.rs:669
 msgid "Couldn't load more. {reason}"
 msgstr ""
 
@@ -1533,11 +1533,11 @@ msgstr ""
 msgid "TIDAL has nothing in it right now. Try again later."
 msgstr ""
 
-#: src/ui/pages/more.rs:366
+#: src/ui/pages/more.rs:424
 msgid "TIDAL has nothing in this list for now."
 msgstr ""
 
-#: src/ui/pages/more.rs:606
+#: src/ui/pages/more.rs:664
 msgid "Couldn't load more"
 msgstr ""
 
@@ -2416,26 +2416,26 @@ msgstr ""
 msgid "Not available in your region"
 msgstr ""
 
-#: src/ui/window.rs:402
+#: src/ui/window.rs:403
 msgid "Couldn't remove your session from the keyring."
 msgstr ""
 
-#: src/ui/window.rs:412
+#: src/ui/window.rs:413
 msgid "Sign Out?"
 msgstr ""
 
-#: src/ui/window.rs:413
+#: src/ui/window.rs:414
 msgid "You will need to sign in again to listen. Your library cached on this computer is deleted."
 msgstr ""
 
-#: src/ui/window.rs:417
+#: src/ui/window.rs:418
 msgid "_Sign Out"
 msgstr ""
 
-#: src/ui/window.rs:525
+#: src/ui/window.rs:526
 msgid "Couldn't load your library"
 msgstr ""
 
-#: src/ui/window.rs:801
+#: src/ui/window.rs:802
 msgid "Couldn't open the track"
 msgstr ""

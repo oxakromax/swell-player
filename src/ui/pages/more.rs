@@ -12,13 +12,20 @@
 //! Tracks become a full, playable [`TrackList`]; cards a virtualised
 //! `GridView` (`media-grid`) whose column count follows the width; chips
 //! wrap. The first answer is cached (an hour) and revalidated.
+//!
+//! TIDAL answers some v2 "view all" pages with no items at all (the home's
+//! SUGGESTED_RADIOS_MIXES, say, whose feed module lists radios): such a
+//! page shows what its section showed ([`remember_shown`]) rather than
+//! nothing.
 
 use std::cell::{Cell, RefCell};
+use std::num::NonZeroUsize;
 use std::rc::{Rc, Weak};
 use std::time::Duration;
 
 use adw::prelude::*;
 use gtk::{gio, glib};
+use lru::LruCache;
 
 use super::super::context::Ctx;
 use super::super::menus::ItemMenu;
@@ -37,6 +44,54 @@ use crate::tidal::{self, Base, Call};
 const FRESH_FOR: Duration = Duration::from_secs(60 * 60);
 /// Items per request when paging a data list.
 const PAGE_SIZE: usize = 50;
+/// Sections whose items [`remember_shown`] keeps.
+const SHOWN_SECTIONS: usize = 32;
+
+thread_local! {
+    /// What the last sections with a "View All" showed, by where it leads.
+    static SHOWN: RefCell<LruCache<More, Section>> =
+        RefCell::new(LruCache::new(NonZeroUsize::new(SHOWN_SECTIONS).expect("non-zero")));
+}
+
+/// Remembers what `section` shows, for its "View All" page to show if
+/// TIDAL sends that page empty.
+pub fn remember_shown(section: &Section) {
+    let Some(more) = section.more.clone() else {
+        return;
+    };
+    if section.items.is_empty() {
+        return;
+    }
+    let shown = Section {
+        total: section.items.len(),
+        more: None,
+        ..section.clone()
+    };
+    SHOWN.with_borrow_mut(|sections| sections.put(more, shown));
+}
+
+/// Forgets the remembered sections (signing out).
+pub fn forget_shown() {
+    SHOWN.with_borrow_mut(LruCache::clear);
+}
+
+/// `section`, or what its section showed when TIDAL sent it empty.
+fn or_shown(more: &More, section: Section) -> Section {
+    if !section.items.is_empty() {
+        return section;
+    }
+    match SHOWN.with_borrow_mut(|sections| sections.get(more).cloned()) {
+        Some(shown) => Section {
+            title: if section.title.is_empty() {
+                shown.title.clone()
+            } else {
+                section.title
+            },
+            ..shown
+        },
+        None => section,
+    }
+}
 
 /// The first answer, whatever the kind of [`More`].
 enum Loaded {
@@ -263,7 +318,10 @@ impl MorePage {
                     return;
                 };
                 match answer {
-                    Ok(Loaded::Section(section)) => state.show_section(section, None),
+                    Ok(Loaded::Section(section)) => {
+                        let section = or_shown(&state.more, section);
+                        state.show_section(section, None)
+                    }
                     Ok(Loaded::Data(section, sent)) => {
                         let pager = match &state.more {
                             More::Data(path) => {
@@ -685,5 +743,38 @@ mod tests {
         // A first page shorter than asked for is the whole list.
         assert!(!Pager::after_first("list".into(), 12, 40).has_more());
         assert_eq!(sent_items(&serde_json::json!({"items": [1, {}, "x"]})), 3);
+    }
+
+    /// TIDAL's answer for the home's radios: a "view all" page with no
+    /// items, although the feed module lists some.
+    #[test]
+    fn an_empty_view_all_shows_what_its_section_showed() {
+        let feed = serde_json::json!({"items": [{
+            "type": "HORIZONTAL_LIST",
+            "moduleId": "SUGGESTED_RADIOS_MIXES",
+            "title": "Radio personalizadas",
+            "viewAll": "home/pages/SUGGESTED_RADIOS_MIXES/view-all",
+            "items": [{"type": "DEEP_LINK", "data": {"title": "Radio", "url": "tidal://album/1"}}],
+        }]});
+        let section = pages::parse_feed(&feed).sections.remove(0);
+        let more = section.more.clone().expect("a view all page");
+        let empty = pages::parse_view_all(&serde_json::json!({
+            "title": "Radio personalizadas", "subtitle": null, "itemLayout": "GRID",
+            "filters": [], "items": [], "description": null,
+        }));
+        assert!(empty.items.is_empty());
+        // Nothing remembered: still empty.
+        assert!(or_shown(&more, empty.clone()).items.is_empty());
+        remember_shown(&section);
+        let shown = or_shown(&more, empty);
+        assert_eq!(shown.items.len(), 1);
+        assert_eq!(shown.title, "Radio personalizadas");
+        assert_eq!((shown.total, shown.more), (1, None));
+        forget_shown();
+        assert!(
+            or_shown(&more, pages::parse_view_all(&serde_json::json!({})))
+                .items
+                .is_empty()
+        );
     }
 }

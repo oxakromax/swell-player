@@ -8,6 +8,13 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Fixed
+
+- **Empty "View All" pages:** TIDAL sends some of the home's "View All"
+  pages (Personal Radio Stations, at times Based on Your Interests) with
+  no items, so they said "Nothing Here Yet" although the home showed
+  some. They now show what the home showed.
+
 ## [1.3.0] - 2026-10-21
 
 ### Added

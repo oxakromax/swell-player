@@ -89,6 +89,7 @@ pub fn section_widget(ctx: &Rc<Ctx>, section: &Section) -> gtk::Widget {
 /// Where "View All" of a section leads, if it has more than it shows.
 pub fn view_all_route(section: &Section) -> Option<Route> {
     let more = section.more.clone()?;
+    crate::ui::pages::more::remember_shown(section);
     Some(Route::More {
         title: section.title.clone(),
         more,

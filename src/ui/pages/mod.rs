@@ -10,7 +10,7 @@ mod history;
 mod home;
 mod home_sections;
 mod mix;
-mod more;
+pub mod more;
 mod playlist;
 mod playlist_data;
 mod search;

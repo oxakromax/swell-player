@@ -91,7 +91,7 @@ pub enum SectionKind {
 }
 
 /// Where to get the rest of a section.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum More {
     /// Page with `offset`/`limit` through a v1 `dataApiPath`.
     Data(String),
