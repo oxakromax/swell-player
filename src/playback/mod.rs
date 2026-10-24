@@ -388,6 +388,15 @@ impl Playback {
         });
         this.apply_volume();
         this.tray.set_visible(current.background);
+        #[cfg(windows)]
+        {
+            let weak = Rc::downgrade(&this);
+            this.desktop.set_notifier(move |title, body| {
+                if let Some(this) = weak.upgrade() {
+                    this.tray.show_notification(title, body);
+                }
+            });
+        }
         if let Some(engine) = &this.engine {
             engine.set_output_device(this.output_device.borrow().clone());
             engine.set_fades(current.fade_transitions);

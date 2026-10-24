@@ -151,6 +151,15 @@ impl Tray {
         }
     }
 
+    /// Shows a notification from the icon, if it is shown (Windows, where
+    /// notifications come from a notification-area icon: see `notify.rs`).
+    #[cfg(windows)]
+    pub fn show_notification(&self, title: &str, body: &str) {
+        if let Some(backend) = &*self.backend.borrow() {
+            backend.show_notification(title, body);
+        }
+    }
+
     /// Updates the icon's tooltip and menu, if they changed.
     pub fn update(&self, state: TrayState) {
         if *self.state.borrow() == state {

@@ -8,8 +8,23 @@
 //! thread, not only GDK's, so [`window_proc`] runs from the main loop like
 //! any other GTK callback. The window is a hidden top-level one rather than
 //! message-only (`HWND_MESSAGE`): those miss broadcasts, and the shell
-//! broadcasts "TaskbarCreated" when Explorer restarts, the cue to add the
-//! icon again.
+//! broadcasts "TaskbarCreated" when Explorer restarts (and on Windows 11
+//! when the DPI or the theme change), the cue to add the icon again.
+//!
+//! The icon goes by a GUID of Swell's ([`ICON_GUID`]) rather than by its
+//! window and an id. Explorer removes the icon of a process that ended
+//! without taking it away (killed by the installer or the Task Manager,
+//! crashed) only when the mouse passes over it, and the next Swell, with
+//! another window, could not touch it: it would show beside the new one.
+//! By GUID the next Swell removes it first. Windows ties a GUID to the
+//! path of the program that first used it (for programs not signed), so
+//! it refuses it to a copy elsewhere (the portable build, a moved
+//! install); the icon then goes by window and id. Swell also removes the
+//! icon when the session ends, which may end the process without running
+//! [`Backend`]'s drop.
+//!
+//! The "now playing" notifications show on this icon too
+//! ([`Backend::show_notification`], see `notify.rs`).
 //!
 //! The popup menu runs its own modal loop (`TrackPopupMenuEx`), during
 //! which GLib's sources wait: the menu is up for a moment only.
@@ -33,6 +48,7 @@ type Hinstance = *mut c_void;
 type WndProc = unsafe extern "system" fn(Hwnd, u32, usize, isize) -> isize;
 
 const WM_NULL: u32 = 0x0000;
+const WM_ENDSESSION: u32 = 0x0016;
 const WM_NCDESTROY: u32 = 0x0082;
 const WM_CONTEXTMENU: u32 = 0x007B;
 const WM_LBUTTONUP: u32 = 0x0202;
@@ -49,12 +65,29 @@ const NIM_SETVERSION: u32 = 4;
 const NIF_MESSAGE: u32 = 0x01;
 const NIF_ICON: u32 = 0x02;
 const NIF_TIP: u32 = 0x04;
+const NIF_INFO: u32 = 0x10;
+const NIF_GUID: u32 = 0x20;
+const NIF_REALTIME: u32 = 0x40;
 const NIF_SHOWTIP: u32 = 0x80;
+const NIIF_NOSOUND: u32 = 0x10;
+const NIIF_RESPECT_QUIET_TIME: u32 = 0x80;
 const NOTIFYICON_VERSION_4: u32 = 4;
 const NIN_SELECT: u32 = WM_USER;
 const NIN_KEYSELECT: u32 = WM_USER + 1;
-/// The icon's id among this window's (it has one).
+const NIN_BALLOONUSERCLICK: u32 = WM_USER + 5;
+/// The icon's id among this window's (it has one), when it cannot go by
+/// [`ICON_GUID`].
 const ICON_ID: u32 = 1;
+/// The icon's identity for the shell, the same for every run of Swell:
+/// {A6F55D77-DD63-4750-9D4B-5BA2FCBEC191}. Never change it (Windows keeps
+/// the user's choices for the icon, such as showing it outside the
+/// overflow, under it).
+const ICON_GUID: Guid = Guid {
+    data1: 0xA6F5_5D77,
+    data2: 0xDD63,
+    data3: 0x4750,
+    data4: [0x9D, 0x4B, 0x5B, 0xA2, 0xFC, 0xBE, 0xC1, 0x91],
+};
 
 const MF_STRING: u32 = 0x0000;
 const MF_GRAYED: u32 = 0x0001;
@@ -108,6 +141,7 @@ struct WndClassExW {
 
 /// `GUID`.
 #[repr(C)]
+#[derive(Clone, Copy, Default)]
 struct Guid {
     data1: u32,
     data2: u16,
@@ -336,6 +370,8 @@ struct Inner {
     icon: Icon,
     /// The shell's "TaskbarCreated" message (0 if it has none).
     taskbar_created: u32,
+    /// Whether the icon goes by [`ICON_GUID`] (else by window and id).
+    by_guid: Cell<bool>,
     /// Whether the shell took NOTIFYICON_VERSION_4 (which changes the
     /// events).
     version_4: Cell<bool>,
@@ -411,6 +447,9 @@ impl Backend {
             state: RefCell::new(state.clone()),
             icon: Icon::load(),
             taskbar_created,
+            // Tests leave the GUID alone: Windows would tie it to the test
+            // program's path, and refuse it to Swell.
+            by_guid: Cell::new(!cfg!(test)),
             version_4: Cell::new(false),
             menu_open: Cell::new(false),
         });
@@ -418,6 +457,10 @@ impl Backend {
         // reference, which `window_proc` takes back on WM_NCDESTROY; until
         // then the `Inner` stays alive.
         unsafe { SetWindowLongPtrW(hwnd, GWLP_USERDATA, Rc::into_raw(inner.clone()) as isize) };
+        // An icon of an earlier Swell that ended without removing it.
+        if inner.notify(NIM_DELETE, 0) {
+            log::debug!("tray: removed an icon left by an earlier run");
+        }
         inner.add();
         Ok(Self { hwnd, inner })
     }
@@ -428,6 +471,23 @@ impl Backend {
         let old = self.inner.state.replace(state.clone());
         if old.tooltip() != state.tooltip() {
             self.inner.notify(NIM_MODIFY, NIF_TIP | NIF_SHOWTIP);
+        }
+    }
+
+    /// Shows a notification (on Windows 10 and later, a toast) from the
+    /// icon, quietly; dropped if it cannot show at once.
+    pub fn show_notification(&self, title: &str, body: &str) {
+        let mut data = self
+            .inner
+            .data(NIF_INFO | NIF_REALTIME | NIF_TIP | NIF_SHOWTIP);
+        data.info_title = fixed(title);
+        // Without a body, nothing shows.
+        data.info = fixed(if body.is_empty() { " " } else { body });
+        data.info_flags = NIIF_NOSOUND | NIIF_RESPECT_QUIET_TIME;
+        // Safety: a complete NOTIFYICONDATAW with its size; the icon lives
+        // as long as `self`.
+        if unsafe { Shell_NotifyIconW(NIM_MODIFY, &data) } == 0 {
+            log::debug!("tray: the notification did not show");
         }
     }
 }
@@ -452,8 +512,10 @@ impl Inner {
     /// behaviour if the shell has it.
     fn add(&self) {
         let flags = NIF_MESSAGE | NIF_ICON | NIF_TIP | NIF_SHOWTIP;
-        // A shell busy at login can time out yet add the icon.
-        if !self.notify(NIM_ADD, flags) && !self.notify(NIM_MODIFY, flags) {
+        // A shell busy at login can time out yet add the icon. Modifying
+        // also takes over an icon of the same GUID that is still there.
+        let add = || self.notify(NIM_ADD, flags) || self.notify(NIM_MODIFY, flags);
+        if !add() && !(self.by_guid.get() && self.fall_back(add)) {
             log::info!("tray: the notification area is not there yet");
             return;
         }
@@ -465,6 +527,24 @@ impl Inner {
         log::debug!("tray: icon added (version 4: {version_4})");
     }
 
+    /// Has the icon go by window and id once the shell refused its GUID
+    /// (which Windows ties to another path), if `add` then adds it.
+    fn fall_back(&self, add: impl Fn() -> bool) -> bool {
+        self.by_guid.set(false);
+        if !add() {
+            // No shell yet, rather: the GUID again next time.
+            self.by_guid.set(true);
+            return false;
+        }
+        log::debug!("tray: the shell refused the icon's GUID");
+        // In case the shell only timed out, and took the GUID after all.
+        let mut data = self.data(NIF_GUID);
+        data.guid = ICON_GUID;
+        // Safety: a complete NOTIFYICONDATAW with its size.
+        unsafe { Shell_NotifyIconW(NIM_DELETE, &data) };
+        true
+    }
+
     /// Sends the icon's current data to the shell; false if it refused.
     fn notify(&self, message: u32, flags: u32) -> bool {
         let data = self.data(flags);
@@ -474,13 +554,20 @@ impl Inner {
         unsafe { Shell_NotifyIconW(message, &data) != 0 }
     }
 
+    /// The icon's data for the shell, with `flags`; it goes by GUID or by
+    /// window and id as the shell took it.
     fn data(&self, flags: u32) -> NotifyIconDataW {
         let tooltip = self.state.borrow().tooltip();
+        let (guid, guid_flag) = if self.by_guid.get() {
+            (ICON_GUID, NIF_GUID)
+        } else {
+            (Guid::default(), 0)
+        };
         NotifyIconDataW {
             size: size_of::<NotifyIconDataW>() as u32,
             hwnd: self.hwnd,
             id: ICON_ID,
-            flags,
+            flags: flags | guid_flag,
             callback_message: WM_TRAY,
             icon: self.icon.handle,
             tip: fixed(&tooltip),
@@ -490,12 +577,7 @@ impl Inner {
             version: 0,
             info_title: [0; 64],
             info_flags: 0,
-            guid: Guid {
-                data1: 0,
-                data2: 0,
-                data3: 0,
-                data4: [0; 8],
-            },
+            guid,
             balloon_icon: ptr::null_mut(),
         }
     }
@@ -511,7 +593,7 @@ impl Inner {
             let event = (lparam as usize & 0xFFFF) as u32;
             if self.version_4.get() {
                 match event {
-                    NIN_SELECT | NIN_KEYSELECT => self.send(Command::Raise),
+                    NIN_SELECT | NIN_KEYSELECT | NIN_BALLOONUSERCLICK => self.send(Command::Raise),
                     // The anchor, also for the keyboard (Shift+F10).
                     WM_CONTEXTMENU => {
                         let (x, y) = point(wparam);
@@ -521,7 +603,7 @@ impl Inner {
                 }
             } else {
                 match event {
-                    WM_LBUTTONUP => self.send(Command::Raise),
+                    WM_LBUTTONUP | NIN_BALLOONUSERCLICK => self.send(Command::Raise),
                     WM_RBUTTONUP | WM_CONTEXTMENU => {
                         let mut cursor = Point::default();
                         // Safety: a valid POINT to write.
@@ -536,6 +618,12 @@ impl Inner {
         if self.taskbar_created != 0 && message == self.taskbar_created {
             // Explorer restarted, with an empty notification area.
             self.add();
+            return Some(0);
+        }
+        if message == WM_ENDSESSION && wparam != 0 {
+            // Windows may end the process once this returns: the installer
+            // (Restart Manager) closing Swell, or the end of the session.
+            self.notify(NIM_DELETE, 0);
             return Some(0);
         }
         None
@@ -718,5 +806,20 @@ mod tests {
         // And again, with the class registered before.
         let (commands, _receiver) = tokio::sync::mpsc::unbounded_channel();
         drop(Backend::new(commands, &state).unwrap());
+    }
+
+    #[test]
+    fn the_icon_goes_by_guid_or_by_window() {
+        let (commands, _receiver) = tokio::sync::mpsc::unbounded_channel();
+        let backend = Backend::new(commands, &TrayState::default()).unwrap();
+        let inner = &backend.inner;
+        inner.by_guid.set(true);
+        let data = inner.data(NIF_TIP);
+        assert_eq!(data.flags, NIF_TIP | NIF_GUID);
+        assert_eq!(data.guid.data1, ICON_GUID.data1);
+        inner.by_guid.set(false);
+        let data = inner.data(NIF_TIP);
+        assert_eq!(data.flags, NIF_TIP);
+        assert_eq!((data.hwnd, data.id), (inner.hwnd, ICON_ID));
     }
 }

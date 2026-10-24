@@ -368,6 +368,9 @@ impl StatusItem {
         0
     }
 
+    /// Plasma shows `<IconName>-symbolic` instead when the theme has it,
+    /// as an installed Swell does: that icon must take the panel's colours
+    /// (a test checks it).
     #[zbus(property(emits_changed_signal = "const"))]
     fn icon_name(&self) -> String {
         config::APP_ID.to_owned()
@@ -905,6 +908,28 @@ mod tests {
         assert_eq!(title, "Swell");
         assert_eq!(description, "Rock &amp; Roll &lt;Live&gt; — A");
         assert_eq!(tool_tip(&TrayState::default()).3, "");
+    }
+
+    /// Plasma's tray recolours a symbolic icon only through its
+    /// `current-color-scheme` stylesheet (KIconLoader does not override
+    /// fills, as GTK does): a fixed dark fill is all but invisible on a
+    /// dark panel, and shows only brightened under the pointer.
+    #[test]
+    fn symbolic_icon_follows_the_panel_colours() {
+        let svg = include_str!(
+            "../../../data/icons/symbolic/apps/io.github.oxakromax.SwellPlayer-symbolic.svg"
+        );
+        assert!(svg.contains(r#"<style id="current-color-scheme">.ColorScheme-Text{"#));
+        let shapes = ["<path", "<circle", "<rect", "<ellipse", "<polygon"]
+            .iter()
+            .map(|tag| svg.matches(tag).count())
+            .sum::<usize>();
+        assert!(shapes > 0);
+        let painted = svg
+            .matches(r#"class="ColorScheme-Text" fill="currentColor""#)
+            .count();
+        assert_eq!(painted, shapes, "every shape in the scheme's colour");
+        assert!(!svg.contains("fill=\"#"), "no fixed colour");
     }
 
     #[test]

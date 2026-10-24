@@ -1,21 +1,38 @@
 //! Desktop integration that needs the `GtkApplication`: inhibiting suspend
 //! while playing, the "now playing" notification, and the Raise/Quit hooks
 //! MPRIS calls.
+//!
+//! On Windows the notification does not go through `GApplication`: GLib's
+//! backend there (since GLib 2.88) shows notifications from a
+//! notification-area icon of its own, which it adds on the first
+//! notification sent or withdrawn and never removes, beside Swell's tray
+//! icon, and leaves behind dead when Swell exits. Swell shows it from its
+//! own icon instead (`Desktop::set_notifier`), so only while that is
+//! there ("Run in Background").
 
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
+#[cfg(not(windows))]
 use std::sync::OnceLock;
+#[cfg(not(windows))]
 use std::time::Duration;
 
 use adw::prelude::*;
+#[cfg(not(windows))]
 use anyhow::Result;
-use gtk::{gio, glib};
+#[cfg(not(windows))]
+use gtk::gio;
+use gtk::glib;
 
 use crate::i18n::tr;
 use crate::model::TrackInfo;
+#[cfg(not(windows))]
 use crate::runtime;
 
 type Hook = Rc<dyn Fn()>;
+/// Windows: shows a notification (title, body).
+#[cfg(windows)]
+type Notifier = Rc<dyn Fn(&str, &str)>;
 
 #[derive(Default)]
 pub struct Desktop {
@@ -28,6 +45,8 @@ pub struct Desktop {
     notification: RefCell<Option<glib::JoinHandle<()>>>,
     shutdown_handler: RefCell<Option<glib::SignalHandlerId>>,
     sleep_lock: Rc<SleepLock>,
+    #[cfg(windows)]
+    notifier: RefCell<Option<Notifier>>,
 }
 
 /// Why Swell keeps the system awake (shown by the desktop).
@@ -229,6 +248,12 @@ impl Desktop {
         }
     }
 
+    /// Windows: shows the notifications with `notifier` (title, body).
+    #[cfg(windows)]
+    pub fn set_notifier(&self, notifier: impl Fn(&str, &str) + 'static) {
+        self.notifier.replace(Some(Rc::new(notifier)));
+    }
+
     /// Tells the desktop about a new track, unless the window is in front.
     pub fn track_changed(&self, track: &TrackInfo) {
         let Some(app) = self.app() else {
@@ -239,21 +264,31 @@ impl Desktop {
         }
         if app.active_window().is_some_and(|window| window.is_active()) {
             // The earlier notification would show the wrong track.
-            if let Some(task) = self.notification.take() {
-                task.abort();
-            }
-            app.withdraw_notification("now-playing");
+            self.withdraw();
             return;
         }
         log::debug!("notifying track {}", track.id);
-        let notification = gio::Notification::new(&track.title);
         let mut body = track.artist_names();
         if !track.album.is_empty() {
             body = tr("{artists} — {album}")
                 .replace("{artists}", &body)
                 .replace("{album}", &track.album);
         }
-        notification.set_body(Some(&body));
+        self.show(app, track, &body);
+    }
+
+    #[cfg(windows)]
+    fn show(&self, _app: adw::Application, track: &TrackInfo, body: &str) {
+        let notifier = self.notifier.borrow().clone();
+        if let Some(notifier) = notifier {
+            notifier(&track.title, body);
+        }
+    }
+
+    #[cfg(not(windows))]
+    fn show(&self, app: adw::Application, track: &TrackInfo, body: &str) {
+        let notification = gio::Notification::new(&track.title);
+        notification.set_body(Some(body));
         notification.set_priority(gio::NotificationPriority::Low);
 
         let cover = track.cover.clone();
@@ -279,16 +314,23 @@ impl Desktop {
         }
     }
 
+    /// Removes the notification shown or about to be (Windows: one shown
+    /// stays until it times out).
+    fn withdraw(&self) {
+        if let Some(task) = self.notification.take() {
+            task.abort();
+        }
+        #[cfg(not(windows))]
+        if let Some(app) = self.app() {
+            app.withdraw_notification("now-playing");
+        }
+    }
+
     /// Removes the notification, the inhibition and the shutdown handler
     /// (the playback object is going away).
     pub fn clear(&self) {
         self.set_playing(false);
-        if let Some(app) = self.app() {
-            app.withdraw_notification("now-playing");
-        }
-        if let Some(task) = self.notification.take() {
-            task.abort();
-        }
+        self.withdraw();
         self.detach();
         self.notified.set(None);
     }
@@ -296,6 +338,7 @@ impl Desktop {
 
 /// Downloads a cover for the notification into this process's runtime
 /// directory.
+#[cfg(not(windows))]
 async fn save_cover(cover: String) -> Result<std::path::PathBuf> {
     static HTTP: OnceLock<reqwest::Client> = OnceLock::new();
     let http = HTTP.get_or_init(crate::api::http_client);
