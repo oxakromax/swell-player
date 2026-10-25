@@ -51,7 +51,7 @@ glib-unix = "0.22.8"
 # Linux and the BSDs: Secret Service (oo7), MPRIS and logind (zbus).
 [target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
 oo7 = { version = "0.6.0", default-features = false, features = ["tokio", "native_crypto"] }
-zbus = { version = "5.19.0", default-features = false, features = ["tokio"] }
+zbus = { version = "6.0.0", default-features = false, features = ["tokio"] }
 
 # Windows and macOS: Credential Manager / Keychain, and the system media
 # controls (SMTC / Now Playing).
