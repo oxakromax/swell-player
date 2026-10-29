@@ -35,7 +35,7 @@ glib = { version = "0.22.10", features = ["v2_72"] }
 gst = { version = "0.25.4", package = "gstreamer" }
 gtk = { version = "0.11.5", package = "gtk4", features = ["v4_18"] }
 log = "0.4.34"
-lru = "0.18.5"
+lru = "0.19.0"
 reqwest = { version = "0.13.5", default-features = false, features = ["rustls", "http2", "hickory-dns", "query", "form"] }
 rusqlite = { version = "0.40.2", features = ["fallible_uint"] }
 serde = { version = "1.0.229", features = ["derive"] }
