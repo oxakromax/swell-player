@@ -27,7 +27,7 @@ use serde::Serialize;
 use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
 use tokio::task::AbortHandle;
 use zbus::object_server::SignalEmitter;
-use zbus::zvariant::{ObjectPath, OwnedValue, Type, Value};
+use zbus::{ObjectPath, OwnedVariant, Type, Variant};
 
 use super::TrayState;
 use crate::config;
@@ -149,7 +149,7 @@ struct Service {
 impl Service {
     async fn run(self, mut changes: UnboundedReceiver<Change>) -> zbus::Result<()> {
         let icon_theme_path = icon_theme_path().await;
-        let connection = zbus::connection::Builder::session()?
+        let connection = zbus::connection::Builder::session()
             .serve_at(
                 ITEM_PATH,
                 StatusItem {
@@ -157,7 +157,7 @@ impl Service {
                     commands: self.commands.clone(),
                     icon_theme_path: icon_theme_path.clone().unwrap_or_default(),
                 },
-            )?
+            )
             .serve_at(
                 MENU_PATH,
                 DbusMenu {
@@ -166,7 +166,7 @@ impl Service {
                     text_direction: self.text_direction,
                     icon_theme_path: icon_theme_path.into_iter().collect(),
                 },
-            )?
+            )
             .build()
             .await?;
         // Followed before the first announcement, so a watcher starting in
@@ -214,9 +214,11 @@ async fn register(connection: &zbus::Connection) {
         .await;
     match result {
         Ok(_) => log::debug!("tray icon registered as {name}"),
-        Err(zbus::Error::MethodError(error, ..))
-            if error.as_str() == "org.freedesktop.DBus.Error.ServiceUnknown"
-                || error.as_str() == "org.freedesktop.DBus.Error.NameHasNoOwner" =>
+        Err(zbus::Error::FDO(error))
+            if matches!(
+                *error,
+                zbus::fdo::Error::ServiceUnknown(_) | zbus::fdo::Error::NameHasNoOwner(_)
+            ) =>
         {
             log::info!("no tray (StatusNotifierWatcher) yet; the icon appears when one starts");
         }
@@ -429,7 +431,7 @@ impl StatusItem {
 }
 
 /// A menu item's properties, as dbusmenu has them.
-type Properties = HashMap<String, OwnedValue>;
+type Properties = HashMap<String, OwnedVariant>;
 
 /// The root item: it holds the menu.
 const ROOT: i32 = 0;
@@ -483,28 +485,28 @@ fn item_ids() -> impl Iterator<Item = i32> {
     (1..).take(ENTRIES.len())
 }
 
-fn properties<'a>(entries: impl IntoIterator<Item = (&'a str, Value<'a>)>) -> Properties {
+fn properties<'a>(entries: impl IntoIterator<Item = (&'a str, Variant<'a>)>) -> Properties {
     entries
         .into_iter()
-        .filter_map(|(key, value)| Some((key.to_owned(), OwnedValue::try_from(value).ok()?)))
+        .filter_map(|(key, value)| Some((key.to_owned(), OwnedVariant::try_from(value).ok()?)))
         .collect()
 }
 
 /// Item `id`'s properties, all of them (so a change never removes one).
 fn item_properties(state: &TrayState, id: i32) -> Option<Properties> {
     if id == ROOT {
-        return Some(properties([("children-display", Value::from("submenu"))]));
+        return Some(properties([("children-display", Variant::from("submenu"))]));
     }
     Some(match Entry::from_id(id)?.action(state) {
         None => properties([
-            ("type", Value::from("separator")),
-            ("visible", Value::from(true)),
+            ("type", Variant::from("separator")),
+            ("visible", Variant::from(true)),
         ]),
         Some((label, enabled, _)) => properties([
             // An underscore marks a mnemonic; a literal one is doubled.
-            ("label", Value::from(label.replace('_', "__"))),
-            ("enabled", Value::from(enabled)),
-            ("visible", Value::from(true)),
+            ("label", Variant::from(label.replace('_', "__"))),
+            ("enabled", Variant::from(enabled)),
+            ("visible", Variant::from(true)),
         ]),
     })
 }
@@ -561,11 +563,11 @@ fn layout(state: &TrayState, parent: i32, depth: i32, names: &[String]) -> Optio
 
 /// A [`Node`] on the wire, `(ia{sv}av)`: the children are variants of the
 /// same.
-#[derive(Debug, Serialize, Type, Value)]
+#[derive(Debug, Serialize, Type, Variant)]
 struct Layout {
     id: i32,
     properties: Properties,
-    children: Vec<OwnedValue>,
+    children: Vec<OwnedVariant>,
 }
 
 impl From<Node> for Layout {
@@ -576,7 +578,7 @@ impl From<Node> for Layout {
             children: node
                 .children
                 .into_iter()
-                .filter_map(|child| OwnedValue::try_from(Value::from(Layout::from(child))).ok())
+                .filter_map(|child| OwnedVariant::try_from(Variant::from(Layout::from(child))).ok())
                 .collect(),
         }
     }
@@ -644,7 +646,7 @@ impl DbusMenu {
             .collect()
     }
 
-    fn get_property(&self, id: i32, name: String) -> zbus::fdo::Result<OwnedValue> {
+    fn get_property(&self, id: i32, name: String) -> zbus::fdo::Result<OwnedVariant> {
         let state = &read(&self.shared).state;
         item_properties(state, id)
             .ok_or_else(|| unknown(id))?
@@ -656,7 +658,7 @@ impl DbusMenu {
         &self,
         id: i32,
         event_id: String,
-        _data: OwnedValue,
+        _data: OwnedVariant,
         _timestamp: u32,
     ) -> zbus::fdo::Result<()> {
         if self.handle(id, &event_id) {
@@ -670,7 +672,7 @@ impl DbusMenu {
     #[zbus(out_args("idErrors"))]
     fn event_group(
         &self,
-        events: Vec<(i32, String, OwnedValue, u32)>,
+        events: Vec<(i32, String, OwnedVariant, u32)>,
     ) -> zbus::fdo::Result<Vec<i32>> {
         let count = events.len();
         let errors: Vec<i32> = events
@@ -938,7 +940,7 @@ mod tests {
         assert_eq!(Layout::SIGNATURE.to_string(), "(ia{sv}av)");
         assert_eq!(layout.children.len(), ENTRIES.len());
         let child = layout.children[0].clone();
-        let (id, properties, children): (i32, Properties, Vec<OwnedValue>) =
+        let (id, properties, children): (i32, Properties, Vec<OwnedVariant>) =
             child.try_into().unwrap();
         assert_eq!(id, 1);
         assert_eq!(string(&properties, "label").as_deref(), Some("Show Window"));
@@ -965,9 +967,9 @@ mod tests {
     async fn start_watcher(
         registered: UnboundedSender<(String, String)>,
     ) -> zbus::Result<zbus::Connection> {
-        zbus::connection::Builder::session()?
-            .name(WATCHER)?
-            .serve_at(WATCHER_PATH, Watcher { registered })?
+        zbus::connection::Builder::session()
+            .name(WATCHER)
+            .serve_at(WATCHER_PATH, Watcher { registered })
             .build()
             .await
     }
@@ -987,7 +989,7 @@ mod tests {
             body: &B,
         ) -> zbus::Result<zbus::Message>
         where
-            B: Serialize + zbus::zvariant::DynamicType,
+            B: Serialize + zbus::DynamicType,
         {
             let item = self.item.as_str();
             self.connection
@@ -997,7 +999,7 @@ mod tests {
 
         async fn menu<B>(&self, method: &str, body: &B) -> zbus::Result<zbus::Message>
         where
-            B: Serialize + zbus::zvariant::DynamicType,
+            B: Serialize + zbus::DynamicType,
         {
             self.call(MENU_PATH, "com.canonical.dbusmenu", method, body)
                 .await
@@ -1005,14 +1007,14 @@ mod tests {
 
         async fn item<B>(&self, method: &str, body: &B) -> zbus::Result<zbus::Message>
         where
-            B: Serialize + zbus::zvariant::DynamicType,
+            B: Serialize + zbus::DynamicType,
         {
             self.call(ITEM_PATH, "org.kde.StatusNotifierItem", method, body)
                 .await
         }
 
         async fn click(&self, id: i32) -> zbus::Result<zbus::Message> {
-            self.menu("Event", &(id, "clicked", Value::from(0i32), 0u32))
+            self.menu("Event", &(id, "clicked", Variant::from(0i32), 0u32))
                 .await
         }
     }
@@ -1048,9 +1050,7 @@ mod tests {
         // The item's properties.
         let properties = zbus::fdo::PropertiesProxy::builder(&client)
             .destination(item.as_str())
-            .unwrap()
             .path(ITEM_PATH)
-            .unwrap()
             .build()
             .await
             .unwrap();
@@ -1083,14 +1083,12 @@ mod tests {
             .menu("GetLayout", &(ROOT, -1, Vec::<String>::new()))
             .await
             .unwrap();
-        let (revision, (id, _, children)): (u32, (i32, Properties, Vec<OwnedValue>)) =
+        let (revision, (id, _, children)): (u32, (i32, Properties, Vec<OwnedVariant>)) =
             reply.body().deserialize().unwrap();
         assert_eq!((revision, id, children.len()), (1, ROOT, 7));
         let menu_properties = zbus::fdo::PropertiesProxy::builder(&client)
             .destination(item.as_str())
-            .unwrap()
             .path(MENU_PATH)
-            .unwrap()
             .build()
             .await
             .unwrap();
@@ -1125,8 +1123,8 @@ mod tests {
         let rule = zbus::MatchRule::builder()
             .msg_type(zbus::message::Type::Signal)
             .sender(item.as_str())
-            .unwrap()
-            .build();
+            .build()
+            .unwrap();
         let mut signals = zbus::MessageStream::for_match_rule(rule, &client, None)
             .await
             .unwrap();
@@ -1146,10 +1144,10 @@ mod tests {
             .menu("GetLayout", &(ROOT, -1, Vec::<String>::new()))
             .await
             .unwrap();
-        let (revision, (_, _, children)): (u32, (i32, Properties, Vec<OwnedValue>)) =
+        let (revision, (_, _, children)): (u32, (i32, Properties, Vec<OwnedVariant>)) =
             reply.body().deserialize().unwrap();
         assert_eq!(revision, 2);
-        let (_, play_pause, _): (i32, Properties, Vec<OwnedValue>) =
+        let (_, play_pause, _): (i32, Properties, Vec<OwnedVariant>) =
             children[2].clone().try_into().unwrap();
         assert_eq!(string(&play_pause, "label").as_deref(), Some("Pause"));
         click(3).await.unwrap();

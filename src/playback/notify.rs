@@ -97,7 +97,7 @@ impl SleepLock {
 #[derive(Default)]
 struct SleepLock {
     wanted: Cell<bool>,
-    held: RefCell<Option<zbus::zvariant::OwnedFd>>,
+    held: RefCell<Option<zbus::OwnedFd>>,
     requesting: Cell<bool>,
     unavailable: Cell<bool>,
 }
@@ -135,7 +135,7 @@ impl SleepLock {
 }
 
 #[cfg(target_os = "linux")]
-async fn logind_inhibit() -> Result<zbus::zvariant::OwnedFd> {
+async fn logind_inhibit() -> Result<zbus::OwnedFd> {
     static SYSTEM: tokio::sync::OnceCell<zbus::Connection> = tokio::sync::OnceCell::const_new();
     let connection = SYSTEM.get_or_try_init(zbus::Connection::system).await?;
     let reply = connection
