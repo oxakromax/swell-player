@@ -2,7 +2,7 @@
 
 pkgname=swell-player-git
 _pkgname=swell-player
-pkgver=1.3.2
+pkgver=1.3.3
 pkgrel=1
 pkgdesc="Fast, lightweight native TIDAL client with bit-perfect Hi-Res playback (GTK 4 + libadwaita, development version)"
 arch=('x86_64' 'aarch64')
