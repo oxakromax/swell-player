@@ -62,9 +62,8 @@ souvlaki = { version = "0.8.3", default-features = false }
 [target.'cfg(windows)'.dependencies]
 gdk-win32 = { version = "0.11.5", package = "gdk4-win32" }
 
-# macOS: the menu bar's status item (AppKit); the versions souvlaki uses.
+# macOS: the menu bar's status item (AppKit); the version souvlaki uses.
 [target.'cfg(target_os = "macos")'.dependencies]
-cocoa = "0.27.0"
 objc = "0.2.7"
 
 [profile.release]

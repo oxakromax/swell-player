@@ -16,11 +16,9 @@ use std::ffi::c_void;
 use std::ptr;
 
 use anyhow::{Context, Result};
-use cocoa::base::{NO, YES, id, nil};
-use cocoa::foundation::{NSSize, NSString, NSUInteger};
 use objc::declare::ClassDecl;
 use objc::rc::autoreleasepool;
-use objc::runtime::{BOOL, Class, Object, Sel};
+use objc::runtime::{BOOL, Class, NO, Object, Sel, YES};
 use objc::{class, msg_send, sel, sel_impl};
 use tokio::sync::mpsc::UnboundedSender;
 
@@ -40,6 +38,21 @@ const VARIABLE_LENGTH: f64 = -1.0;
 const TARGET_CLASS: &str = "SwellTrayTarget";
 /// The target's ivar: a `*mut UnboundedSender<Command>`, or null.
 const COMMANDS_IVAR: &str = "swellCommands";
+/// `NSUTF8StringEncoding`.
+const UTF8_ENCODING: usize = 4;
+
+/// An object, as Objective-C names its pointers.
+#[allow(non_camel_case_types)]
+type id = *mut Object;
+#[allow(non_upper_case_globals)]
+const nil: id = ptr::null_mut();
+
+/// `NSSize` (`CGSize` on 64-bit), in points.
+#[repr(C)]
+struct NSSize {
+    width: f64,
+    height: f64,
+}
 
 /// What the menu's items send, by tag: an item's tag is its command's
 /// index here plus one, since 0 is every item's default tag.
@@ -290,7 +303,7 @@ unsafe fn set_icon(button: id) -> bool {
     unsafe {
         let data: id = msg_send![class!(NSData),
             dataWithBytes: SYMBOLIC_ICON.as_ptr().cast::<c_void>()
-            length: SYMBOLIC_ICON.len() as NSUInteger];
+            length: SYMBOLIC_ICON.len()];
         let image: id = msg_send![class!(NSImage), alloc];
         let mut image: id = msg_send![image, initWithData: data];
         if image != nil {
@@ -311,7 +324,11 @@ unsafe fn set_icon(button: id) -> bool {
             }
             image = msg_send![icon, copy];
         }
-        let () = msg_send![image, setSize: NSSize::new(ICON_SIZE, ICON_SIZE)];
+        let size = NSSize {
+            width: ICON_SIZE,
+            height: ICON_SIZE,
+        };
+        let () = msg_send![image, setSize: size];
         let () = msg_send![button, setImage: image];
         let () = msg_send![image, release];
         true
@@ -324,7 +341,11 @@ unsafe fn set_icon(button: id) -> bool {
 /// Inside an autorelease pool.
 unsafe fn ns_string(text: &str) -> id {
     unsafe {
-        let string = NSString::alloc(nil).init_str(text);
+        let string: id = msg_send![class!(NSString), alloc];
+        let string: id = msg_send![string,
+            initWithBytes: text.as_ptr().cast::<c_void>()
+            length: text.len()
+            encoding: UTF8_ENCODING];
         msg_send![string, autorelease]
     }
 }
