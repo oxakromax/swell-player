@@ -1,7 +1,7 @@
 ; Inno Setup 6 script for Swell on Windows (x64).
 ;
 ; Packs the folder made by packaging/windows/bundle.sh:
-;   iscc /DAppVersion=1.3.2 /DSourceDir=C:\...\dist\windows\Swell /DOutputDir=C:\...\dist packaging\windows\swell.iss
+;   iscc /DAppVersion=1.3.3 /DSourceDir=C:\...\dist\windows\Swell /DOutputDir=C:\...\dist packaging\windows\swell.iss
 ;
 ; Installs per user without administrator rights by default; the first page
 ; offers an all-users install instead (which Swell only tells about new
@@ -18,7 +18,7 @@
 ; waited for and ended.
 
 #ifndef AppVersion
-  #define AppVersion "1.3.2"
+  #define AppVersion "1.3.3"
 #endif
 #ifndef SourceDir
   #define SourceDir AddBackslash(SourcePath) + "..\..\dist\windows\Swell"

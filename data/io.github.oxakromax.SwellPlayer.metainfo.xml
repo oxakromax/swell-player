@@ -217,7 +217,7 @@
 
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/oxakromax/swell-player/v1.3.2/docs/screenshots/home.png</image>
+      <image>https://raw.githubusercontent.com/oxakromax/swell-player/v1.3.3/docs/screenshots/home.png</image>
       <caption>Home, your personalised TIDAL feed</caption>
       <caption xml:lang="de">Startseite, Ihr personalisierter TIDAL-Feed</caption>
       <caption xml:lang="es">Inicio, tu portada personalizada de TIDAL</caption>
@@ -231,7 +231,7 @@
       <caption xml:lang="zh_TW">首頁，你的個人化 TIDAL 動態</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/oxakromax/swell-player/v1.3.2/docs/screenshots/album.png</image>
+      <image>https://raw.githubusercontent.com/oxakromax/swell-player/v1.3.3/docs/screenshots/album.png</image>
       <caption>An album page</caption>
       <caption xml:lang="de">Eine Albumseite</caption>
       <caption xml:lang="es">La página de un álbum</caption>
@@ -245,7 +245,7 @@
       <caption xml:lang="zh_TW">專輯頁面</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/oxakromax/swell-player/v1.3.2/docs/screenshots/now-playing.png</image>
+      <image>https://raw.githubusercontent.com/oxakromax/swell-player/v1.3.3/docs/screenshots/now-playing.png</image>
       <caption>Now playing, with the queue</caption>
       <caption xml:lang="de">Aktuelle Wiedergabe, mit der Warteschlange</caption>
       <caption xml:lang="es">Sonando ahora, con la cola</caption>
@@ -259,7 +259,7 @@
       <caption xml:lang="zh_TW">正在播放，附帶佇列</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/oxakromax/swell-player/v1.3.2/docs/screenshots/narrow.png</image>
+      <image>https://raw.githubusercontent.com/oxakromax/swell-player/v1.3.3/docs/screenshots/narrow.png</image>
       <caption>The narrow layout, for small windows and phones</caption>
       <caption xml:lang="de">Das schmale Layout für kleine Fenster und Smartphones</caption>
       <caption xml:lang="es">El diseño estrecho, para ventanas pequeñas y teléfonos</caption>
@@ -359,6 +359,46 @@
   </keywords>
 
   <releases>
+    <release version="1.3.3" date="2026-10-29" type="stable">
+      <url type="details">https://github.com/oxakromax/swell-player/releases/tag/v1.3.3</url>
+      <description>
+        <p>Updates on Windows no longer stop with the installer frozen.</p>
+        <p xml:lang="de">Updates unter Windows bleiben nicht mehr mit eingefrorenem Installer stehen.</p>
+        <p xml:lang="es">Las actualizaciones en Windows ya no se detienen con el instalador congelado.</p>
+        <p xml:lang="fr">Les mises à jour sous Windows ne s’arrêtent plus avec l’installateur figé.</p>
+        <p xml:lang="it">Gli aggiornamenti su Windows non si fermano più con il programma di installazione bloccato.</p>
+        <p xml:lang="ja">Windows でのアップデートが、インストーラーが固まったまま止まることはなくなりました。</p>
+        <p xml:lang="ko">Windows에서 업데이트가 설치 프로그램이 멈춘 채로 중단되지 않습니다.</p>
+        <p xml:lang="pt_BR">As atualizações no Windows não param mais com o instalador travado.</p>
+        <p xml:lang="ru">Обновления в Windows больше не останавливаются на зависшем установщике.</p>
+        <p xml:lang="zh_CN">Windows 上的更新不会再卡在冻结的安装程序上。</p>
+        <p xml:lang="zh_TW">Windows 上的更新不會再卡在凍結的安裝程式上。</p>
+        <ul>
+          <li>Windows: an update ends the helper programs that outlive Swell instead of keeping the old version</li>
+          <li xml:lang="de">Windows: Ein Update beendet die Hilfsprogramme, die Swell überdauern, statt die alte Version zu behalten</li>
+          <li xml:lang="es">Windows: una actualización cierra los programas auxiliares que siguen abiertos después de Swell en vez de quedarse con la versión anterior</li>
+          <li xml:lang="fr">Windows : une mise à jour arrête les programmes auxiliaires qui survivent à Swell au lieu de garder l’ancienne version</li>
+          <li xml:lang="it">Windows: un aggiornamento chiude i programmi ausiliari rimasti attivi dopo Swell invece di mantenere la versione precedente</li>
+          <li xml:lang="ja">Windows：Swell の終了後も残る補助プログラムをアップデート時に終了させ、古いバージョンのままにならないようにしました</li>
+          <li xml:lang="ko">Windows: 업데이트가 Swell 종료 후에도 남아 있는 보조 프로그램을 종료하므로 이전 버전에 머무르지 않습니다</li>
+          <li xml:lang="pt_BR">Windows: uma atualização encerra os programas auxiliares que continuam rodando depois do Swell, em vez de manter a versão antiga</li>
+          <li xml:lang="ru">Windows: обновление завершает вспомогательные программы, оставшиеся после Swell, вместо того чтобы сохранять старую версию</li>
+          <li xml:lang="zh_CN">Windows：更新会结束 Swell 退出后仍在运行的辅助程序，而不是保留旧版本</li>
+          <li xml:lang="zh_TW">Windows：更新會結束 Swell 關閉後仍在執行的輔助程式，而不是保留舊版本</li>
+          <li>Updated libraries, among them zbus 6 for the media controls and the tray icon on Linux</li>
+          <li xml:lang="de">Aktualisierte Bibliotheken, darunter zbus 6 für die Mediensteuerung und das Symbol im Infobereich unter Linux</li>
+          <li xml:lang="es">Bibliotecas actualizadas, entre ellas zbus 6 para los controles multimedia y el icono de la bandeja en Linux</li>
+          <li xml:lang="fr">Des bibliothèques à jour, dont zbus 6 pour les contrôles multimédias et l’icône de la zone de notification sous Linux</li>
+          <li xml:lang="it">Librerie aggiornate, tra cui zbus 6 per i controlli multimediali e l’icona nell’area di notifica su Linux</li>
+          <li xml:lang="ja">ライブラリを更新しました。Linux のメディアコントロールとトレイアイコンには zbus 6 を使用します</li>
+          <li xml:lang="ko">라이브러리를 업데이트했습니다. Linux의 미디어 컨트롤과 트레이 아이콘은 zbus 6을 사용합니다</li>
+          <li xml:lang="pt_BR">Bibliotecas atualizadas, entre elas o zbus 6 para os controles de mídia e o ícone da bandeja no Linux</li>
+          <li xml:lang="ru">Обновлённые библиотеки, среди них zbus 6 для управления воспроизведением и значка в трее в Linux</li>
+          <li xml:lang="zh_CN">更新了依赖库，其中 Linux 上的媒体控制和托盘图标改用 zbus 6</li>
+          <li xml:lang="zh_TW">更新了函式庫，其中 Linux 上的媒體控制和系統匣圖示改用 zbus 6</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.3.2" date="2026-10-24" type="stable">
       <url type="details">https://github.com/oxakromax/swell-player/releases/tag/v1.3.2</url>
       <description>
