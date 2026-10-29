@@ -13,7 +13,7 @@ use std::time::Instant;
 use tokio::sync::mpsc::UnboundedSender;
 use zbus::fdo::{RequestNameFlags, RequestNameReply};
 use zbus::object_server::SignalEmitter;
-use zbus::zvariant::{ObjectPath, OwnedValue, Value};
+use zbus::{ObjectPath, OwnedVariant, Variant};
 
 use super::controls::{Command, Metadata, Snapshot, Status};
 use crate::config;
@@ -156,21 +156,21 @@ async fn connect(
     shared: Shared,
     commands: UnboundedSender<Command>,
 ) -> zbus::Result<zbus::Connection> {
-    let connection = zbus::connection::Builder::session()?
+    let connection = zbus::connection::Builder::session()
         .serve_at(
             PATH,
             Root {
                 shared: shared.clone(),
                 commands: commands.clone(),
             },
-        )?
-        .serve_at(PATH, Player { shared, commands })?
+        )
+        .serve_at(PATH, Player { shared, commands })
         .build()
         .await?;
     // A second instance (e.g. a screenshot run) takes a unique name, as
     // the specification allows.
     let reply = connection
-        .request_name_with_flags(BUS_NAME, RequestNameFlags::DoNotQueue.into())
+        .request_name_with_flags(BUS_NAME, RequestNameFlags::DO_NOT_QUEUE)
         .await;
     if !matches!(
         reply,
@@ -213,38 +213,41 @@ fn track_path(id: u64) -> String {
     format!("{TRACK_PATH}/{id}")
 }
 
-fn metadata(track: Option<&Metadata>) -> HashMap<String, OwnedValue> {
+fn metadata(track: Option<&Metadata>) -> HashMap<String, OwnedVariant> {
     let mut map = HashMap::new();
-    let mut put = |key: &str, value: Value<'_>| {
-        if let Ok(value) = OwnedValue::try_from(value) {
+    let mut put = |key: &str, value: Variant<'_>| {
+        if let Ok(value) = OwnedVariant::try_from(value) {
             map.insert(key.to_owned(), value);
         }
     };
     let Some(track) = track else {
         if let Ok(path) = ObjectPath::try_from(NO_TRACK) {
-            put("mpris:trackid", Value::from(path));
+            put("mpris:trackid", Variant::from(path));
         }
         return map;
     };
     if let Ok(path) = ObjectPath::try_from(track_path(track.track_id)) {
-        put("mpris:trackid", Value::from(path));
+        put("mpris:trackid", Variant::from(path));
     }
-    put("mpris:length", Value::from((track.length * 1e6) as i64));
-    put("xesam:title", Value::from(track.title.as_str()));
-    put("xesam:artist", Value::from(track.artists.clone()));
-    put("xesam:album", Value::from(track.album.as_str()));
+    put("mpris:length", Variant::from((track.length * 1e6) as i64));
+    put("xesam:title", Variant::from(track.title.as_str()));
+    put("xesam:artist", Variant::from(track.artists.clone()));
+    put("xesam:album", Variant::from(track.album.as_str()));
     if let Some(first) = track.artists.first() {
-        put("xesam:albumArtist", Value::from(vec![first.clone()]));
+        put("xesam:albumArtist", Variant::from(vec![first.clone()]));
     }
-    put("xesam:url", Value::from(track.url.as_str()));
+    put("xesam:url", Variant::from(track.url.as_str()));
     if track.track_number > 0 {
-        put("xesam:trackNumber", Value::from(track.track_number as i32));
+        put(
+            "xesam:trackNumber",
+            Variant::from(track.track_number as i32),
+        );
     }
     if track.disc_number > 0 {
-        put("xesam:discNumber", Value::from(track.disc_number as i32));
+        put("xesam:discNumber", Variant::from(track.disc_number as i32));
     }
     if let Some(art) = &track.art_url {
-        put("mpris:artUrl", Value::from(art.as_str()));
+        put("mpris:artUrl", Variant::from(art.as_str()));
     }
     map
 }
@@ -441,7 +444,7 @@ impl Player {
     }
 
     #[zbus(property)]
-    fn metadata(&self) -> HashMap<String, OwnedValue> {
+    fn metadata(&self) -> HashMap<String, OwnedVariant> {
         metadata(read(&self.shared).track.as_ref())
     }
 
