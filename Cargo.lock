@@ -3088,7 +3088,6 @@ dependencies = [
  "anyhow",
  "base64 0.23.1",
  "bytes",
- "cocoa",
  "env_logger",
  "futures-util",
  "gdk4-win32",
