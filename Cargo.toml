@@ -57,7 +57,7 @@ zbus = { version = "6.0.0", default-features = false, features = ["tokio", "prox
 # controls (SMTC / Now Playing).
 [target.'cfg(any(windows, target_os = "macos"))'.dependencies]
 keyring = "4.2.0"
-souvlaki = { version = "0.8.3", default-features = false }
+souvlaki = { version = "0.9.3", default-features = false }
 
 [target.'cfg(windows)'.dependencies]
 gdk-win32 = { version = "0.11.5", package = "gdk4-win32" }
